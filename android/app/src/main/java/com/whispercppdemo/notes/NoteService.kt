@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
@@ -40,6 +41,36 @@ object Engine {
             WhisperContext.createContextFromAsset(context.assets, MODEL_ASSET)
         }.also { ctx = it }
     }
+
+    /** The Silero speech detector reads from a file path, so copy it out of the app once (885 KB). */
+    @Synchronized
+    fun vadPath(context: Context): String {
+        val f = File(context.filesDir, "ggml-silero.bin")
+        if (!f.exists()) {
+            val tmp = File(context.filesDir, "ggml-silero.bin.tmp")
+            context.assets.open("models/ggml-silero.bin").use { i -> tmp.outputStream().use { i.copyTo(it) } }
+            tmp.renameTo(f)
+        }
+        return f.path
+    }
+}
+
+/**
+ * The one live recording, kept at app level (not inside the service), so the microphone can never outlive its
+ * notification: the service stays in the foreground for as long as this is recording.
+ */
+object Recording {
+    @Volatile private var recorder: LiveRecorder? = null
+    /** Id of the note being recorded, or null. Derived from the recorder itself, so it can't go stale. */
+    val id: String? get() = recorder?.takeIf { it.isAlive }?.id
+    val active get() = id != null
+
+    fun start(id: String, vadPath: String) {
+        if (active) return
+        recorder = LiveRecorder(id, vadPath).also { it.start() }
+    }
+
+    fun stop() = recorder?.stop()
 }
 
 /** Old phones lack the chip features the engine is built for and would crash; say so plainly instead. */
@@ -61,11 +92,13 @@ object PhoneCheck {
     }
 }
 
-/** Works through unfinished notes in the background, oldest first. Every finished piece is saved before the next starts. */
+/**
+ * Keeps indite in the foreground while it records or transcribes, and works through unfinished notes, oldest first.
+ * Every finished piece is saved before the next starts.
+ */
 class NoteService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
-    private var recorder: LiveRecorder? = null
     private val busy = mutableMapOf<String, Pair<Double, Double>>()  // note id -> (audio s, transcribing s), for the speed log
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -73,17 +106,16 @@ class NoteService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         channel(this)
         val recordId = intent?.getStringExtra(EXTRA_RECORD)
-        val n = notification(if (recordId != null) "Recording…" else "Getting ready…", ongoing = true)
-        val type = if (recordId != null || recorder != null)
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-        else ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        if (intent?.action == ACTION_STOP) Recording.stop()  // it saves the last piece on its own thread
+        val recordingNow = recordId != null || Recording.active
+        val n = notification(if (recordingNow) "Recording…" else "Getting ready…", ongoing = true, recording = recordingNow)
+        val type = if (recordingNow) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                   else ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         if (Build.VERSION.SDK_INT >= 30) startForeground(ONGOING, n, type) else startForeground(ONGOING, n)
-        when {
-            intent?.action == ACTION_STOP -> { recorder?.stop(); recorder = null }
-            recordId != null && recorder == null -> recorder = LiveRecorder(recordId) { job.let { if (it?.isActive != true) job = scope.launch { runQueue() } } }.also { it.start() }
-        }
+        if (recordId != null) Recording.start(recordId, Engine.vadPath(this))
         if (job?.isActive != true) job = scope.launch { runQueue() }
-        return START_STICKY
+        // Not sticky: if Android kills the app, it resumes the next time indite opens (restarting in the background isn't allowed).
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
@@ -92,29 +124,55 @@ class NoteService : Service() {
     }
 
     private suspend fun runQueue() {
+        Notes.working.value = true
+        var failed = false
         try {
+            Settings.init(this)
             Notes.init(this)
-            Notes.status.value = "Loading the Hinglish model…"
-            update("Loading the Hinglish model…")
-            val w = Engine.get(this)
+            // A note that says "recording" while nothing records was cut off by a crash: keep what was saved.
+            Notes.list.value.filter { it.recording && it.id != Recording.id }.forEach {
+                try { Notes.recoverRecording(this, it.id) } catch (e: Exception) { Log.w(TAG, e) }
+            }
+            var w: WhisperContext? = null
             while (true) {
                 Notes.refresh()
                 val note = Notes.list.value.filter { it.pending }.minByOrNull { it.created }
                 when {
-                    note != null -> process(w, note)
-                    recorder != null -> delay(300)  // still recording: wait for the next pause
+                    note != null -> {
+                        if (w == null) {
+                            say("Loading the Hinglish model…")
+                            w = Engine.get(this)
+                        }
+                        try { process(w, note) } catch (e: Exception) {
+                            Log.w(TAG, e)
+                            if (Notes.dir(note.id).exists()) {  // a deleted note is simply skipped
+                                say("Couldn't finish \"${note.name}\". It will try again next time you open indite.")
+                                failed = true
+                                if (!Recording.active) break
+                            }
+                        }
+                    }
+                    Recording.active -> { updateRecording(); delay(300) }  // still recording: wait for the next pause
                     else -> break
                 }
                 Notes.refresh()
                 Notes.list.value.filter { it.done && it.speed == null && it.id in busy }.forEach { finish(it) }
             }
-            Notes.status.value = ""
+            if (!failed) Notes.status.value = ""
         } catch (e: Exception) {
             Log.w(TAG, e)
-            Notes.status.value = "Transcription stopped: ${e.localizedMessage}. Open indite to try again."
+            failed = true
+            Notes.status.value = "Transcription stopped. Open indite to try again."
+            while (Recording.active) delay(300)  // never leave the mic running without the notification
         } finally {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            Notes.refresh()
+            if (!failed && (Recording.active || Notes.list.value.any { it.pending })) {
+                job = scope.launch { runQueue() }  // new work arrived just as this run finished
+            } else {
+                Notes.working.value = false
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
         }
     }
 
@@ -123,7 +181,8 @@ class NoteService : Service() {
         var audioDone = 0
         for (i in note.pieces.size until note.cuts.size) {
             waitUntilSafe()
-            val (start, end, speechFrames) = note.cuts[i].let { Triple(it[0], it[1], it[2]) }
+            if (!Notes.dir(note.id).exists()) return  // deleted while waiting
+            val (start, end, speechMs) = note.cuts[i].let { Triple(it[0], it[1], it[2]) }
             val tries = Notes.bumpAttempt(note.id, i)
             val piece = if (tries > 2) {
                 Piece(i, start, end, "[unclear]", listOf("unclear"))  // this piece crashed the engine twice: skip it, keep going
@@ -133,17 +192,16 @@ class NoteService : Service() {
                     w.transcribeData(Notes.readPcm(note.id, start, end), printTimestamp = false,
                         audioCtx = Pauses.audioCtx(end - start)).trim()
                 } finally { Notes.transcribing = false }
-                Piece(i, start, end, text, Guards.flags(text, (end - start) / SR.toDouble(), speechFrames * 0.03))
+                Piece(i, start, end, text, Guards.flags(text, (end - start) / SR.toDouble(), speechMs / 1000.0))
             }
+            if (!Notes.dir(note.id).exists()) return
             Notes.appendPiece(note.id, piece)
             Notes.refresh()
             audioDone += end - start
             val left = note.cuts.drop(i + 1).sumOf { it[1] - it[0] }
             val rate = audioDone / ((System.currentTimeMillis() - t0) / 1000.0)  // samples per second
-            val msg = if (note.recording) "Recording · ${i + 1} part(s) turned into text"
-                else "${note.name}: part ${i + 1} of ${note.cuts.size}" + if (left > 0) " · about ${eta(left / rate)} left" else ""
-            Notes.status.value = msg
-            update(msg)
+            say(if (note.recording || Recording.id == note.id) "Recording · ${i + 1} part(s) turned into text"
+                else "${note.name}: part ${i + 1} of ${note.cuts.size}" + if (left > 0) " · about ${eta(left / rate)} left" else "")
         }
         val (a, t) = busy[note.id] ?: (0.0 to 0.0)
         busy[note.id] = (a + audioDone / SR.toDouble()) to (t + (System.currentTimeMillis() - t0) / 1000.0)
@@ -165,39 +223,49 @@ class NoteService : Service() {
             val level = b.getIntExtra(BatteryManager.EXTRA_LEVEL, 100) * 100 / b.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
             val charging = b.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
             val wait = when {
-                temp >= 41f -> "Phone is warm (%.0f °C). Pausing to cool down…".format(temp)
+                temp >= 41f -> "Phone is warm (%.0f °C). Pausing to let it cool down…".format(temp)
                 level < 15 && !charging -> "Battery low ($level%). Plug in to continue."
                 else -> return
             }
-            Notes.status.value = wait
-            update(wait)
+            say(wait)
             delay(30_000)
         }
+    }
+
+    private fun updateRecording() {
+        if (!Notes.status.value.startsWith("Recording")) say("Recording…")
+    }
+
+    private fun say(text: String) {
+        Notes.status.value = text
+        getSystemService(NotificationManager::class.java).notify(ONGOING, notification(text, ongoing = true, recording = Recording.active))
     }
 
     private fun batteryTemp() = (registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         ?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0) / 10f
 
-    private fun update(text: String) =
-        getSystemService(NotificationManager::class.java).notify(ONGOING, notification(text, ongoing = true))
-
     private fun notifyDone(note: Note) = getSystemService(NotificationManager::class.java)
-        .notify(note.id.hashCode(), notification("Text ready: ${note.name}", ongoing = false, noteId = note.id))
+        .notify(note.id.hashCode(), notification("Text ready: ${note.name}", ongoing = false, recording = false, noteId = note.id))
 
-    private fun notification(text: String, ongoing: Boolean, noteId: String? = null): Notification {
-        val open = Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_NOTE, noteId)
+    private fun notification(text: String, ongoing: Boolean, recording: Boolean, noteId: String? = null): Notification {
+        val open = Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_NOTE, noteId ?: Recording.id)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        val pi = PendingIntent.getActivity(this, noteId?.hashCode() ?: 0, open,
+        val pi = PendingIntent.getActivity(this, (noteId ?: "open").hashCode(), open,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        return Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(if (ongoing) "Turning speech into text" else "indite")
+        val b = Notification.Builder(this, CHANNEL)
+            .setSmallIcon(R.drawable.ic_mic)
+            .setContentTitle(when { recording -> "indite is recording"; ongoing -> "Turning speech into text"; else -> "indite" })
             .setContentText(text)
             .setContentIntent(pi)
             .setOngoing(ongoing)
             .setAutoCancel(!ongoing)
             .setOnlyAlertOnce(true)
-            .build()
+        if (recording) {
+            val stop = PendingIntent.getService(this, 1, Intent(this, NoteService::class.java).setAction(ACTION_STOP),
+                PendingIntent.FLAG_IMMUTABLE)
+            b.addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_stop), "Stop recording", stop).build())
+        }
+        return b.build()
     }
 
     companion object {
@@ -206,29 +274,27 @@ class NoteService : Service() {
         private const val ONGOING = 1
         private const val EXTRA_RECORD = "record"
         private const val ACTION_STOP = "stop"
-        @Volatile var recordingId: String? = null; private set
 
+        fun channel(context: Context) = context.getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel(CHANNEL, "Recording and transcription", NotificationManager.IMPORTANCE_LOW))
+
+        /** Start a recording (the activity has the mic permission and is on screen). Returns the note id. */
         fun startRecording(context: Context): String {
+            Recording.id?.let { return it }  // one recording at a time
             val id = Notes.startRecording()
-            recordingId = id
             context.startForegroundService(Intent(context, NoteService::class.java).putExtra(EXTRA_RECORD, id))
             return id
         }
 
         fun stopRecording(context: Context) {
-            recordingId = null
+            Recording.stop()
             context.startService(Intent(context, NoteService::class.java).setAction(ACTION_STOP))
         }
-
-        fun channel(context: Context) = context.getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL, "Transcription", NotificationManager.IMPORTANCE_LOW))
 
         /** Start (or wake) the queue if anything is unfinished. Safe to call often. */
         fun kick(context: Context) {
             if (PhoneCheck.problem() != null) return
             Notes.init(context)
-            // A recording that says "recording" while nothing records was cut off by a crash: keep what was saved.
-            Notes.list.value.filter { it.recording && it.id != recordingId }.forEach { Notes.recoverRecording(it.id) }
             if (Notes.list.value.any { !it.done }) context.startForegroundService(Intent(context, NoteService::class.java))
         }
 

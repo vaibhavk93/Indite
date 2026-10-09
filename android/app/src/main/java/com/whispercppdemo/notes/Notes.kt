@@ -3,7 +3,9 @@ package com.whispercppdemo.notes
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import com.whispercppdemo.media.decodeAudio
+import com.whispercpp.whisper.SpeechDetector
+import com.whispercppdemo.media.decodeToPcm
+import com.whispercppdemo.media.durationSec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
@@ -19,6 +21,8 @@ const val SR = 16000
 
 data class Piece(val i: Int, val start: Int, val end: Int, val text: String, val flags: List<String>) {
     val startSec get() = start / SR.toDouble()
+    /** Nothing worth copying: the engine gave up, or wrote only "nan" for noise. */
+    val junk get() = "unclear" in flags || text.trim().equals("nan", ignoreCase = true)
 }
 
 data class Note(
@@ -29,9 +33,13 @@ data class Note(
     val seconds get() = samples / SR.toDouble()
     val done get() = !recording && pieces.size >= cuts.size
     val pending get() = pieces.size < cuts.size
-    fun text(i: Int) = edits[i] ?: pieces[i].text
-    /** Plain text for copying: edits applied, no "Check" labels. */
-    fun allText() = pieces.indices.joinToString(" ") { text(it).trim() }.replace(Regex("\\s+"), " ").trim()
+    /** What the model wrote, with the user's word fixes applied (PTM -> Paytm). */
+    fun auto(i: Int) = Settings.applyFixes(pieces[i].text)
+    /** What the user sees: their own edit if they made one, else the auto text. */
+    fun text(i: Int) = edits[i] ?: auto(i)
+    /** Plain text for copying and sharing: edits applied, no "Check" labels, no junk pieces. */
+    fun allText() = pieces.filter { !it.junk || it.i in edits }.joinToString(" ") { text(it.i).trim() }
+        .replace(Regex("\\s+"), " ").trim()
 }
 
 /**
@@ -42,10 +50,14 @@ data class Note(
 object Notes {
     val list = MutableStateFlow<List<Note>>(emptyList())
     val status = MutableStateFlow("")
+    val working = MutableStateFlow(false)  // the queue is running (shows a progress bar under the status)
     val level = MutableStateFlow(0f)  // live mic loudness 0..1 while recording
     @Volatile var transcribing = false  // the recorder cuts short pieces only while the engine is free
     private val cutLock = Any()
     private lateinit var root: File
+
+    /** Longest file we import for now: decoding is streamed, but the cut list and UI aren't tuned for longer. */
+    const val MAX_IMPORT_MIN = 120
 
     fun init(context: Context) {
         if (!::root.isInitialized) root = File(context.filesDir, "notes").apply { mkdirs() }
@@ -54,6 +66,7 @@ object Notes {
 
     fun dir(id: String) = File(root, id)
 
+    @Synchronized
     fun refresh() {
         list.value = (root.listFiles() ?: emptyArray()).mapNotNull { load(it) }.sortedByDescending { it.created }
     }
@@ -87,25 +100,51 @@ object Notes {
         val id = System.currentTimeMillis().toString()
         val d = dir(id).apply { mkdirs() }
         try {
+            status.value = "Opening $name…"
             val source = File(d, "source")
             context.contentResolver.openInputStream(uri)!!.use { i -> source.outputStream().use { i.copyTo(it) } }
-            val audio = decodeAudio(source).samples
+            if (durationSec(source) > MAX_IMPORT_MIN * 60) throw ImportError("Files longer than $MAX_IMPORT_MIN minutes aren't supported yet. Split it, or use the indite web app.")
+            status.value = "Reading the audio in $name…"
+            val samples = decodeToPcm(source, File(d, "audio.pcm"))
             source.delete()
-            if (audio.size < SR / 2) error("This file has no audio we can read.")
-            File(d, "audio.pcm").outputStream().use { out ->
-                val buf = ByteBuffer.allocate(audio.size * 2).order(ByteOrder.LITTLE_ENDIAN)
-                for (v in audio) buf.putShort((v.coerceIn(-1f, 1f) * 32767).toInt().toShort())
-                out.write(buf.array())
-            }
-            val cuts = Pauses.cut(audio)
+            if (samples < SR / 2) throw ImportError("This file has no audio indite can read.")
+            status.value = "Finding the pauses in $name…"
+            val cuts = cutRange(context, id, 0, samples)
             writeAtomic(File(d, "cuts.json"), JSONArray(cuts.map { JSONArray(it.toList()) }).toString())
-            writeAtomic(File(d, "meta.json"), JSONObject().put("name", name).put("created", id.toLong()).put("samples", audio.size).toString())
+            writeAtomic(File(d, "meta.json"), JSONObject().put("name", name).put("created", id.toLong()).put("samples", samples).toString())
+            status.value = ""
             refresh()
             id
-        } catch (e: Exception) {
+        } catch (e: Throwable) {  // Throwable: an out-of-memory error must still remove the half-imported folder
             d.deleteRecursively()
+            status.value = ""
             throw e
         }
+    }
+
+    class ImportError(message: String) : Exception(message)
+
+    /**
+     * Cut samples [from, to) of a note at pauses, using Silero in 10-minute chunks (so memory stays small).
+     * Loudness is the fallback if the detector won't load.
+     */
+    fun cutRange(context: Context, id: String, from: Int, to: Int): List<IntArray> {
+        val chunk = 10 * 60 * SR
+        val detector = try { SpeechDetector(Engine.vadPath(context)) } catch (e: Exception) { null }
+        val speech = mutableListOf<Boolean>()
+        try {
+            var s = from
+            while (s < to) {
+                val e = minOf(to, s + chunk)
+                val x = readPcm(id, s, e)
+                val part = detector?.let { Pauses.speechFromProbs(it.probs(x)) } ?: Pauses.speechFromLoudness(x)
+                speech += part.toList()
+                // keep windows aligned with samples when the detector returns fewer windows than the chunk holds
+                repeat((e - s) / Pauses.WINDOW - part.size) { speech += false }
+                s = e
+            }
+        } finally { detector?.release() }
+        return Pauses.cut(speech.toBooleanArray(), to - from).map { intArrayOf(it[0] + from, it[1] + from, it[2]) }
     }
 
     /** A new, empty recording. The recorder appends audio.pcm and adds a cut at every pause. */
@@ -122,28 +161,37 @@ object Notes {
 
     fun addCut(id: String, cut: IntArray) = synchronized(cutLock) {
         val f = File(dir(id), "cuts.json")
+        if (!f.exists()) return@synchronized  // note was deleted
         writeAtomic(f, JSONArray(f.readText()).put(JSONArray(cut.toList())).toString())
     }
 
     fun stopRecording(id: String, samples: Int) {
         val f = File(dir(id), "meta.json")
+        if (!f.exists()) return  // note was deleted
         writeAtomic(f, JSONObject(f.readText()).put("recording", false).put("samples", samples).toString())
         refresh()
     }
 
     /** A recording cut off by a crash: keep the audio saved so far and cut the part after the last cut at pauses. */
-    fun recoverRecording(id: String) {
+    fun recoverRecording(context: Context, id: String) {
         val total = (File(dir(id), "audio.pcm").length() / 2).toInt()
         val from = list.value.firstOrNull { it.id == id }?.cuts?.lastOrNull()?.get(1) ?: 0
-        if (total - from > SR) Pauses.cut(readPcm(id, from, total)).forEach { addCut(id, intArrayOf(it[0] + from, it[1] + from, it[2])) }
+        if (total - from > SR) cutRange(context, id, from, total).forEach { addCut(id, it) }
         stopRecording(id, total)
     }
 
+    /** Samples [start, end) as floats, clamped to what's actually on disk. */
     fun readPcm(id: String, start: Int, end: Int): FloatArray {
-        val bytes = ByteArray((end - start) * 2)
-        RandomAccessFile(File(dir(id), "audio.pcm"), "r").use { it.seek(start * 2L); it.readFully(bytes) }
-        val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
-        return FloatArray(end - start) { b.getShort() / 32768f }
+        RandomAccessFile(File(dir(id), "audio.pcm"), "r").use { f ->
+            val have = (f.length() / 2).toInt()
+            val s = start.coerceIn(0, have)
+            val e = end.coerceIn(s, have)
+            val bytes = ByteArray((e - s) * 2)
+            f.seek(s * 2L)
+            f.readFully(bytes)
+            val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+            return FloatArray(e - s) { b.getShort() / 32768f }
+        }
     }
 
     fun readPcmShorts(id: String, start: Int, end: Int): ShortArray {
@@ -168,21 +216,35 @@ object Notes {
 
     fun finish(id: String, speed: String) {
         val f = File(dir(id), "meta.json")
+        if (!f.exists()) return
         writeAtomic(f, JSONObject(f.readText()).put("speed", speed).toString())
         File(dir(id), "attempt").delete()
         refresh()
     }
 
-    fun saveEdit(id: String, i: Int, text: String) {
+    /** Save the user's version of piece i; null removes the edit (back to the model's text). */
+    fun saveEdit(id: String, i: Int, text: String?) {
+        if (!dir(id).exists()) return
         val f = File(dir(id), "edits.json")
         val o = f.takeIf { it.exists() }?.let { JSONObject(it.readText()) } ?: JSONObject()
-        writeAtomic(f, o.put(i.toString(), text).toString())
+        if (text == null) o.remove(i.toString()) else o.put(i.toString(), text)
+        writeAtomic(f, o.toString())
+        refresh()
     }
 
+    /** A note being recorded can't be deleted (stop it first); one being transcribed can, and the queue skips it. */
     fun delete(id: String) {
+        if (id == Recording.id) return
         dir(id).deleteRecursively()
         refresh()
     }
+
+    fun deleteAll() {
+        root.listFiles()?.filter { it.name != Recording.id }?.forEach { it.deleteRecursively() }
+        refresh()
+    }
+
+    fun bytesUsed(): Long = root.walkBottomUp().filter { it.isFile }.sumOf { it.length() }
 
     private fun writeAtomic(f: File, text: String) {
         val tmp = File(f.parentFile, f.name + ".tmp")

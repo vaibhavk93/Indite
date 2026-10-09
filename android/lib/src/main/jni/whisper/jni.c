@@ -256,3 +256,38 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_benchGgmlMulMat(JNIEnv *en
     jstring string = (*env)->NewStringUTF(env, bench_ggml_mul_mat);
     return string;
 }
+
+// indite: Silero speech detector (built into whisper.cpp). One probability per 512-sample (32 ms) window.
+JNIEXPORT jlong JNICALL
+Java_com_whispercpp_whisper_WhisperLib_00024Companion_vadInit(JNIEnv *env, jobject thiz, jstring path) {
+    UNUSED(thiz);
+    const char *p = (*env)->GetStringUTFChars(env, path, NULL);
+    struct whisper_vad_context_params cp = whisper_vad_default_context_params();
+    cp.n_threads = 1;
+    cp.use_gpu = false;
+    struct whisper_vad_context *v = whisper_vad_init_from_file_with_params(p, cp);
+    (*env)->ReleaseStringUTFChars(env, path, p);
+    return (jlong) v;
+}
+
+JNIEXPORT jfloatArray JNICALL
+Java_com_whispercpp_whisper_WhisperLib_00024Companion_vadProbs(
+        JNIEnv *env, jobject thiz, jlong ptr, jfloatArray samples, jboolean stream) {
+    UNUSED(thiz);
+    struct whisper_vad_context *v = (struct whisper_vad_context *) ptr;
+    jfloat *x = (*env)->GetFloatArrayElements(env, samples, NULL);
+    jsize n = (*env)->GetArrayLength(env, samples);
+    bool ok = stream ? whisper_vad_detect_speech_no_reset(v, x, n) : whisper_vad_detect_speech(v, x, n);
+    (*env)->ReleaseFloatArrayElements(env, samples, x, JNI_ABORT);
+    int m = ok ? whisper_vad_n_probs(v) : 0;
+    jfloatArray out = (*env)->NewFloatArray(env, m);
+    if (m > 0) (*env)->SetFloatArrayRegion(env, out, 0, m, whisper_vad_probs(v));
+    return out;
+}
+
+JNIEXPORT void JNICALL
+Java_com_whispercpp_whisper_WhisperLib_00024Companion_vadFree(JNIEnv *env, jobject thiz, jlong ptr) {
+    UNUSED(env);
+    UNUSED(thiz);
+    whisper_vad_free((struct whisper_vad_context *) ptr);
+}

@@ -140,6 +140,9 @@ private class WhisperLib {
         external fun getTextSegmentT0(contextPtr: Long, index: Int): Long
         external fun getTextSegmentT1(contextPtr: Long, index: Int): Long
         external fun getSystemInfo(): String
+        external fun vadInit(path: String): Long
+        external fun vadProbs(ptr: Long, samples: FloatArray, stream: Boolean): FloatArray
+        external fun vadFree(ptr: Long)
         external fun benchMemcpy(nthread: Int): String
         external fun benchGgmlMulMat(nthread: Int): String
     }
@@ -177,4 +180,15 @@ private fun cpuInfo(): String? {
         Log.w(LOG_TAG, "Couldn't read /proc/cpuinfo", e)
         null
     }
+}
+/**
+ * indite: Silero speech detector. Returns one speech probability per 512 samples (32 ms at 16 kHz).
+ * stream = true keeps the detector's memory between calls (live recording, 512 samples at a time).
+ * Not thread-safe: use one instance per thread.
+ */
+class SpeechDetector(modelPath: String) {
+    private var ptr = WhisperLib.vadInit(modelPath)
+    init { require(ptr != 0L) { "Couldn't load the speech detector" } }
+    fun probs(samples: FloatArray, stream: Boolean = false): FloatArray = WhisperLib.vadProbs(ptr, samples, stream)
+    fun release() { if (ptr != 0L) { WhisperLib.vadFree(ptr); ptr = 0 } }
 }

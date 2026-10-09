@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -67,7 +68,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,11 +86,16 @@ import com.whispercppdemo.notes.Guards
 import com.whispercppdemo.notes.Note
 import com.whispercppdemo.notes.Notes
 import com.whispercppdemo.notes.PhoneCheck
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** For work that must outlive a screen or a rotation (imports, saving an edit as you leave). */
+val AppScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
 /** One-off messages for the snackbar (import errors, "Copied"). */
 object Messages {
@@ -94,26 +103,33 @@ object Messages {
 }
 
 @Composable
-fun NotesApp(openNote: String?, onOpenFile: () -> Unit, onRecord: () -> Unit, onStop: () -> Unit) {
-    var selected by remember(openNote) { mutableStateOf(openNote) }
+fun NotesApp(openRequest: String?, onOpenHandled: () -> Unit, onOpenFile: () -> Unit, onRecord: () -> Unit, onStop: () -> Unit) {
+    var selected by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(openRequest) { if (openRequest != null) { selected = openRequest; onOpenHandled() } }
+    var settings by remember { mutableStateOf(false) }
     val notes by Notes.list.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { Messages.flow.collect { snackbar.showSnackbar(it) } }
 
     val note = notes.firstOrNull { it.id == selected }
-    if (note != null) {
+    if (settings) {
+        BackHandler { settings = false }
+        SettingsScreen(onBack = { settings = false })
+    } else if (note != null) {
         BackHandler { Player.stop(); selected = null }
         NoteScreen(note, snackbar, onStop, onBack = { Player.stop(); selected = null })
     } else {
-        ListScreen(notes, snackbar, onOpenFile, onRecord, onOpen = { selected = it })
+        ListScreen(notes, snackbar, onOpenFile, onRecord, onSettings = { settings = true }, onOpen = { selected = it })
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ListScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFile: () -> Unit, onRecord: () -> Unit, onOpen: (String) -> Unit) {
+private fun ListScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFile: () -> Unit, onRecord: () -> Unit,
+                       onSettings: () -> Unit, onOpen: (String) -> Unit) {
     val context = LocalContext.current
     val status by Notes.status.collectAsState()
+    val working by Notes.working.collectAsState()
     val problem = remember { PhoneCheck.problem() }
     val lowRam = remember { PhoneCheck.lowRam(context) }
     Scaffold(
@@ -125,6 +141,7 @@ private fun ListScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                         Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Text(" Open file")
                     }
+                    IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
@@ -146,7 +163,7 @@ private fun ListScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
         ) {
             if (problem != null) item { Banner(problem, error = true) }
             else if (lowRam) item { Banner("This phone has under 6 GB of memory. Transcription may be slow or stop on long recordings.", error = false) }
-            if (status.isNotBlank()) item { StatusLine(status) }
+            if (status.isNotBlank()) item { StatusLine(status, working) }
             if (notes.isEmpty()) item { EmptyState() }
             items(notes, key = { it.id }) { NoteRow(it, onClick = { onOpen(it.id) }) }
         }
@@ -194,9 +211,9 @@ private fun Banner(text: String, error: Boolean) = Card(
 }
 
 @Composable
-private fun StatusLine(text: String) = Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun StatusLine(text: String, working: Boolean) = Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
     Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    LinearProgressIndicator(Modifier.fillMaxWidth())
+    if (working || text.endsWith("…")) LinearProgressIndicator(Modifier.fillMaxWidth())
 }
 
 @Composable
@@ -211,7 +228,8 @@ private fun NoteRow(note: Note, onClick: () -> Unit) {
             Text("${clock(note.seconds)} · ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             when {
-                note.cuts.isEmpty() -> Text("No speech found in this file.", style = MaterialTheme.typography.bodyMedium)
+                note.recording -> Text("Recording…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                note.done && note.cuts.isEmpty() -> Text("No speech found.", style = MaterialTheme.typography.bodyMedium)
                 !note.done -> {
                     LinearProgressIndicator(note.pieces.size / note.cuts.size.toFloat(), Modifier.fillMaxWidth().padding(top = 4.dp))
                     Text(if (note.pieces.isEmpty()) "Waiting to start…" else "Part ${note.pieces.size} of ${note.cuts.size} done",
@@ -290,7 +308,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onStop: () -> Un
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else if (!note.done) {
                         LinearProgressIndicator(note.pieces.size / note.cuts.size.toFloat(), Modifier.fillMaxWidth())
-                        Text("Text appears part by part. You can leave the app; you'll get a notification when it's ready.",
+                        Text("Text appears part by part. You can leave the app; it keeps working in the background.",
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -300,7 +318,13 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onStop: () -> Un
                     note = note, i = p.i, playing = playing == p.i,
                     onPlay = {
                         if (playing == p.i) { Player.stop(); playing = null }
-                        else { playing = p.i; Player.play(note.id, p.start, p.end) { playing = null } }
+                        else {
+                            playing = p.i
+                            if (!Player.play(note.id, p.start, p.end) { playing = null }) {
+                                playing = null
+                                scope.launch { snackbar.showSnackbar("Couldn't play this part.") }
+                            }
+                        }
                     },
                     onCopy = { copy(note.text(p.i).trim()) },
                 )
@@ -311,7 +335,6 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onStop: () -> Un
                         Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            note.speed?.let { item { Text("Speed: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         }
     }
 }
@@ -319,11 +342,19 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onStop: () -> Un
 @Composable
 private fun PieceCard(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, onCopy: () -> Unit) {
     val p = note.pieces[i]
-    var text by remember(note.id, i) { mutableStateOf(note.text(i)) }
-    LaunchedEffect(text) {  // save edits half a second after typing stops; the original text is kept separately
+    var text by remember(note.id, i, note.auto(i)) { mutableStateOf(note.text(i)) }
+    val edited = text != note.auto(i)
+    LaunchedEffect(text) {  // save edits half a second after typing stops; the model's text is kept separately
         if (text == note.text(i)) return@LaunchedEffect
         delay(500)
-        withContext(Dispatchers.IO) { Notes.saveEdit(note.id, i, text) }
+        withContext(Dispatchers.IO) { Notes.saveEdit(note.id, i, if (edited) text else null) }
+    }
+    val latest = rememberUpdatedState(text)
+    DisposableEffect(note.id, i) {
+        onDispose {
+            val t = latest.value
+            if (t != note.text(i)) AppScope.launch(Dispatchers.IO) { Notes.saveEdit(note.id, i, if (t != note.auto(i)) t else null) }
+        }
     }
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)) {
@@ -333,15 +364,18 @@ private fun PieceCard(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, 
                         contentDescription = if (playing) "Stop playing" else "Play this part")
                 }
                 Text(clock(p.startSec), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (text != p.text) Text("  · edited", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                if (edited) Text("  · edited", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = onCopy) { Text("Copy") }
+                TextButton(onClick = onCopy, modifier = Modifier.semantics { contentDescription = "Copy text from ${clock(p.startSec)}" }) {
+                    Text("Copy")
+                }
             }
-            OutlinedTextField(value = text, onValueChange = { text = it }, modifier = Modifier.fillMaxWidth(),
+            OutlinedTextField(value = text, onValueChange = { text = it },
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Text from ${clock(p.startSec)}, editable" },
                 textStyle = MaterialTheme.typography.bodyLarge)
             if (p.flags.isNotEmpty()) FlagLine("Check: " + p.flags.joinToString(", ") { Guards.NOTE[it] ?: it }, Modifier.padding(top = 8.dp))
-            if (text != p.text) Row(Modifier.padding(top = 4.dp)) {
-                OutlinedButton(onClick = { text = p.text }) { Text("Undo my edit") }
+            if (edited) Row(Modifier.padding(top = 4.dp)) {
+                OutlinedButton(onClick = { text = note.auto(i) }) { Text("Undo my edit") }
             }
         }
     }
@@ -384,9 +418,11 @@ private fun share(context: Context, text: String) = context.startActivity(
 object Player {
     private var track: AudioTrack? = null
 
-    fun play(id: String, start: Int, end: Int, onDone: () -> Unit) {
+    /** Returns false if this part can't be played (missing audio, audio device busy). */
+    fun play(id: String, start: Int, end: Int, onDone: () -> Unit): Boolean = try {
         stop()
         val pcm = Notes.readPcmShorts(id, start, end)
+        require(pcm.isNotEmpty())
         val t = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
@@ -403,6 +439,10 @@ object Player {
         })
         t.play()
         track = t
+        true
+    } catch (e: Exception) {
+        stop()
+        false
     }
 
     fun stop() {

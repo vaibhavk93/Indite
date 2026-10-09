@@ -52,6 +52,7 @@ android {
         noCompress 'bin', 'wav'  // indite: big model loads straight from the APK
     }
     buildFeatures {
+        buildConfig true
         compose true
     }
     composeOptions {
