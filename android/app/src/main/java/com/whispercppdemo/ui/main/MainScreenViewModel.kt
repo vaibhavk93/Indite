@@ -34,11 +34,17 @@ private const val LOG_TAG = "indite"
 /** Pass bar for the speed test (unproven, set 2026-10-09): 15 min of audio in <= 15 min. */
 const val PASS_SPEED = 1.0
 
+/** 15 s audio window (whisper.cpp audio_ctx) for short clips; 7.7 s (384) started looping in the Mac test. */
+const val SHORT_CTX = 768
+
 enum class Phase { LOADING, READY, RUNNING, DONE, STOPPED, ERROR }
 
 data class Result(
     val audioMin: Double, val tookMin: Double, val speed: Double,
     val startTemp: Float, val endTemp: Float, val peakMemory: String, val device: String,
+    val shortSec: Double,  // time to turn one 4-s sentence into text: decides live dictation (<= 3 s good, > 8 s too slow)
+    val shortSec15: Double,  // same sentence with a 15 s window instead of 30 s (tested on the Mac: 0 loops, 7% words differ)
+    val shortDetail: String,  // what each window wrote + fast-window time by number of cores
 ) {
     val passed get() = speed >= PASS_SPEED
     fun shareText() = """
@@ -46,8 +52,11 @@ data class Result(
         Phone: $device
         ${"%.1f".format(audioMin)} min of audio in ${"%.1f".format(tookMin)} min = ${"%.2f".format(speed)}x real time
         Result: ${if (passed) "PASS" else "TOO SLOW"} (bar: 1.0x or faster)
+        One 4-s sentence: ${"%.1f".format(shortSec)} s to text (30 s window), ${"%.1f".format(shortSec15)} s (15 s window)
         Battery: ${startTemp} C -> ${endTemp} C
         Peak memory: $peakMemory
+        $shortDetail
+        Threads: ${com.whispercpp.whisper.WhisperCpuConfig.preferredThreadCount} · ${com.whispercpp.whisper.WhisperContext.getSystemInfo().trim()}
     """.trimIndent()
 }
 
@@ -122,6 +131,29 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
         piecesDone = 0; audioDoneSec = 0.0; elapsedSec = 0.0
         status = "Running. Keep this screen open and the phone unplugged."
         job = viewModelScope.launch {
+            // Short sentence first: measured on a cool phone, and a bug in the new window setting shows in ~1 min, not after 28.
+            val short30: Double
+            val short15: Double
+            try {
+                status = "Step 1 of 2: timing one short sentence (a few minutes)…"
+                short30 = shortClipSec(0)
+                short15 = shortClipSec(SHORT_CTX)
+                lines.add("One 4-s sentence: %.1f s normal, %.1f s fast window".format(short30, short15))
+                lines.add("Normal window wrote: " + shortClipText(0))
+                lines.add("Fast window wrote: " + shortClipText(SHORT_CTX))
+                // Cores test: we use at most 4 today; this phone may have more fast cores.
+                val n = Runtime.getRuntime().availableProcessors()
+                val threadTimes = listOf(2, 4, 6, 8).filter { it <= n }.map { t -> t to shortClipSec(SHORT_CTX, t) }
+                lines.add("Fast window by cores: " + threadTimes.joinToString(" · ") { (t, sec) -> "$t cores %.1f s".format(sec) })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(LOG_TAG, e)
+                phase = Phase.ERROR
+                status = "The short-sentence timing failed (${e.localizedMessage}). Tell Claude."
+                return@launch
+            }
+            status = "Step 2: the 15-min test. Keep this screen open and the phone unplugged."
             val startTemp = batteryTemp()
             val t0 = System.currentTimeMillis()
             val clock = launch { while (true) { elapsedSec = (System.currentTimeMillis() - t0) / 1000.0; delay(1000) } }
@@ -129,7 +161,7 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
                 for (f in pieces()) {
                     if (!isActive) break
                     val data = withContext(Dispatchers.IO) { decodeWaveFile(f) }
-                    val text = whisper?.transcribeData(data, printTimestamp = false)?.trim().orEmpty()
+                    val text = whisper?.transcribeData(data, printTimestamp = false)?.trim().orEmpty()  // full window: keeps before/after fair
                     piecesDone++
                     audioDoneSec += data.size / 16000.0
                     temp = batteryTemp()
@@ -138,7 +170,7 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
                 clock.cancel()
                 elapsedSec = (System.currentTimeMillis() - t0) / 1000.0
                 val r = Result(audioDoneSec / 60, elapsedSec / 60, audioDoneSec / elapsedSec,
-                    startTemp, batteryTemp(), peakMemory(), device)
+                    startTemp, batteryTemp(), peakMemory(), device, short30, short15, lines.take(4).drop(1).joinToString("\n"))
                 result = r
                 phase = Phase.DONE
                 status = if (r.passed) "Done. Your phone passed. Share the result with Claude."
@@ -155,6 +187,19 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
         }
     }
 
+    /** Average of 3 runs on the first 4 s of the first piece. Whisper pads every clip to 30 s, so this is the per-pause wait. */
+    private suspend fun shortClip() = withContext(Dispatchers.IO) { decodeWaveFile(pieces().first()) }.copyOf(4 * 16000)
+
+    private suspend fun shortClipSec(audioCtx: Int, threads: Int = 0): Double {
+        val clip = shortClip()
+        val t0 = System.currentTimeMillis()
+        repeat(3) { whisper?.transcribeData(clip, printTimestamp = false, audioCtx = audioCtx, threads = threads) }
+        return (System.currentTimeMillis() - t0) / 3000.0
+    }
+
+    private suspend fun shortClipText(audioCtx: Int) =
+        whisper?.transcribeData(shortClip(), printTimestamp = false, audioCtx = audioCtx)?.trim().orEmpty().ifEmpty { "(nothing)" }
+
     fun stop() {
         job?.cancel()
         phase = Phase.STOPPED
@@ -168,8 +213,11 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
                 isRecording = false
                 voiceText = "Turning your voice into text…"
                 val data = withContext(Dispatchers.IO) { decodeWaveFile(recordedFile!!) }
-                voiceText = whisper?.transcribeData(data, printTimestamp = false)?.trim().orEmpty()
-                    .ifEmpty { "No speech heard. Try again, a little closer to the phone." }
+                val t0 = System.currentTimeMillis()
+                val ctx = if (data.size <= 14 * 16000) SHORT_CTX else 0  // 15 s window only fits clips under ~14 s
+                val text = whisper?.transcribeData(data, printTimestamp = false, audioCtx = ctx)?.trim().orEmpty()
+                val took = "(%.1f s of speech, %.1f s to text)".format(data.size / 16000.0, (System.currentTimeMillis() - t0) / 1000.0)
+                voiceText = if (text.isEmpty()) "No speech heard. Try again, a little closer to the phone." else "$text\n\n$took"
             } else {
                 val file = withContext(Dispatchers.IO) { File.createTempFile("voice", ".wav") }
                 recorder.startRecording(file) { e -> viewModelScope.launch { voiceText = "Recording failed: ${e.localizedMessage}"; isRecording = false } }

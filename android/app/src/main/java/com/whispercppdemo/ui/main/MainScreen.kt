@@ -115,6 +115,7 @@ private fun ResultCard(r: Result) {
             Stat("Audio", "%.1f min".format(r.audioMin))
             Stat("Time taken", "%.1f min".format(r.tookMin))
             Stat("Speed", "%.2fx real time (pass: 1.0x)".format(r.speed))
+            Stat("One 4-s sentence", "%.1f s normal · %.1f s fast window (≤ 3 s good)".format(r.shortSec, r.shortSec15))
             Stat("Battery", "${r.startTemp} °C → ${r.endTemp} °C")
             Stat("Peak memory", r.peakMemory)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

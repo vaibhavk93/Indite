@@ -18,7 +18,10 @@ android {
         }
         externalNativeBuild {
             cmake {
-                arguments "-DWHISPER_SRC=${rootProject.file('../.tools/whisper.cpp').absolutePath}"  // indite
+                arguments "-DWHISPER_SRC=${rootProject.file('../.tools/whisper.cpp').absolutePath}",  // indite
+                        // indite: without this the ggml maths code gets no -march at all (no fp16/dotprod fast paths).
+                        // ponytail: one baseline for all phones; i8mm (SD 8 Gen 1+) needs GGML_CPU_ALL_VARIANTS
+                        "-DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16"
 
             }
         }
