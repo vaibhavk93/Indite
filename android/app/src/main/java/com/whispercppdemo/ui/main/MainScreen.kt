@@ -167,6 +167,8 @@ private fun VoiceCard(vm: MainScreenViewModel) {
             Text("Optional: try your own voice", style = MaterialTheme.typography.titleMedium)
             Text("Speak for 10–30 seconds in Hindi, English or a mix, and see the text. Stays on this phone.",
                 style = MaterialTheme.typography.bodySmall)
+            Text("Or in WhatsApp: long-press a voice note → Share → indite. The text appears here.",
+                style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = { if (mic.status.isGranted) vm.toggleRecord() else mic.launchPermissionRequest() }) {
                 Text(if (vm.isRecording) "Stop and transcribe" else "Record")
             }

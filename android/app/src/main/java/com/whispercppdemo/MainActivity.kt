@@ -1,5 +1,7 @@
 package com.whispercppdemo
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,5 +21,18 @@ class MainActivity : ComponentActivity() {
                 MainScreen(viewModel)
             }
         }
+        handleShare(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleShare(intent)
+    }
+
+    /** indite: a voice note shared from WhatsApp (or any app). singleTask keeps one model in memory. */
+    private fun handleShare(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_SEND) return
+        @Suppress("DEPRECATION")
+        (intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))?.let { viewModel.transcribeShared(it) }
     }
 }

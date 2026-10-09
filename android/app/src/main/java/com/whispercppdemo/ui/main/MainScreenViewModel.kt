@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.util.Log
@@ -17,6 +18,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.whispercpp.whisper.WhisperContext
+import com.whispercppdemo.media.decodeAudio
 import com.whispercppdemo.media.decodeWaveFile
 import com.whispercppdemo.recorder.Recorder
 import kotlinx.coroutines.Dispatchers
@@ -229,6 +231,45 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
             Log.w(LOG_TAG, e)
             isRecording = false
             voiceText = "Recording failed: ${e.localizedMessage}"
+        }
+    }
+
+    /**
+     * Voice-note test: a WhatsApp voice note (or any audio) shared into the app -> copy -> decode -> text, timing each step.
+     * ponytail: fixed 25 s pieces, no pause cutting yet; the real app cuts at pauses like the web app.
+     */
+    fun transcribeShared(uri: Uri) = viewModelScope.launch {
+        if (phase == Phase.RUNNING) { voiceText = "Wait until the speed test finishes, then share the voice note again."; return@launch }
+        try {
+            voiceText = "Voice note received. Waiting for the model to load…"
+            while (whisper == null && phase == Phase.LOADING) delay(500)
+            val w = whisper ?: error("the model didn't load")
+            val t0 = System.currentTimeMillis()
+            val file = File(application.cacheDir, "voicenote.ogg")  // copy first: shared links can expire
+            withContext(Dispatchers.IO) {
+                application.contentResolver.openInputStream(uri)!!.use { i -> file.outputStream().use { i.copyTo(it) } }
+            }
+            val t1 = System.currentTimeMillis()
+            val decoded = withContext(Dispatchers.IO) { decodeAudio(file) }
+            val t2 = System.currentTimeMillis()
+            val sec = decoded.samples.size / 16000.0
+            val head = "Voice note: %.0f s (%s, %.0f KB)\nCopied in %.1f s · decoded in %.1f s".format(
+                sec, decoded.info, file.length() / 1024.0, (t1 - t0) / 1000.0, (t2 - t1) / 1000.0)
+            val texts = mutableListOf<String>()
+            val step = 25 * 16000
+            val n = (decoded.samples.size + step - 1) / step
+            for (k in 0 until n) {
+                voiceText = "$head\nTurning piece ${k + 1} of $n into text…\n\n" + texts.joinToString(" ")
+                val piece = decoded.samples.copyOfRange(k * step, minOf((k + 1) * step, decoded.samples.size))
+                val ctx = if (piece.size <= 14 * 16000) SHORT_CTX else 0
+                texts += w.transcribeData(piece, printTimestamp = false, audioCtx = ctx).trim()
+            }
+            val took = (System.currentTimeMillis() - t2) / 1000.0
+            voiceText = "$head\nText in %.1f s (%.2fx real time)\n\n".format(took, sec / took) +
+                texts.joinToString(" ").ifBlank { "(no speech found)" }
+        } catch (e: Exception) {
+            Log.w(LOG_TAG, e)
+            voiceText = "Couldn't read this voice note: ${e.javaClass.simpleName}: ${e.localizedMessage}. Tell Claude."
         }
     }
 
