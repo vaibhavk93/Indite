@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- indite: window colour matches the app's background, so there's no flash of white or black on open -->
-    <style name="Theme.WhisperCppDemo" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.WhisperCppDemo" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/window</item>
         <item name="android:statusBarColor">@color/window</item>
         <item name="android:navigationBarColor">@color/window</item>

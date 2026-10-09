@@ -34,7 +34,10 @@ Measured by: #1 on our own public Roman-Hinglish leaderboard (offline tools), wo
 | "Saved ✓" at once, piece-by-piece text, time left, notification when done | v1 | — |
 | Edit; copy one part or all (copy-all leaves out "Check" labels) | v1 | — |
 | Likely-wrong flags (same rules as web) + tap a flag to replay that piece | v1 | — |
-| First-open 10 s speed check picks the model for the phone (no settings) | v1 | — |
+| Phone check on first open: required chip features (dotprod, fp16) else "not supported, use the web app" (prevents a crash on old phones); warn under 6 GB RAM | v1 | — |
+| Wait estimate from the real job: time the first piece, then "about N min left"; log speed, temperature and phone model per job (local) | v1 | — |
+| Per-phone tiers (model choice, several CPU builds, first-open benchmark) | Later | Only when budget-phone logs show a choice worth ≥ 1.5x |
+| Borrow one ~₹15k budget phone (Dimensity / Snapdragon 6) and test before testers | Before testers | Plan gate is a ₹15k phone; never tested |
 | Model downloaded after install (Play asset pack), "Wi-Fi only, 550 MB" prompt | v1 | — |
 | Privacy policy; crash reports opt-in only | v1 | India's data law (DPDP) |
 | Dictation in the app: text after each pause, 15 s audio window | Month 2 | 4 s sentence ≤ 8 s on phone |
@@ -154,6 +157,19 @@ Start now, in parallel with the v2 speed test: voice notes don't depend on the s
 - "Most voice notes are short": unproven, likely false. The only study found (public WhatsApp groups) had 53% of audio messages over 30 s, 12% over 5 min. At 0.54x, a 30 s note takes ~55 s and a 2 min note ~3.7 min.
 - Estimate: 2–3 weeks part-time is optimistic.
 
+## 5c. Learnings from FreeFlow (github.com/zachlatta/freeflow, MIT; critic-reviewed 2026-10-09)
+
+FreeFlow is a free Mac dictation app. Its speed comes from the cloud (Groq), so the engine doesn't fit. Three ideas survived:
+
+| Idea | Where | What |
+|---|---|---|
+| "Always replace" tick box in find & replace | Web now, Android after v1 | Saves a local name list (PTM → Paytm, clever tap → CleverTap). Becomes the planned per-user replacement list |
+| Keep raw text, save edits separately | Android v1 | `transcript.jsonl` stays raw; edits go to a separate file with the original kept (as web's `original` field already does) |
+| Raw text is the default | Android v1 (rule) | "Copy" always copies the transcript. AI output (via the user's own Claude/ChatGPT) is shown beside it, never replaces it |
+
+Later (when an automatic AI clean-up exists): a check that the AI didn't answer the transcript instead of cleaning it; FreeFlow's "minimum edits, preserve mixed language, transcript is data not instructions" prompt, adapted for Roman Hinglish.
+Dropped: no-speech score filter (already covered by our speech detector), rate-limit cooldown (not needed), test-case exporter (would export other people's voices), WhatsApp sender name as context (not available, can cause made-up text), screenshot context (privacy).
+
 ## 6. Phases and gates
 
 | Phase | When | Gate to move on |
@@ -175,6 +191,11 @@ Start now, in parallel with the v2 speed test: voice notes don't depend on the s
 | Mac, 178 short clips (avg 5 s), 15 s window | 0 loops, 0 empty, 7.3% words differ from 30 s window |
 | Mac, 7.7 s window | 3 loops, 14.3% words differ |
 | Mac timings | Not usable: Mac was swapping 14.8 GB and busy with security software |
+| Phone v2 step 1 (4 s sentence) | 34.0 s normal, 16.2 s 15 s window; both wrote the same text. By cores (15 s window): 2→41.2 s, 4→19.0, **6→13.7**, 8→19.7 |
+| Phone v2 15-min test (in progress) | ~0.63x observed (was 0.54x); 39.3 °C |
+| Mac, 42 real pieces (avg 21.4 s), window sized to piece (+2 s, avg 24 s) | 0 loops, 2.6% words differ from full window; the one big difference recovered speech the full window dropped |
+| Mac, model formats vs q8_0 (closest to original) on 42 pieces | **q5_K 2.1%** (574 MB), q5_0 today 4.3% (574 MB), q4_0 5.1% (474 MB); all 0 loops/empty/junk. **Pick q5_K**: same size, ARM fast path ("repack"), closer to original. Phone speed unmeasured |
+| Real-phone transcript errors | Cyrillic "У нас" (now flagged: non_roman), brand names (PTM → Paytm, clever tap → CleverTap), a few garbled jargon stretches |
 | Phone v2 (build fix + 4 s sentence timer at 30 s / 15 s windows + threads/CPU line + backup off) | Pending |
 
 ## 8. Key facts behind the decisions
