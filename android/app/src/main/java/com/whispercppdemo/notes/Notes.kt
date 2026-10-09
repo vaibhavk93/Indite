@@ -272,15 +272,18 @@ object Notes {
     }
 
     /** Test notes only: copy the result where `adb pull` can read it, for the automated benchmark. */
-    private fun exportTestResult(id: String) {
+    fun exportTestResult(id: String, extra: Pair<String, Any>? = null) {
+        refresh()
         val note = list.value.firstOrNull { it.id == id }?.takeIf { it.test } ?: return
         val out = results ?: return
         val pieces = JSONArray(note.pieces.map {
-            JSONObject().put("i", it.i).put("start", it.start).put("end", it.end).put("text", it.text)
+            JSONObject().put("i", it.i).put("start", it.start).put("end", it.end).put("text", it.text).put("shown", note.text(it.i))
                 .put("flags", JSONArray(it.flags)).put("ms", it.latencyMs).put("engine", it.engineMs)
+                .put("speaker", note.speakerOf(it.i) ?: -1)
         })
-        File(out, "${note.name}.json").writeText(JSONObject().put("name", note.name).put("seconds", note.seconds)
-            .put("speed", note.speed).put("pieces", pieces).toString(1))
+        val o = JSONObject().put("name", note.name).put("seconds", note.seconds).put("speed", note.speed).put("pieces", pieces)
+        extra?.let { o.put(it.first, it.second) }
+        File(out, "${note.name}.json").writeText(o.toString(1))
     }
 
     /** Save the user's version of piece i; null removes the edit (back to the model's text). */

@@ -1,0 +1,61 @@
+start	end	kind	speaker	roman_text	id
+0.5	3.831	speech	A	Kal meeting 4 baje hai, please reminder set kar dena.	s01
+4.282	7.411	speech	B	Haan done, maine calendar invite bhej diya hai.	s02
+7.866	10.928	speech	A	CleverTap wala dashboard abhi tak load nahi ho raha.	s03
+11.428	15.308	speech	B	I think the API key expired last night, let me check.	s04
+16.187	20.121	speech	A	Theek hai, jaldi batana kyunki client 11 baje call karega.	s05
+20.452	20.918	speech	B	Ok.	s06
+22.185	24.773	speech	A	Aur haan, Monday tak report final karni hai.	s07
+25.843	30.206	speech	B	Report ka draft ready hai, bas numbers update karne baaki hain.	s08
+31.122	34.296	speech	A	Last quarter mein revenue 12 percent badha tha na?	s09
+35.317	39.111	speech	B	Nahi, 15 percent tha, maine sheet mein dekha.	s10
+39.725	42.433	speech	A	Achha, phir slide number 3 change kar do.	s11
+42.98	46.099	speech	B	Sure, I will send the updated deck by evening.	s12
+47.334	50.369	speech	A	Lunch ke liye Swiggy se order karein ya Zomato se?	s13
+51.224	55.741	speech	B	Zomato pe 50 percent off chal raha hai, wahi se karte hain.	s14
+56.781	59.411	speech	A	Mere liye ek paneer roll aur cold coffee.	s15
+60.7	65.603	speech	B	Total ₹640 ho gaya, Paytm se pay kar deta hoon.	s16
+67.072	70.396	speech	A	Thanks yaar, main tumhe baad mein transfer kar dungi.	s17
+71.367	73.267	speech	B	Koi baat nahi, chill karo.	s18
+73.604	76.386	speech	A	Beta, aaj shaam ko ghar kitne baje aaoge?	s19
+77.496	81.661	speech	B	Mummy, office mein late ho jayega, shayad 9 baje tak.	s20
+82.431	84.752	speech	A	Theek hai, khana garam karke rakh dungi.	s21
+85.144	87.258	speech	B	Aur papa ki dawai le aaun kya?	s22
+88.556	92.491	speech	A	Haan, chemist se BP wali goli aur 2 strip Crocin le aana.	s23
+92.662	93.569	speech	B	Ok mummy.	s24
+94.013	97.502	speech	A	Bijli ka bill bhi bharna hai, last date 15 tarikh hai.	s25
+98.674	102.677	speech	B	Main Paytm app se abhi bhar deta hoon, kitna aaya hai?	s26
+103.333	108.158	speech	A	₹2350 aaya hai is baar, garmi mein AC zyada chala.	s27
+109.35	112.726	speech	B	Done, payment ho gaya, receipt WhatsApp kar di.	s28
+113.807	117.83	speech	A	Bahut achha. Aur Sunday ko nani ke ghar chalna hai, yaad rakhna.	s29
+118.195	119.001	speech	B	Haan yaad hai.	s30
+119.874	123.361	speech	A	Main bas yeh keh rahi thi ki tum apni sehat ka dhyan rakho.	s31
+124.001	127.319	speech	B	Don't worry, I am eating well and going to the gym.	s32
+128.008	130.023	speech	A	Oye, weekend pe kya plan hai?	s33
+130.781	133.703	speech	B	Kuch nahi yaar, socha tha movie dekhenge.	s34
+134.753	137.969	speech	A	PVR mein 7 baje ka show hai, tickets book kar loon?	s35
+139.418	142.071	speech	B	Haan kar le, main popcorn ka dekh lunga.	s36
+142.608	145.888	speech	A	Do tickets ka ₹780 hua, UPI kar de.	s37
+146.916	151.139	speech	B	Bhej diya. Waise JioSaavn pe naya Arijit ka gaana sun.	s38
+151.526	153.766	speech	A	Kaun sa wala? Mujhe link bhej na.	s39
+154.532	157.215	speech	B	Abhi bhejta hoon, playlist mein add kar le.	s40
+158.531	161.454	speech	A	Sach mein bahut pyaara gaana hai, dil khush ho gaya.	s41
+161.794	164.364	speech	B	Told you, his new album is really good.	s42
+165.225	168.705	speech	A	Sir, kal ki presentation 10 minute mein bhej rahi hoon.	s43
+169.167	172.018	speech	B	Please make sure the conversion numbers are correct.	s44
+172.689	176.631	speech	A	Ji sir, Swiggy campaign ka CTR 3 percent aaya hai.	s45
+177.633	181.125	speech	B	That is lower than last month, let's discuss tomorrow.	s46
+181.497	184.324	speech	A	Main data dobara check karke aapko batati hoon.	s47
+185.412	188.779	speech	B	Theek hai, aur client ko mail CC mein daal dena.	s48
+189.968	192.947	speech	A	Ho gaya sir, maine sabko loop mein rakh liya hai.	s49
+193.335	194.76	speech	B	Great, thank you.	s50
+195.875	200.155	speech	A	Ek aur baat, meri chhutti 20 se 24 tarikh tak approve kar dijiye.	s51
+200.459	203.081	speech	B	Approved hai, HR portal pe dekh lo.	s52
+203.535	206.604	speech	A	Mausam bahut kharab hai, baarish ruk hi nahi rahi.	s53
+206.92	210.016	speech	B	Cab book kar lo, Ola pe surge chal raha hai par.	s54
+210.475	213.825	speech	A	Uber mein ₹350 dikha raha hai, chalega.	s55
+214.865	216.894	speech	B	Ghar pahunch ke message kar dena.	s56
+218.163	220.24	speech	A	Haan pakka, tum bhi dhyan se jaana.	s57
+221.662	224.12	speech	B	The traffic on the highway is terrible today.	s58
+225.004	227.261	speech	A	Chalo phir kal milte hain, good night.	s59
+228.566	230.224	speech	B	Good night, take care.	s60

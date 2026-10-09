@@ -95,6 +95,18 @@ class MainActivity : ComponentActivity() {
      */
     private fun testHook(intent: Intent): Boolean {
         val dir = getExternalFilesDir("tests") ?: return false
+        intent.getStringExtra("test_label")?.let { name ->  // --es test_label NAME --ei k 2 : label speakers of a finished test note
+            intent.removeExtra("test_label")
+            val k = intent.getIntExtra("k", 2)
+            val app = applicationContext
+            AppScope.launch(Dispatchers.Default) {
+                val note = Notes.list.value.firstOrNull { it.test && it.name == name && it.done } ?: return@launch
+                val t0 = System.currentTimeMillis()
+                runCatching { com.whispercppdemo.notes.Speakers.label(app, note, k) {} }.onFailure { Log.w("indite", "test label failed", it) }
+                Notes.exportTestResult(note.id, extra = "label_ms" to (System.currentTimeMillis() - t0))
+            }
+            return true
+        }
         val import = intent.getStringExtra("test_import")
         val live = intent.getStringExtra("test_live")
         val name = import ?: live ?: return false
