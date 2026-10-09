@@ -6,7 +6,7 @@
 """
 LINE_CHARS, CUE_LINES = 42, 2  # common subtitle limits
 NOTE = {"no_speech": "no speech heard here", "repeated": "repeating text", "stock_phrase": "possibly invented",
-        "junk_word": "junk text (nan)"}
+        "junk_word": "junk text (nan)", "non_roman": "not in Roman letters"}
 
 
 def _clock(t: float, sep: str) -> str:

@@ -42,6 +42,9 @@ def test_guards():
     junk = flag([{"start": 0, "end": 2, "text": "nan I am not able to hear you"},
                  {"start": 2, "end": 4, "text": "nana ji ne bola"}], speech=[(0, 4)])
     assert junk[0]["flags"] == ["junk_word"] and "flags" not in junk[1]
+    script = flag([{"start": 0, "end": 2, "text": "У нас, ok."}, {"start": 2, "end": 4, "text": "मेरा naam"},
+                   {"start": 4, "end": 6, "text": "Café mein ₹500, 3:00 baje"}], speech=[(0, 6)])
+    assert script[0]["flags"] == ["non_roman"] and script[1]["flags"] == ["non_roman"] and "flags" not in script[2]
 
 
 def test_styles():

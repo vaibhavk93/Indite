@@ -5,10 +5,13 @@ Flags added to a segment's "flags" list:
   repeated     - a phrase looping 3+ times in a row (a known Whisper failure)
   stock_phrase - a phrase models invent on silence/music ("thanks for watching")
   junk_word    - the model's literal "nan" output (seen at the start of real recordings)
+  non_roman    - letters outside the Roman alphabet (e.g. Cyrillic "У нас"); output should always be Roman
 """
 import re
 
 import numpy as np
+
+NON_ROMAN = re.compile(r"[^\W\d_a-zA-Z\u00C0-\u024F]")  # any letter that isn't Latin (accents allowed)
 
 STOCK_PHRASES = [
     "thanks for watching", "thank you for watching", "please subscribe", "like and subscribe",
@@ -49,6 +52,8 @@ def flag(segments: list[dict], speech: list[tuple[float, float]]) -> list[dict]:
             flags.append("stock_phrase")
         if re.search(r"(?<![\w'])nan(?![\w'])", text.lower()):
             flags.append("junk_word")
+        if NON_ROMAN.search(text):
+            flags.append("non_roman")
         if flags:
             s["flags"] = flags
     return segments

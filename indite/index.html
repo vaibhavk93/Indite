@@ -153,7 +153,7 @@ kbd { font: .75rem var(--mono); border: 1px solid var(--line); border-bottom-wid
 <script>
 const $ = s => document.querySelector(s);
 const STAGE = { reading: "Reading audio", finding: "Finding speech", transcribing: "Transcribing", retrying: "Re-doing a few unclear bits", checking: "Checking for invented text" };
-const NOTE = { no_speech: "no speech heard here", repeated: "repeating text", stock_phrase: "possibly invented", junk_word: "junk text (nan)" };
+const NOTE = { no_speech: "no speech heard here", repeated: "repeating text", stock_phrase: "possibly invented", junk_word: "junk text (nan)", non_roman: "not in Roman letters" };
 const PRIVACY = { local: "🔒 Local engine: your audio stays on this Mac.", "local-best": "🔒 Local engine: your audio stays on this Mac.", sarvam: "☁️ Sarvam: your audio is sent to Sarvam's servers to be transcribed." };
 const KEEP_DAYS = 3 * 365, SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 let current = null, dirty = false, poll = null, hidePeek = new Set(), lastStatus = {}, doneUnseen = false, undoTexts = null;
