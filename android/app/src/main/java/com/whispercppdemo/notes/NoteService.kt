@@ -65,9 +65,10 @@ object Recording {
     val id: String? get() = recorder?.takeIf { it.isAlive }?.id
     val active get() = id != null
 
-    fun start(id: String, vadPath: String) {
+    /** `simulate`: a 16 kHz PCM file played into the recorder in real time instead of the mic (automated tests only). */
+    fun start(id: String, vadPath: String, simulate: File? = null) {
         if (active) return
-        recorder = LiveRecorder(id, vadPath).also { it.start() }
+        recorder = LiveRecorder(id, vadPath, simulate).also { it.start() }
     }
 
     fun stop() = recorder?.stop()
@@ -112,7 +113,7 @@ class NoteService : Service() {
         val type = if (recordingNow) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                    else ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         if (Build.VERSION.SDK_INT >= 30) startForeground(ONGOING, n, type) else startForeground(ONGOING, n)
-        if (recordId != null) Recording.start(recordId, Engine.vadPath(this))
+        if (recordId != null) Recording.start(recordId, Engine.vadPath(this), intent.getStringExtra(EXTRA_SIMULATE)?.let(::File))
         if (job?.isActive != true) job = scope.launch { runQueue() }
         // Not sticky: if Android kills the app, it resumes the next time indite opens (restarting in the background isn't allowed).
         return START_NOT_STICKY
@@ -136,7 +137,7 @@ class NoteService : Service() {
             var w: WhisperContext? = null
             while (true) {
                 Notes.refresh()
-                val note = Notes.list.value.filter { it.pending }.minByOrNull { it.created }
+                val note = Notes.list.value.filter { it.pending && it.id !in Notes.claimed }.minByOrNull { it.created }
                 when {
                     note != null -> {
                         if (w == null) {
@@ -182,21 +183,9 @@ class NoteService : Service() {
         for (i in note.pieces.size until note.cuts.size) {
             waitUntilSafe()
             if (!Notes.dir(note.id).exists()) return  // deleted while waiting
-            val (start, end, speechMs) = note.cuts[i].let { Triple(it[0], it[1], it[2]) }
-            val tries = Notes.bumpAttempt(note.id, i)
-            val piece = if (tries > 2) {
-                Piece(i, start, end, "[unclear]", listOf("unclear"))  // this piece crashed the engine twice: skip it, keep going
-            } else {
-                Notes.transcribing = true
-                val text = try {
-                    w.transcribeData(Notes.readPcm(note.id, start, end), printTimestamp = false,
-                        audioCtx = Pauses.audioCtx(end - start)).trim()
-                } finally { Notes.transcribing = false }
-                Piece(i, start, end, text, Guards.flags(text, (end - start) / SR.toDouble(), speechMs / 1000.0))
-            }
-            if (!Notes.dir(note.id).exists()) return
-            Notes.appendPiece(note.id, piece)
-            Notes.refresh()
+            if (note.id in Notes.claimed) return  // the voice keyboard is handling this one
+            val piece = transcribePiece(w, note, i) ?: return
+            val (start, end) = piece.start to piece.end
             audioDone += end - start
             val left = note.cuts.drop(i + 1).sumOf { it[1] - it[0] }
             val rate = audioDone / ((System.currentTimeMillis() - t0) / 1000.0)  // samples per second
@@ -273,16 +262,18 @@ class NoteService : Service() {
         private const val CHANNEL = "transcription"
         private const val ONGOING = 1
         private const val EXTRA_RECORD = "record"
+        private const val EXTRA_SIMULATE = "simulate"
         private const val ACTION_STOP = "stop"
 
         fun channel(context: Context) = context.getSystemService(NotificationManager::class.java).createNotificationChannel(
             NotificationChannel(CHANNEL, "Recording and transcription", NotificationManager.IMPORTANCE_LOW))
 
         /** Start a recording (the activity has the mic permission and is on screen). Returns the note id. */
-        fun startRecording(context: Context): String {
+        fun startRecording(context: Context, simulate: File? = null, name: String? = null): String {
             Recording.id?.let { return it }  // one recording at a time
-            val id = Notes.startRecording()
-            context.startForegroundService(Intent(context, NoteService::class.java).putExtra(EXTRA_RECORD, id))
+            val id = Notes.startRecording(name, test = simulate != null)
+            context.startForegroundService(Intent(context, NoteService::class.java).putExtra(EXTRA_RECORD, id)
+                .putExtra(EXTRA_SIMULATE, simulate?.path))
             return id
         }
 
@@ -296,6 +287,31 @@ class NoteService : Service() {
             if (PhoneCheck.problem() != null) return
             Notes.init(context)
             if (Notes.list.value.any { !it.done }) context.startForegroundService(Intent(context, NoteService::class.java))
+        }
+
+        /**
+         * Transcribe part i of a note and save it. Shared by the queue and the voice keyboard.
+         * Returns null if the note was deleted meanwhile.
+         */
+        suspend fun transcribePiece(w: WhisperContext, note: Note, i: Int): Piece? {
+            val (start, end, speechMs) = note.cuts[i].let { Triple(it[0], it[1], it[2]) }
+            val tries = Notes.bumpAttempt(note.id, i)
+            val piece = if (tries > 2) {
+                Piece(i, start, end, "[unclear]", listOf("unclear"))  // this piece crashed the engine twice: skip it, keep going
+            } else {
+                Notes.transcribing = true
+                val e0 = System.currentTimeMillis()
+                val text = try {
+                    w.transcribeData(Notes.readPcm(note.id, start, end), printTimestamp = false,
+                        audioCtx = Pauses.audioCtx(end - start)).trim()
+                } finally { Notes.transcribing = false }
+                Piece(i, start, end, text, Guards.flags(text, (end - start) / SR.toDouble(), speechMs / 1000.0),
+                    latencyMs = Notes.sinceCut(note.id, i), engineMs = (System.currentTimeMillis() - e0).toInt())
+            }
+            if (!Notes.dir(note.id).exists()) return null
+            Notes.appendPiece(note.id, piece)
+            Notes.refresh()
+            return piece
         }
 
         fun eta(seconds: Double): String = when {

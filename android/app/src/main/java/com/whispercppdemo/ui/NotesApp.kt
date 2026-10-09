@@ -8,84 +8,108 @@ import android.media.AudioTrack
 import android.os.Build
 import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import com.whispercppdemo.R
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.DismissDirection
+import androidx.compose.material3.DismissValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismiss
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDismissState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.whispercppdemo.R
 import com.whispercppdemo.notes.Guards
 import com.whispercppdemo.notes.Note
 import com.whispercppdemo.notes.Notes
 import com.whispercppdemo.notes.PhoneCheck
+import com.whispercppdemo.notes.Piece
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -102,44 +126,61 @@ object Messages {
     val flow = MutableSharedFlow<String>(extraBufferCapacity = 4)
 }
 
+private val Gutter = 20.dp
+
 @Composable
 fun NotesApp(openRequest: String?, onOpenHandled: () -> Unit, onOpenFile: () -> Unit, onRecord: () -> Unit, onStop: () -> Unit) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
-    LaunchedEffect(openRequest) { if (openRequest != null) { selected = openRequest; onOpenHandled() } }
-    var settings by remember { mutableStateOf(false) }
+    var settings by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(openRequest) { if (openRequest != null) { selected = openRequest; settings = false; onOpenHandled() } }
     val notes by Notes.list.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { Messages.flow.collect { snackbar.showSnackbar(it) } }
 
     val note = notes.firstOrNull { it.id == selected }
-    if (settings) {
-        BackHandler { settings = false }
-        SettingsScreen(onBack = { settings = false })
-    } else if (note != null) {
-        BackHandler { Player.stop(); selected = null }
-        NoteScreen(note, snackbar, onStop, onBack = { Player.stop(); selected = null })
-    } else {
-        ListScreen(notes, snackbar, onOpenFile, onRecord, onSettings = { settings = true }, onOpen = { selected = it })
+    when {
+        settings -> {
+            BackHandler { settings = false }
+            SettingsScreen(onBack = { settings = false })
+        }
+        note != null && note.recording -> {
+            BackHandler { selected = null }
+            RecordingScreen(note, onStop, onMinimise = { selected = null })
+        }
+        note != null -> {
+            BackHandler { Player.stop(); selected = null }
+            NoteScreen(note, snackbar, onBack = { Player.stop(); selected = null })
+        }
+        else -> HomeScreen(notes, snackbar, onOpenFile, onRecord, onSettings = { settings = true }, onOpen = { selected = it })
     }
 }
 
+// ---------------------------------------------------------------- Home
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ListScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFile: () -> Unit, onRecord: () -> Unit,
+private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFile: () -> Unit, onRecord: () -> Unit,
                        onSettings: () -> Unit, onOpen: (String) -> Unit) {
     val context = LocalContext.current
     val status by Notes.status.collectAsState()
     val working by Notes.working.collectAsState()
     val problem = remember { PhoneCheck.problem() }
     val lowRam = remember { PhoneCheck.lowRam(context) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val hidden = remember { mutableStateListOf<String>() }  // swiped away, waiting for Undo
+    val scope = rememberCoroutineScope()
+    val shown = notes.filter { it.id !in hidden }.filter { n ->
+        query.isBlank() || n.name.contains(query, true) || n.pieces.indices.any { n.text(it).contains(query, true) }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("indite", fontWeight = FontWeight.SemiBold) },
+                title = {},
                 actions = {
                     if (problem == null) TextButton(onClick = onOpenFile) {
                         Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(" Open file")
+                        Text(" Import")
                     }
                     IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
                 },
@@ -147,62 +188,124 @@ private fun ListScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
-        floatingActionButton = {
-            if (problem == null) ExtendedFloatingActionButton(
-                onClick = onRecord,
-                icon = { Icon(painterResource(R.drawable.ic_mic), contentDescription = null) },
-                text = { Text("Record") },
-            )
-        },
+        bottomBar = { if (problem == null) RecordBar(onRecord) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(pad),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = Gutter, end = Gutter, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            item {
+                Column(Modifier.padding(bottom = 6.dp)) {
+                    Text("indite", style = MaterialTheme.typography.displaySmall)
+                    Text("Speak in Hindi, English or both. Get it in writing.", style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             if (problem != null) item { Banner(problem, error = true) }
-            else if (lowRam) item { Banner("This phone has under 6 GB of memory. Transcription may be slow or stop on long recordings.", error = false) }
+            else if (lowRam) item { Banner("This phone has under 6 GB of memory. Long recordings may be slow.", error = false) }
             if (status.isNotBlank()) item { StatusLine(status, working) }
+            if (notes.isNotEmpty()) item { SearchField(query) { query = it } }
             if (notes.isEmpty()) item { EmptyState() }
-            items(notes, key = { it.id }) { NoteRow(it, onClick = { onOpen(it.id) }) }
+            else if (shown.isEmpty()) item {
+                Text("Nothing matches \"$query\".", Modifier.padding(vertical = 24.dp), style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            items(shown, key = { it.id }) { note ->
+                val dismiss = rememberDismissState(confirmValueChange = {
+                    if (it == DismissValue.DismissedToStart && !note.recording) {
+                        hidden += note.id
+                        scope.launch {
+                            val r = snackbar.showSnackbar("Note deleted", actionLabel = "Undo", withDismissAction = true)
+                            if (r == SnackbarResult.ActionPerformed) hidden -= note.id
+                            else { withContext(Dispatchers.IO) { Notes.delete(note.id) }; hidden -= note.id }
+                        }
+                        true
+                    } else false
+                })
+                SwipeToDismiss(
+                    state = dismiss,
+                    directions = setOf(DismissDirection.EndToStart),
+                    background = {
+                        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.errorContainer)
+                            .padding(horizontal = 24.dp), contentAlignment = Alignment.CenterEnd) {
+                            Text("Delete", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.labelLarge)
+                        }
+                    },
+                    dismissContent = { NoteRow(note) { onOpen(note.id) } },
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun SearchField(query: String, onChange: (String) -> Unit) = TextField(
+    value = query, onValueChange = onChange, singleLine = true,
+    modifier = Modifier.fillMaxWidth(),
+    placeholder = { Text("Search your notes") },
+    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+    trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { onChange("") }) { Icon(Icons.Filled.Close, contentDescription = "Clear search") } },
+    shape = RoundedCornerShape(16.dp),
+    colors = TextFieldDefaults.colors(
+        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+        focusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant, unfocusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+    ),
+)
+
+/** The one big action: a round mic button, always in the same place. */
+@Composable
+private fun RecordBar(onRecord: () -> Unit) {
+    val haptics = LocalHapticFeedback.current
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding().padding(top = 8.dp, bottom = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.size(76.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary)
+                .clickable(role = Role.Button, onClickLabel = "Start recording") {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress); onRecord()
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(painterResource(R.drawable.ic_mic), contentDescription = "Record", tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(32.dp))
+        }
+        Text("Tap to speak", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
 private fun EmptyState() {
-    Column(Modifier.fillMaxWidth().padding(top = 32.dp, start = 8.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Speak. Get the text.", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-        Text("Hindi, English or both, written in Roman letters.", style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Step("1", "Tap Record and talk, as long as you like.")
-                Step("2", "After each pause, that part turns into text.")
-                Step("3", "Edit, copy or share it when you're done.")
+    Column(Modifier.fillMaxWidth().padding(top = 28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(24.dp))) {
+            Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Step("1", "Tap the mic and talk, as long as you like.")
+                Step("2", "Pause for a moment and that part turns into text.")
+                Step("3", "Edit, copy or share it. The audio stays with it.")
             }
         }
-        Text("You can also share a voice note or audio file to indite, or tap Open file.",
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("Everything stays on this phone. Nothing is uploaded.", style = MaterialTheme.typography.bodyMedium,
+        Text("Works without internet. Your voice never leaves this phone.", style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Have a voice note or recording? Share it to indite, or tap Import.", style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun Step(n: String, text: String) = Row(verticalAlignment = Alignment.Top) {
-    Text(n, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp))
-    Text(text, style = MaterialTheme.typography.bodyLarge)
+private fun Step(n: String, text: String) = Row(verticalAlignment = Alignment.CenterVertically) {
+    Box(Modifier.size(28.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+        Text(n, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+    }
+    Text(text, Modifier.padding(start = 14.dp), style = MaterialTheme.typography.bodyLarge)
 }
 
 @Composable
-private fun Banner(text: String, error: Boolean) = Card(
-    colors = CardDefaults.cardColors(
-        containerColor = if (error) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
-        contentColor = if (error) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
-    ),
+private fun Banner(text: String, error: Boolean) = Surface(
+    shape = RoundedCornerShape(16.dp),
+    color = if (error) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
+    contentColor = if (error) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
 ) {
     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Icon(Icons.Filled.Warning, contentDescription = null)
@@ -211,51 +314,176 @@ private fun Banner(text: String, error: Boolean) = Card(
 }
 
 @Composable
-private fun StatusLine(text: String, working: Boolean) = Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun StatusLine(text: String, working: Boolean) = Column(Modifier.animateContentSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    if (working || text.endsWith("…")) LinearProgressIndicator(Modifier.fillMaxWidth())
+    if (working || text.endsWith("…")) LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape))
 }
 
 @Composable
 private fun NoteRow(note: Note, onClick: () -> Unit) {
     val context = LocalContext.current
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = "Open note", onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    Surface(
+        shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp)).clickable(role = Role.Button, onClickLabel = "Open note", onClick = onClick),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(note.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${clock(note.seconds)} · ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(note.name, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (note.recording) LiveDot()
+            }
             when {
-                note.recording -> Text("Recording…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-                note.done && note.cuts.isEmpty() -> Text("No speech found.", style = MaterialTheme.typography.bodyMedium)
-                !note.done -> {
-                    LinearProgressIndicator(note.pieces.size / note.cuts.size.toFloat(), Modifier.fillMaxWidth().padding(top = 4.dp))
-                    Text(if (note.pieces.isEmpty()) "Waiting to start…" else "Part ${note.pieces.size} of ${note.cuts.size} done",
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                note.recording -> Text("Recording now", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                note.done && note.cuts.isEmpty() -> Text("No speech found.", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                note.pieces.isNotEmpty() -> Text(note.allText(), style = MaterialTheme.typography.bodyMedium, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (note.pending && !note.recording) LinearProgressIndicator(note.pieces.size / note.cuts.size.toFloat(),
+                Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(CircleShape))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("${clock(note.seconds)}  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}",
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.weight(1f))
+                val toCheck = note.pieces.count { it.flags.isNotEmpty() }
+                if (note.done && toCheck > 0) Chip(if (toCheck == 1) "1 to check" else "$toCheck to check")
+                if (note.pending && !note.recording) Chip("Writing ${note.pieces.size}/${note.cuts.size}", accent = false)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Chip(text: String, accent: Boolean = true) = Surface(
+    shape = CircleShape, color = if (accent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+    contentColor = if (accent) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+) { Text(text, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium) }
+
+@Composable
+private fun LiveDot() {
+    var on by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { while (true) { delay(600); on = !on } }
+    val a by animateFloatAsState(if (on) 1f else 0.25f, label = "live")
+    Box(Modifier.size(10.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error.copy(alpha = a)))
+}
+
+// ---------------------------------------------------------------- Recording
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RecordingScreen(note: Note, onStop: () -> Unit, onMinimise: () -> Unit) {
+    val haptics = LocalHapticFeedback.current
+    val level by Notes.level.collectAsState()
+    val bars = remember { mutableStateListOf<Float>().apply { repeat(48) { add(0f) } } }
+    var seconds by remember { mutableStateOf(0.0) }
+    LaunchedEffect(note.created) {
+        while (true) {
+            seconds = (System.currentTimeMillis() - note.created) / 1000.0
+            bars.removeAt(0); bars.add(Notes.level.value)
+            delay(80)
+        }
+    }
+    val listState = rememberLazyListState()
+    LaunchedEffect(note.pieces.size) { if (note.pieces.isNotEmpty()) listState.animateScrollToItem(note.pieces.size) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(note.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium) },
+                navigationIcon = { IconButton(onClick = onMinimise) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back (keeps recording)") } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = Gutter), horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LiveDot()
+                    Text("  " + clock(seconds), style = MaterialTheme.typography.displaySmall)
                 }
-                else -> {
-                    Text(note.allText(), style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    val toCheck = note.pieces.count { it.flags.isNotEmpty() }
-                    if (toCheck > 0) FlagLine(if (toCheck == 1) "1 part to check" else "$toCheck parts to check")
+                Waveform(bars, Modifier.fillMaxWidth().height(64.dp).padding(vertical = 10.dp))
+                Text(if (level > 0.08f) "Listening…" else "Pause for a moment to see the text",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = listState,
+                contentPadding = PaddingValues(horizontal = Gutter, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(note.pieces, key = { it.i }) { p ->
+                    Text(note.text(p.i), style = MaterialTheme.typography.bodyLarge,
+                        color = if (p.junk) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onBackground)
+                }
+                if (note.pending) item { Writing() }
+            }
+            Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 18.dp, top = 8.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.size(80.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error)
+                        .clickable(role = Role.Button, onClickLabel = "Stop recording") {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress); onStop()
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(painterResource(R.drawable.ic_stop), contentDescription = "Stop", tint = MaterialTheme.colorScheme.onError,
+                        modifier = Modifier.size(30.dp))
                 }
             }
         }
     }
 }
 
+@Composable
+private fun Waveform(levels: List<Float>, modifier: Modifier) {
+    val color = MaterialTheme.colorScheme.primary
+    Canvas(modifier) {
+        val n = levels.size
+        val gap = 4.dp.toPx()
+        val w = (size.width - gap * (n - 1)) / n
+        levels.forEachIndexed { k, v ->
+            val h = (size.height * (0.08f + 0.92f * v.coerceIn(0f, 1f)))
+            drawRoundRect(color.copy(alpha = 0.35f + 0.65f * (k + 1f) / n), Offset(k * (w + gap), (size.height - h) / 2),
+                Size(w, h), CornerRadius(w / 2, w / 2))
+        }
+    }
+}
+
+@Composable
+private fun Writing() {
+    var dots by remember { mutableStateOf(1) }
+    LaunchedEffect(Unit) { while (true) { delay(400); dots = dots % 3 + 1 } }
+    Text("Writing" + ".".repeat(dots), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+// ---------------------------------------------------------------- Note
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onStop: () -> Unit, onBack: () -> Unit) {
+private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Unit) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
-    var confirmDelete by remember { mutableStateOf(false) }
-    var playing by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
-    LaunchedEffect(note.pieces.size) {  // while recording, keep the newest text in view
-        if (note.recording && note.pieces.isNotEmpty()) listState.animateScrollToItem(note.pieces.size)
+    var menu by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<Int?>(null) }
+    var playing by remember { mutableStateOf<Int?>(null) }
+    val exportSrt = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-subrip")) { uri ->
+        if (uri != null) AppScope.launch(Dispatchers.IO) {
+            context.contentResolver.openOutputStream(uri)?.use { it.write(Notes.srt(note).toByteArray()) }
+            Messages.flow.tryEmit("Subtitles saved")
+        }
+    }
+
+    fun copy(text: String) {
+        clipboard.setText(AnnotatedString(text))
+        if (Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar("Copied") }  // Android 13+ shows its own confirmation
+    }
+
+    fun play(p: Piece) {
+        if (playing == p.i) { Player.stop(); playing = null; return }
+        playing = p.i
+        if (!Player.play(note.id, p.start, p.end) { playing = null }) {
+            playing = null
+            scope.launch { snackbar.showSnackbar("Couldn't play this part.") }
+        }
     }
 
     if (confirmDelete) AlertDialog(
@@ -265,151 +493,145 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onStop: () -> Un
         confirmButton = { TextButton(onClick = { confirmDelete = false; Player.stop(); onBack(); Notes.delete(note.id) }) { Text("Delete") } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
     )
-
-    fun copy(text: String) {
-        clipboard.setText(AnnotatedString(text))
-        if (Build.VERSION.SDK_INT < 33) scope.launch { snackbar.showSnackbar("Copied") }  // Android 13+ shows its own confirmation
-    }
+    if (renaming) RenameDialog(note.name, onDone = { renaming = false; if (it != null) Notes.rename(note.id, it) })
+    editing?.let { i -> if (i < note.pieces.size) EditSheet(note, i, playing == i, onPlay = { play(note.pieces[i]) },
+        onCopy = { copy(note.text(i).trim()) }, onClose = { editing = null }) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(note.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = {
+                    Text(note.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.clickable(onClickLabel = "Rename note") { renaming = true })
+                },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } },
                 actions = {
-                    if (note.done) IconButton(onClick = { share(context, note.allText()) }) {
+                    if (note.done && note.pieces.isNotEmpty()) IconButton(onClick = { share(context, note.allText()) }) {
                         Icon(Icons.Filled.Share, contentDescription = "Share text")
                     }
-                    if (!note.recording) IconButton(onClick = { confirmDelete = true }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete note")
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
+                        if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Save as subtitles (.srt)") },
+                            onClick = { menu = false; exportSrt.launch("${note.name}.srt") })
+                        DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            onClick = { menu = false; confirmDelete = true })
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
-        bottomBar = { if (note.recording) RecordingBar(note.created, onStop) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         LazyColumn(
-            state = listState,
             modifier = Modifier.fillMaxSize().padding(pad),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = Gutter, end = Gutter, top = 4.dp, bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("${clock(note.seconds)} · ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}",
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("${clock(note.seconds)}  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}",
+                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (note.done && note.pieces.isNotEmpty()) {
-                        FilledTonalButton(onClick = { copy(note.allText()) }, modifier = Modifier.fillMaxWidth()) { Text("Copy all text") }
-                    } else if (note.recording) {
-                        Text("Talk naturally. Each part turns into text a few seconds after you pause.",
-                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else if (!note.done) {
-                        LinearProgressIndicator(note.pieces.size / note.cuts.size.toFloat(), Modifier.fillMaxWidth())
-                        Text("Text appears part by part. You can leave the app; it keeps working in the background.",
+                        Button(onClick = { copy(note.allText()) }, Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp)) {
+                            Text("Copy all text")
+                        }
+                        Text("Tap any paragraph to edit it, hear it or copy it.", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else if (note.pending) {
+                        LinearProgressIndicator(note.pieces.size / note.cuts.size.toFloat(), Modifier.fillMaxWidth().clip(CircleShape))
+                        Text("Text appears part by part. You can leave the app; it keeps working.",
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
             items(note.pieces, key = { it.i }) { p ->
-                PieceCard(
-                    note = note, i = p.i, playing = playing == p.i,
-                    onPlay = {
-                        if (playing == p.i) { Player.stop(); playing = null }
-                        else {
-                            playing = p.i
-                            if (!Player.play(note.id, p.start, p.end) { playing = null }) {
-                                playing = null
-                                scope.launch { snackbar.showSnackbar("Couldn't play this part.") }
-                            }
-                        }
-                    },
-                    onCopy = { copy(note.text(p.i).trim()) },
-                )
+                Paragraph(note, p, playing == p.i, onClick = { editing = p.i })
             }
-            if (!note.done) items(note.cuts.size - note.pieces.size) { k ->
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                    Text("${clock(note.cuts[note.pieces.size + k][0] / 16000.0)} · ${if (k == 0) "working on it…" else "waiting"}",
-                        Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+            if (note.pending) item { Box(Modifier.padding(vertical = 10.dp)) { Writing() } }
         }
     }
 }
 
 @Composable
-private fun PieceCard(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, onCopy: () -> Unit) {
-    val p = note.pieces[i]
-    var text by remember(note.id, i, note.auto(i)) { mutableStateOf(note.text(i)) }
-    val edited = text != note.auto(i)
-    LaunchedEffect(text) {  // save edits half a second after typing stops; the model's text is kept separately
-        if (text == note.text(i)) return@LaunchedEffect
-        delay(500)
-        withContext(Dispatchers.IO) { Notes.saveEdit(note.id, i, if (edited) text else null) }
+private fun Paragraph(note: Note, p: Piece, playing: Boolean, onClick: () -> Unit) {
+    val edited = p.i in note.edits
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+            .background(if (playing) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.background)
+            .clickable(onClickLabel = "Edit, play or copy this part", onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(clock(p.startSec), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (edited) Text("  ·  edited", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        }
+        Text(note.text(p.i), style = MaterialTheme.typography.bodyLarge,
+            color = if (p.junk && !edited) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onBackground)
+        if (p.flags.isNotEmpty() && !edited) FlagLine("Check: " + p.flags.joinToString(", ") { Guards.NOTE[it] ?: it })
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, onCopy: () -> Unit, onClose: () -> Unit) {
+    val p = note.pieces[i]
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var text by remember(note.id, i) { mutableStateOf(note.text(i)) }
+    val edited = text != note.auto(i)
     val latest = rememberUpdatedState(text)
     DisposableEffect(note.id, i) {
-        onDispose {
+        onDispose {  // save on close, wherever the sheet was dismissed from
             val t = latest.value
             if (t != note.text(i)) AppScope.launch(Dispatchers.IO) { Notes.saveEdit(note.id, i, if (t != note.auto(i)) t else null) }
         }
     }
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)) {
+    ModalBottomSheet(onDismissRequest = onClose, sheetState = sheet, containerColor = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = Gutter).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPlay) {
-                    Icon(if (playing) Icons.Filled.Close else Icons.Filled.PlayArrow,
-                        contentDescription = if (playing) "Stop playing" else "Play this part")
-                }
-                Text(clock(p.startSec), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (edited) Text("  · edited", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onCopy, modifier = Modifier.semantics { contentDescription = "Copy text from ${clock(p.startSec)}" }) {
-                    Text("Copy")
+                Text("Part at ${clock(p.startSec)}", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                FilledTonalButton(onClick = onPlay) {
+                    Icon(if (playing) Icons.Filled.Close else Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(if (playing) "  Stop" else "  Play")
                 }
             }
             OutlinedTextField(value = text, onValueChange = { text = it },
                 modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Text from ${clock(p.startSec)}, editable" },
-                textStyle = MaterialTheme.typography.bodyLarge)
-            if (p.flags.isNotEmpty()) FlagLine("Check: " + p.flags.joinToString(", ") { Guards.NOTE[it] ?: it }, Modifier.padding(top = 8.dp))
-            if (edited) Row(Modifier.padding(top = 4.dp)) {
-                OutlinedButton(onClick = { text = note.auto(i) }) { Text("Undo my edit") }
+                textStyle = MaterialTheme.typography.bodyLarge, shape = RoundedCornerShape(14.dp), minLines = 3)
+            if (p.flags.isNotEmpty()) FlagLine("Check: " + p.flags.joinToString(", ") { Guards.NOTE[it] ?: it })
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onCopy) { Text("Copy") }
+                AnimatedVisibility(edited, enter = fadeIn(), exit = fadeOut()) {
+                    OutlinedButton(onClick = { text = note.auto(i) }) { Text("Undo my edit") }
+                }
+                Spacer(Modifier.weight(1f))
+                Button(onClick = onClose) { Text("Done") }
             }
         }
     }
 }
 
 @Composable
-private fun FlagLine(text: String, modifier: Modifier = Modifier) = Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-    Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
-    Text("  $text", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
+private fun RenameDialog(current: String, onDone: (String?) -> Unit) {
+    var name by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = { onDone(null) },
+        title = { Text("Rename") },
+        text = { OutlinedTextField(name, { name = it }, singleLine = true, modifier = Modifier.fillMaxWidth()) },
+        confirmButton = { TextButton(onClick = { onDone(name) }, enabled = name.isNotBlank()) { Text("Save") } },
+        dismissButton = { TextButton(onClick = { onDone(null) }) { Text("Cancel") } },
+    )
 }
 
 @Composable
-private fun RecordingBar(started: Long, onStop: () -> Unit) {
-    val level by Notes.level.collectAsState()
-    var seconds by remember { mutableStateOf(0.0) }
-    LaunchedEffect(started) { while (true) { seconds = (System.currentTimeMillis() - started) / 1000.0; delay(500) } }
-    Surface(color = MaterialTheme.colorScheme.surfaceVariant, tonalElevation = 3.dp) {
-        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(10.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Recording  ${clock(seconds)}", style = MaterialTheme.typography.titleSmall)
-                LinearProgressIndicator(level, Modifier.fillMaxWidth().semantics { contentDescription = "Microphone level" })
-            }
-            Button(onClick = onStop, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError)) {
-                Icon(painterResource(R.drawable.ic_stop), contentDescription = null, modifier = Modifier.size(18.dp))
-                Text("  Stop")
-            }
-        }
-    }
+private fun FlagLine(text: String) = Row(verticalAlignment = Alignment.CenterVertically) {
+    Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+    Text("  $text", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
 }
 
-private fun clock(sec: Double) = "%d:%02d".format(sec.toInt() / 60, sec.toInt() % 60)
+private fun clock(sec: Double) = sec.toInt().let { if (it >= 3600) "%d:%02d:%02d".format(it / 3600, it / 60 % 60, it % 60) else "%d:%02d".format(it / 60, it % 60) }
 
 private fun share(context: Context, text: String) = context.startActivity(
     Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Share text"))

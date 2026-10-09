@@ -1,0 +1,5 @@
+*.wav
+*.m4a
+*.aiff
+out/
+*.wav.json

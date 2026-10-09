@@ -21,7 +21,7 @@ import kotlin.math.sqrt
  * Speech vs noise comes from Silero (a small neural speech detector), so fans, traffic and clatter don't count as speech.
  * Audio is flushed to storage every 5 s: a crash or power loss costs at most the last 5 s.
  */
-class LiveRecorder(val id: String, private val vadPath: String) {
+class LiveRecorder(val id: String, private val vadPath: String, private val simulate: File? = null) {
     @Volatile private var running = true
     private val thread = Thread(::run, "indite-recorder")
 
@@ -37,8 +37,10 @@ class LiveRecorder(val id: String, private val vadPath: String) {
         // Audio priority and a 5 s buffer: the engine uses every big core, and a dropped buffer is lost speech.
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
         val min = AudioRecord.getMinBufferSize(SR, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        val rec = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, SR, AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT, max(min, SR * 2 * 5))
+        val rec = if (simulate != null) null else AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, SR,
+            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, max(min, SR * 2 * 5))
+        val sim = simulate?.let { java.io.DataInputStream(it.inputStream().buffered()) }
+        val simStart = System.nanoTime()
         val vad = try { SpeechDetector(vadPath) } catch (e: Exception) { Log.w("indite", e); null }
         val out = FileOutputStream(File(Notes.dir(id), "audio.pcm"), true)
         val frame = ShortArray(W)
@@ -51,11 +53,19 @@ class LiveRecorder(val id: String, private val vadPath: String) {
         var silent = 0     // non-speech windows in a row
         var synced = 0
         try {
-            rec.startRecording()
+            rec?.startRecording()
             while (running) {
                 var got = 0
-                while (got < W && running) {  // always hand the detector whole 32 ms windows
-                    val n = rec.read(frame, got, W - got)
+                if (sim != null) {  // test mode: a file, paced like a real microphone
+                    val bytesIn = ByteArray(W * 2)
+                    try { sim.readFully(bytesIn) } catch (e: java.io.EOFException) { break }
+                    ByteBuffer.wrap(bytesIn).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(frame)
+                    got = W
+                    val due = simStart + (total + W).toLong() * 1_000_000_000L / SR
+                    val wait = due - System.nanoTime()
+                    if (wait > 0) Thread.sleep(wait / 1_000_000, (wait % 1_000_000).toInt())
+                } else while (got < W && running) {  // always hand the detector whole 32 ms windows
+                    val n = rec!!.read(frame, got, W - got)
                     if (n < 0) error("microphone read failed ($n)")
                     got += n
                 }
@@ -97,8 +107,9 @@ class LiveRecorder(val id: String, private val vadPath: String) {
         } finally {
             try { out.fd.sync() } catch (_: Exception) {}
             out.close()
-            try { rec.stop() } catch (_: Exception) {}
-            rec.release()
+            try { rec?.stop() } catch (_: Exception) {}
+            rec?.release()
+            sim?.close()
             vad?.release()
             Notes.level.value = 0f
             Notes.stopRecording(id, total)

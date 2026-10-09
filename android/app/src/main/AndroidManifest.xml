@@ -44,6 +44,18 @@
                 android:value="" />
         </activity>
 
+        <!-- indite voice keyboard: dictate into any app -->
+        <service
+            android:name=".keyboard.VoiceKeyboard"
+            android:label="indite voice"
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data android:name="android.view.im" android:resource="@xml/method" />
+        </service>
+
         <service
             android:name=".notes.NoteService"
             android:exported="false"

@@ -44,6 +44,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.view.inputmethod.InputMethodManager
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.whispercppdemo.BuildConfig
@@ -106,6 +110,28 @@ fun SettingsScreen(onBack: () -> Unit) {
                                 RadioButton(selected = theme == t, onClick = null)
                                 Text(t.label, Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
                             }
+                        }
+                    }
+                }
+            }
+            item {
+                Section("Voice keyboard") {
+                    val imm = context.getSystemService(InputMethodManager::class.java)
+                    var enabled by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {  // re-check when you come back from the phone's settings
+                        while (true) { enabled = imm.enabledInputMethodList.any { it.packageName == context.packageName }; delay(1000) }
+                    }
+                    Text("Dictate into any app: WhatsApp, Gmail, notes. Switch to the indite keyboard, tap the mic and talk. " +
+                        "Each dictation is also saved here with its audio.", style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (!enabled) FilledTonalButton(onClick = {
+                            context.startActivity(Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS))
+                        }) { Text("1. Turn it on") }
+                        else Text("✓ Turned on", Modifier.padding(vertical = 10.dp), style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary)
+                        OutlinedButton(onClick = { imm.showInputMethodPicker() }, enabled = enabled) {
+                            Text(if (enabled) "Switch keyboard" else "2. Switch to it")
                         }
                     }
                 }

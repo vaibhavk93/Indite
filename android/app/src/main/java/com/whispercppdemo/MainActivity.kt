@@ -23,7 +23,11 @@ import androidx.compose.runtime.collectAsState
 import com.whispercppdemo.ui.Messages
 import com.whispercppdemo.ui.NotesApp
 import com.whispercppdemo.ui.theme.WhisperCppDemoTheme
+import com.whispercppdemo.media.decodeToPcm
 import com.whispercppdemo.ui.AppScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -67,6 +71,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handle(intent: Intent?) {
         intent ?: return
+        if (testHook(intent)) return
         intent.getStringExtra(EXTRA_NOTE)?.let { openRequest = it }
         intent.removeExtra(EXTRA_NOTE)  // don't reopen it on rotation
         @Suppress("DEPRECATION")
@@ -77,6 +82,35 @@ class MainActivity : ComponentActivity() {
         } ?: return
         intent.action = null  // don't import the same file again on rotation
         import(uri)
+    }
+
+    /**
+     * Automated tests over USB (adb), restricted to files in the app's own test folder, which only the app and a
+     * connected computer can write:  am start -n com.indite.app/com.whispercppdemo.MainActivity --es test_import NAME
+     * (or --es test_live NAME: the file is played into the recorder in real time, as if spoken).
+     */
+    private fun testHook(intent: Intent): Boolean {
+        val dir = getExternalFilesDir("tests") ?: return false
+        val import = intent.getStringExtra("test_import")
+        val live = intent.getStringExtra("test_live")
+        val name = import ?: live ?: return false
+        intent.removeExtra("test_import"); intent.removeExtra("test_live")
+        val f = File(dir, name).canonicalFile
+        if (f.parentFile != dir.canonicalFile || !f.exists()) { Log.w("indite", "test file not found: $name"); return true }
+        val app = applicationContext
+        AppScope.launch {
+            try {
+                if (import != null) {
+                    Notes.import(app, Uri.fromFile(f), test = true)
+                    NoteService.kick(app)
+                } else {
+                    val pcm = File(cacheDir, "sim-${System.currentTimeMillis()}.pcm")
+                    withContext(Dispatchers.IO) { decodeToPcm(f, pcm) }
+                    openRequest = NoteService.startRecording(app, simulate = pcm, name = "live " + f.nameWithoutExtension)
+                }
+            } catch (e: Throwable) { Log.w("indite", "test hook failed", e) }
+        }
+        return true
     }
 
     private fun record() {

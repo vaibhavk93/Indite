@@ -1,0 +1,61 @@
+start	end	speaker	roman_text	id
+0.5	3.831	A	Kal meeting 4 baje hai, please reminder set kar dena.	s01
+5.184	7.423	B	Haan done, maine calendar invite bhej diya hai.	s02
+8.718	11.78	A	CleverTap wala dashboard abhi tak load nahi ho raha.	s03
+12.613	15.913	B	I think the API key expired last night, let me check.	s04
+16.298	20.232	A	Theek hai, jaldi batana kyunki client 11 baje call karega.	s05
+20.385	20.89	B	Ok.	s06
+22.048	24.635	A	Aur haan, Monday tak report final karni hai.	s07
+26.111	30.018	B	Report ka draft ready hai, bas numbers update karne baaki hain.	s08
+30.973	34.146	A	Last quarter mein revenue 12 percent badha tha na?	s09
+35.265	38.347	B	Nahi, 15 percent tha, maine sheet mein dekha.	s10
+38.66	41.367	A	Achha, phir slide number 3 change kar do.	s11
+42.691	44.52	B	Sure, I will send the updated deck by evening.	s12
+45.73	48.764	A	Lunch ke liye Swiggy se order karein ya Zomato se?	s13
+49.378	52.427	B	Zomato pe 50 percent off chal raha hai, wahi se karte hain.	s14
+53.572	56.201	A	Mere liye ek paneer roll aur cold coffee.	s15
+56.668	59.677	B	Total ₹640 ho gaya, Paytm se pay kar deta hoon.	s16
+61.03	64.354	A	Thanks yaar, main tumhe baad mein transfer kar dungi.	s17
+65.662	67.328	B	Koi baat nahi, chill karo.	s18
+68.258	71.04	A	Beta, aaj shaam ko ghar kitne baje aaoge?	s19
+71.952	75.509	B	Mummy, office mein late ho jayega, shayad 9 baje tak.	s20
+76.966	79.287	A	Theek hai, khana garam karke rakh dungi.	s21
+79.938	81.84	B	Aur papa ki dawai le aaun kya?	s22
+82.419	86.354	A	Haan, chemist se BP wali goli aur 2 strip Crocin le aana.	s23
+86.628	87.328	B	Ok mummy.	s24
+88.169	91.657	A	Bijli ka bill bhi bharna hai, last date 15 tarikh hai.	s25
+91.977	95.361	B	Main Paytm app se abhi bhar deta hoon, kitna aaya hai?	s26
+96.409	101.233	A	₹2350 aaya hai is baar, garmi mein AC zyada chala.	s27
+102.085	104.012	B	Done, payment ho gaya, receipt WhatsApp kar di.	s28
+104.413	108.436	A	Bahut achha. Aur Sunday ko nani ke ghar chalna hai, yaad rakhna.	s29
+108.619	109.353	B	Haan yaad hai.	s30
+110.41	113.897	A	Main bas yeh keh rahi thi ki tum apni sehat ka dhyan rakho.	s31
+114.566	117.079	B	Don't worry, I am eating well and going to the gym.	s32
+117.679	119.694	A	Oye, weekend pe kya plan hai?	s33
+120.552	123.367	B	Kuch nahi yaar, socha tha movie dekhenge.	s34
+124.038	127.254	A	PVR mein 7 baje ka show hai, tickets book kar loon?	s35
+128.179	129.856	B	Haan kar le, main popcorn ka dekh lunga.	s36
+130.296	133.576	A	Do tickets ka ₹780 hua, UPI kar de.	s37
+134.143	140.421	B	Bhej diya. Waise JioSaavn pe naya Arijit ka gaana sun.	s38
+141.735	143.975	A	Kaun sa wala? Mujhe link bhej na.	s39
+144.425	146.469	B	Abhi bhejta hoon, playlist mein add kar le.	s40
+147.803	150.726	A	Sach mein bahut pyaara gaana hai, dil khush ho gaya.	s41
+151.237	158.766	B	Told you, his new album is really good.	s42
+159.657	163.137	A	Sir, kal ki presentation 10 minute mein bhej rahi hoon.	s43
+164.061	165.082	B	Please make sure the conversion numbers are correct.	s44
+165.979	169.922	A	Ji sir, Swiggy campaign ka CTR 3 percent aaya hai.	s45
+170.609	173.393	B	That is lower than last month, let's discuss tomorrow.	s46
+174.468	177.295	A	Main data dobara check karke aapko batati hoon.	s47
+178.156	181.083	B	Theek hai, aur client ko mail CC mein daal dena.	s48
+182.568	185.548	A	Ho gaya sir, maine sabko loop mein rakh liya hai.	s49
+185.803	186.396	B	Great, thank you.	s50
+187.759	192.039	A	Ek aur baat, meri chhutti 20 se 24 tarikh tak approve kar dijiye.	s51
+193.333	195.159	B	Approved hai, HR portal pe dekh lo.	s52
+196.467	199.536	A	Mausam bahut kharab hai, baarish ruk hi nahi rahi.	s53
+200.914	204.01	B	Cab book kar lo, Ola pe surge chal raha hai par.	s54
+204.84	208.191	A	Uber mein ₹350 dikha raha hai, chalega.	s55
+209.424	211.359	B	Ghar pahunch ke message kar dena.	s56
+212.692	214.77	A	Haan pakka, tum bhi dhyan se jaana.	s57
+216.146	218.325	B	The traffic on the highway is terrible today.	s58
+219.02	221.277	A	Chalo phir kal milte hain, good night.	s59
+221.826	223.209	B	Good night, take care.	s60

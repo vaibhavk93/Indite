@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="window">#FF1F1A15</color>
+    <color name="window">#FF131110</color>
+    <color name="kb_bg">#FF1D1A17</color>
+    <color name="kb_key">#FF2E2A26</color>
+    <color name="kb_ink">#FFF4EFE8</color>
+    <color name="kb_soft">#FFA79D92</color>
+    <color name="kb_accent">#FFF2A65A</color>
+    <color name="kb_on_accent">#FF131110</color>
+    <color name="kb_record">#FFE5484D</color>
 </resources>

@@ -19,7 +19,9 @@ import java.nio.ByteOrder
 
 const val SR = 16000
 
-data class Piece(val i: Int, val start: Int, val end: Int, val text: String, val flags: List<String>) {
+/** latencyMs: from the moment this part was cut (you paused) to its text being ready; engineMs: model time only. -1 = unknown. */
+data class Piece(val i: Int, val start: Int, val end: Int, val text: String, val flags: List<String>,
+                 val latencyMs: Int = -1, val engineMs: Int = -1) {
     val startSec get() = start / SR.toDouble()
     /** Nothing worth copying: the engine gave up, or wrote only "nan" for noise. */
     val junk get() = "unclear" in flags || text.trim().equals("nan", ignoreCase = true)
@@ -28,7 +30,7 @@ data class Piece(val i: Int, val start: Int, val end: Int, val text: String, val
 data class Note(
     val id: String, val name: String, val created: Long, val samples: Int,
     val cuts: List<IntArray>, val pieces: List<Piece>, val edits: Map<Int, String>, val speed: String?,
-    val recording: Boolean,
+    val recording: Boolean, val test: Boolean = false,
 ) {
     val seconds get() = samples / SR.toDouble()
     val done get() = !recording && pieces.size >= cuts.size
@@ -53,14 +55,19 @@ object Notes {
     val working = MutableStateFlow(false)  // the queue is running (shows a progress bar under the status)
     val level = MutableStateFlow(0f)  // live mic loudness 0..1 while recording
     @Volatile var transcribing = false  // the recorder cuts short pieces only while the engine is free
+    /** Notes the voice keyboard is transcribing itself (so it can type the text in); the queue leaves them alone. */
+    val claimed: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     private val cutLock = Any()
     private lateinit var root: File
+    private var results: File? = null  // shell-readable folder for automated test results (test notes only)
+    private val cutTimes = java.util.concurrent.ConcurrentHashMap<String, Long>()  // "id:i" -> when the cut was made
 
     /** Longest file we import for now: decoding is streamed, but the cut list and UI aren't tuned for longer. */
     const val MAX_IMPORT_MIN = 120
 
     fun init(context: Context) {
         if (!::root.isInitialized) root = File(context.filesDir, "notes").apply { mkdirs() }
+        if (results == null) results = context.getExternalFilesDir("results")
         refresh()
     }
 
@@ -71,6 +78,9 @@ object Notes {
         list.value = (root.listFiles() ?: emptyArray()).mapNotNull { load(it) }.sortedByDescending { it.created }
     }
 
+    /** One note, read fresh from storage (the voice keyboard polls its own dictation this way). */
+    fun note(id: String): Note? = load(dir(id))
+
     private fun load(d: File): Note? = try {
         val meta = JSONObject(File(d, "meta.json").readText())
         val cuts = JSONArray(File(d, "cuts.json").readText()).let { a ->
@@ -80,7 +90,8 @@ object Notes {
             try {  // a line cut short by a crash is ignored: that piece is simply redone
                 val o = JSONObject(line)
                 val f = o.getJSONArray("flags")
-                Piece(o.getInt("i"), o.getInt("start"), o.getInt("end"), o.getString("text"), List(f.length()) { f.getString(it) })
+                Piece(o.getInt("i"), o.getInt("start"), o.getInt("end"), o.getString("text"), List(f.length()) { f.getString(it) },
+                    o.optInt("ms", -1), o.optInt("engine", -1))
             } catch (e: Exception) { null }
         } ?: emptyList()
         val edits = File(d, "edits.json").takeIf { it.exists() }?.let { f ->
@@ -89,14 +100,14 @@ object Notes {
         val recording = meta.optBoolean("recording")
         val samples = if (recording) (File(d, "audio.pcm").length() / 2).toInt() else meta.getInt("samples")
         Note(d.name, meta.getString("name"), meta.getLong("created"), samples, cuts, pieces, edits,
-            meta.optString("speed").ifEmpty { null }, recording)
+            meta.optString("speed").ifEmpty { null }, recording, meta.optBoolean("test"))
     } catch (e: Exception) { null }
 
     /** Copy a shared or picked file in (shared links can expire), decode it and cut it at pauses. Returns the note id. */
-    suspend fun import(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
+    suspend fun import(context: Context, uri: Uri, test: Boolean = false): String = withContext(Dispatchers.IO) {
         val name = context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
             if (it.moveToFirst()) it.getString(0) else null
-        }?.substringBeforeLast('.') ?: "Voice note"
+        }?.substringBeforeLast('.') ?: uri.lastPathSegment?.substringBeforeLast('.') ?: "Voice note"
         val id = System.currentTimeMillis().toString()
         val d = dir(id).apply { mkdirs() }
         try {
@@ -111,7 +122,8 @@ object Notes {
             status.value = "Finding the pauses in $name…"
             val cuts = cutRange(context, id, 0, samples)
             writeAtomic(File(d, "cuts.json"), JSONArray(cuts.map { JSONArray(it.toList()) }).toString())
-            writeAtomic(File(d, "meta.json"), JSONObject().put("name", name).put("created", id.toLong()).put("samples", samples).toString())
+            writeAtomic(File(d, "meta.json"), JSONObject().put("name", name).put("created", id.toLong()).put("samples", samples)
+                .put("test", test).toString())
             status.value = ""
             refresh()
             id
@@ -148,13 +160,14 @@ object Notes {
     }
 
     /** A new, empty recording. The recorder appends audio.pcm and adds a cut at every pause. */
-    fun startRecording(): String {
+    fun startRecording(name: String? = null, test: Boolean = false): String {
         val id = System.currentTimeMillis().toString()
         val d = dir(id).apply { mkdirs() }
         File(d, "audio.pcm").createNewFile()
         writeAtomic(File(d, "cuts.json"), "[]")
-        val name = "Recording, " + java.text.SimpleDateFormat("d MMM, h:mm a", java.util.Locale.getDefault()).format(java.util.Date(id.toLong()))
-        writeAtomic(File(d, "meta.json"), JSONObject().put("name", name).put("created", id.toLong()).put("samples", 0).put("recording", true).toString())
+        val title = name ?: java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.getDefault()).format(java.util.Date(id.toLong()))
+        writeAtomic(File(d, "meta.json"), JSONObject().put("name", title).put("created", id.toLong()).put("samples", 0)
+            .put("recording", true).put("test", test).toString())
         refresh()
         return id
     }
@@ -162,8 +175,26 @@ object Notes {
     fun addCut(id: String, cut: IntArray) = synchronized(cutLock) {
         val f = File(dir(id), "cuts.json")
         if (!f.exists()) return@synchronized  // note was deleted
-        writeAtomic(f, JSONArray(f.readText()).put(JSONArray(cut.toList())).toString())
+        val a = JSONArray(f.readText())
+        cutTimes["$id:${a.length()}"] = System.currentTimeMillis()
+        writeAtomic(f, a.put(JSONArray(cut.toList())).toString())
     }
+
+    /** Milliseconds since cut i of a note was made (live recordings), or -1. */
+    fun sinceCut(id: String, i: Int): Int = cutTimes.remove("$id:$i")?.let { (System.currentTimeMillis() - it).toInt() } ?: -1
+
+    fun rename(id: String, name: String) {
+        val f = File(dir(id), "meta.json")
+        if (!f.exists() || name.isBlank()) return
+        writeAtomic(f, JSONObject(f.readText()).put("name", name.trim()).toString())
+        refresh()
+    }
+
+    /** Subtitles (SRT) from each part's start and end, with the user's edits and word fixes. */
+    fun srt(note: Note): String = note.pieces.filter { !it.junk || it.i in note.edits }.mapIndexed { k, p ->
+        fun t(s: Int) = (s.toLong() * 1000 / SR).let { ms -> "%02d:%02d:%02d,%03d".format(ms / 3_600_000, ms / 60_000 % 60, ms / 1000 % 60, ms % 1000) }
+        "${k + 1}\n${t(p.start)} --> ${t(p.end)}\n${note.text(p.i).trim()}\n"
+    }.joinToString("\n")
 
     fun stopRecording(id: String, samples: Int) {
         val f = File(dir(id), "meta.json")
@@ -210,7 +241,7 @@ object Notes {
 
     fun appendPiece(id: String, p: Piece) {
         val line = JSONObject().put("i", p.i).put("start", p.start).put("end", p.end).put("text", p.text)
-            .put("flags", JSONArray(p.flags)).toString() + "\n"
+            .put("flags", JSONArray(p.flags)).put("ms", p.latencyMs).put("engine", p.engineMs).toString() + "\n"
         FileOutputStream(File(dir(id), "transcript.jsonl"), true).use { it.write(line.toByteArray()); it.fd.sync() }
     }
 
@@ -220,6 +251,19 @@ object Notes {
         writeAtomic(f, JSONObject(f.readText()).put("speed", speed).toString())
         File(dir(id), "attempt").delete()
         refresh()
+        exportTestResult(id)
+    }
+
+    /** Test notes only: copy the result where `adb pull` can read it, for the automated benchmark. */
+    private fun exportTestResult(id: String) {
+        val note = list.value.firstOrNull { it.id == id }?.takeIf { it.test } ?: return
+        val out = results ?: return
+        val pieces = JSONArray(note.pieces.map {
+            JSONObject().put("i", it.i).put("start", it.start).put("end", it.end).put("text", it.text)
+                .put("flags", JSONArray(it.flags)).put("ms", it.latencyMs).put("engine", it.engineMs)
+        })
+        File(out, "${note.name}.json").writeText(JSONObject().put("name", note.name).put("seconds", note.seconds)
+            .put("speed", note.speed).put("pieces", pieces).toString(1))
     }
 
     /** Save the user's version of piece i; null removes the edit (back to the model's text). */
