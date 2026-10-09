@@ -19,3 +19,5 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# indite: sherpa-onnx classes are called from native code by name; keep them.
+-keep class com.k2fsa.sherpa.onnx.** { *; }

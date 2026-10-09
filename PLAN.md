@@ -195,6 +195,7 @@ Dropped: no-speech score filter (already covered by our speech detector), rate-l
 | Phone v2 15-min test (in progress) | ~0.63x observed (was 0.54x); 39.3 °C |
 | Mac, 42 real pieces (avg 21.4 s), window sized to piece (+2 s, avg 24 s) | 0 loops, 2.6% words differ from full window; the one big difference recovered speech the full window dropped |
 | Mac, model formats vs q8_0 (closest to original) on 42 pieces | **q5_K 2.1%** (574 MB), q5_0 today 4.3% (574 MB), q4_0 5.1% (474 MB); all 0 loops/empty/junk. **Pick q5_K**: same size, ARM fast path ("repack"), closer to original. Phone speed unmeasured |
+| Synthetic benchmark (bench_synth/, 60 TTS Hinglish sentences, clean + noisy 10 dB), Mac, word error rate | q5_K greedy 18.1% clean / 21.6% noisy → **13.0% / 17.1% with everyday spelling** (49% of errors were spelling variants). Beam 5 + spelling 12.6 / 16.5. q8 + spelling 13.2 / 16.3. Prime + spelling 13.8 / **26.2** (bad in noise). Sarvam cloud + spelling 6.0% clean. Decision: keep q5_K greedy + everyday spelling; closing the gap to Sarvam needs a better (fine-tuned) model |
 | Real-phone transcript errors | Cyrillic "У нас" (now flagged: non_roman), brand names (PTM → Paytm, clever tap → CleverTap), a few garbled jargon stretches |
 | Phone v2 (build fix + 4 s sentence timer at 30 s / 15 s windows + threads/CPU line + backup off) | Pending |
 

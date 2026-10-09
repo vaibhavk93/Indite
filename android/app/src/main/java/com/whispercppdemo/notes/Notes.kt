@@ -30,8 +30,12 @@ data class Piece(val i: Int, val start: Int, val end: Int, val text: String, val
 data class Note(
     val id: String, val name: String, val created: Long, val samples: Int,
     val cuts: List<IntArray>, val pieces: List<Piece>, val edits: Map<Int, String>, val speed: String?,
-    val recording: Boolean, val test: Boolean = false,
+    val recording: Boolean, val test: Boolean = false, val speakers: Speakers.Result? = null,
 ) {
+    /** Speaker number of a paragraph (0-based), or null if speakers aren't labelled. */
+    fun speakerOf(i: Int): Int? = speakers?.of?.get(i)
+    fun speakerName(n: Int) = speakers?.names?.get(n)?.takeIf { it.isNotBlank() } ?: "Speaker ${n + 1}"
+
     val seconds get() = samples / SR.toDouble()
     val done get() = !recording && pieces.size >= cuts.size
     val pending get() = pieces.size < cuts.size
@@ -40,8 +44,20 @@ data class Note(
     /** What the user sees: their own edit if they made one, else the auto text. */
     fun text(i: Int) = edits[i] ?: auto(i)
     /** Plain text for copying and sharing: edits applied, no "Check" labels, no junk pieces. */
-    fun allText() = pieces.filter { !it.junk || it.i in edits }.joinToString(" ") { text(it.i).trim() }
-        .replace(Regex("\\s+"), " ").trim()
+    fun allText(): String {
+        val kept = pieces.filter { !it.junk || it.i in edits }
+        if (speakers == null) return kept.joinToString(" ") { text(it.i).trim() }.replace(Regex("\\s+"), " ").trim()
+        // with speakers: one line per turn, "Amit: ..."
+        val out = StringBuilder()
+        var last: Int? = -2
+        for (p in kept) {
+            val s = speakerOf(p.i)
+            if (s != last) { if (out.isNotEmpty()) out.append("\n\n"); out.append(s?.let { speakerName(it) + ": " } ?: ""); last = s }
+            else out.append(" ")
+            out.append(text(p.i).trim())
+        }
+        return out.toString().trim()
+    }
 }
 
 /**
@@ -100,7 +116,7 @@ object Notes {
         val recording = meta.optBoolean("recording")
         val samples = if (recording) (File(d, "audio.pcm").length() / 2).toInt() else meta.getInt("samples")
         Note(d.name, meta.getString("name"), meta.getLong("created"), samples, cuts, pieces, edits,
-            meta.optString("speed").ifEmpty { null }, recording, meta.optBoolean("test"))
+            meta.optString("speed").ifEmpty { null }, recording, meta.optBoolean("test"), Speakers.load(d.name))
     } catch (e: Exception) { null }
 
     /** Copy a shared or picked file in (shared links can expire), decode it and cut it at pauses. Returns the note id. */
@@ -193,7 +209,8 @@ object Notes {
     /** Subtitles (SRT) from each part's start and end, with the user's edits and word fixes. */
     fun srt(note: Note): String = note.pieces.filter { !it.junk || it.i in note.edits }.mapIndexed { k, p ->
         fun t(s: Int) = (s.toLong() * 1000 / SR).let { ms -> "%02d:%02d:%02d,%03d".format(ms / 3_600_000, ms / 60_000 % 60, ms / 1000 % 60, ms % 1000) }
-        "${k + 1}\n${t(p.start)} --> ${t(p.end)}\n${note.text(p.i).trim()}\n"
+        val who = note.speakerOf(p.i)?.let { note.speakerName(it) + ": " } ?: ""
+        "${k + 1}\n${t(p.start)} --> ${t(p.end)}\n$who${note.text(p.i).trim()}\n"
     }.joinToString("\n")
 
     fun stopRecording(id: String, samples: Int) {

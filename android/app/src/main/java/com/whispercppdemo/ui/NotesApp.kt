@@ -111,6 +111,8 @@ import com.whispercppdemo.notes.Notes
 import com.whispercppdemo.notes.PhoneCheck
 import com.whispercppdemo.notes.Piece
 import com.whispercppdemo.notes.Settings
+import com.whispercppdemo.notes.Speakers
+import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -523,6 +525,9 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var editing by remember { mutableStateOf<Int?>(null) }
     var playing by remember { mutableStateOf<Int?>(null) }
     var asking by remember { mutableStateOf(false) }
+    var whoSpoke by remember { mutableStateOf(false) }
+    var renamingSpeaker by remember { mutableStateOf<Int?>(null) }
+    var labelling by remember { mutableStateOf<String?>(null) }
     val exportSrt = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-subrip")) { uri ->
         if (uri != null) AppScope.launch(Dispatchers.IO) {
             context.contentResolver.openOutputStream(uri)?.use { it.write(Notes.srt(note).toByteArray()) }
@@ -567,6 +572,45 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
         },
         confirmButton = { TextButton(onClick = { asking = false }) { Text("Cancel") } },
     )
+    if (whoSpoke) AlertDialog(
+        onDismissRequest = { whoSpoke = false },
+        title = { Text("How many people are speaking?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("indite listens for different voices and labels each paragraph. It all happens on this phone.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    (2..5).forEach { k ->
+                        FilledTonalButton(onClick = {
+                            whoSpoke = false
+                            labelling = "Starting…"
+                            val app = context.applicationContext
+                            AppScope.launch(Dispatchers.Default) {
+                                try { Speakers.label(app, note, k) { labelling = it } }
+                                catch (e: Exception) { Messages.flow.tryEmit("Couldn't tell the voices apart in this note.") }
+                                finally { labelling = null }
+                            }
+                        }) { Text("$k") }
+                    }
+                }
+                TextButton(onClick = {
+                    whoSpoke = false
+                    labelling = "Starting…"
+                    val app = context.applicationContext
+                    AppScope.launch(Dispatchers.Default) {
+                        try { Speakers.label(app, note, 0) { labelling = it } }
+                        catch (e: Exception) { Messages.flow.tryEmit("Couldn't tell the voices apart in this note.") }
+                        finally { labelling = null }
+                    }
+                }) { Text("Not sure (beta)") }
+            }
+        },
+        confirmButton = { TextButton(onClick = { whoSpoke = false }) { Text("Cancel") } },
+    )
+    renamingSpeaker?.let { n -> RenameDialog(note.speakerName(n), title = "Rename speaker") { name ->
+        renamingSpeaker = null
+        if (name != null) AppScope.launch(Dispatchers.IO) { Speakers.rename(note.id, n, name) }
+    } }
     if (renaming) RenameDialog(note.name, onDone = { renaming = false; if (it != null) Notes.rename(note.id, it) })
     editing?.let { i -> if (i < note.pieces.size) EditSheet(note, i, playing == i, onPlay = { play(note.pieces[i]) },
         onCopy = { copy(note.text(i).trim()) }, onClose = { editing = null }) }
@@ -587,6 +631,9 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Ask my AI…") },
                             onClick = { menu = false; asking = true })
+                        if (note.done && note.pieces.size >= 2) DropdownMenuItem(
+                            text = { Text(if (note.speakers == null) "Who spoke?" else "Label speakers again") },
+                            onClick = { menu = false; whoSpoke = true })
                         DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
                         if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Save as subtitles (.srt)") },
                             onClick = { menu = false; exportSrt.launch("${note.name}.srt") })
@@ -615,7 +662,12 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         }
                         Text("Tap any paragraph to edit it, hear it or copy it.", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else if (note.pending) {
+                    }
+                    labelling?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape))
+                    }
+                    if (note.pending) {
                         LinearProgressIndicator(note.pieces.size / note.cuts.size.toFloat(), Modifier.fillMaxWidth().clip(CircleShape))
                         Text("Text appears part by part. You can leave the app; it keeps working.",
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -623,7 +675,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                 }
             }
             items(note.pieces, key = { it.i }) { p ->
-                Paragraph(note, p, playing == p.i, onClick = { editing = p.i })
+                Paragraph(note, p, playing == p.i, onClick = { editing = p.i }, onSpeaker = { renamingSpeaker = it })
             }
             if (note.pending) item { Box(Modifier.padding(vertical = 10.dp)) { Writing() } }
         }
@@ -631,7 +683,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
 }
 
 @Composable
-private fun Paragraph(note: Note, p: Piece, playing: Boolean, onClick: () -> Unit) {
+private fun Paragraph(note: Note, p: Piece, playing: Boolean, onClick: () -> Unit, onSpeaker: (Int) -> Unit) {
     val edited = p.i in note.edits
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
@@ -641,6 +693,10 @@ private fun Paragraph(note: Note, p: Piece, playing: Boolean, onClick: () -> Uni
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            note.speakerOf(p.i)?.let { s ->
+                SpeakerChip(note.speakerName(s), s, Modifier.clickable(onClickLabel = "Rename this speaker") { onSpeaker(s) })
+                Spacer(Modifier.size(8.dp))
+            }
             Text(clock(p.startSec), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (edited) Text("  ·  edited", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
         }
@@ -680,6 +736,18 @@ private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, 
                 modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Text from ${clock(p.startSec)}, editable" },
                 textStyle = MaterialTheme.typography.bodyLarge, shape = RoundedCornerShape(14.dp), minLines = 3)
             if (p.flags.isNotEmpty()) FlagLine("Check: " + p.flags.joinToString(", ") { Guards.NOTE[it] ?: it })
+            note.speakers?.let { sp ->
+                val count = (sp.of.values.maxOrNull() ?: 0) + 1
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Spoken by", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    (0 until count).forEach { s ->
+                        val on = note.speakerOf(i) == s
+                        SpeakerChip(note.speakerName(s), s, Modifier.clip(CircleShape)
+                            .border(if (on) 2.dp else 0.dp, if (on) speakerColor(s) else Color.Transparent, CircleShape)
+                            .clickable(onClickLabel = "Move to ${note.speakerName(s)}") { AppScope.launch(Dispatchers.IO) { Speakers.move(note.id, i, s) } })
+                    }
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = onCopy) { Text("Copy") }
                 AnimatedVisibility(edited, enter = fadeIn(), exit = fadeOut()) {
@@ -693,16 +761,25 @@ private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, 
 }
 
 @Composable
-private fun RenameDialog(current: String, onDone: (String?) -> Unit) {
+private fun RenameDialog(current: String, title: String = "Rename", onDone: (String?) -> Unit) {
     var name by remember { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = { onDone(null) },
-        title = { Text("Rename") },
+        title = { Text(title) },
         text = { OutlinedTextField(name, { name = it }, singleLine = true, modifier = Modifier.fillMaxWidth()) },
         confirmButton = { TextButton(onClick = { onDone(name) }, enabled = name.isNotBlank()) { Text("Save") } },
         dismissButton = { TextButton(onClick = { onDone(null) }) { Text("Cancel") } },
     )
 }
+
+/** One steady colour per speaker; readable on the light and the dark background. */
+private val SpeakerColors = listOf(Color(0xFFD9822B), Color(0xFF2E9E8F), Color(0xFF8B6FD6), Color(0xFFD45D79), Color(0xFF3F8FD9))
+private fun speakerColor(n: Int) = SpeakerColors[n % SpeakerColors.size]
+
+@Composable
+private fun SpeakerChip(name: String, n: Int, modifier: Modifier = Modifier) = Surface(
+    shape = CircleShape, color = speakerColor(n).copy(alpha = 0.18f), contentColor = speakerColor(n), modifier = modifier,
+) { Text(name, Modifier.padding(horizontal = 10.dp, vertical = 3.dp), style = MaterialTheme.typography.labelMedium) }
 
 @Composable
 private fun FlagLine(text: String) = Row(verticalAlignment = Alignment.CenterVertically) {
