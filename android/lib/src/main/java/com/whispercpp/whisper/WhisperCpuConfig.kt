@@ -6,8 +6,11 @@ import java.io.FileReader
 
 object WhisperCpuConfig {
     val preferredThreadCount: Int
-        // Always use at least 2 threads:
-        get() = CpuInfo.getHighPerfCpuCount().coerceAtLeast(2)
+        // Always use at least 2 threads. indite: when every core is the same (budget phones with 8 identical
+        // cores, emulators) the fast-core count is 0; use up to 4 cores instead of falling back to 2.
+        get() = CpuInfo.getHighPerfCpuCount()
+            .let { if (it == 0) Runtime.getRuntime().availableProcessors().coerceAtMost(4) else it }
+            .coerceAtLeast(2)
 }
 
 private class CpuInfo(private val lines: List<String>) {

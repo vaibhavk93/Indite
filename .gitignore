@@ -7,3 +7,5 @@ data/
 .tools/
 .DS_Store
 phonetest/
+*.apk
+APK/
