@@ -132,11 +132,22 @@ object Messages {
 }
 
 /** Ready prompts for the user's own AI app (ChatGPT, Claude…). Only the text is shared, and only when the user taps. */
+private const val HINGLISH = "It is Hinglish (Hindi and English in Roman letters). Keep names, numbers and dates exactly. Reply in the same mix of Hindi and English, in Roman letters."
 private val AskPrompts = listOf(
-    "Summary" to "Summarise this in 5 short bullet points. Keep names, numbers and dates exactly. It is Hinglish (Hindi and English in Roman letters).",
-    "To-do list" to "List every task, promise or follow-up in this, one per line, with who and when if mentioned. It is Hinglish (Hindi and English in Roman letters).",
+    "Brain dump" to "This is me thinking out loud. Organise it: 1) the main themes, 2) every idea under its theme, in short bullets, " +
+        "3) the 3 most important open questions I should answer next, 4) concrete next steps. Don't add ideas I didn't say. $HINGLISH",
+    "Meeting notes" to "Turn this meeting transcript into notes with these headings: Decisions, Action items (who, what, by when), " +
+        "Open questions, Key points. Short bullets. $HINGLISH",
+    "Lecture notes" to "Turn this lecture transcript into study notes: the main topics as headings, key ideas and definitions as bullets, " +
+        "examples, and 5 quick revision questions at the end. $HINGLISH",
+    "Action items" to "List every task, promise or follow-up in this, one per line, as: task | who | by when (write 'not said' if missing). " +
+        "Only things actually said. $HINGLISH",
+    "Practice answer" to "I'm practising this spoken answer (for example a product-management interview or a pitch). Score it 1-10 on " +
+        "structure, clarity, use of numbers and examples, and conciseness, one line of reason each. Then give the 3 most useful fixes and " +
+        "a tighter 60-second version. $HINGLISH",
+    "Summary" to "Summarise this in 5 short bullet points. $HINGLISH",
     "In English" to "Translate this into clear, natural English. Keep names, numbers and dates exactly.",
-    "Clean it up" to "Clean up this dictated Hinglish text: fix punctuation and obvious mistakes, remove fillers like umm, keep Hindi words in Roman letters, don't add anything new.",
+    "Clean it up" to "Clean up this dictated text: fix punctuation and obvious mistakes, remove fillers like umm, don't add anything new. $HINGLISH",
 )
 
 private val Gutter = 20.dp
@@ -528,6 +539,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var whoSpoke by remember { mutableStateOf(false) }
     var renamingSpeaker by remember { mutableStateOf<Int?>(null) }
     var labelling by remember { mutableStateOf<String?>(null) }
+    var awaitingReply by rememberSaveable(note.id) { mutableStateOf<String?>(null) }  // the prompt the user just sent to their AI
     val exportSrt = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-subrip")) { uri ->
         if (uri != null) AppScope.launch(Dispatchers.IO) {
             context.contentResolver.openOutputStream(uri)?.use { it.write(Notes.srt(note).toByteArray()) }
@@ -565,7 +577,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp))
                 AskPrompts.forEach { (label, prompt) ->
-                    TextButton(onClick = { asking = false; share(context, prompt + "\n\n---\n" + note.allText()) },
+                    TextButton(onClick = { asking = false; awaitingReply = label; share(context, prompt + "\n\n---\n" + note.allText()) },
                         modifier = Modifier.fillMaxWidth()) { Text(label, Modifier.fillMaxWidth()) }
                 }
             }
@@ -663,6 +675,28 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         Text("Tap any paragraph to edit it, hear it or copy it.", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    awaitingReply?.let { label ->
+                        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Got the $label from your AI? Copy its reply there, then paste it here to keep it with this note.",
+                                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Button(onClick = {
+                                        val reply = clipboard.getText()?.text.orEmpty()
+                                        if (reply.isBlank() || reply.contains(note.allText().take(60))) {
+                                            scope.launch { snackbar.showSnackbar("Copy the AI's reply first, then tap Paste.") }
+                                        } else {
+                                            AppScope.launch(Dispatchers.IO) { Notes.addAi(note.id, label, reply) }
+                                            awaitingReply = null
+                                        }
+                                    }) { Text("Paste reply") }
+                                    TextButton(onClick = { awaitingReply = null }) { Text("Not now") }
+                                }
+                            }
+                        }
+                    }
+                    note.ai.forEach { r -> AiCard(r, onCopy = { copy(r.text) },
+                        onDelete = { AppScope.launch(Dispatchers.IO) { Notes.deleteAi(note.id, r.created) } }) }
                     labelling?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape))
@@ -770,6 +804,26 @@ private fun RenameDialog(current: String, title: String = "Rename", onDone: (Str
         confirmButton = { TextButton(onClick = { onDone(name) }, enabled = name.isNotBlank()) { Text("Save") } },
         dismissButton = { TextButton(onClick = { onDone(null) }) { Text("Cancel") } },
     )
+}
+
+@Composable
+private fun AiCard(r: com.whispercppdemo.notes.AiReply, onCopy: () -> Unit, onDelete: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = if (open) "Collapse" else "Expand") { open = !open }) {
+        Column(Modifier.padding(14.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Chip(r.label)
+                Text("  from your AI", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(r.text, style = MaterialTheme.typography.bodyMedium, maxLines = if (open) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis)
+            if (open) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onCopy) { Text("Copy") }
+                TextButton(onClick = onDelete) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+            }
+        }
+    }
 }
 
 /** One steady colour per speaker; readable on the light and the dark background. */

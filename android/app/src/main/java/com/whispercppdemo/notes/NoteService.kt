@@ -137,7 +137,9 @@ class NoteService : Service() {
             var w: WhisperContext? = null
             while (true) {
                 Notes.refresh()
-                val note = Notes.list.value.filter { it.pending && it.id !in Notes.claimed }.minByOrNull { it.created }
+                // A live recording always goes first (someone is waiting for each sentence); imports wait their turn.
+                val waiting = Notes.list.value.filter { it.pending && it.id !in Notes.claimed }
+                val note = waiting.firstOrNull { it.id == Recording.id } ?: waiting.minByOrNull { it.created }
                 when {
                     note != null -> {
                         if (w == null) {
@@ -183,6 +185,8 @@ class NoteService : Service() {
         for (i in note.pieces.size until note.cuts.size) {
             waitUntilSafe()
             if (!Notes.dir(note.id).exists()) return  // deleted while waiting
+            // a recording started meanwhile: stop this import after the current part; the queue picks the recording next
+            if (Recording.id != null && Recording.id != note.id && i > note.pieces.size) break
             if (note.id in Notes.claimed) return  // the voice keyboard is handling this one
             val piece = transcribePiece(w, note, i) ?: return
             val (start, end) = piece.start to piece.end

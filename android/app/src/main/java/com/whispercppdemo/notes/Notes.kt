@@ -27,10 +27,14 @@ data class Piece(val i: Int, val start: Int, val end: Int, val text: String, val
     val junk get() = "unclear" in flags || text.trim().equals("nan", ignoreCase = true)
 }
 
+/** An answer from the user's own AI app (ChatGPT, Claude…), pasted back and kept with the note. */
+data class AiReply(val label: String, val text: String, val created: Long)
+
 data class Note(
     val id: String, val name: String, val created: Long, val samples: Int,
     val cuts: List<IntArray>, val pieces: List<Piece>, val edits: Map<Int, String>, val speed: String?,
     val recording: Boolean, val test: Boolean = false, val speakers: Speakers.Result? = null,
+    val ai: List<AiReply> = emptyList(),
 ) {
     /** Speaker number of a paragraph (0-based), or null if speakers aren't labelled. */
     fun speakerOf(i: Int): Int? = speakers?.of?.get(i)
@@ -116,7 +120,7 @@ object Notes {
         val recording = meta.optBoolean("recording")
         val samples = if (recording) (File(d, "audio.pcm").length() / 2).toInt() else meta.getInt("samples")
         Note(d.name, meta.getString("name"), meta.getLong("created"), samples, cuts, pieces, edits,
-            meta.optString("speed").ifEmpty { null }, recording, meta.optBoolean("test"), Speakers.load(d.name))
+            meta.optString("speed").ifEmpty { null }, recording, meta.optBoolean("test"), Speakers.load(d.name), loadAi(d))
     } catch (e: Exception) { null }
 
     /** Copy a shared or picked file in (shared links can expire), decode it and cut it at pauses. Returns the note id. */
@@ -284,6 +288,31 @@ object Notes {
         val o = JSONObject().put("name", note.name).put("seconds", note.seconds).put("speed", note.speed).put("pieces", pieces)
         extra?.let { o.put(it.first, it.second) }
         File(out, "${note.name}.json").writeText(o.toString(1))
+    }
+
+    private fun loadAi(d: File): List<AiReply> = File(d, "ai.json").takeIf { it.exists() }?.let { f ->
+        JSONArray(f.readText()).let { a -> List(a.length()) { a.getJSONObject(it).let { o -> AiReply(o.getString("label"), o.getString("text"), o.getLong("created")) } } }
+    } ?: emptyList()
+
+    /** Keep an AI answer with the note (newest first). The transcript is never changed. */
+    fun addAi(id: String, label: String, text: String) {
+        if (!dir(id).exists() || text.isBlank()) return
+        val f = File(dir(id), "ai.json")
+        val a = f.takeIf { it.exists() }?.let { JSONArray(it.readText()) } ?: JSONArray()
+        val all = JSONArray().put(JSONObject().put("label", label).put("text", text.trim()).put("created", System.currentTimeMillis()))
+        for (k in 0 until a.length()) all.put(a.getJSONObject(k))
+        writeAtomic(f, all.toString())
+        refresh()
+    }
+
+    fun deleteAi(id: String, created: Long) {
+        val f = File(dir(id), "ai.json")
+        if (!f.exists()) return
+        val a = JSONArray(f.readText())
+        val keep = JSONArray()
+        for (k in 0 until a.length()) a.getJSONObject(k).let { if (it.getLong("created") != created) keep.put(it) }
+        writeAtomic(f, keep.toString())
+        refresh()
     }
 
     /** Save the user's version of piece i; null removes the edit (back to the model's text). */

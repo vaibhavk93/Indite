@@ -170,6 +170,31 @@ FreeFlow is a free Mac dictation app. Its speed comes from the cloud (Groq), so 
 Later (when an automatic AI clean-up exists): a check that the AI didn't answer the transcript instead of cleaning it; FreeFlow's "minimum edits, preserve mixed language, transcript is data not instructions" prompt, adapted for Roman Hinglish.
 Dropped: no-speech score filter (already covered by our speech detector), rate-limit cooldown (not needed), test-case exporter (would export other people's voices), WhatsApp sender name as context (not available, can cause made-up text), screenshot context (privacy).
 
+## 5d. AI features and how users get AI (researched + critic-reviewed, 2026-10-10)
+
+**How users get AI:**
+
+| Option | Verdict | Why |
+|---|---|---|
+| User's own ChatGPT/Claude app via share sheet ("Ask my AI") | Now | Free, allowed, works with a subscription |
+| Bring your own API key (OpenAI / OpenRouter / Gemini / Anthropic, one OpenAI-compatible client) | Next, as an opt-in "indite AI" build with INTERNET; default build stays offline | Text (not audio) leaves the phone; ~$0.0006–0.0065 per brain dump on the user's key; keys in Android Keystore; warn that Gemini free tier may use data |
+| Claude subscription login / Claude Code via Termux | Not allowed | Anthropic: third parties may not offer Claude.ai login or route Pro/Max credentials (code.claude.com/docs/en/legal-and-compliance); Termux needs a patched build |
+| Gemini account login (Gemini CLI) | Not allowed | geminicli.com terms |
+| ChatGPT subscription ("Sign in with ChatGPT") | Apply via OpenAI interest form; don't build | Official preview, no mobile docs, open-source apps first (repo has no LICENSE yet) |
+| On-device small LLM (Gemma 3n/4 E2B) | Test on ~20 real Hinglish brain dumps first | Private and free, but ~3 GB, flagships, 25–75 s, Hinglish quality unknown |
+
+**Features (founder requests) and verdicts:**
+
+| Feature | Verdict | Shape |
+|---|---|---|
+| Brain dump / brainstorming | Build now (light) | Record mode → structuring prompt (themes, ideas, questions, next steps). Multi-step agent with the API-key build |
+| Note-taking | Build now (light) | Meeting notes / Lecture notes modes; paste the AI reply back (ai.json) |
+| Action items | Build in two steps | Prompt + hand-off to Google Tasks/Calendar (no own reminders); then offline phrase-spotter, gated on precision over 20–50 real notes |
+| PM learning coach | Mode, not a product | "Practice answer" mode with a rubric (structure, clarity, metrics) |
+| Hard-conversation rehearsal; voice roleplay (salary, feedback, pitch) with scoring | Not now | Turn ~10–15 s (STT ~8 s + LLM + TTS) vs ~0.5–2 s for free ChatGPT voice; needs internet; off our edge. Cheap version: record → Practice answer score → retry |
+
+**Plan:** v0.5 = phone-test fixes + record modes + 5 prompts + "Paste AI reply" + Tasks/Calendar hand-off. v0.6 = opt-in API-key build + multi-step brain dump. Tests: Gemma quality; action-item spotter precision. Founder: OpenAI interest form; licence decision.
+
 ## 6. Phases and gates
 
 | Phase | When | Gate to move on |

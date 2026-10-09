@@ -9,21 +9,25 @@ A=~/Library/Android/sdk/platform-tools/adb
 PKG=com.indite.app; ACT=$PKG/com.whispercppdemo.MainActivity
 D=/sdcard/Android/data/$PKG/files
 $A shell mkdir -p $D/tests $D/results
-$A shell rm -f "$D/results/*"
+[ -z "${SKIP_LIVE:-}" ] && $A shell rm -f "$D/results/*"
 for f in dialogue_2spk.wav dialogue_same_gender.wav long_15min.wav; do $A push "$f" $D/tests/ >/dev/null; done
+hook() {  # OnePlus freezes background apps: wake indite first, then send the test command
+  $A shell am start -n $ACT >/dev/null; sleep 3
+  $A shell am start -n $ACT "$@" >/dev/null
+}
 wait_for() {  # result file name, timeout seconds
   for _ in $(seq 1 $(( $2 / 10 ))); do $A shell "test -f '$D/results/$1.json'" && return 0; sleep 10; done
   echo "timeout waiting for $1"; return 1
 }
-$A shell am start -n $ACT --es test_live dialogue_2spk.wav >/dev/null
+[ -z "${SKIP_LIVE:-}" ] && hook --es test_live dialogue_2spk.wav
 wait_for "live dialogue_2spk" 900
-$A shell am start -n $ACT --es test_import dialogue_same_gender.wav >/dev/null
+hook --es test_import dialogue_same_gender.wav
 wait_for "dialogue_same_gender" 900
-$A shell am start -n $ACT --es test_import long_15min.wav >/dev/null
+hook --es test_import long_15min.wav
 wait_for "long_15min" 3600
 for n in "live dialogue_2spk" "dialogue_same_gender"; do
   $A shell rm -f "'$D/results/$n.json'"
-  $A shell am start -n $ACT --es test_label "'$n'" --ei k 2 >/dev/null
+  hook --es test_label "'$n'" --ei k 2
   wait_for "$n" 900
 done
 mkdir -p out/phone; $A pull $D/results/. out/phone/ >/dev/null
