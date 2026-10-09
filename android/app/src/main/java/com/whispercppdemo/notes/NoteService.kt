@@ -128,8 +128,11 @@ class NoteService : Service() {
             val piece = if (tries > 2) {
                 Piece(i, start, end, "[unclear]", listOf("unclear"))  // this piece crashed the engine twice: skip it, keep going
             } else {
-                val text = w.transcribeData(Notes.readPcm(note.id, start, end), printTimestamp = false,
-                    audioCtx = Pauses.audioCtx(end - start)).trim()
+                Notes.transcribing = true
+                val text = try {
+                    w.transcribeData(Notes.readPcm(note.id, start, end), printTimestamp = false,
+                        audioCtx = Pauses.audioCtx(end - start)).trim()
+                } finally { Notes.transcribing = false }
                 Piece(i, start, end, text, Guards.flags(text, (end - start) / SR.toDouble(), speechFrames * 0.03))
             }
             Notes.appendPiece(note.id, piece)

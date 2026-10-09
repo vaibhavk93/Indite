@@ -64,8 +64,11 @@ class LiveRecorder(private val id: String, private val onCut: () -> Unit) {
                 if (rms > max(noise * 2.5f, 0.004f)) { speech++; silent = 0 } else silent++
 
                 val len = total - pieceStart
-                val pauseAfterSpeech = speech >= 10 && silent >= 20 && len >= SR  // 0.6 s quiet after 0.3 s of speech
-                if (pauseAfterSpeech || len >= 25 * SR) {
+                // Cut at a pause (0.6 s quiet after 0.3 s of speech). Each piece costs the engine about the same
+                // whatever its length, so while it's busy let pieces grow to ~15 s: fewer pieces, and it keeps up.
+                val pauseAfterSpeech = speech >= 10 && silent >= 20 && len >= SR
+                val minLen = if (Notes.transcribing) 15 * SR else SR
+                if ((pauseAfterSpeech && len >= minLen) || len >= 25 * SR) {
                     if (speech >= 5) Notes.addCut(id, intArrayOf(pieceStart, total, speech))
                     pieceStart = total; speech = 0; silent = 0
                     onCut()

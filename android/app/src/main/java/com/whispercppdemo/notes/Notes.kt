@@ -43,6 +43,7 @@ object Notes {
     val list = MutableStateFlow<List<Note>>(emptyList())
     val status = MutableStateFlow("")
     val level = MutableStateFlow(0f)  // live mic loudness 0..1 while recording
+    @Volatile var transcribing = false  // the recorder cuts short pieces only while the engine is free
     private val cutLock = Any()
     private lateinit var root: File
 
