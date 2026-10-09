@@ -110,6 +110,7 @@ import com.whispercppdemo.notes.Note
 import com.whispercppdemo.notes.Notes
 import com.whispercppdemo.notes.PhoneCheck
 import com.whispercppdemo.notes.Piece
+import com.whispercppdemo.notes.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -124,7 +125,17 @@ val AppScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 /** One-off messages for the snackbar (import errors, "Copied"). */
 object Messages {
     val flow = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    /** "Always fix PTM -> Paytm?" after the same correction twice. */
+    val suggest = MutableSharedFlow<Pair<String, String>>(extraBufferCapacity = 2)
 }
+
+/** Ready prompts for the user's own AI app (ChatGPT, Claude…). Only the text is shared, and only when the user taps. */
+private val AskPrompts = listOf(
+    "Summary" to "Summarise this in 5 short bullet points. Keep names, numbers and dates exactly. It is Hinglish (Hindi and English in Roman letters).",
+    "To-do list" to "List every task, promise or follow-up in this, one per line, with who and when if mentioned. It is Hinglish (Hindi and English in Roman letters).",
+    "In English" to "Translate this into clear, natural English. Keep names, numbers and dates exactly.",
+    "Clean it up" to "Clean up this dictated Hinglish text: fix punctuation and obvious mistakes, remove fillers like umm, keep Hindi words in Roman letters, don't add anything new.",
+)
 
 private val Gutter = 20.dp
 
@@ -136,9 +147,20 @@ fun NotesApp(openRequest: String?, onOpenHandled: () -> Unit, onOpenFile: () -> 
     val notes by Notes.list.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { Messages.flow.collect { snackbar.showSnackbar(it) } }
+    LaunchedEffect(Unit) {
+        Messages.suggest.collect { (from, to) ->
+            val r = snackbar.showSnackbar("Always fix \"$from\" → \"$to\"?", actionLabel = "Always fix", withDismissAction = true)
+            if (r == SnackbarResult.ActionPerformed) { Settings.addFix(from, to); Notes.refresh() }
+        }
+    }
 
     val note = notes.firstOrNull { it.id == selected }
+    var onboarded by remember { mutableStateOf(Settings.onboarded) }
     when {
+        !onboarded && selected == null -> Welcome(
+            onTry = { Settings.setOnboarded(); onboarded = true; onRecord() },
+            onSkip = { Settings.setOnboarded(); onboarded = true },
+        )
         settings -> {
             BackHandler { settings = false }
             SettingsScreen(onBack = { settings = false })
@@ -153,6 +175,41 @@ fun NotesApp(openRequest: String?, onOpenHandled: () -> Unit, onOpenFile: () -> 
         }
         else -> HomeScreen(notes, snackbar, onOpenFile, onRecord, onSettings = { settings = true }, onOpen = { selected = it })
     }
+}
+
+// ---------------------------------------------------------------- Welcome (first open only)
+
+@Composable
+private fun Welcome(onTry: () -> Unit, onSkip: () -> Unit) {
+    Scaffold(containerColor = MaterialTheme.colorScheme.background) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 28.dp).navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Spacer(Modifier.weight(1f))
+            Text("indite", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
+            Text("Speak Hindi, English or both.\nGet it in writing.", style = MaterialTheme.typography.headlineMedium)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Promise("Written the way you type: achha, kal milte hain, meeting at 3")
+                Promise("Works without internet. Your voice never leaves this phone")
+                Promise("Notes, voice notes, meetings, and a keyboard for any app")
+            }
+            Spacer(Modifier.weight(1f))
+            Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                Text("Try saying: \"Kal 3 baje meeting hai, Rahul ko bata dena.\"", Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyLarge)
+            }
+            Button(onClick = onTry, Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                Icon(painterResource(R.drawable.ic_mic), contentDescription = null, modifier = Modifier.size(20.dp))
+                Text("  Try it now", style = MaterialTheme.typography.titleMedium)
+            }
+            TextButton(onClick = onSkip, Modifier.fillMaxWidth().padding(bottom = 12.dp)) { Text("Not now") }
+        }
+    }
+}
+
+@Composable
+private fun Promise(text: String) = Row(verticalAlignment = Alignment.Top) {
+    Text("✓", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+    Text(text, Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
 }
 
 // ---------------------------------------------------------------- Home
@@ -465,6 +522,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var renaming by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Int?>(null) }
     var playing by remember { mutableStateOf<Int?>(null) }
+    var asking by remember { mutableStateOf(false) }
     val exportSrt = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-subrip")) { uri ->
         if (uri != null) AppScope.launch(Dispatchers.IO) {
             context.contentResolver.openOutputStream(uri)?.use { it.write(Notes.srt(note).toByteArray()) }
@@ -493,6 +551,22 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
         confirmButton = { TextButton(onClick = { confirmDelete = false; Player.stop(); onBack(); Notes.delete(note.id) }) { Text("Delete") } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
     )
+    if (asking) AlertDialog(
+        onDismissRequest = { asking = false },
+        title = { Text("Ask my AI") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Opens your own ChatGPT, Claude or other AI app with this text and a ready request. Only the text is shared.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp))
+                AskPrompts.forEach { (label, prompt) ->
+                    TextButton(onClick = { asking = false; share(context, prompt + "\n\n---\n" + note.allText()) },
+                        modifier = Modifier.fillMaxWidth()) { Text(label, Modifier.fillMaxWidth()) }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { asking = false }) { Text("Cancel") } },
+    )
     if (renaming) RenameDialog(note.name, onDone = { renaming = false; if (it != null) Notes.rename(note.id, it) })
     editing?.let { i -> if (i < note.pieces.size) EditSheet(note, i, playing == i, onPlay = { play(note.pieces[i]) },
         onCopy = { copy(note.text(i).trim()) }, onClose = { editing = null }) }
@@ -511,6 +585,8 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                     }
                     IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Ask my AI…") },
+                            onClick = { menu = false; asking = true })
                         DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
                         if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Save as subtitles (.srt)") },
                             onClick = { menu = false; exportSrt.launch("${note.name}.srt") })
@@ -585,7 +661,10 @@ private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, 
     DisposableEffect(note.id, i) {
         onDispose {  // save on close, wherever the sheet was dismissed from
             val t = latest.value
-            if (t != note.text(i)) AppScope.launch(Dispatchers.IO) { Notes.saveEdit(note.id, i, if (t != note.auto(i)) t else null) }
+            if (t != note.text(i)) AppScope.launch(Dispatchers.IO) {
+                Notes.saveEdit(note.id, i, if (t != note.auto(i)) t else null)
+                Settings.learn(note.auto(i), t)?.let { Messages.suggest.tryEmit(it) }
+            }
         }
     }
     ModalBottomSheet(onDismissRequest = onClose, sheetState = sheet, containerColor = MaterialTheme.colorScheme.surface) {

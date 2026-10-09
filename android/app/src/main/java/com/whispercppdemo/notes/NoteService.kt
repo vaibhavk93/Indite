@@ -233,8 +233,19 @@ class NoteService : Service() {
     private fun batteryTemp() = (registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         ?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0) / 10f
 
-    private fun notifyDone(note: Note) = getSystemService(NotificationManager::class.java)
-        .notify(note.id.hashCode(), notification("Text ready: ${note.name}", ongoing = false, recording = false, noteId = note.id))
+    private fun notifyDone(note: Note) {
+        val fresh = Notes.note(note.id) ?: return
+        val text = fresh.allText()
+        val n = notification("Text ready: ${note.name}", ongoing = false, recording = false, noteId = note.id)
+        val b = Notification.Builder.recoverBuilder(this, n)
+        if (text.isNotEmpty()) {
+            b.setContentText(text).setStyle(Notification.BigTextStyle().bigText(text.take(400)).setBigContentTitle("Text ready: ${note.name}"))
+            val copy = PendingIntent.getBroadcast(this, note.id.hashCode(),
+                Intent(this, CopyReceiver::class.java).putExtra(CopyReceiver.EXTRA_NOTE, note.id), PendingIntent.FLAG_IMMUTABLE)
+            b.addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_mic), "Copy text", copy).build())
+        }
+        getSystemService(NotificationManager::class.java).notify(note.id.hashCode(), b.build())
+    }
 
     private fun notification(text: String, ongoing: Boolean, recording: Boolean, noteId: String? = null): Notification {
         val open = Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_NOTE, noteId ?: Recording.id)

@@ -56,6 +56,8 @@
             <meta-data android:name="android.view.im" android:resource="@xml/method" />
         </service>
 
+        <receiver android:name=".notes.CopyReceiver" android:exported="false" />
+
         <service
             android:name=".notes.NoteService"
             android:exported="false"

@@ -45,6 +45,10 @@ class MainActivity : ComponentActivity() {
         Settings.init(this)
         Notes.init(this)
         NoteService.kick(this)  // resume anything cut short by a crash, a restart or the app being closed
+        if (PhoneCheck.problem() == null) {  // warm the model up now, so the first dictation doesn't wait for it to load
+            val app = applicationContext
+            AppScope.launch(Dispatchers.Default) { runCatching { com.whispercppdemo.notes.Engine.get(app) } }
+        }
         setContent {
             val theme by Settings.theme.collectAsState()
             WhisperCppDemoTheme(darkTheme = when (theme) {

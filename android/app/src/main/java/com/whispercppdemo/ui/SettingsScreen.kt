@@ -115,6 +115,20 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
             item {
+                Section("Spelling") {
+                    val chat by Settings.chatSpelling.collectAsState()
+                    Column(Modifier.selectableGroup()) {
+                        listOf(true to "Everyday spelling: achha, maine, kyunki", false to "As the model wrote it: achchha, mainne, kyonki").forEach { (v, label) ->
+                            Row(Modifier.fillMaxWidth().selectable(selected = chat == v, role = Role.RadioButton) { Settings.setChatSpelling(v) }
+                                .padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = chat == v, onClick = null)
+                                Text(label, Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                }
+            }
+            item {
                 Section("Voice keyboard") {
                     val imm = context.getSystemService(InputMethodManager::class.java)
                     var enabled by remember { mutableStateOf(false) }
