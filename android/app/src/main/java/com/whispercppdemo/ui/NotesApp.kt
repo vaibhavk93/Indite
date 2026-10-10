@@ -273,6 +273,8 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
     val tipPrefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     var showTip by remember { mutableStateOf(!tipPrefs.getBoolean("tipGestures", false)) }
     var renamingNote by remember { mutableStateOf<Note?>(null) }
+    var remindNote by remember { mutableStateOf<Note?>(null) }
+    remindNote?.let { n -> RemindDialog(n.id, remindText(n)) { remindNote = null } }
     renamingNote?.let { n -> RenameDialog(n.name, onDone = { renamingNote = null; if (it != null) Notes.rename(n.id, it) }) }
     fun copyNote(n: Note) {
         context.getSystemService(android.content.ClipboardManager::class.java)
@@ -378,7 +380,8 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                         }
                     },
                     dismissContent = { NoteRow(note, onClick = { onOpen(note.id) }, onCopy = { copyNote(note) },
-                        onShare = { share(context, note.allText()) }, onRename = { renamingNote = note }, onDelete = { deleteWithUndo(note) }) },
+                        onShare = { share(context, note.allText()) }, onRename = { renamingNote = note }, onDelete = { deleteWithUndo(note) },
+                        onRemind = { remindNote = note }) },
                 )
             }
             }
@@ -461,7 +464,8 @@ private fun StatusLine(text: String, working: Boolean) = Column(Modifier.animate
 
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
+private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit,
+                    onRemind: () -> Unit) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     var menu by remember { mutableStateOf(false) }
@@ -493,6 +497,7 @@ private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare
                         if (ready) DropdownMenuItem(text = { Text("Copy text") }, onClick = { menu = false; onCopy() })
                         if (ready) DropdownMenuItem(text = { Text("Share") }, onClick = { menu = false; onShare() })
                         DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
+                        DropdownMenuItem(text = { Text("Remind me") }, onClick = { menu = false; onRemind() })
                         if (!note.recording) DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
                             onClick = { menu = false; onDelete() })
                     }
@@ -657,6 +662,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var asking by remember { mutableStateOf(false) }
     var pickingNotes by remember { mutableStateOf(false) }
     var pickingLanguage by remember { mutableStateOf(false) }
+    var reminding by remember { mutableStateOf(false) }
     var choosing by remember { mutableStateOf<Triple<String, String, List<String>>?>(null) }
     var warnFirst by remember { mutableStateOf<Pair<String, String>?>(null) }
     var failed by remember { mutableStateOf<Triple<String, String, String>?>(null) }  // card, prompt, error
@@ -793,6 +799,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
             Text("Send") } },
         dismissButton = { TextButton(onClick = { warnFirst = null }) { Text("Cancel") } },
     ) }
+    if (reminding) RemindDialog(note.id, remindText(note)) { reminding = false }
     if (pickingNotes) AlertDialog(
         onDismissRequest = { pickingNotes = false },
         title = { Text("What kind of notes?") },
@@ -897,6 +904,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                             text = { Text(if (!note.labelled) "Who spoke?" else "Label speakers again") },
                             onClick = { menu = false; whoSpoke = true })
                         DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
+                        DropdownMenuItem(text = { Text("Remind me") }, onClick = { menu = false; reminding = true })
                         if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Save as subtitles (.srt)") },
                             onClick = { menu = false; exportSrt.launch("${note.name}.srt") })
                         DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
@@ -918,6 +926,18 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                 Column(Modifier.padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("${clock(note.seconds)}  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}",
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val reminders by com.whispercppdemo.notes.Reminders.list.collectAsState()
+                    reminders.filter { it.noteId == note.id && it.at > System.currentTimeMillis() }.forEach { r ->
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
+                            Row(Modifier.padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("⏰  " + DateUtils.formatDateTime(context, r.at, DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_SHOW_DATE),
+                                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                IconButton(onClick = { AppScope.launch(Dispatchers.IO) { com.whispercppdemo.notes.Reminders.remove(context, r.id) } }) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Cancel reminder", modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
                     androidx.compose.animation.AnimatedVisibility(justDone,
                         enter = androidx.compose.animation.scaleIn(androidx.compose.animation.core.spring(dampingRatio = 0.5f)) +
                             androidx.compose.animation.fadeIn(),
@@ -1017,7 +1037,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                             }
                         }
                     }
-                    note.ai.forEach { r -> AiCard(r, onCopy = { copy(r.text) },
+                    note.ai.forEach { r -> AiCard(r, note.id, onCopy = { copy(r.text) },
                         onDelete = { AppScope.launch(Dispatchers.IO) { Notes.deleteAi(note.id, r.created) } }) }
                     labelling?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1133,8 +1153,10 @@ private fun RenameDialog(current: String, title: String = "Rename", onDone: (Str
 }
 
 @Composable
-private fun AiCard(r: com.whispercppdemo.notes.AiReply, onCopy: () -> Unit, onDelete: () -> Unit) {
+private fun AiCard(r: com.whispercppdemo.notes.AiReply, noteId: String, onCopy: () -> Unit, onDelete: () -> Unit) {
     var open by remember { mutableStateOf(false) }
+    var remindTask by remember { mutableStateOf<String?>(null) }
+    remindTask?.let { t -> RemindDialog(noteId, t) { remindTask = null } }
     Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface,
         modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp)).clickable(onClickLabel = if (open) "Collapse" else "Expand") { open = !open }) {
@@ -1170,14 +1192,7 @@ private fun AiCard(r: com.whispercppdemo.notes.AiReply, onCopy: () -> Unit, onDe
                                 Messages.flow.tryEmit("No calendar app found. Use Share instead.")
                             }
                         }) { Text("Calendar") }
-                        // Reminder = the phone's Clock app, pre-filled with the task; you pick the time there (indite stores nothing)
-                        TextButton(onClick = {
-                            val i = Intent(android.provider.AlarmClock.ACTION_SET_ALARM)
-                                .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, if (by == "not said") task else "$task (by $by)")
-                            try { context.startActivity(i) } catch (e: android.content.ActivityNotFoundException) {
-                                Messages.flow.tryEmit("No clock app found. Use Calendar instead.")
-                            }
-                        }) { Text("Remind me") }
+                        TextButton(onClick = { remindTask = if (by == "not said") task else "$task (by $by)" }) { Text("Remind me") }
                         TextButton(onClick = { share(context, "$task — $who — by $by") }) { Text("Share") }
                     }
                 }
@@ -1357,4 +1372,10 @@ internal fun clearDate(by: String, now: java.util.Calendar = java.util.Calendar.
     c.set(java.util.Calendar.MONTH, mon); c.set(java.util.Calendar.DAY_OF_MONTH, day)
     if (c.before(now)) c.add(java.util.Calendar.YEAR, 1)
     return c.timeInMillis
+}
+
+/** A reminder's default text: the note's title, then its first lines (a grocery list stays a list). */
+internal fun remindText(n: Note): String {
+    val body = n.allText().take(300)
+    return if (body.isBlank() || n.name.startsWith(body.take(20))) body.ifBlank { n.name } else "${n.name}\n$body"
 }

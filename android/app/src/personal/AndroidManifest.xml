@@ -2,6 +2,8 @@
 <!-- personal build only: talk to the founder's own Mac over Tailscale. The public build has no internet. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- personal build (sideloaded, not on Play): exact reminders without asking. Play allows this only for alarm/calendar apps -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <application>
         <!-- "Type into the box for me": personal build only until the Google Play decision -->
         <service

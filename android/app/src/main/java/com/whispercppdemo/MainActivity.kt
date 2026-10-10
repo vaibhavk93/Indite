@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Settings.init(this)
         Notes.init(this)
+        Thread { com.whispercppdemo.notes.Reminders.rescheduleAll(applicationContext) }.start()  // alarms vanish on force-stop
         if (com.whispercppdemo.overlay.BubbleService.enabled(this)) com.whispercppdemo.overlay.BubbleService.setEnabled(this, true)
         NoteService.kick(this)  // resume anything cut short by a crash, a restart or the app being closed
         if (PhoneCheck.problem() == null) {  // warm the model up now, so the first dictation doesn't wait for it to load

@@ -4,8 +4,9 @@
 
     <!-- No internet permission: audio and text can't leave the phone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- "Remind me" opens the Clock app with the task filled in; indite sets no alarms itself -->
-    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- indite's own reminders: exact alarms (the user allows "Alarms & reminders"), re-set after reboot -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
@@ -62,6 +63,14 @@
         </service>
 
         <receiver android:name=".notes.CopyReceiver" android:exported="false" />
+        <receiver android:name=".notes.ReminderReceiver" android:exported="false" />
+        <receiver android:name=".notes.ReminderBootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".overlay.BubbleService"

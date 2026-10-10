@@ -128,6 +128,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 "dictation" to (if (bubbleOn) "Floating mic on" else "Keyboard and floating mic"),
                 "ai" to (com.whispercppdemo.ui.aiTargets(context).joinToString(", ") { com.whispercppdemo.ui.aiTargetName(it).substringBefore(" (") }
                     .ifEmpty { "Share list" }),
+                "reminders" to com.whispercppdemo.notes.Reminders.load(context).let { if (it.isEmpty()) "None" else "${it.size} upcoming" },
                 "fixes" to (if (fixes.isEmpty()) "None yet" else "${fixes.size} fix${if (fixes.size == 1) "" else "es"}"),
                 "storage" to "${notes.size} notes · ${Formatter.formatShortFileSize(context, used)}",
                 "about" to "indite ${BuildConfig.VERSION_NAME}",
@@ -386,6 +387,30 @@ fun SettingsScreen(onBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.primary) }
                 }
             }
+            if (shown == "reminders") item {
+                Section("Upcoming reminders") {
+                    val rs by com.whispercppdemo.notes.Reminders.list.collectAsState()
+                    LaunchedEffect(Unit) { com.whispercppdemo.notes.Reminders.load(context) }
+                    if (rs.isEmpty()) Text("None. Use \"Remind me\" on a note or a task.", style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    rs.forEach { r ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(android.text.format.DateUtils.formatDateTime(context, r.at, android.text.format.DateUtils.FORMAT_SHOW_TIME or
+                                    android.text.format.DateUtils.FORMAT_SHOW_WEEKDAY or android.text.format.DateUtils.FORMAT_SHOW_DATE),
+                                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                                Text(r.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
+                            }
+                            IconButton(onClick = { com.whispercppdemo.notes.Reminders.remove(context, r.id) }) {
+                                Icon(Icons.Filled.Close, contentDescription = "Delete reminder") }
+                        }
+                    }
+                    if (!com.whispercppdemo.notes.Reminders.canBeExact(context)) TextButton(onClick = {
+                        runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                            android.net.Uri.parse("package:" + context.packageName))) }
+                    }) { Text("Allow exact reminders (otherwise they may be up to an hour late)") }
+                }
+            }
             if (shown == "fixes") item {
                 Section("Word fixes") {
                     Text("Words indite keeps getting wrong, fixed everywhere. The original text is kept.",
@@ -445,7 +470,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
 private class SettingsGroup(val id: String, val title: String)
 private val SettingsGroups = listOf(SettingsGroup("look", "Look & feel"), SettingsGroup("dictation", "Dictation"),
-    SettingsGroup("ai", "AI"), SettingsGroup("fixes", "Word fixes"), SettingsGroup("storage", "Storage"),
+    SettingsGroup("ai", "AI"), SettingsGroup("reminders", "Reminders"), SettingsGroup("fixes", "Word fixes"), SettingsGroup("storage", "Storage"),
     SettingsGroup("about", "About"))
 
 @Composable
