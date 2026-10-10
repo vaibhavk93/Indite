@@ -207,6 +207,7 @@ private fun Welcome(onTry: () -> Unit, onSkip: () -> Unit) {
                 Promise("Written the way you type: achha, kal milte hain, meeting at 3")
                 Promise("Works without internet. Your voice never leaves this phone")
                 Promise("Notes, voice notes, meetings, and a keyboard for any app")
+                Promise("WhatsApp voice note? Tap Share on it, then pick indite")
             }
             Spacer(Modifier.weight(1f))
             Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
@@ -679,6 +680,13 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         if (note.done && note.pieces.size >= 2) DropdownMenuItem(
                             text = { Text(if (!note.labelled) "Who spoke?" else "Label speakers again") },
                             onClick = { menu = false; whoSpoke = true })
+                        // Translation: hand the text to Google Translate (it has its own offline packs); indite stays offline.
+                        if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Translate…") }, onClick = {
+                            menu = false
+                            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, note.allText())
+                            try { context.startActivity(Intent(send).setPackage("com.google.android.apps.translate")) }
+                            catch (e: android.content.ActivityNotFoundException) { context.startActivity(Intent.createChooser(send, "Translate with")) }
+                        })
                         DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
                         if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Save as subtitles (.srt)") },
                             onClick = { menu = false; exportSrt.launch("${note.name}.srt") })
