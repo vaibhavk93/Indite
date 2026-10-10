@@ -41,7 +41,7 @@ Docs that matter, in order:
 - Audio never leaves the phone. **The public build has no INTERNET permission**: check with `aapt2 dump permissions`.
 - Zero per-use cost to the founder. AI only via the user's own AI app, own API key (personal build for now), or the
   founder's own Mac (personal build, removed before launch).
-- No in-app Claude/Gemini/ChatGPT login (terms). No own reminders/to-do app (hand off to Calendar / Clock).
+- No in-app Claude/Gemini/ChatGPT login (terms). **Reminders: indite sets its own** (founder decision, 10 Oct, overrides the old "hand off to Calendar / Clock" rule); Calendar and Share are still offered on task rows.
 - The `personal` flavour is founder-only: internet, Mac route, OpenRouter key, accessibility auto-paste.
 
 **Repo rules:**
