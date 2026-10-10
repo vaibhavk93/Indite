@@ -125,7 +125,7 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 ## 5. Where things stand (update every session)
 
 - **Installed on the founder's phone:** build 10 (0.10, tag `build-10`), personal flavour.
-- **Pushed to GitHub:** up to `738a118`. Everything later is local until the founder says "push".
+- **Pushed to GitHub:** everything up to the evening of 10 Oct (and build tags).
 - **Engine consistency (fixed 10 Oct, needs phone confirmation):** same audio gave different text because flash attention
   read audio-cache rows left over from the previous piece. Fix: `Pauses.audioCtx` always a multiple of 256, max 1280
   (`Pauses.FULL`); never pass 0. Mac: 15-min file 10/39 → 39/39 parts repeatable, 27.6% → 24.7%. Turning flash attention
@@ -191,7 +191,7 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 | Place | What's there | State (10 Oct, evening) |
 |---|---|---|
-| **GitHub** `github.com/vaibhavk93/Indite` (PUBLIC, branch `main`) | Source, docs | Pushed up to `790924c`. **32 newer commits are local only** until the founder says "push" |
+| **GitHub** `github.com/vaibhavk93/Indite` (PUBLIC, branch `main`) | Source, docs | **Pushed** (10 Oct evening), incl. tags `build-7`…`build-10`. Push again when the founder says "push" |
 | **Local repo** (this Mac) | Everything, plus git-ignored files: models in `android/app/src/main/assets/models/`, `android/app/libs/sherpa-onnx-1.13.8.aar`, `.tools/` (JDK, whisper.cpp), test audio, old APKs in `phonetest/` and `APK/` (~2.4 GB, OK to delete pending) | HEAD = latest commit; tags `build-7`…`build-10` mark builds installed on the phone |
 | **Founder's phone** (OnePlus CPH2573, USB) | Personal build 0.10 (build 10) + the rounding A/B hook | Notes live only on the phone (no backup). Export via Settings → Storage |
 | **Signing key** `~/.indite/indite-testers.keystore` | Same key for every build (updates install over the old app) | **Only copy is on this Mac: founder to back it up** |
