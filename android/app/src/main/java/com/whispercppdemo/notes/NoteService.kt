@@ -261,25 +261,50 @@ class NoteService : Service() {
     /**
      * Who spoke, without being asked (founder, 10 Oct: "initial speaker diarization should be done by you").
      *
-     * Runs only once there is nothing left to transcribe, so it never delays a live dictation, and inside this service
-     * so the foreground notification stays up and Android doesn't kill it half-done. It costs about 1 s of phone time
-     * per minute of audio (measured: 15.9 s for a 15-minute file), and nothing is waiting on it — the text is already
-     * on screen and "Text ready" has already been sent.
+     * Runs only once there is nothing left to transcribe, and inside this service so the foreground notification stays
+     * up and Android doesn't kill it half-done. The text is already on screen and "Text ready" has already been sent,
+     * so nobody is waiting for this.
      *
-     * Only notes this run finished, never a sweep of every old note. The count is a guess; the note screen asks the
-     * user to confirm or change it. If a recording starts, the rest is left for the next run (the note screen's
-     * "Find who spoke" card is still there as the fallback).
+     * ⚠ It is NOT free for a dictation started while it runs: this is the one queue job, so `onStartCommand` won't
+     * start a new one until this returns. Hence `Notes.transcribing = true` (so the recorder keeps making 8 s pieces
+     * instead of piling up 1 s ones) and an abort check passed into the pass, so a new recording stops it within a
+     * window or two rather than at the end of the note.
+     *
+     * Only notes this run finished, never a sweep of every old note. If the phone is hot or the battery is low it is
+     * dropped rather than queued: speaker labels are not urgent, and the note screen's "Find who spoke" card is still
+     * there. The count is a guess; the note screen asks the user to confirm or change it.
      */
     private suspend fun labelFinished() {
-        while (toLabel.isNotEmpty() && !Recording.active) {
-            val id = toLabel.first()
-            toLabel -= id
-            val n = Notes.note(id)?.takeIf { wantsLabels(it) } ?: continue
-            waitUntilSafe()
-            if (Recording.active) return
-            say("${n.name}: finding who spoke…")
-            try { Speakers.labelAuto(this, n) } catch (e: Exception) { Log.w(TAG, e) }
-            Notes.refresh()
+        if (toLabel.isEmpty()) return
+        Notes.transcribing = true   // tells the recorder the engine is busy, so a new dictation cuts 8 s pieces, not 1 s
+        try {
+            while (true) {
+                if (Recording.active) return                    // someone is dictating: finish the rest next time
+                notNow()?.let { Log.i(TAG, "speaker labels left for later: phone $it"); return }
+                val id = toLabel.firstOrNull() ?: return
+                val n = Notes.note(id)?.takeIf { wantsLabels(it) }
+                if (n == null) { toLabel -= id; continue }       // deleted, or labelled by hand meanwhile
+                say("${n.name}: finding who spoke…")
+                runCatching { Speakers.labelAuto(this, n) { Recording.active } }   // Throwable: a native load can fail
+                    .onFailure { Log.w(TAG, it) }
+                Notes.refresh()
+                // Drop it only when something was actually written. An aborted pass saves nothing and stays in the
+                // queue for the next run.
+                if (Notes.note(id)?.speakers != null) toLabel -= id else return
+            }
+        } finally { Notes.transcribing = false }
+    }
+
+    /** A reason not to spend phone time on something that isn't urgent, or null. */
+    private fun notNow(): String? {
+        val b = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return null
+        val temp = b.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10f
+        val level = b.getIntExtra(BatteryManager.EXTRA_LEVEL, 100) * 100 / b.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+        val charging = b.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+        return when {
+            temp >= 41f -> "is warm (%.0f °C)".format(temp)
+            level < 15 && !charging -> "is low on battery ($level%)"
+            else -> null
         }
     }
 

@@ -160,10 +160,13 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a �
      Mac route is the harder, second ask. Settings → AI now says in one line what will happen.
    - **Formal statement.** Did not exist. Added as **Formal version** under Ask my AI. Also needs an AI route.
    - **Speaker labels now happen by themselves.** Nothing had decided they should be manual — it was built as a button
-     and the tap was never removed (#60 took away the count question, not the tap). It costs about 1 s of phone time
-     per minute of audio, and runs only after all transcription is done, so nothing waits for it. The count is still a
-     guess, so the note screen still asks "indite heard N people. Is that right?". One voice now means no labels at
-     all. ⚠ The guess is **unmeasured on real audio** — that is item 3 below.
+     and the tap was never removed (#60 took away the count question, not the tap). It runs after all transcription is
+     done, and is skipped when the phone is hot or the battery is low. The count is still a guess, so the note screen
+     still asks "indite heard N people. Is that right?". One voice now means no labels at all, which is what makes a
+     wrong guess undoable in one tap. ⚠ **This is ahead of your own gate:** the guess has never been scored on real
+     audio (the phone test only ever scores a *given* count), and #61 "can I trust Find who spoke?" is still waiting on
+     your listen-check. Keep it in your personal build; it must not reach testers until the guess is measured —
+     `--es test_label "<name>" --ei k 0` scores it today with no new code (~20 min, see item 3).
    Gate: build 11, then your ear on the reminder (switch on, then off) and one Translate + one Formal version end to end.
    One thing only you can answer: when the reminder was due, did it appear with no sound, or not appear at all?
 1. **Build 10 is waiting for the phone** (it was unplugged when the build finished): install it, screenshot the italic

@@ -41,9 +41,12 @@ object Speakers {
      * One voice found (or no speech) is saved as nothing to label, so a note that is only the user talking never gets
      * a pointless "Speaker 1" on every paragraph.
      */
-    fun labelAuto(context: Context, note: Note) {
-        try { label(context, note, 0) { status.value = note.id to it } } finally { status.value = null }
+    fun labelAuto(context: Context, note: Note, abort: () -> Boolean = { false }) {
+        try { label(context, note, 0, abort) { status.value = note.id to it } } finally { status.value = null }
     }
+
+    /** Thrown to stop a run that is no longer wanted (a recording started). Nothing is saved, so it runs again later. */
+    private class Aborted : Exception()
 
     /**
      * Only one voice in this recording: no labels. `k = 1` separates it from the user tapping "Just me" (which leaves k
@@ -59,8 +62,9 @@ object Speakers {
 
     /** The user said it was just them: hide the "Who spoke?" card for this note. */
     fun skip(id: String) {
-        File(Notes.dir(id), "speakers.json").writeText(JSONObject().put("skipped", true).put("of", JSONObject()).toString())
-        Notes.refresh()
+        val f = File(Notes.dir(id), "speakers.json")
+        val names = runCatching { JSONObject(f.readText()).optJSONObject("names") }.getOrNull()  // keep any names given
+        write(f, JSONObject().put("skipped", true).put("names", names ?: JSONObject()).put("of", JSONObject()))
     }
 
     fun load(id: String): Result? = try {
@@ -78,12 +82,17 @@ object Speakers {
      * k = how many people spoke, or 0 to guess (picks 1-5 by how distinct the voices are) and let the user confirm or
      * change it. The voice fingerprints are kept in memory, so changing the count afterwards takes a moment.
      */
-    fun label(context: Context, note: Note, k: Int, progress: (String) -> Unit) {
+    fun label(context: Context, note: Note, k: Int, abort: () -> Boolean = { false }, progress: (String) -> Unit) {
         if (!running.add(note.id)) return
         try {
-            labelNow(context, note, k, progress)
+            labelNow(context, note, k, abort, progress)
             // One voice (or none) means labels add nothing: drop them rather than write "Speaker 1" on every paragraph.
-            if ((load(note.id)?.of?.values?.distinct()?.size ?: 0) < 2) heardOne(note.id, guessed = k == 0)
+            // `seg` counts too: a second speaker can live entirely inside paragraphs (short interview questions) and
+            // never win one, and throwing those turns away would be the worst kind of wrong.
+            val found = load(note.id)?.let { r -> (r.of.values + r.seg.values.flatten()).distinct().size } ?: 0
+            if (found < 2) heardOne(note.id, guessed = k == 0)
+        } catch (e: Aborted) {
+            // nothing saved: the note screen's "Find who spoke" card stays, and the queue tries again
         } finally { running.remove(note.id) }
         if (k > 0) context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt("lastSpeakers", k).apply()
     }
@@ -96,7 +105,7 @@ object Speakers {
 
     fun lastCount(context: Context) = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getInt("lastSpeakers", 2)
 
-    private fun labelNow(context: Context, note: Note, k: Int, progress: (String) -> Unit) {
+    private fun labelNow(context: Context, note: Note, k: Int, abort: () -> Boolean, progress: (String) -> Unit) {
         val key = "${note.id}:${note.samples}"
         val (windows, stretches, emb) = cache?.takeIf { it.first == key }?.second ?: run {
         progress("Finding where people speak…")
@@ -106,7 +115,10 @@ object Speakers {
         val ex = SpeakerEmbeddingExtractor(context.assets, SpeakerEmbeddingExtractorConfig(model = "models/titanet_small.onnx", numThreads = 4))
         val emb = try {
             windows.mapIndexed { n, (s, e) ->
-                if (n % 50 == 0) progress("Listening for different voices… ${100 * n / windows.size}%")
+                if (n % 50 == 0) {
+                    if (abort()) throw Aborted()   // checked here: the only place this loop comes up for air
+                    progress("Listening for different voices… ${100 * n / windows.size}%")
+                }
                 val st = ex.createStream()
                 try {
                     st.acceptWaveform(Notes.readPcm(note.id, s, e), SR)

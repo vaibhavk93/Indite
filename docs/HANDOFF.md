@@ -164,21 +164,50 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
   indite` and `adb shell dumpsys notification --noredact` after a test answer most of the rest.
 - **Speaker labels now run by themselves (10 Oct, code only, not built):** the founder asked why diarization was not
   automatic. Answer: **nothing ever decided it had to be manual.** It was built as an on-demand action (`ui/NotesApp.kt`
-  card "Was this a conversation? Find who spoke.") and request #60 removed the *count* question but left the tap. There
-  was no technical blocker: PLAN.md line 230 records **15.9 s on the phone for a 15-minute file** (~1 s per minute of
-  audio), against minutes for transcription.
+  card "Was this a conversation? Find who spoke.") and request #60 removed the *count* question but left the tap.
   | Change | Where |
   |---|---|
-  | `NoteService` labels every note it just finished, once the queue has nothing left to transcribe (so a live dictation is never delayed), inside the foreground service (so Android does not kill it half-done), after `waitUntilSafe()` (heat/battery), and bails out if a recording starts | `notes/NoteService.kt`: `finish()` → `toLabel`, `wantsLabels()`, `labelFinished()` |
+  | `NoteService` labels every note it just finished, once the queue has nothing left to transcribe, inside the foreground service (so Android can't kill it half-done). Dropped, not queued, when the phone is hot or the battery is low — labels are not urgent | `notes/NoteService.kt`: `finish()` → `toLabel`, `wantsLabels()`, `labelFinished()`, `notNow()` |
   | Gate: over 60 s, 2+ paragraphs, no speakers file yet, **not a `test` note** (so `phone_test.sh`'s `--ei k 2` scoring stays clean). Only notes *this run* finished — never a sweep of the whole back catalogue | `wantsLabels()` |
-  | `Speakers.labelAuto()` + `Speakers.status` (a `MutableStateFlow`, because `Speakers.running` is not observable, so the note screen could not show a run it did not start) | `notes/Speakers.kt` |
-  | **One voice = no labels at all**, however the run started. An explicit "1" used to write "Speaker 1" on every paragraph; now `heardOne()` saves `skipped=true, k=1, guessed=<indite decided>` and the note screen shows a one-line "indite heard one voice. Two people spoke?" only when indite decided it | `Speakers.label()`, `heardOne()`, `NotesApp.kt` |
-  | The existing "indite heard N people. Is that right?" card is the founder's "ask and update later" — unchanged | `NotesApp.kt` |
-  ⚠ **The count guess is unmeasured on real audio.** PLAN.md line 230 says "auto count fragile on real audio", and
-  `phone_test.sh` only ever scores a *given* count (`--ei k 2`). The 96.7% / 93.3% figures are given-count numbers, not
-  guess numbers. Before testers: score the guess on the 3 real recordings (ROADMAP "Now" 3), and measure the battery
-  and heat cost of auto-labelling a 15-minute import. If either is bad, add a switch (the hook is one `if`).
-  No setting was added on purpose: the cost is small and nothing waits on it.
+  | `Speakers.labelAuto()` + `Speakers.status` (a `MutableStateFlow`, because `Speakers.running` is not observable, so the note screen could not show a run it did not start). The note screen now has one `busy` value for "something is working on this note", whoever started it | `notes/Speakers.kt`, `NotesApp.kt` |
+  | **One voice = no labels at all**, however the run started. An explicit "1" used to write "Speaker 1" on every paragraph. `heardOne()` saves `skipped=true, k=1`, keeping any names. **This is what makes a wrong guess recoverable in one tap** — before it, once `speakers.json` existed there was no way back to plain text (the "Just me" button needs `speakers == null`) | `Speakers.label()`, `heardOne()` |
+  | The existing "indite heard N people. Is that right?" card is the "ask and update later" half, unchanged — except it now carries the "when you record others, tell them first" line, which used to live on the card that automatic labelling makes disappear | `NotesApp.kt` |
+  | The one-voice test counts `seg` as well as `of`: a second speaker can live entirely inside paragraphs (short interview questions) and never win one, and throwing those turns away would be the worst kind of wrong | `Speakers.label()` |
+  | `privacy.txt` / `docs/privacy.md` say what this does: compared on the phone, within one recording only, no voiceprint saved | both files |
+
+  **⚠ It is not free for a dictation started while it runs** (critic, corrected — an earlier version of this entry and
+  of the commit message claimed "never delays a live dictation", which the code disproves). `labelFinished()` runs in
+  the one queue job, and `onStartCommand` only starts a queue `if (job?.isActive != true)`, so a recording that begins
+  mid-pass waits for it. Two mitigations, both unmeasured on a device: `Notes.transcribing = true` during labelling (so
+  `LiveRecorder` keeps cutting 8 s pieces instead of piling up 1 s ones) and an abort check passed into the pass,
+  checked every 50 windows (~1–2 s of phone time), which saves nothing and leaves the note for the next run.
+
+  **⚠ The cost figure does not cover this path.** "15.9 s for a 15-minute file" (PLAN.md line 230) is a `--ei k 2` run:
+  one k-means. `auto()` runs k-means for k = 2, 3, 4 and 5. Embedding extraction, the expensive part, still happens
+  once, so the true number should be close — but it is **unmeasured**, and the "no setting needed" argument rests on it.
+
+  **⚠ This is ahead of the project's own gate.** PLAN.md line 230 already says "auto count fragile on real audio",
+  `phone_test.sh` only ever scores a *given* count, and #61 ("can I trust Find who spoke?") is still ⏳ waiting on the
+  founder's listen-check. The guess is now the default output for every long note. Keep it in the **personal build**
+  (he asked for it, he is the only user, and auto-labelling is the fastest way for him to do the listen-check); do
+  **not** let it reach testers until the guess is measured. `auto()`'s 1-vs-2 decision rests on a single threshold
+  (centres at least 0.35 cosine distance apart, and 3 windows ≈ 4.5 s is enough to call a second speaker on a 60 s
+  note), so the expected failure is **splitting one person into two** — background TV, or music, which Silero hears as
+  speech.
+  **Next action, no new code needed:** `--es test_label "<name>" --ei k 0` runs `auto()` on a benchmark note and writes
+  the labels and `label_ms` (`MainActivity.testHook` reads `--ei k`, default 2, so 0 means guess); `score.py diar`
+  scores it. Both synthetic dialogues plus the 15-min 3-voice file, about 20 minutes of phone time, answers both the
+  accuracy and the cost question. Put the numbers in PLAN.md section 7.
+  ⚠ Reading that run: if the guess says "one voice", `heardOne()` writes `skipped`, so `exportTestResult` emits
+  `speaker: -1` for every sentence and the score comes out ~0 rather than erroring. A ~0 score on a 2-speaker dialogue
+  therefore means **the guess collapsed to one voice**, not that placement broke — check `k` in the note's
+  `speakers.json` before reading anything else into it.
+
+  **Known, not fixed:** "Copy all text" on a labelled note joins consecutive turns by the same speaker into one block
+  (`Notes.kt` `allText()`), so an interview where one person speaks five paragraphs in a row becomes one wall of text.
+  Pre-existing, but automatic labelling makes it the default for every long note — decide with the founder.
+  Floating-mic dictations over 60 s with 2+ paragraphs also pass the gate, so a long solo dictation with a TV on can
+  pick up labels (the pasted text is unaffected: `copyBubbleDictations()` runs first).
 - **Installed on the founder's phone:** build 10 (0.10, tag `build-10`), personal flavour.
 - **Pushed to GitHub:** everything up to the evening of 10 Oct (and build tags).
 - **Engine consistency (fixed 10 Oct, needs phone confirmation):** same audio gave different text because flash attention

@@ -1035,6 +1035,9 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(if (sp.k <= 1) "indite heard 1 voice. Is that right?" else "indite heard ${sp.k} people. Is that right?",
                                     style = MaterialTheme.typography.titleSmall)
+                                Text("indite compared the voices in this recording, on this phone. When you record others, " +
+                                    "tell them first.", style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Button(onClick = { AppScope.launch(Dispatchers.IO) { Speakers.confirm(note.id) } }) { Text("Right") }
                                     Text("or", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1045,9 +1048,11 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                             }
                         }
                     }
-                    note.speakers?.takeIf { it.skipped && it.k == 1 && it.guessed && busy == null && note.id !in Speakers.running }?.let {
+                    // k == 1 and skipped = indite compared the voices and heard only one, so there is nothing to label.
+                    // Say so: silence here looked like the labelling had done nothing. ("Just me" leaves k at 0.)
+                    note.speakers?.takeIf { it.skipped && it.k == 1 && busy == null && note.id !in Speakers.running }?.let {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("indite heard one voice.", style = MaterialTheme.typography.bodySmall,
+                            Text("indite could only hear one voice in this note.", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             TextButton(onClick = { whoSpoke = true }) { Text("Two people spoke?") }
                         }
