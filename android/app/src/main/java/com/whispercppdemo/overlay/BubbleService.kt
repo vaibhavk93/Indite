@@ -51,10 +51,11 @@ class BubbleService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_OFF) { setEnabled(this, false); stopSelf(); return START_NOT_STICKY }
         if (!AndroidSettings.canDrawOverlays(this)) { stopSelf(); return START_NOT_STICKY }
+        hidden = false  // any start (Settings, opening indite, "Tap to show") brings it back
         val n = notification()
         if (Build.VERSION.SDK_INT >= 34) startForeground(NOTE_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         else startForeground(NOTE_ID, n)
-        if (bubble == null) show()
+        if (bubble == null) show() else bubble?.visibility = android.view.View.VISIBLE
         return START_STICKY
     }
 
@@ -118,9 +119,11 @@ class BubbleService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     if (moved && e.rawY > resources.displayMetrics.heightPixels - dp(120)) {
-                        // dragged to the bottom edge: hide it for now; it stays switched on and comes back when indite opens
-                        toast("Floating mic hidden. Open indite to bring it back.")
-                        stopSelf()
+                        // dragged to the bottom edge: hide it. It stays switched on; the notification says "Tap to show".
+                        v.visibility = android.view.View.GONE
+                        hidden = true
+                        getSystemService(NotificationManager::class.java).notify(NOTE_ID, notification())
+                        toast("Floating mic hidden. Tap its notification to show it again.")
                     } else if (moved) {
                         val w = resources.displayMetrics.widthPixels
                         lp.x = if (lp.x + dp(28) < w / 2) 0 else w - dp(56)
@@ -186,27 +189,31 @@ class BubbleService : Service() {
     }
 
     private fun notification(): Notification {
+        // LOW (not MIN): the notification must be easy to find, because it's how a hidden bubble comes back
         getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL, "Floating mic", NotificationManager.IMPORTANCE_MIN))
+            NotificationChannel(CHANNEL, "Floating mic", NotificationManager.IMPORTANCE_LOW))
         val off = PendingIntent.getService(this, 2, Intent(this, BubbleService::class.java).setAction(ACTION_OFF), PendingIntent.FLAG_IMMUTABLE)
         val open = PendingIntent.getActivity(this, 3, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val showIt = PendingIntent.getService(this, 4, Intent(this, BubbleService::class.java), PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_mic)
-            .setContentTitle("Floating mic is on")
-            .setContentText("Tap the bubble in any app to dictate.")
-            .setContentIntent(open)
+            .setContentTitle(if (hidden) "Floating mic hidden" else "Floating mic is on")
+            .setContentText(if (hidden) "Tap to show it again." else "Tap the bubble in any app to dictate.")
+            .setContentIntent(if (hidden) showIt else open)
             .addAction(Notification.Action.Builder(null, "Turn off", off).build())
             .setOngoing(true)
             .build()
     }
 
     companion object {
-        private const val CHANNEL = "bubble"
+        private const val CHANNEL = "bubble_low"  // new id: an existing channel's importance can't be raised
         private const val NOTE_ID = 7
         private const val ACTION_OFF = "off"
 
         /** Bubble dictations still being written; each one's text is copied when done (a second tap never loses the first). */
         val pending: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+        /** Dragged away: switched on, but not on screen until the notification or Settings shows it again. */
+        @Volatile var hidden = false
         /** Dictations the user cancelled (hold while recording); deleted, never copied. */
         val cancelled: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
         /** The last dictation's text, waiting for a tap on the green copy button. */

@@ -13,6 +13,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -101,22 +102,56 @@ fun SettingsScreen(onBack: () -> Unit) {
         dismissButton = { TextButton(onClick = { confirmDeleteAll = false }) { Text("Cancel") } },
     )
 
+    // Settings in groups: a short list first, each group on its own page (no endless scrolling).
+    var page by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    androidx.activity.compose.BackHandler(enabled = page != null) { page = null }
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } },
+                title = { Text(SettingsGroups.firstOrNull { it.id == page }?.title ?: "Settings") },
+                navigationIcon = { IconButton(onClick = { if (page != null) page = null else onBack() }) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
+        androidx.compose.animation.AnimatedContent(page, Modifier.padding(pad), label = "settings page", transitionSpec = {
+            val dir = if (targetState != null) 1 else -1  // into a group slides left, back slides right
+            (androidx.compose.animation.slideInHorizontally { it * dir / 4 } + androidx.compose.animation.fadeIn()) togetherWith
+                (androidx.compose.animation.slideOutHorizontally { -it * dir / 4 } + androidx.compose.animation.fadeOut())
+        }) { shown ->
+        if (shown == null) {
+            val bubbleOn = remember { com.whispercppdemo.overlay.BubbleService.enabled(context) }
+            val aiApp = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE).getString("aiApp", "ask") }
+            val summary = mapOf(
+                "look" to theme.label,
+                "dictation" to (if (bubbleOn) "Floating mic on" else "Keyboard and floating mic"),
+                "ai" to (com.whispercppdemo.ui.AiApps.firstOrNull { it.first == aiApp }?.second ?: "Your AI app"),
+                "fixes" to (if (fixes.isEmpty()) "None yet" else "${fixes.size} fix${if (fixes.size == 1) "" else "es"}"),
+                "storage" to "${notes.size} notes · ${Formatter.formatShortFileSize(context, used)}",
+                "about" to "indite ${BuildConfig.VERSION_NAME}",
+            )
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp)) {
+                items(SettingsGroups) { g ->
+                    Row(Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = "Open ${g.title}") { page = g.id }
+                        .padding(horizontal = 20.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(g.title, style = MaterialTheme.typography.titleMedium)
+                            Text(summary[g.id] ?: "", style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        } else
         LazyColumn(
-            Modifier.fillMaxSize().padding(pad),
+            Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
+            if (shown == "look") item {
                 Section("Appearance") {
                     Column(Modifier.selectableGroup()) {
                         Theme.values().forEach { t ->
@@ -132,7 +167,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
-            item {
+            if (shown == "dictation") item {
                 Section("Spelling") {
                     val chat by Settings.chatSpelling.collectAsState()
                     Column(Modifier.selectableGroup()) {
@@ -146,7 +181,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
-            item {
+            if (shown == "dictation") item {
                 Section("Voice keyboard") {
                     val imm = context.getSystemService(InputMethodManager::class.java)
                     var enabled by remember { mutableStateOf(false) }
@@ -168,7 +203,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
-            item {
+            if (shown == "dictation") item {
                 Section("Floating mic button") {
                     var on by remember { mutableStateOf(com.whispercppdemo.overlay.BubbleService.enabled(context)) }
                     var allowed by remember { mutableStateOf(android.provider.Settings.canDrawOverlays(context)) }
@@ -194,9 +229,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                     if (on && !allowed) Text("Allow \"Display over other apps\" for indite, then come back.", Modifier.padding(top = 6.dp),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                    // Dragged away (hidden)? It stays switched on; this brings it back without opening anything else.
-                    if (on && allowed) TextButton(onClick = { com.whispercppdemo.overlay.BubbleService.setEnabled(context, true) }) {
-                        Text("Show the floating mic now")
+                    // The switch = the feature is on. Dragged away, it's hidden: say so, with one tap to show it again.
+                    var hiddenNow by remember { mutableStateOf(com.whispercppdemo.overlay.BubbleService.hidden) }
+                    LaunchedEffect(Unit) { while (true) { hiddenNow = com.whispercppdemo.overlay.BubbleService.hidden; delay(700) } }
+                    if (on && allowed && hiddenNow) Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Hidden (you dragged it away)", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        TextButton(onClick = { com.whispercppdemo.overlay.BubbleService.setEnabled(context, true) }) { Text("Show") }
                     }
                     var auto by remember { mutableStateOf(com.whispercppdemo.overlay.BubbleService.autoCopy(context)) }
                     Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -215,6 +254,10 @@ fun SettingsScreen(onBack: () -> Unit) {
                                 Text(if (typing) "On: text goes straight into the box you were typing in"
                                     else "Off: tap the green button to copy", style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                // Android's accessibility shortcut can only switch this on/off, not the floating mic.
+                                Text("The phone's accessibility shortcut turns this on and off, not the floating mic. You don't need the " +
+                                    "shortcut: turn it off in Accessibility settings.", style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                             }
                             TextButton(onClick = { if (typing) context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)) else disclose = true }) {
                                 Text(if (typing) "Turn off" else "Turn on")
@@ -239,7 +282,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
-            item {
+            if (shown == "ai") item {
                 Section("Your AI app") {
                     var app by remember { mutableStateOf(context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
                         .getString("aiApp", "ask") ?: "ask") }
@@ -260,7 +303,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
-            if (com.whispercppdemo.ai.MacCompanion.available) item {
+            if (shown == "ai" && com.whispercppdemo.ai.MacCompanion.available) item {
                 Section("Your Mac (personal build)") {
                     var url by remember { mutableStateOf(com.whispercppdemo.ai.MacCompanion.url(context)) }
                     var token by remember { mutableStateOf(com.whispercppdemo.ai.MacCompanion.token(context)) }
@@ -289,7 +332,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.primary) }
                 }
             }
-            item {
+            if (shown == "fixes") item {
                 Section("Word fixes") {
                     Text("Words indite keeps getting wrong, fixed everywhere. The original text is kept.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -304,7 +347,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     AddFix()
                 }
             }
-            item {
+            if (shown == "storage") item {
                 Section("Storage") {
                     Text("${notes.size} notes use ${Formatter.formatShortFileSize(context, used)} on this phone.",
                         style = MaterialTheme.typography.bodyLarge)
@@ -316,7 +359,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
-            item {
+            if (shown == "storage") item {
                 Section("Privacy") {
                     Text(if (com.whispercppdemo.ai.MacCompanion.available)
                         "Personal build: speech-to-text happens on this phone. When you use Ask my AI, the note's text goes to your own Mac " +
@@ -328,7 +371,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     TextButton(onClick = { showPrivacy = true }, Modifier.padding(top = 4.dp)) { Text("Privacy policy") }
                 }
             }
-            item {
+            if (shown == "about") item {
                 Section("About") {
                     Text("indite ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyLarge)
                     Text("Speech model: Oriserve Hindi2Hinglish-Apex (Apache-2.0), run with whisper.cpp (MIT). " +
@@ -341,8 +384,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
         }
+        }
     }
 }
+
+private class SettingsGroup(val id: String, val title: String)
+private val SettingsGroups = listOf(SettingsGroup("look", "Look & feel"), SettingsGroup("dictation", "Dictation"),
+    SettingsGroup("ai", "AI"), SettingsGroup("fixes", "Word fixes"), SettingsGroup("storage", "Storage & privacy"),
+    SettingsGroup("about", "About"))
 
 @Composable
 private fun AddFix() {
