@@ -4,6 +4,33 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-10 (night) · Claude Code (Opus 5)
+
+**Next step:** founder's 20-minute hand check of builds 9–10. Then the Sarvam Edge / Gboard Roman-Hinglish desk check
+(1 h), the import-vs-live cut-point run (1 h), real-voice WER on ~6 min (2 h). Batch A (build 11) only after that.
+
+- **Full phone test of build 10 passed the 15-min gate** (`SKIP_LIVE=1 ./phone_test.sh`, phone 34.7–36.8 °C):
+  import WER 25.3% (build 7: 28.7%; Mac: 24.7%), 39 parts, 1.16x real time, no crash or memory failure.
+  Similar voices 93.3% / 86.4%; 2-speaker dialogue 98.3% / 96.6%.
+- **New finding:** 2 of 5 no-speech stretches produced invented text (10 words in pink noise, 4 in fan noise; 14 of 1545).
+- **Trap found and documented:** `SKIP_LIVE=1` reuses the live result on the phone — here the ROUND=64 A/B arm, so the
+  printed live numbers (87.3 s, 17.9%) are not build 10's.
+- Independent critic reviewed a 17-item research / improvement / use-case list. Dropped: thread-emulation of a ₹15k phone
+  (PLAN section 7 already has the numbers, and nothing calibrates it), cutting pieces earlier (a 5.3 s piece costs the
+  same ~9 s of engine as a 10.0 s one, and short pieces score worse), deleting the dropped-text re-run, and all six "new
+  use cases" (already built or already ruled out — recruitment copy, not code). Kept: Sarvam/Gboard check,
+  start-temperature line in the test script, import-vs-live cut-point run, real-voice WER, note format version.
+- **Critic's find:** `Pauses.audioCtx` is a flat 768 (15 s window) for every piece under ~13 s, so short sentences pay
+  full price. A per-piece 512 (10.2 s, still a multiple of 256) could move the live wait from ~9 s toward ~6 s. Untested.
+- **Recorded, not acted on:** the signing key still has one copy (5-minute founder task); "model downloads on first open"
+  conflicts with the public build having no INTERNET permission, and a Play asset pack (~512 MB limit) may not fit the
+  574 MB model — check the limit before writing code.
+- ChatGPT: in-app login is still not a legal route (preview is application-only, no mobile; faking Codex's client risks
+  the founder's own account). Founder's alternative — genuine Codex CLI under Termux on the phone — is unproven and needs
+  a critic plus a 1-hour install test before it becomes a plan.
+
+---
+
 ## 2026-10-10 (evening) · Claude Code (Opus 5.5)
 
 **Next step:** founder hand check of builds 9–10; full phone test on a cool phone; then build 11 per ROADMAP.

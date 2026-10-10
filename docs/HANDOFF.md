@@ -132,7 +132,17 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
   off also fixed it but cost ~6 s per live sentence (build 8 test: 9.1 → 14.8 s), so it stays on.
 - **Last phone tests:** build 7 full: speakers 96.7% / 91.7%, live 9.1 s median, 16.5% WER, 15-min 28.7%.
   Build 8 quick: speakers 98.3% / 93.3%, live 14.8 s (flash off; reverted).
-- **Next:** `QUICK=1 ./bench_synth/phone_test.sh` on build 10 (gate: live median ≈ 9 s), then the full run (gate: 15-min ≈ 25%).
+- **Full phone test of build 10 (10 Oct night, phone 34.7–36.8 °C) — the 15-min gate passes:** import WER **25.3%**
+  (CER 14.8%, 39 parts, 1.16x real time, no crash, no memory failure) vs 28.7% on build 7 and 24.7% on the Mac.
+  Similar-voices import: speaker majority 93.3%, change accuracy 86.4%. 2-speaker dialogue: 98.3% / 96.6%. Labelling 4–5 s.
+- **New finding — invented text in silence:** of 5 no-speech stretches, 2 produced words: 10 in pink noise
+  ("ji sir swiggy campaign ka ctr 3 percent aaya hai") and 4 in fan noise; 14 invented words in 1545. Guards flag,
+  never delete. Worth a look before testers.
+- **⚠ Trap:** `SKIP_LIVE=1` reuses whatever live result is already on the phone. In that run it was the **ROUND=64**
+  A/B arm, so the printed live block (87.3 s wait, 11 parts, 15.2 s per part, WER 17.9%) is **not** build 10's live
+  number. Build 10's real live figures are the 256 arm: 9.1–14.1 s wait. Clear `results/` or re-run live to measure it.
+- **Next:** founder's hand check of builds 9–10; then the Sarvam Edge / Gboard Roman-Hinglish desk check, the
+  import-vs-live cut-point run, and real-voice WER on ~6 min. Batch A only after the hand check.
 - **Built in builds 9–10, waiting for the founder's hand check:** indite's own reminders (exact alarms, chime + nudges,
   optional ring-like-alarm, Settings → Reminders); one-switch floating mic (✕ drop zone, quick settings tile, magnetic ✕,
   spring snap, remembered position; personal: accessibility shortcut toggles it); cards with border + copy button +
