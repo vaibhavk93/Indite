@@ -318,6 +318,25 @@ is a git commit.
 | 174 | **Stats dashboard** | How many words transcribed, recordings, all of that | 10 Oct | 🧪 | Settings → Your stats: words, minutes, recordings / dictations / imports, this week's words (7-day bars), typical speed, AI answers, labelled notes, reminders. Counted on the phone only |
 | 175 | **Subtitle "Speak in Hindi, English or both"** | Mentioned again with the italic request | 10 Oct | ❓ | Italic built (real Figtree italic). If you meant different wording (e.g. a comma instead of a full stop), say so |
 
+### Added 10 Oct (night) — this session
+
+| # | Request | What you asked, with context | Date | Status | Where it stands / why not |
+|---|---|---|---|---|---|
+| 178 | **Fix invented words in silence first** | The 15-min test wrote "ji sir swiggy campaign ka ctr 3 percent aaya hai" out of fan noise | 10 Oct | 🔬 | Two fixes tried and measured on the Mac, both dead ends: the model reports **no_speech_prob 0.000 even for pure silence**, and it is *more* confident on invented text (95.5%) than on real speech (94.9%). Filtering after the model cannot work. Next: tighten the speech detector (Silero) so noise never reaches the model |
+| 179 | **Keyboard always opens in "copy to clipboard" mode** | It shouldn't | 10 Oct | 🧪 | Root cause found: the reset check asked whether the coroutine running it had finished, so it never reset. Fixed; the keyboard also resets on every open, and "done" now shows a tick, not the copy icon (build 11) |
+| 180 | **Keyboard icons don't look right** | Make them optimal | 10 Oct | 🧪 | Backspace and Enter are real icons now (outlined, matching weight); "ABC" used a faked bold — the real Figtree weight 700 is used; less empty space round the mic (build 11) |
+| 181 | **Change the Enter button** | The arrow looks bad | 10 Oct | 🧪 | The key now says what it will do in that box: send / search / go / next / done / enter (build 11) |
+| 182 | **Which OpenRouter models should I use?** | Free or paid | 10 Oct | ✅ | Checked the live list: 19 free models today. Pick `google/gemma-4-31b-it:free` (Google AI Studio: does not train); also test `dots-studio/dots-3-note-preview:free`. Avoid NVIDIA / Thinking Machines / Liquid free models — those providers may train on your notes. Paid fallback if free fails: claude-haiku-5.5 or gemini-2.5-flash-lite, about ₹0.03 per note |
+| 183 | **Should I buy the $10 OpenRouter credit?** | It raises free-model limits | 10 Oct | ✅ | Not yet. It is a threshold, not an offer: buying ≥$10 once raises free models from 50 to 1000 requests a day, permanently. 50/day is more than your use, and the model test needs 15 requests. Buy it when you hit the limit or decide to use Haiku |
+| 184 | **Turn training off in OpenRouter** | Privacy | 10 Oct | ⏳ | **Your 30 seconds:** openrouter.ai/settings/privacy, two switches (free and paid). Only 4 of ~95 providers train: DeepSeek, NVIDIA, Liquid, Thinking Machines. Turning it off costs you the NVIDIA and Inkling free models, nothing else |
+| 185 | **Reminders only send a notification, not a proper alert** | Should ring and buzz like an alarm | 10 Oct | 🧪 | "Ring like an alarm until I respond" is now **on by default** (alarm volume, works on silent, repeats until seen). It was built in build 10 but defaulted to off, so you only got the soft chime |
+| 186 | **Scrolling copies a note instead of scrolling** | Accidental swipe-right | 10 Oct | 🧪 | The copy swipe now needs an 80% pull across the card; delete stays at 50% (it asks first and can be undone) |
+| 187 | **Tone conversion: formal / informal before sending** | Rewrite a dictation to send to someone | 10 Oct | 🔬 | Critic-reviewed. "Clean it up" already does a mild version, and the Translate language picker is the same machinery, so the small version is ~0.5 h. **Test first (1 h):** 10 real messages at formal/casual — would you send them unedited? The inline version (tone inside dictation) is ruled out: no AI on the phone, and it would add seconds to a 9-17 s wait |
+| 188 | **The app should learn the gaps and improve over time** | Get better with use | 10 Oct | 🟡 | Critic-reviewed. **Mostly built already:** correct the same word twice and indite offers "Always fix PTM → Paytm?" (`Settings.learn`). Impossible: training the model on your voice (no trainer, no RAM). Refused: sending corrections to a server (breaks privacy, cost, DPDP and public-repo rules). The real gap is a personal vocabulary of names fed to the engine — **gated** on a Mac test, because feeding names to a model that invents in silence could make it invent your contacts' names |
+| 189 | **Keep adding my prompts to the requests file** | Summarised, as before | 10 Oct | ✅ | This block. Done each session |
+| 190 | **Run the 1-hour free-model test** | Does it need my phone? | 10 Oct | 🔬 | No phone needed — Mac only. Running now with your key on 3 free models × 3 prompts × 5 notes. Key stored at `~/.indite/openrouter.key` (outside the repo, 600) |
+
+
 ## Open questions for the founder
 
 **⚠ Remember:** these block work. Nothing below moves until you answer or act.

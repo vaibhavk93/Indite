@@ -383,6 +383,11 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                 SwipeToDismiss(
                     state = dismiss,
                     directions = setOf(DismissDirection.EndToStart, DismissDirection.StartToEnd),
+                    // Copy fired by accident while scrolling the list, so the copy pull is now most of the card's
+                    // width (delete stays at half: it asks first and can be undone).
+                    dismissThresholds = { dir ->
+                        androidx.compose.material.FractionalThreshold(if (dir == DismissDirection.StartToEnd) 0.8f else 0.5f)
+                    },
                     background = {
                         val hinting = note.id == hintNote && hint.value != 0f
                         val copying = if (hinting) hint.value > 0f else dismiss.dismissDirection == DismissDirection.StartToEnd

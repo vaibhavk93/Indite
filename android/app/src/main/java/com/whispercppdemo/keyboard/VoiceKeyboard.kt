@@ -72,15 +72,12 @@ class VoiceKeyboard : InputMethodService() {
         val soft = getColor(R.color.kb_soft)
 
         // Keys: soft pills that sink a little when pressed (spring back on release), with a light tick.
-        fun keyButton(label: String, desc: String, weight: Float, onClick: () -> Unit) = TextView(c).apply {
-            text = label
+        // Words for the two keys people read ("ABC", "space"), drawn icons for the two they recognise by shape.
+        fun keyPill(child: View, desc: String, weight: Float, onClick: () -> Unit) = FrameLayout(c).apply {
             contentDescription = desc
-            gravity = Gravity.CENTER
-            setTextColor(ink)
-            textSize = 15f
-            typeface = Typeface.create(font, Typeface.BOLD)
             background = GradientDrawable().apply { cornerRadius = dp(22).toFloat(); setColor(key) }
             elevation = dp(1).toFloat()
+            addView(child)
             layoutParams = LinearLayout.LayoutParams(0, dp(46), weight).apply { setMargins(dp(4), 0, dp(4), 0) }
             setOnTouchListener { v, e ->
                 when (e.actionMasked) {
@@ -92,6 +89,20 @@ class VoiceKeyboard : InputMethodService() {
             }
             setOnClickListener { performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); onClick() }
         }
+        fun word(t: String) = TextView(c).apply {
+            text = t
+            gravity = Gravity.CENTER
+            setTextColor(ink)
+            textSize = 15f
+            typeface = bold(font)   // real weight 700, not a faked bold
+            letterSpacing = 0.02f
+            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+        }
+        fun glyph(res: Int) = ImageView(c).apply {
+            setImageResource(res)
+            setColorFilter(ink)
+            layoutParams = FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER)
+        }
 
         // Status pill at the top: a coloured dot + what's happening.
         dot = View(c).apply {
@@ -102,7 +113,7 @@ class VoiceKeyboard : InputMethodService() {
             setTextColor(ink)
             textSize = 13f
             typeface = font
-            text = "Tap the mic and speak · Hindi, English or both"
+            text = READY
         }
         val pill = LinearLayout(c).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -154,14 +165,15 @@ class VoiceKeyboard : InputMethodService() {
         }
         val stage = FrameLayout(c).apply {
             addView(halo); addView(mic)
-            layoutParams = LinearLayout.LayoutParams(dp(120), dp(120)).apply { gravity = Gravity.CENTER_HORIZONTAL; setMargins(0, dp(4), 0, dp(4)) }
+            layoutParams = LinearLayout.LayoutParams(dp(104), dp(104)).apply { gravity = Gravity.CENTER_HORIZONTAL; setMargins(0, dp(2), 0, dp(6)) }
         }
         val keys = LinearLayout(c).apply {
             orientation = LinearLayout.HORIZONTAL
-            addView(keyButton("ABC", "Switch to your other keyboard", 1.2f) { switchBack() })
-            addView(keyButton("space", "Space", 3f) { currentInputConnection?.commitText(" ", 1) })
-            addView(keyButton("⌫", "Delete", 1.2f) { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) })
-            addView(keyButton("↵", "Enter", 1.2f) { enter() })
+            addView(keyPill(word("ABC"), "Switch to your other keyboard", 1.2f) { switchBack() })
+            addView(keyPill(word("space"), "Space", 3f) { currentInputConnection?.commitText(" ", 1) })
+            addView(keyPill(glyph(R.drawable.ic_backspace), "Delete", 1.2f) { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) })
+            enterKey = word(actionWord())
+            addView(keyPill(enterKey, "Enter", 1.4f) { enter() })
         }
         // Gentle top-to-bottom gradient with rounded top corners.
         return LinearLayout(c).apply {
@@ -197,6 +209,13 @@ class VoiceKeyboard : InputMethodService() {
                 canvas.drawRoundRect(x, (height - h) / 2, x + w, (height + h) / 2, w / 2, w / 2, paint)
             }
         }
+    }
+
+    /** Opening the keyboard always starts from "tap the mic", unless a dictation is actually still running. */
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        if (job?.isActive != true && Recording.id != noteId) state(State.IDLE, READY)
+        if (::enterKey.isInitialized) enterKey.text = actionWord()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -276,10 +295,29 @@ class VoiceKeyboard : InputMethodService() {
         }
         state(State.DONE, "✓ Done · all typed in")
         delay(2500)
-        if (job?.isActive != true && current == State.DONE) state(State.IDLE, "Tap the mic and speak · Hindi, English or both")
+        // `job` IS this coroutine, so the old check (job?.isActive != true) was never true: the keyboard stayed on
+        // "Done" with the tick for ever, and every later open still showed it.
+        if (current == State.DONE) state(State.IDLE, READY)
+    }
+
+    private lateinit var enterKey: TextView
+
+    /** Figtree is a variable font: Typeface.BOLD only slants/thickens it. Ask for weight 700 where Android allows. */
+    private fun bold(font: android.graphics.Typeface?) =
+        if (Build.VERSION.SDK_INT >= 28) Typeface.create(font, 700, false) else Typeface.create(font, Typeface.BOLD)
+
+    /** What the Enter key will actually do in this text box, in a word. */
+    private fun actionWord(): String = when (currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION)) {
+        EditorInfo.IME_ACTION_SEND -> "send"
+        EditorInfo.IME_ACTION_SEARCH -> "search"
+        EditorInfo.IME_ACTION_GO -> "go"
+        EditorInfo.IME_ACTION_NEXT -> "next"
+        EditorInfo.IME_ACTION_DONE -> "done"
+        else -> "enter"
     }
 
     private var current = State.IDLE
+    private val READY = "Tap the mic and speak · Hindi, English or both"
 
     private fun clock(): String { val s = (System.currentTimeMillis() - startedAt) / 1000; return "%d:%02d".format(s / 60, s % 60) }
 
@@ -295,8 +333,8 @@ class VoiceKeyboard : InputMethodService() {
         (dot.background as GradientDrawable).setColor(col)
         bars.animate().alpha(if (st == State.LISTENING) 1f else 0f).setDuration(200).start()
         if (st != State.LISTENING) halo.animate().alpha(0f).setDuration(200).start()
-        if (st == State.DONE) {  // a little "done" pop
-            micIcon.setImageResource(R.drawable.ic_copy)
+        if (st == State.DONE) {  // a little "done" pop; a tick, never the copy icon (nothing is copied here)
+            micIcon.setImageResource(R.drawable.ic_check)
             mic.scaleX = 0.8f; mic.scaleY = 0.8f
             mic.animate().scaleX(1f).scaleY(1f).setDuration(380).setInterpolator(android.view.animation.OvershootInterpolator(3f)).start()
         }

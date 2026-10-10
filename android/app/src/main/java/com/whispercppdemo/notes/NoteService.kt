@@ -394,6 +394,11 @@ class NoteService : Service() {
             return piece
         }
 
+        // Invented text in silence: the model gives no usable signal. Measured on the Mac (10 Oct, apex-q5_k):
+        // pink noise -> "CTR tin percent aaya hai", no_speech_prob 0.000, word confidence 95.5%; pure silence ->
+        // "Mummy office mein late ho jaega", 0.000 / 88.5%; real speech 0.000 / 94.9%. Neither the no-speech
+        // probability nor confidence separates invented text from real text, so no filter after the model can work.
+        // The only place left is before it: keep non-speech audio out (Silero, see Pauses.speechFromProbs).
         private fun words(s: List<Seg>) = s.sumOf { seg -> seg.text.split(Regex("\\s+")).count { it.isNotBlank() } }
         /** Under 1.2 words per second of detected speech (over at least 4 s): text was probably dropped. */
         private fun sparse(s: List<Seg>, speechMs: Int) = speechMs >= 4000 && words(s) < 1.2 * speechMs / 1000.0

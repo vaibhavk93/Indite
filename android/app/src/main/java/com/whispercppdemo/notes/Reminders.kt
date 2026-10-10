@@ -107,7 +107,8 @@ object Reminders {
     }
 
     private const val CHANNEL_ALARM = "reminders_ring"
-    fun ringLikeAlarm(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reminderAlarm", false)
+    /** Default ON: a reminder you asked for should ring like an alarm, not arrive as a quiet notification. */
+    fun ringLikeAlarm(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reminderAlarm", true)
     fun setRingLikeAlarm(c: Context, on: Boolean) = c.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putBoolean("reminderAlarm", on).apply()
 
     const val DONE = "done"

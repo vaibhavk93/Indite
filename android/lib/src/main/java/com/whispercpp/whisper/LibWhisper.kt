@@ -17,14 +17,14 @@ class WhisperContext private constructor(private var ptr: Long) {
     )
 
     /** indite: the text as sentences with their times (milliseconds from the start of `data`). */
-    data class Segment(val startMs: Int, val endMs: Int, val text: String)
+    data class Segment(val startMs: Int, val endMs: Int, val text: String, val noSpeech: Float = 0f)
 
     suspend fun transcribeSegments(data: FloatArray, audioCtx: Int = 0): List<Segment> = withContext(scope.coroutineContext) {
         require(ptr != 0L)
         WhisperLib.fullTranscribe(ptr, WhisperCpuConfig.preferredThreadCount, audioCtx, data)
         List(WhisperLib.getTextSegmentCount(ptr)) { i ->  // whisper times are in 10 ms steps
             Segment((WhisperLib.getTextSegmentT0(ptr, i) * 10).toInt(), (WhisperLib.getTextSegmentT1(ptr, i) * 10).toInt(),
-                WhisperLib.getTextSegment(ptr, i).trim())
+                WhisperLib.getTextSegment(ptr, i).trim(), WhisperLib.getTextSegmentNoSpeechProb(ptr, i))
         }.filter { it.text.isNotEmpty() }
     }
 
@@ -151,6 +151,9 @@ private class WhisperLib {
         external fun getTextSegment(contextPtr: Long, index: Int): String
         external fun getTextSegmentT0(contextPtr: Long, index: Int): Long
         external fun getTextSegmentT1(contextPtr: Long, index: Int): Long
+
+        /** indite: the model's own "this was not speech" probability for a sentence (hallucination filter). */
+        external fun getTextSegmentNoSpeechProb(contextPtr: Long, index: Int): Float
         external fun getSystemInfo(): String
         external fun vadInit(path: String): Long
         external fun vadProbs(ptr: Long, samples: FloatArray, stream: Boolean): FloatArray
