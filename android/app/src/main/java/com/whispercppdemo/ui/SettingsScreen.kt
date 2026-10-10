@@ -123,11 +123,11 @@ fun SettingsScreen(onBack: () -> Unit) {
         }) { shown ->
         if (shown == null) {
             val bubbleOn = remember { com.whispercppdemo.overlay.BubbleService.enabled(context) }
-            val aiApp = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE).getString("aiApp", "ask") }
             val summary = mapOf(
                 "look" to theme.label,
                 "dictation" to (if (bubbleOn) "Floating mic on" else "Keyboard and floating mic"),
-                "ai" to (com.whispercppdemo.ui.AiApps.firstOrNull { it.first == aiApp }?.second ?: "Your AI app"),
+                "ai" to (com.whispercppdemo.ui.aiTargets(context).joinToString(", ") { com.whispercppdemo.ui.aiTargetName(it).substringBefore(" (") }
+                    .ifEmpty { "Share list" }),
                 "fixes" to (if (fixes.isEmpty()) "None yet" else "${fixes.size} fix${if (fixes.size == 1) "" else "es"}"),
                 "storage" to "${notes.size} notes · ${Formatter.formatShortFileSize(context, used)}",
                 "about" to "indite ${BuildConfig.VERSION_NAME}",
@@ -283,23 +283,70 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
             if (shown == "ai") item {
-                Section("Your AI app") {
-                    var app by remember { mutableStateOf(context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
-                        .getString("aiApp", "ask") ?: "ask") }
-                    Text("Make notes, Action items and Translate open this app with your request and the text already filled in. " +
-                        "Copy its reply and come back to save it with the note." +
-                        if (com.whispercppdemo.ai.MacCompanion.available) " (When your Mac is set up below, answers come straight into indite.)" else "",
+                Section("Where AI requests go") {
+                    var targets by remember { mutableStateOf(com.whispercppdemo.ui.aiTargets(context).toSet()) }
+                    Text("Make notes, Action items and Translate go here. Tick one to go straight there, or several to choose each time. " +
+                        "None ticked: your phone's share list." +
+                        if (com.whispercppdemo.ai.MacCompanion.configured(context)) " Your Mac is set up, so answers come from Claude on your Mac." else "",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Column(Modifier.selectableGroup().padding(top = 6.dp)) {
-                        com.whispercppdemo.ui.AiApps.forEach { (pkg, name) ->
-                            Row(Modifier.fillMaxWidth().selectable(selected = app == pkg, role = Role.RadioButton, onClick = {
-                                app = pkg
-                                context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE).edit().putString("aiApp", pkg).apply()
-                            }).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(selected = app == pkg, onClick = null)
-                                Text(name, Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
+                    val options = (if (com.whispercppdemo.ai.OpenRouter.available) listOf(com.whispercppdemo.ui.IN_APP) else emptyList()) +
+                        com.whispercppdemo.ui.AiApps.map { it.first }
+                    Column(Modifier.padding(top = 6.dp)) {
+                        options.forEach { t ->
+                            val on = t in targets
+                            Row(Modifier.fillMaxWidth().clickable(role = Role.Checkbox) {
+                                targets = if (on) targets - t else targets + t
+                                com.whispercppdemo.ui.setAiTargets(context, targets)
+                            }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                androidx.compose.material3.Checkbox(checked = on, onCheckedChange = null)
+                                Text(com.whispercppdemo.ui.aiTargetName(t), Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
                             }
                         }
+                    }
+                }
+            }
+            if (shown == "ai" && com.whispercppdemo.ai.OpenRouter.available) item {
+                Section("Your OpenRouter key") {
+                    var key by remember { mutableStateOf(com.whispercppdemo.ai.OpenRouter.key(context)) }
+                    var model by remember { mutableStateOf(com.whispercppdemo.ai.OpenRouter.model(context)) }
+                    var models by remember { mutableStateOf<List<String>>(emptyList()) }
+                    var result by remember { mutableStateOf<String?>(null) }
+                    Text("Answers are written inside indite and saved with the note. Only the text is sent, never audio. " +
+                        "Free models: about 50 requests a day. Get a key at openrouter.ai → Keys.",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(key, { key = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
+                        label = { Text("Key (starts with sk-or-)") },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+                    OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
+                        label = { Text("Model") })
+                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(onClick = {
+                            com.whispercppdemo.ai.OpenRouter.save(context, key, model)
+                            result = "Loading free models…"
+                            scope.launch {
+                                result = try { models = com.whispercppdemo.ai.OpenRouter.freeModels(context); "${models.size} free models. Tap one." }
+                                catch (e: Exception) { e.message }
+                            }
+                        }, enabled = key.isNotBlank()) { Text("Show free models") }
+                        FilledTonalButton(onClick = {
+                            com.whispercppdemo.ai.OpenRouter.save(context, key, model)
+                            result = "Checking…"
+                            scope.launch {
+                                result = try {
+                                    com.whispercppdemo.ai.OpenRouter.ask(context, "Reply with just: OK", "test")
+                                    if (com.whispercppdemo.ui.IN_APP !in com.whispercppdemo.ui.aiTargets(context))
+                                        com.whispercppdemo.ui.setAiTargets(context, com.whispercppdemo.ui.aiTargets(context).toSet() + com.whispercppdemo.ui.IN_APP)
+                                    "✓ Working. \"Answer inside indite\" is now ticked above."
+                                } catch (e: Exception) { e.message }
+                            }
+                        }, enabled = key.isNotBlank() && model.isNotBlank()) { Text("Save and test") }
+                    }
+                    result?.let { Text(it, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary) }
+                    models.take(30).forEach { m ->
+                        Text(m, Modifier.fillMaxWidth().clickable { model = m; com.whispercppdemo.ai.OpenRouter.save(context, key, m) }
+                            .padding(vertical = 8.dp), style = MaterialTheme.typography.bodyMedium,
+                            color = if (m == model) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }

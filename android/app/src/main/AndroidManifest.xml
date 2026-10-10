@@ -4,6 +4,8 @@
 
     <!-- No internet permission: audio and text can't leave the phone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- "Remind me" opens the Clock app with the task filled in; indite sets no alarms itself -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
