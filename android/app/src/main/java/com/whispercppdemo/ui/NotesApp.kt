@@ -338,7 +338,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Text("Speak in Hindi, English or both. Get it in writing.", Modifier.offset(y = (-6).dp),  // tight under the title
+                Text("Speak in Hindi, English or both. Get it in writing.",
                     style = MaterialTheme.typography.bodyMedium.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                         fontFamily = androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Font(R.font.figtree_italic,
                             style = androidx.compose.ui.text.font.FontStyle.Italic))),  // Figtree's real italic, not a slanted fake
@@ -531,7 +531,7 @@ private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare
             }
             if (note.pending && !note.recording) LinearProgressIndicator(note.pieces.size / note.cuts.size.toFloat(),
                 Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(CircleShape))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {  // chips clear of the card edge
                 Text("${clock(note.seconds)}  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}",
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.weight(1f))
