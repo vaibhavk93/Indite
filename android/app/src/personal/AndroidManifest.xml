@@ -2,4 +2,15 @@
 <!-- personal build only: talk to the founder's own Mac over Tailscale. The public build has no internet. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <application>
+        <!-- "Type into the box for me": personal build only until the Google Play decision -->
+        <service
+            android:name="com.whispercppdemo.overlay.PasteService"
+            android:exported="false"
+            android:label="@string/paste_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/paste_service" />
+        </service>
+    </application>
 </manifest>

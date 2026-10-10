@@ -137,11 +137,12 @@ private val AskPrompts = listOf(
     "Brain dump" to "This is me thinking out loud. Organise it: 1) the main themes, 2) every idea under its theme, in short bullets, " +
         "3) the 3 most important open questions I should answer next, 4) concrete next steps. Don't add ideas I didn't say. $HINGLISH",
     "Meeting notes" to "Turn this meeting transcript into notes with these headings: Decisions, Action items (who, what, by when), " +
-        "Open questions, Key points. Short bullets. $HINGLISH",
+        "Open questions, Key points. Short bullets. If a person or date is not said, write 'not said'. Don't invent decisions. $HINGLISH",
     "Lecture notes" to "Turn this lecture transcript into study notes: the main topics as headings, key ideas and definitions as bullets, " +
         "examples, and 5 quick revision questions at the end. $HINGLISH",
-    "Action items" to "List every task, promise or follow-up in this, one per line, as: task | who | by when (write 'not said' if missing). " +
-        "Only things actually said. $HINGLISH",
+    "Action items" to "List every task, promise or follow-up in this, one per line, exactly as: task | who | by when. Write 'not said' " +
+        "if who or when is missing. Only things actually said. No other text before or after the lines. If there are none, write: " +
+        "No tasks found. $HINGLISH",
     "Practice answer" to "I'm practising this spoken answer (for example a product-management interview or a pitch). Score it 1-10 on " +
         "structure, clarity, use of numbers and examples, and conciseness, one line of reason each. Then give the 3 most useful fixes and " +
         "a tighter 60-second version. $HINGLISH",
@@ -538,6 +539,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var editing by remember { mutableStateOf<Int?>(null) }
     var playing by remember { mutableStateOf<Int?>(null) }
     var asking by remember { mutableStateOf(false) }
+    var pickingNotes by remember { mutableStateOf(false) }
     var whoSpoke by remember { mutableStateOf(false) }
     var renamingSpeaker by remember { mutableStateOf<Int?>(null) }
     var labelling by remember { mutableStateOf<String?>(null) }
@@ -570,6 +572,40 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
         confirmButton = { TextButton(onClick = { confirmDelete = false; Player.stop(); onBack(); Notes.delete(note.id) }) { Text("Delete") } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
     )
+    /** Ask the user's AI for one of the ready requests: through their Mac (personal build) or their own AI app. */
+    fun ask(label: String) {
+        val prompt = AskPrompts.first { it.first == label }.second
+        if (com.whispercppdemo.ai.MacCompanion.configured(context)) {
+            labelling = "Asking Claude on your Mac: $label…"
+            val app = context.applicationContext
+            AppScope.launch {
+                try {
+                    val answer = com.whispercppdemo.ai.MacCompanion.ask(app, prompt, note.allText())
+                    withContext(Dispatchers.IO) { Notes.addAi(note.id, label, answer) }
+                } catch (e: Exception) { Messages.flow.tryEmit(e.message ?: "Couldn't reach your Mac. Is it awake and online?") }
+                finally { labelling = null }
+            }
+        } else { awaitingReply = label; share(context, prompt + "\n\n---\n" + note.allText()) }
+    }
+    if (pickingNotes) AlertDialog(
+        onDismissRequest = { pickingNotes = false },
+        title = { Text("What kind of notes?") },
+        text = {
+            Column {
+                listOf("Meeting notes" to "Decisions, action items, open questions",
+                    "Lecture notes" to "Topics, key ideas, revision questions",
+                    "Brain dump" to "Your thinking out loud, organised").forEach { (label, hint) ->
+                    TextButton(onClick = { pickingNotes = false; ask(label) }, Modifier.fillMaxWidth()) {
+                        Column(Modifier.fillMaxWidth()) {
+                            Text(label)
+                            Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { pickingNotes = false }) { Text("Cancel") } },
+    )
     if (asking) AlertDialog(
         onDismissRequest = { asking = false },
         title = { Text("Ask my AI") },
@@ -581,21 +617,8 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                 val viaMac = com.whispercppdemo.ai.MacCompanion.configured(context)
                 if (viaMac) Text("Answered by Claude on your Mac and saved here.", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 4.dp))
-                AskPrompts.forEach { (label, prompt) ->
-                    TextButton(onClick = {
-                        asking = false
-                        if (viaMac) {
-                            labelling = "Asking Claude on your Mac: $label…"
-                            val app = context.applicationContext
-                            AppScope.launch {
-                                try {
-                                    val answer = com.whispercppdemo.ai.MacCompanion.ask(app, prompt, note.allText())
-                                    withContext(Dispatchers.IO) { Notes.addAi(note.id, label, answer) }
-                                } catch (e: Exception) { Messages.flow.tryEmit(e.message ?: "Couldn't reach your Mac.") }
-                                finally { labelling = null }
-                            }
-                        } else { awaitingReply = label; share(context, prompt + "\n\n---\n" + note.allText()) }
-                    }, modifier = Modifier.fillMaxWidth()) { Text(label, Modifier.fillMaxWidth()) }
+                AskPrompts.forEach { (label, _) ->
+                    TextButton(onClick = { asking = false; ask(label) }, modifier = Modifier.fillMaxWidth()) { Text(label, Modifier.fillMaxWidth()) }
                 }
             }
         },
@@ -686,6 +709,12 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         }
                         Text("Tap any paragraph to edit it, hear it or copy it.", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(onClick = { pickingNotes = true }, Modifier.weight(1f).height(46.dp),
+                                enabled = labelling == null) { Text("Make notes") }
+                            OutlinedButton(onClick = { ask("Action items") }, Modifier.weight(1f).height(46.dp),
+                                enabled = labelling == null) { Text("Action items") }
+                        }
                     }
                     if (note.done && note.speakers == null && note.pieces.size >= 2 && note.seconds >= 60 && labelling == null &&
                         note.id !in Speakers.running) {
@@ -849,9 +878,33 @@ private fun AiCard(r: com.whispercppdemo.notes.AiReply, onCopy: () -> Unit, onDe
                 Chip(r.label)
                 Text("  from your AI", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(r.text, style = MaterialTheme.typography.bodyMedium, maxLines = if (open) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis)
+            val context = LocalContext.current
+            val rows = if (r.label == "Action items") actionRows(r.text) else emptyList()
+            if (rows.isEmpty()) Text(r.text, style = MaterialTheme.typography.bodyMedium, maxLines = if (open) Int.MAX_VALUE else 4,
+                overflow = TextOverflow.Ellipsis)
+            // Action items: one row per task, handed to the user's own calendar or task app (indite is not a to-do app)
+            rows.take(if (open) rows.size else 3).forEach { (task, who, by) ->
+                Column(Modifier.padding(top = 4.dp)) {
+                    Text(task, style = MaterialTheme.typography.bodyLarge)
+                    Text("$who · by $by", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (open) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = {
+                            val i = Intent(Intent.ACTION_INSERT, android.provider.CalendarContract.Events.CONTENT_URI)
+                                .putExtra(android.provider.CalendarContract.Events.TITLE, task)
+                                .putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "From indite. Who: $who. By: $by")
+                            try { context.startActivity(i) } catch (e: android.content.ActivityNotFoundException) {
+                                Messages.flow.tryEmit("No calendar app found. Use Share instead.")
+                            }
+                        }) { Text("Add to Calendar") }
+                        TextButton(onClick = { share(context, "$task — $who — by $by") }) { Text("Share") }
+                    }
+                }
+            }
+            if (!open && rows.size > 3) Text("+${rows.size - 3} more", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary)
             if (open) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onCopy) { Text("Copy") }
+                OutlinedButton(onClick = { share(context, r.text) }) { Text(if (rows.isEmpty()) "Share" else "Share all") }
                 TextButton(onClick = onDelete) { Text("Remove", color = MaterialTheme.colorScheme.error) }
             }
         }
@@ -920,4 +973,10 @@ object Player {
         track?.run { try { stop() } catch (e: Exception) {}; release() }
         track = null
     }
+}
+
+/** "task | who | by when" lines from an Action items reply; other lines are ignored (the card shows plain text if none parse). */
+internal fun actionRows(text: String): List<Triple<String, String, String>> = text.lines().mapNotNull { line ->
+    val parts = line.trim().trimStart('-', '*', '•', ' ').replace(Regex("^\\d+[.)]\\s*"), "").split("|").map { it.trim() }
+    if (parts.size == 3 && parts[0].isNotEmpty()) Triple(parts[0], parts[1].ifEmpty { "not said" }, parts[2].ifEmpty { "not said" }) else null
 }

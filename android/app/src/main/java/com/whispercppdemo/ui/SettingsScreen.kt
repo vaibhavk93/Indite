@@ -201,6 +201,34 @@ fun SettingsScreen(onBack: () -> Unit) {
                             auto = it; com.whispercppdemo.overlay.BubbleService.setAutoCopy(context, it)
                         })
                     }
+                    if (com.whispercppdemo.overlay.AutoPaste.available) {
+                        var typing by remember { mutableStateOf(com.whispercppdemo.overlay.AutoPaste.enabled()) }
+                        var disclose by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) { while (true) { typing = com.whispercppdemo.overlay.AutoPaste.enabled(); delay(1000) } }
+                        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Type into the box for me", style = MaterialTheme.typography.bodyMedium)
+                                Text(if (typing) "On: text goes straight into the box you were typing in"
+                                    else "Off: tap the green button to copy", style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            TextButton(onClick = { if (typing) context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)) else disclose = true }) {
+                                Text(if (typing) "Turn off" else "Turn on")
+                            }
+                        }
+                        // Google Play requires this disclosure before sending people to the accessibility settings.
+                        if (disclose) AlertDialog(
+                            onDismissRequest = { disclose = false },
+                            title = { Text("Let indite type into text boxes?") },
+                            text = { Text("indite uses Android's accessibility service only to paste your dictation into the text box " +
+                                "you were typing in. It looks for that box only when you start and finish a dictation, and skips " +
+                                "password boxes. It does not read or save anything on your screen, and nothing leaves your phone.\n\n" +
+                                "Next: in the list, tap \"indite: type into the box\" and turn it on.") },
+                            confirmButton = { TextButton(onClick = { disclose = false
+                                context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)) }) { Text("Agree") } },
+                            dismissButton = { TextButton(onClick = { disclose = false }) { Text("Not now") } },
+                        )
+                    }
                     // Some phones (OnePlus, Xiaomi, Vivo…) stop background apps to save battery; this opens the phone's own list.
                     TextButton(onClick = { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) } }) {
                         Text("Bubble disappears? Allow indite in battery settings")

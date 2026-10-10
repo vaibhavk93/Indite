@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="paste_service_label">indite: type into the box</string>
+    <string name="paste_service_description">When you dictate with the indite floating mic, the text is pasted into the text box you were typing in. indite only looks for that box when you start and finish a dictation. It does not read or save anything on your screen, and nothing leaves your phone.</string>
+</resources>

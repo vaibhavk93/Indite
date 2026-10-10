@@ -232,6 +232,7 @@ class NoteService : Service() {
             val text = n.allText()
             val msg = when {
                 text.isBlank() -> "indite didn't hear any speech."
+                com.whispercppdemo.overlay.AutoPaste.paste(this, text) -> "Typed in."
                 com.whispercppdemo.overlay.BubbleService.autoCopy(this) -> {
                     getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("indite", text))
                     if (Build.VERSION.SDK_INT >= 33) null else "Copied. Long-press a text box to paste."

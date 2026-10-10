@@ -75,11 +75,19 @@ class BubbleService : Service() {
             layoutParams = FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER)
         }
         val circle = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(getColor(R.color.kb_accent)) }
+        // Spinning ring while the text is being written, so it's clear indite is still working.
+        val spinner = android.widget.ProgressBar(this).apply {
+            isIndeterminate = true
+            indeterminateTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.kb_on_accent))
+            layoutParams = FrameLayout.LayoutParams(dp(50), dp(50), Gravity.CENTER)
+            visibility = android.view.View.GONE
+        }
         val view = FrameLayout(this).apply {
             background = circle
             elevation = dp(6).toFloat()
             contentDescription = "indite: tap to dictate"
             addView(icon)
+            addView(spinner)
         }
         val lp = WindowManager.LayoutParams(
             dp(56), dp(56), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -128,8 +136,10 @@ class BubbleService : Service() {
                 if (state != last) {  // only touch the view when something changed
                     circle.setColor(getColor(when (state) { 2 -> R.color.kb_record; 1 -> R.color.kb_soft; 3 -> R.color.kb_ready; else -> R.color.kb_accent }))
                     icon.setImageResource(when (state) { 2 -> R.drawable.ic_stop; 3 -> R.drawable.ic_copy; else -> R.drawable.ic_mic })
+                    spinner.visibility = if (state == 1) android.view.View.VISIBLE else android.view.View.GONE
                     view.contentDescription = when (state) {
-                        2 -> "indite: tap to stop, hold to cancel"; 3 -> "indite: tap to copy the text"; else -> "indite: tap to dictate"
+                        2 -> "indite: tap to stop, hold to cancel"; 1 -> "indite: writing your text"; 3 -> "indite: tap to copy the text"
+                        else -> "indite: tap to dictate"
                     }
                     last = state
                     lastTouch = System.currentTimeMillis()
@@ -147,19 +157,21 @@ class BubbleService : Service() {
     private fun toast(msg: String) = android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
 
     private fun tap() {
-        if (Recording.active) { NoteService.stopRecording(this); return }
+        if (Recording.active) { NoteService.stopRecording(this); toast("Writing your text…"); return }
         readyText?.let { text ->
             getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("indite", text))
             readyText = null
             if (Build.VERSION.SDK_INT < 33) toast("Copied. Long-press a text box to paste.")  // Android 13+ shows its own
             return
         }
+        AutoPaste.capture()  // the box you're typing in, if "Type into the box for me" is on
         startActivity(Intent(this, StartMicActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION))
     }
 
     /** Hold while recording: throw this dictation away (the note is deleted once the recorder has stopped). */
     private fun cancel() {
         Recording.id?.let { cancelled += it }
+        AutoPaste.forget()
         NoteService.stopRecording(this)
         toast("Cancelled")
     }
