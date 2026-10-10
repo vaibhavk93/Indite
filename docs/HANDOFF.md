@@ -24,6 +24,7 @@ Docs that matter, in order:
 3. `docs/AI_MODES.md`: AI features spec (notes, action items, practice, tiers T1–T4).
 4. `reports/*.md` (local only, not in git): research reports.
 5. `docs/WORKLOG.md`: what each session did.
+6. **`docs/FOUNDER_REQUESTS.md`: every founder request with its status. Add new asks and update statuses every session.**
 
 ---
 
@@ -143,6 +144,6 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 1. Update section 5 above.
 2. Add an entry to `docs/WORKLOG.md`: date, who (Claude Code / Codex, which account), what changed (commits), what's
    untested, what's next.
-3. Update `ROADMAP.md` **and** the roadmap page if anything was built, decided or dropped.
+3. Update `ROADMAP.md` **and** the roadmap page if anything was built, decided or dropped; update `docs/FOUNDER_REQUESTS.md`.
 4. Commit (founder's no-reply email). Tag any build that got installed on the phone: `git tag build-YYYYMMDD-N`.
 5. Leave a one-line "next step" at the top of the WORKLOG entry.
