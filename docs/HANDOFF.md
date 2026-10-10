@@ -124,6 +124,44 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+- **Fixed in code 10 Oct, NOT built and NOT heard yet** (no Android SDK, no model assets and no signing key in the
+  cloud container, so nothing here was compiled). The founder reported: "alarm is not giving me sound", "the
+  translations are not working", and "making formal statement out of the context I have shared" does not work.
+
+  **Why the reminder was silent — ranked, with what is actually proven** (critic-reviewed; the first theory was wrong,
+  see below):
+  | Rank | Cause | Proven? | What changed |
+  |---|---|---|---|
+  | 1 | **"Ring like an alarm" defaulted to OFF.** So every reminder was a 2.6 s chime on the *notification* stream, which silent/vibrate mode, Do Not Disturb and a low notification volume all mute. Founder request #84 was "alarm-like sound"; it shipped as an opt-in switch, off, inside Settings | Code-proven (`Reminders.ringLikeAlarm` default was `false`). That it is what *he* hit is the best guess, not proven | **Default ON.** The alarm path is now the channel's own sound with `USAGE_ALARM` + `FLAG_INSISTENT`: alarm stream, alarm volume, repeated by the phone until the notification is seen, through silent mode and through DND wherever DND allows alarms |
+  | 2 | **POST_NOTIFICATIONS may be denied.** indite asked for it only when recording or importing, never when a reminder was set. Denied = nothing appears and nothing sounds | Code-proven (`MainActivity.askNotificationsOnce` is called from `record()` and `import()` only) | `RemindDialog` asks when it opens; `Reminders.show()` returns false when notifications are off, and `fire()` then does **not** mark the reminder `fired`, so it is not thrown away |
+  | 3 | **OxygenOS force-stopped indite**, which deletes its alarms. Nothing in the app can stop this | Plausible, untested | Settings → Reminders now says so and opens the phone's battery setting (that button previously existed only under the floating-mic section) |
+  | — | ~~The channel's sound URI used the numeric `R.raw.reminder` id, which AAPT2 moves between builds~~ | **Checked and false.** `reminder.wav`, the channel ids and `setSound` all arrived in one commit (`3d42717`) and `res/raw` is unchanged since, so the stored number still resolved | The URI is named anyway (`.../raw/<entry name>`, via `getResourceEntryName`, which also keeps a code reference so resource shrinking can't strip the WAV). Channel ids went to `_v2` because a channel's sound is frozen at creation — needed for the `USAGE_ALARM` change regardless. **Next change needs `_v3`:** deleting a channel does not reset it, recreating the same id restores the old settings |
+  | — | A missed reminder re-announced itself on every app open | Code-proven (`rescheduleAll` notified every past reminder, with nothing marking it done) | `fired` flag in `reminders.json`; shown once, quietly |
+  | — | No way to test the sound without waiting for 5 pm | — | Settings → Reminders: **Test the reminder sound** + Stop; `soundProblem()` names the blocking phone setting (notifications off, channel blocked or muted, silent/vibrate, notification volume 0, DND, alarm volume 0); "Last reminder: …" records what happened the last time one fired |
+
+  **A foreground service that played the alarm itself was written and then deleted.** The critic was right that it was
+  over-engineering: it could lose a reminder (it marked `fired` before the notification was confirmed) and opening
+  indite removed its own ongoing notification. The channel route does the same job with the system playing the sound.
+  Add a player back **only** if a device test shows the phone cutting the channel sound short.
+
+  **Why Translate did nothing useful:**
+  | Cause | What changed |
+  |---|---|
+  | *Ask my AI → Translate* called `ask("Translate")` with no language, so `{lang}` became **English** — and the Hinglish reply rule was already skipped, so a Hinglish note came back looking almost unchanged | Translate in that list now opens the language picker |
+  | The one route that needs no key and no internet (the Google Translate app) was the last line of a scrolling dialog | It is the first button when the app is installed (`<queries>` for that one package so `installed()` can ask) |
+  | **The real block: no AI route exists on this phone.** `MacCompanion` needs a Tailscale URL + token, `OpenRouter` needs an `sk-` key + a model; both are still waiting on the founder. So every AI request can only hand the text to another app and wait for a paste | Settings → AI prints one line (`aiRouteNow()`) saying exactly what will happen. ⚠ **An OpenRouter key is the single highest-value thing the founder can do**: it makes Translate, Formal version and every other request answer inside indite today |
+  | ~~Android 11+ package visibility made `startActivity(setPackage(…))` throw~~ | **False.** Google's docs: `startActivity()` does not require package visibility, for implicit or explicit intents. Filtering hits *queries* and starting another app's *service* |
+
+  **"Formal statement" did not exist.** Added as **Formal version** in `AskPrompts`: formal English, every fact / name /
+  number / date kept, nothing invented, "(unclear)" where it can't tell. It and Translate are in `OwnLanguage`, so the
+  "reply in Hinglish" rule is not applied to them (that rule would have wrecked a formal English statement).
+
+  **Open question only the founder can answer:** when the reminder was due, did it appear on screen with no sound, or
+  did nothing appear at all? Silent-but-visible points at cause 1; nothing at all points at 2 or 3.
+
+  **To verify (on the Mac):** build 11 → Settings → Reminders → Test the reminder sound with the switch ON, then OFF →
+  one real 2-minute reminder with the phone locked → one Translate → one Formal version. `adb shell dumpsys alarm | grep
+  indite` and `adb shell dumpsys notification --noredact` after a test answer most of the rest.
 - **Installed on the founder's phone:** build 10 (0.10, tag `build-10`), personal flavour.
 - **Pushed to GitHub:** everything up to the evening of 10 Oct (and build tags).
 - **Engine consistency (fixed 10 Oct, needs phone confirmation):** same audio gave different text because flash attention
@@ -164,8 +202,10 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 - **ChatGPT login inside the app:** not allowed yet (OpenAI's "Sign in with ChatGPT" = application-only preview, no mobile;
   reusing Codex's login would impersonate OpenAI's client). Founder to apply to the programme.
 - **Founder's checklist of every request:** `docs/FOUNDER_REQUESTS.md` (175 items).
-- **Waiting on the founder:** hand check of builds 9–10; phone free for the quick test; OpenRouter key; Tailscale; back up
-  the signing key; OK to delete ~2.4 GB of old APKs; ₹15k phone; "push".
+- **Waiting on the founder** (highest value first): **an OpenRouter key** — a 2-minute signup that makes Translate,
+  Formal version and every other AI request answer inside indite, instead of handing the text to another app; then the
+  answer to the reminder question above; hand check of builds 9–11; phone free for the quick test; Tailscale (the Mac
+  route, harder than the key); back up the signing key; OK to delete ~2.4 GB of old APKs; ₹15k phone; "push".
 
 ---
 

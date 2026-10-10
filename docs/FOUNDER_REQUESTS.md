@@ -1,6 +1,6 @@
 # Founder requests: everything you asked for, and where it stands
 
-**Last updated:** 2026-10-10
+**Last updated:** 2026-10-10 (reminder sound, translation and "formal version" fixes)
 
 ## What this is
 
@@ -40,14 +40,14 @@ is a git commit.
 
 | Status | Count |
 |---|---|
-| ✅ Built / answered | 118 |
-| 🧪 Built, not tested on phone | 11 |
-| 🟡 Partly | 16 |
+| ✅ Built / answered | 121 |
+| 🧪 Built, not tested on phone | 14 |
+| 🟡 Partly | 17 |
 | ⏳ Pending | 10 |
 | 🔬 Researching / needs decision | 9 |
 | ❌ Not doing | 6 |
-| ❓ Unclear | 2 |
-| **Total** | **172** |
+| ❓ Unclear | 3 |
+| **Total** | **180** |
 
 **Bottom line:** most of what you asked for is built. What's left falls into four groups:
 
@@ -169,6 +169,7 @@ is a git commit.
 | 78 | **Choose where AI goes: key / share / both, multi-select** | Tick several AI apps (asked again 10 Oct) | 10 Oct | ✅ | Tick several (`29aa66e`). You overrode the critic's "no Both setting" |
 | 79 | **Where is the API key box? What's the Mac address for?** | Question about Settings | 10 Oct | ✅ | Answered. The "Mac" box is your Mac's Tailscale link (personal build) |
 | 80 | **What is Tailscale?** | How does it work? | 10 Oct | ✅ | Answered: a private link between your phone and your Mac |
+| 180 | **Make a formal statement out of what I dictated** | "Making formal statement out of the context I have shared" | 10 Oct | 🧪 | New **Formal version** request under Ask my AI: formal English, every fact / name / number / date kept, nothing added, "(unclear)" where it can't tell. It needs an AI route, so see #179 |
 
 ### 7. Reminders & tasks
 
@@ -177,9 +178,10 @@ is a git commit.
 | 81 | **Timers / reminders** | "I don't see it yet" | 10 Oct | ✅ | First built as a hand-off to the Clock app. **You overrode the "no own reminders" rule**, so indite now has its own (`d5d0188`) |
 | 82 | **"Remind me" in the long-press menu, and wherever it fits** | e.g. grocery list at 5 pm after office | 10 Oct | ✅ | Card menu, note menu, task rows; quick picks + any date/time; Done / Snooze 1 h |
 | 83 | **Check the note → task → reminder flow** | Test it end to end; improve it | 10 Oct | ✅ | Calendar pre-fills clear dates; "by when" label |
-| 84 | **Alarm-like sound + nudge vibration** | Better sound, vibration nudges | 10 Oct | 🧪 | `3d42717`: soft chime + nudges; optional "ring like an alarm until I respond" |
+| 84 | **Alarm-like sound + nudge vibration** | Better sound, vibration nudges | 10 Oct | 🧪 | `3d42717`: soft chime + nudges; "ring like an alarm until I respond" was built as a switch that defaulted to **off**, which is why you heard nothing — see **#178**. Stays 🧪 until you confirm on the phone |
 | 85 | **Confirm before cancelling; tidy reminders list** | Separator per reminder; better close button | 10 Oct | 🧪 | `3d42717` |
 | 86 | **Icons in the menu?** | Check from a UX view whether to add a reminder icon | 10 Oct | 🧪 | Menu icons added (`3d42717`) |
+| 178 | **The reminder makes no sound** | "Alarm is not working properly. It is not giving me sound." (#84 again, after the build) | 10 Oct | 🧪 | **Most likely cause: the "Ring like an alarm" switch was off by default**, so every reminder was a soft chime on the notification volume — which silent mode, Do Not Disturb and a low notification volume all mute. You asked for an alarm-like sound in #84 and it shipped as an opt-in switch, off, inside Settings. **Now on by default**, on the alarm volume, repeating until you see it. **Second possible cause:** indite only asked for notification permission when you recorded or imported, never when you set a reminder; the Remind me dialog asks now, and a reminder the phone refuses to show is no longer quietly thrown away. **Third:** this phone force-stopping indite, which deletes its alarms — Settings → Reminders now says so and opens the battery setting. Also new: **Test the reminder sound**, a line naming whichever phone setting is blocking it, and "Last reminder: …". A missed reminder also stopped re-appearing on every app open. ⚠ **One question only you can answer:** when it was due, did it appear on screen with no sound, or not appear at all? |
 
 ### 8. Translation & languages
 
@@ -190,6 +192,7 @@ is a git commit.
 | 89 | **Read the translation aloud** | Speak it out in the chosen language | 10 Oct | ❌ | Parked: 14–15 s per turn on a flagship; little evidence people want it |
 | 90 | **Pick the language once; prompt goes with the text** | No asking for the language again | 10 Oct | ✅ | Remembered language (`087931d`) |
 | 91 | **More languages (vision)** | Beyond English/Hinglish | 9 Oct | ⏳ | Later: Indian English → Marathi/Bengali → Tamil (2028+) |
+| 179 | **Translation isn't working** | "The translations are not working" | 10 Oct | 🟡 | **Two real bugs fixed:** Translate in the *Ask my AI* list never asked which language, so it quietly translated into English; and the one route that works with no key and no internet (the Google Translate app) was the last line of a scrolling dialog — it is now the first button. ⚠ **indite has no translator of its own.** For a translation written back into the note you need your Mac link or an OpenRouter key, and neither is set up yet. Settings → AI now says in one line what will happen when you tap an AI request. **Fastest unblock: an OpenRouter key** (2-minute signup) — it makes Translate, Formal version and every other request answer inside indite straight away; Tailscale for the Mac route is the harder, second ask |
 | 92 | **Gujarati, Marathi and others into Roman script, plus a market check** | Will people want it? | 10 Oct | 🔬 | Researched (critic-reviewed): possible via speech → native script → Roman; demand unproven. Plan: ask script on tester sign-up + 10 speakers; 1-week laptop test only if demand shows (Gujarati first on a tie). Not now |
 
 ### 9. UI/UX & look

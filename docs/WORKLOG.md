@@ -4,6 +4,73 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-10 (night) · Claude Code (Opus 5, cloud session) · reminder sound, translation, formal version
+
+**Next step:** build 11 on the Mac, install, then Settings -> Reminders -> **Test the reminder sound** (switch ON, then
+OFF), one real 2-minute reminder with the phone locked, one Translate, one Formal version. **Nothing in this entry was
+compiled:** the cloud container has no Android SDK, no model assets and no signing key.
+
+The founder reported three hand-check failures: "alarm is not giving me sound", "the translations are not working", and
+"making formal statement out of the context I have shared" does not work.
+
+**Reminder sound.** Ranked causes, after an independent critic knocked down the first theory:
+1. **"Ring like an alarm" defaulted to OFF** (`Reminders.ringLikeAlarm` returned `false`), so every reminder was a
+   2.6 s chime on the notification stream - muted by silent/vibrate, Do Not Disturb or a low notification volume.
+   Request #84 was "alarm-like sound" and it shipped as an opt-in switch, off, buried in Settings. **Now ON by default**,
+   and the alarm path is the channel's own sound with `USAGE_ALARM` + `FLAG_INSISTENT` (alarm stream, alarm volume,
+   repeated by the phone until seen, through silent mode and through DND wherever DND allows alarms).
+2. **POST_NOTIFICATIONS was only ever requested when recording or importing**, never when a reminder was set. Denied =
+   nothing appears and nothing sounds. `RemindDialog` now asks when it opens, `show()` reports whether the phone took
+   the notification, and `fire()` marks a reminder `fired` only then, so one that could not be shown is not lost.
+3. **OxygenOS force-stopping indite** drops its alarms. Settings -> Reminders now says so and opens the phone's battery
+   setting; that button existed only under the floating-mic section before.
+
+**Wrong theory, recorded so nobody repeats it:** that the channel's sound URI used the numeric `R.raw.reminder` id and
+that AAPT2 had moved it. `reminder.wav`, the channel ids and `setSound` all arrived in one commit (`3d42717`) and
+`res/raw` has not changed since, so the stored number still resolved. The URI is named anyway (via
+`getResourceEntryName`, which also keeps a code reference so resource shrinking can't strip the WAV), and the channel
+ids went to `_v2` because a channel's sound is frozen at creation and the `USAGE_ALARM` change needed a new id. ⚠ A
+further change needs `_v3`: deleting a channel does not reset it - recreating the same id restores the old settings.
+
+**Written and then deleted: a foreground service that played the alarm itself** (`notes/AlarmRing.kt`). The critic was
+right that it was over-engineering: it marked a reminder `fired` before the notification was confirmed, and opening
+indite removed its own ongoing notification - both ways to lose a reminder, inside the fix for a lost reminder. The
+channel route does the same job with the system playing the sound. Add a player back only if a device test shows the
+phone cutting the channel sound short.
+
+Also fixed: a missed reminder re-announced itself on every app open (`rescheduleAll` notified every past reminder and
+nothing marked it done) - now a `fired` flag in `reminders.json`, shown once, quietly. And there is now a way to test
+the sound in 2 seconds: Settings -> Reminders -> **Test the reminder sound** + Stop, `soundProblem()` naming the
+blocking phone setting (notifications off, channel blocked or muted, silent/vibrate, notification volume 0, DND, alarm
+volume 0), and a "Last reminder: ..." line recording what happened the last time one fired.
+
+**Translate.** Two real bugs: *Ask my AI -> Translate* called `ask("Translate")` with no language, so `{lang}` became
+"English" - and the Hinglish rule was already skipped for Translate, so a Hinglish note came back looking almost
+unchanged; it now opens the language picker. And the Google Translate route (free, offline, no key) was the last line of
+a scrolling dialog; it is now the first button when the app is installed. **But the real block is configuration:**
+indite has no translator or AI of its own, `MacCompanion` needs Tailscale and `OpenRouter` needs a key, so every AI
+request can today only hand the text to another app and wait for a paste. Settings -> AI now prints one line
+(`aiRouteNow()`) saying exactly what will happen. **An OpenRouter key is the highest-value thing the founder can do.**
+
+**Another wrong theory, checked against Google's docs:** that Android 11+ package visibility made
+`startActivity(setPackage(...))` throw for Google Translate and the AI apps. It does not - `startActivity()` needs no
+package visibility, for implicit or explicit intents; filtering hits *queries* and starting another app's *service*.
+`<queries>` was kept for one package only, because `installed()` asks whether Google Translate is there.
+
+**"Formal version" added** to `AskPrompts`: formal English, every fact/name/number/date kept, nothing invented,
+"(unclear)" where it can't tell. It and Translate are in `OwnLanguage`, so the "reply in Hinglish" rule is skipped -
+that rule would have wrecked a formal English statement.
+
+Docs: founder requests 178 (reminder sound), 179 (translation), 180 (formal statement); summary counts corrected to 180
+rows; ROADMAP "Now" item 0; HANDOFF section 5 table with the ranked causes and both dead theories.
+
+**Open question for the founder:** when the reminder was due, did it appear on screen with no sound, or did nothing
+appear at all? Silent-but-visible points at cause 1; nothing at all points at 2 or 3.
+
+**Untested:** all of the above, plus everything from builds 8-10 that has not been hand-checked.
+
+---
+
 ## 2026-10-10 (later) · Claude Code (Opus 5 / Opus 5.5) · builds 8-10
 
 **Next step:** plug the phone in -> install build 10 -> screenshot the italic subtitle -> `QUICK=1 ./phone_test.sh`.

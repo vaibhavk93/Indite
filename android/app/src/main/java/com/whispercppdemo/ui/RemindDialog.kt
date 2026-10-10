@@ -1,6 +1,10 @@
 package com.whispercppdemo.ui
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +16,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +33,16 @@ fun RemindDialog(noteId: String?, initialText: String, onDone: () -> Unit) {
     val context = LocalContext.current
     var text by remember { mutableStateOf(initialText) }
     val exact = remember { Reminders.canBeExact(context) }
+    val ringing = remember { Reminders.ringLikeAlarm(context) }
+    val problem = remember { Reminders.soundProblem(context) }   // once per dialog: it creates the channel if needed
+    // A reminder is a notification. Without this permission nothing appears and nothing sounds, and until now indite
+    // only asked for it when you recorded or imported, so a reminder could be set that could never show up.
+    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+            askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
     fun at(daysAhead: Int, hour: Int) = Calendar.getInstance().apply {
         add(Calendar.DAY_OF_MONTH, daysAhead); set(Calendar.HOUR_OF_DAY, hour); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0)
     }.timeInMillis
@@ -51,6 +66,13 @@ fun RemindDialog(noteId: String?, initialText: String, onDone: () -> Unit) {
                         android.text.format.DateUtils.FORMAT_SHOW_TIME or android.text.format.DateUtils.FORMAT_SHOW_WEEKDAY))
                 }
                 FilledTonalButton(onClick = { set(at(1, 9)) }, Modifier.fillMaxWidth()) { Text("Tomorrow 9:00 am") }
+                // Say how it will arrive, and name whatever is in the way, here rather than only in Settings.
+                Text(if (ringing) "Will ring like an alarm, on the alarm volume."
+                     else "Will play one soft chime at notification volume.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                problem?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
                 TextButton(onClick = {  // any date, then any time
                     val c = Calendar.getInstance()
                     android.app.DatePickerDialog(context, { _, y, m, d ->

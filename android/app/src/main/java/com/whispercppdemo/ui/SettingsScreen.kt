@@ -314,10 +314,13 @@ fun SettingsScreen(onBack: () -> Unit) {
             if (shown == "ai") item {
                 Section("Where AI requests go") {
                     var targets by remember { mutableStateOf(com.whispercppdemo.ui.aiTargets(context).toSet()) }
-                    Text("Make notes, Action items and Translate go here. Tick one to go straight there, or several to choose each time. " +
-                        "None ticked: your phone's share list." +
-                        if (com.whispercppdemo.ai.MacCompanion.configured(context)) " Your Mac is set up, so answers come from Claude on your Mac." else "",
+                    Text("Make notes, Action items, Translate and Formal version go here. Tick one to go straight there, or " +
+                        "several to choose each time. None ticked: your phone's share list.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // indite has no AI of its own, and the three routes fail in different ways. Say which one is live,
+                    // so a request that only opens the share list doesn't look like a broken feature.
+                    Text("Right now: " + com.whispercppdemo.ui.aiRouteNow(context), Modifier.padding(top = 6.dp),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                     val options = (if (com.whispercppdemo.ai.OpenRouter.available) listOf(com.whispercppdemo.ui.IN_APP) else emptyList()) +
                         com.whispercppdemo.ui.AiApps.map { it.first }
                     Column(Modifier.padding(top = 6.dp)) {
@@ -445,20 +448,62 @@ fun SettingsScreen(onBack: () -> Unit) {
                         }
                     }
                     var ring by remember { mutableStateOf(com.whispercppdemo.notes.Reminders.ringLikeAlarm(context)) }
+                    var problem by remember { mutableStateOf(com.whispercppdemo.notes.Reminders.soundProblem(context)) }
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Ring like an alarm until I respond", style = MaterialTheme.typography.bodyLarge)
-                            Text("Alarm volume, even on silent. Off: a soft chime at notification volume.",
+                            Text("On (the default): the alarm volume, repeating until you see it. It gets through silent " +
+                                "mode, and through Do Not Disturb unless your Do Not Disturb also mutes alarms. " +
+                                "Off: one soft chime at notification volume, which silent mode and Do Not Disturb mute.",
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         androidx.compose.material3.Switch(checked = ring, onCheckedChange = {
                             ring = it; com.whispercppdemo.notes.Reminders.setRingLikeAlarm(context, it)
+                            problem = com.whispercppdemo.notes.Reminders.soundProblem(context)
                         })
+                    }
+                    // The sound is what breaks (Do Not Disturb, notification volume, the phone's own per-app settings),
+                    // and waiting until 5 pm to find out is no way to test it.
+                    var testing by remember { mutableStateOf(false) }
+                    Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(onClick = {
+                            com.whispercppdemo.notes.Reminders.test(context); testing = true
+                            problem = com.whispercppdemo.notes.Reminders.soundProblem(context)
+                        }) { Text("Test the reminder sound") }
+                        // Always offer a way out, in case notifications are off and the Done button never appears.
+                        if (testing) TextButton(onClick = {
+                            com.whispercppdemo.notes.Reminders.stopTest(context); testing = false
+                        }) { Text("Stop") }
+                    }
+                    Text("Fires a reminder right now, exactly as a real one would. Tap Done on it, or Stop here. " +
+                        "⚠ This proves the sound, not the timing: a real 5 pm reminder also needs this phone to let " +
+                        "indite run in the background.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    com.whispercppdemo.notes.Reminders.lastFire(context)?.let {
+                        Text("Last reminder: $it", Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    problem?.let { why ->
+                        Text(why, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error)
+                        TextButton(onClick = {
+                            runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)) }
+                        }) { Text("Open indite's notification settings") }
                     }
                     if (!com.whispercppdemo.notes.Reminders.canBeExact(context)) TextButton(onClick = {
                         runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
                             android.net.Uri.parse("package:" + context.packageName))) }
                     }) { Text("Allow exact reminders (otherwise they may be up to an hour late)") }
+                    // OnePlus, Xiaomi, Vivo and others force-stop background apps, and a force-stop deletes the alarm.
+                    // Nothing in the app can prevent that; only the phone's own battery setting can.
+                    Text("A reminder didn't arrive at all? This phone may be stopping indite in the background. " +
+                        "Allow it below, and keep indite's card in Recents locked.", Modifier.padding(top = 8.dp),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    TextButton(onClick = {
+                        runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+                    }) { Text("Allow indite in battery settings") }
                 }
             }
             if (shown == "fixes") item {

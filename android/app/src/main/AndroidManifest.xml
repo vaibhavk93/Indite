@@ -15,6 +15,12 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
+    <!-- Android 11+ hides other installed apps unless they are named here. Only needed to *ask* whether an app is
+         there (Translate offers Google Translate when it is): opening another app with startActivity() never needed it. -->
+    <queries>
+        <package android:name="com.google.android.apps.translate" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
