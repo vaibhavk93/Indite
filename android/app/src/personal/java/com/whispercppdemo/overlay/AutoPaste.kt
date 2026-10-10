@@ -37,13 +37,8 @@ object AutoPaste {
 
     private fun sensitive(n: AccessibilityNodeInfo): Boolean {
         if (n.isPassword || (Build.VERSION.SDK_INT >= 34 && n.isAccessibilityDataSensitive)) return true
-        val v = n.inputType and android.text.InputType.TYPE_MASK_VARIATION
-        val cls = n.inputType and android.text.InputType.TYPE_MASK_CLASS
-        if (cls == android.text.InputType.TYPE_CLASS_TEXT && v in setOf(android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD,
-                android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD, android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD)) return true
-        if (cls == android.text.InputType.TYPE_CLASS_NUMBER && v == android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD) return true
-        val words = listOfNotNull(n.hintText, n.viewIdResourceName, n.contentDescription, n.paneTitle).joinToString(" ")
-        return Regex("pass(word|code)?|\\bpin\\b|otp|one.?time|cvv|secret", RegexOption.IGNORE_CASE).containsMatchIn(words)
+        return com.whispercppdemo.notes.Secret.inputType(n.inputType) ||
+            com.whispercppdemo.notes.Secret.words(n.hintText, n.viewIdResourceName?.substringAfter(":id/"), n.contentDescription, n.paneTitle)
     }
 
     /** Paste at the cursor (keeps undo). The text stays on the clipboard too, in case an app ignores the paste. */

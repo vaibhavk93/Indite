@@ -222,13 +222,8 @@ class VoiceKeyboard : InputMethodService() {
 
     /** Password, PIN and one-time-code boxes: never dictated into. */
     private fun sensitive(ei: EditorInfo?): Boolean {
-        val t = ei?.inputType ?: return false
-        val variation = t and android.text.InputType.TYPE_MASK_VARIATION
-        val cls = t and android.text.InputType.TYPE_MASK_CLASS
-        return (cls == android.text.InputType.TYPE_CLASS_TEXT && variation in setOf(android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD,
-            android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD, android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD)) ||
-            (cls == android.text.InputType.TYPE_CLASS_NUMBER && variation == android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD) ||
-            ei.hintText?.toString()?.contains(Regex("otp|one.time|pin|password", RegexOption.IGNORE_CASE)) == true
+        ei ?: return false
+        return com.whispercppdemo.notes.Secret.inputType(ei.inputType) || com.whispercppdemo.notes.Secret.words(ei.hintText, ei.fieldName)
     }
 
     private fun enter() {
