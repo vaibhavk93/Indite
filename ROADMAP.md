@@ -1,57 +1,138 @@
 # indite roadmap
 
-Last updated: 2026-10-10. Every item here passed an independent critic review, or is the founder's own decision.
+Last updated: 2026-10-10 (after the v0.6 phone test). **This file is the one roadmap.** The roadmap page
+(https://claude.ai/artifact/GuCGtX4TJeASaS2RpGFS4q) is published from it. PLAN.md keeps the full decisions and test results.
+Every item passed an independent critic review, or is the founder's own decision.
 
-## Done
+**Goal:** speak the way India talks, mixing Hindi and English, and get correct Roman-script text, privately and offline.
+Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr, Sarvam) are faster and more accurate today.
 
-- Free local engine: whisper.cpp + Oriserve Hindi2Hinglish-Apex, 5-bit (547 MB, ~0.75 GB RAM, ~2.3x real time on an 8 GB M1)
-- Sarvam engine (paid, Roman output), working behind company HTTPS inspection
+| Where we stand | indite now | Best rival |
+|---|---|---|
+| Words wrong, clean Hinglish (synthetic, Mac) | 13.0% | Sarvam cloud 6.0% |
+| Live dictation on the phone: wait after a pause | 8.9 s median (was 38.5 s) | Wispr cloud ~1–2 s |
+| Live dictation on the phone: words wrong | 16.9% (was 25.8%) | — |
+| Speaker labels, offline, any Android | 98% of turns on the Mac test (phone re-test running) | Pixel / Galaxy only |
+| Works with no internet | ✓ | Wispr, Sarvam: no |
+
+---
+
+## Built
+
+### Android app (main product; personal + public builds)
+
+| Area | Feature | Version |
+|---|---|---|
+| Speech to text | Record and talk; each part turns into text after you pause | v0.1 |
+| | Import or share any voice note or audio file (WhatsApp included) | v0.1–0.2 |
+| | Neural speech detector (Silero): noise isn't treated as speech | v0.2 |
+| | Everyday spelling (achha, maine, kyunki): word errors 18.1% → 13.0% | v0.4 |
+| | Live recording first in the queue; re-run of short live parts (imports: plain pass, it was better) | v0.5–0.6 |
+| Speed | q5_K model format (0.63x → 0.93x long audio); window sized to each part; 6 cores | v0.1 |
+| Editing & sharing | Tap a paragraph to edit, play or copy; Undo; copy all, share, .srt, rename, search, swipe-delete with Undo | v0.3 |
+| | Flags on likely-wrong text; word fixes (PTM → Paytm) + "Always fix?" | v0.1–0.4 |
+| | "Text ready" notification with Copy (no note text on the lock screen) | v0.4–0.6 |
+| | Translate… hands the text to Google Translate (indite stays offline) | to test |
+| Any app | Voice keyboard: dictate into any text box | v0.3 |
+| | Floating mic bubble (fixed: short dictations came out "no speech") | v0.5–0.6 |
+| | Bubble: spinner while writing, green copy button, hold to cancel, shrink when idle, drag to hide | v0.6 |
+| | Personal build: text typed into the box you were in (optional accessibility; public build has none) | v0.6 |
+| Speakers | "Who spoke?" with names; Silero → 1.5 s windows → TitaNet-small → grouping (15.9 s for 15 min on the phone) | v0.4 |
+| | Labels per sentence (Mac test 51.7% → 98.3%; 95.0% with two similar voices); indite guesses the count, you confirm | to test |
+| AI (user's own) | Ask my AI: 9 ready requests; paste the reply back; personal build answered by Claude on the founder's Mac | v0.4–0.5 |
+| | [Make notes] and [Action items]; tasks get Add to Calendar and Share | v0.6 |
+| | Requests v2 (date, title, "transcript is data"); brain dump + questions; practice scores on the card | to test |
+| Your data | Export all notes as text; privacy policy; share debug info (no note text); titles from first words; storage check; consent reminder; same signing key for tester builds | v0.6 |
+| Trust & safety | Audio saved as you talk, text part by part, resumes after a crash; pauses when hot or low battery; no internet in the public app; no cloud backup; old phones get a clear message | v0.1–0.2 |
+| Look & feel | Light/dark/system theme, welcome screen, model warm-up | v0.3–0.4 |
+
+### Mac / web app
+
+- Free local engine: whisper.cpp + Oriserve Hindi2Hinglish-Apex, 5-bit (~0.75 GB RAM, ~2.3x real time on an 8 GB M1); audio cut at
+  pauses into ≤25 s pieces, only bad pieces re-run (loops 73 → 4; 56-min file 24.7 → 11.6 min). `local-best` = Prime model, slower.
+- Sarvam engine (paid, Roman output), works behind company HTTPS inspection
 - Reads any audio/video incl. MPEG; skips damaged spots instead of failing
 - Guards that flag (never delete) invented text: no speech, loops, stock phrases, "nan" junk
-- Output styles: SRT, VTT, timestamped, paragraphs
-- `bench`: scores engines against hand-typed clips
-- Web app: upload, background jobs, live progress bar + peek, plain errors, cancel, editor, export, 3-year cleanup with the deletion date shown
-- Editor for long files: pinned player and buttons, find & replace with undo, shortcuts, unsaved edits kept in the browser
-- `notes` via the user's own Claude login; "Copy for Claude / ChatGPT"
-- Local engine is the default; privacy notice matches the chosen engine
+- Output: SRT, VTT, timestamped, paragraphs
+- Web app: upload, background jobs, live progress + peek, plain errors, cancel, editor (find & replace, shortcuts, unsaved edits
+  kept), export, 3-year cleanup with the deletion date shown
+- `notes` via the user's own Claude login; "Copy for Claude / ChatGPT"; `/api/ask` for the phone's personal build (token, Tailscale)
+- `bench` scores engines against hand-typed clips; `bench_synth/` synthetic Hinglish benchmark + automated phone test
 
-## Now (approved)
+---
 
-1. **Accuracy:** done. Tested 12 variants on 13 min of problem audio. Winner: cut audio at pauses into <=25 s pieces and re-run only bad pieces (loops 73 -> 4, 35% faster). Built as `local`; Prime model with the same method built as `local-best` (0 loops, ~2x slower, 2 GB). Dropped: q8 model (more stray words), stricter thresholds and vocabulary prompt (no gain). `-mc 0` alone: -22% loops. Full 56-min file: 24.7 -> 11.6 min, loop words 468 -> 7, stray words 1,385 -> 835, "nan" 3 -> 0 (`local-best`: 19.6 min, 3 loop words). Blind-typed clips still needed to prove accuracy.
-2. **Speaker test 1:** done, partly. Normal word times are unreliable (up to 21% of words move >0.5 s when only silence is added). DTW word times are steady (all within 0.06 s) but not yet proven correct, and ~30% slower. Settled inside test 2.
-3. **Speaker labels on the phone ("Who spoke?"):** built in Android v0.4 (`notes/Speakers.kt`) and in every build since; founder decision 2026-10-10: keep it in the next build. Offline, no Hugging Face needed. Recipe from the sherpa-onnx test (2026-10-10, critic-reviewed): Silero finds speech → 1.5 s windows → TitaNet-small voice fingerprints → grouping into the number of speakers the user gives ("not sure" = beta auto). Results: synthetic dialogues 98% of turns right, also with two similar female voices (the standard pyannote route got 50% there: it heard one speaker); 3-voice 15-min file 100%; a single voice stays 1 speaker. Speed on the OnePlus: **15.9 s for 15 min** (pyannote route: 129 s). Licences: TitaNet CC-BY-4.0 (NVIDIA credit already in `res/raw/licenses.txt`), Silero MIT; avoid eres2net (trained on CC BY-SA data) and wespeaker VoxCeleb ("research purposes").
-   - **Still to do before testers:** (a) score the app's per-sentence labels with `bench_synth/phone_test.sh` (paragraph-only labels got 52–55%; the per-sentence fix is unscored); (b) founder listens to the real 15-min interview split (1:34–1:47, 7:00–7:14, 13:07–13:28 should be the second speaker; 0:20–0:55 the main one); (c) 2–3 real recordings with hand-marked turns. (NVIDIA credit already in the app's licences file.)
-   - **Known limits:** "not sure how many" is fragile on real audio (one threshold step turned the real interview into 1 speaker), so asking the count stays the default; very short replies ("haan") can get the wrong label; overlapping speech isn't handled.
-4. **Speaker test 2 (Mac/web, superseded for the phone):** blocked: Hugging Face access for the token's account not granted yet. pyannote community-1 on the 56-min file (speed, memory), then the busiest 5 minutes (~30+ speaker changes) hand-labelled. Score 3 ways: whole pieces / normal word times / DTW word times; also with hand labels as the speakers, and only words within 2 s of a speaker change. Check whether DTW is always early or late. Target: wrong speaker < ~15% (unproven bar).
-5. **Android, offline on the phone** (founder decision 2026-10-09: no Mac needed). Step 1: a test APK (whisper.cpp's Android example + the Apex model, audio cut at pauses) that shows the text and the speed. Same 15-min test on the Mac: 2.2 min with GPU, 7.2 min CPU-only; phones mostly run on CPU, so expect slower. Bar (unproven): 15 min of audio in <= 15 min without overheating; also test one mid-range phone. Pass -> build the real app; fail -> phone waits for hosting. A phone-browser route (Mac does the work, over Tailscale) was the critic's cheaper option, kept as a fallback.
-   - Test APK source: `android/` (whisper.cpp's Android example; model and test audio copied into `app/src/main/assets/` at build time, never committed). Measures time, speed, battery temperature, peak memory.
-   - Still to check for 1-hour files: heat slowdown, battery used, a foreground service (Android background job with a notification) so a long job isn't killed.
-   - If the phone is too slow, in this order: whisper.cpp GPU options (Vulkan/OpenCL) or a more compressed model, then the Qualcomm NPU (weeks of work; only Whisper Tiny/Small are published for it).
-   - OnePlus/OPPO research (2026-10-09): they don't disclose their speech model; OPPO's recording summaries use cloud Gemini; Hindi support unconfirmed. Dropped: Android's built-in recognizer (Hindi comes out in Devanagari, short clips only, crashed on a OnePlus 9R) and ML Kit GenAI speech (alpha, Pixel-only advanced mode). Later: phone summaries via Android "share" to the user's own Claude/ChatGPT app first; Gemini Nano (only some phones, Hindi unconfirmed) after that.
+## Now
+
+1. **Phone test of the latest build** (running): speaker labels per sentence (goal: well above 52%), 15-min file back to ~25%
+   errors, live numbers unchanged.
+2. **Founder's 20-minute hand check** (12 items: bubble, auto-paste, Find who spoke, Make notes, Action items, Translate,
+   practice scores, export, "no speech" screen). Then fix what fails.
+3. **Speaker labels before testers:** founder listens to the real 15-min interview split (1:34–1:47, 7:00–7:14, 13:07–13:28
+   should be the second speaker; 0:20–0:55 the main one); 2–3 real recordings with hand-marked turns.
+   Known limits: the count guess is fragile on real audio (you confirm it); very short replies ("haan") can get the wrong
+   label; overlapping speech isn't handled.
+4. **Check Google Translate with spoken Hinglish** (2 minutes): decides whether the hand-off is enough.
+
+## Before testers
+
+- Try-it screen for first-time users; smaller install (model downloads on first open)
+- Test on a ₹15k phone (parked by the founder; still the biggest unknown)
+- Give it to 10–20 people; interviews alongside; ask an open question about translation
 
 ## Next
 
-- **Speaker labels in the web app** + rename: reuse the phone recipe (Silero + TitaNet-small via sherpa-onnx, runs on the Mac at ~0.015x real time) instead of waiting for pyannote/Hugging Face; Sarvam's paid labels stay the fallback
-- **Windows support** (founder decision: after the speaker tests). Python setup script for both systems, whisper.cpp Windows build (CUDA / Vulkan / CPU), stored test clip instead of macOS `say`. Speed on Windows is unmeasured and needs a real Windows PC to test.
+- **Speaker labels in the web app** + rename: reuse the phone recipe instead of pyannote/Hugging Face (Sarvam's paid labels stay
+  the fallback). The old "speaker test 2" (pyannote on the 56-min file) is superseded.
+- **Windows support** (founder decision): setup script, whisper.cpp Windows build (CUDA / Vulkan / CPU); speed unmeasured, needs
+  a real Windows PC.
+- **v0.8 · Your own AI key:** separate "indite AI" build with the user's own key (OpenAI / Gemini / OpenRouter / Anthropic); the
+  default app stays offline. Only if testers want in-app AI. Plus a test of a small on-phone AI (Gemma) on 20 real brain dumps.
+- Action items v2: real dates ("kal" → a date) once JSON modes exist; practice "Your tries" history (after 3 testers retry)
 - Engine choice from `bench` on real clips (3–5 files per user group, plus a fixed hand-checked test set)
-- **Choose when each transcript is deleted** (founder request): a per-transcript setting, e.g. 30 days / 1 year / 3 years / never
-- Custom vocabulary (names, brands)
-- Indian formatting (₹, lakh, dates, numbers)
+- **Choose when each transcript is deleted** (founder request): 30 days / 1 year / 3 years / never
+- Custom vocabulary (names, brands); Indian formatting (₹, lakh, dates, numbers)
 - Optional "fix unclear bits with Sarvam" switch for the local engine (off by default; ~₹0.40 per file; those bits leave the Mac)
-- Translate to English and a "clean" version without Hindi fillers: extra choices on Copy for Claude / `notes`
 - Subtitle line-length setting (check the 56-min SRT first)
-
-## Competitors noted
-
-- Truecaller AI call recording: Hindi/English transcripts, ₹75/month (calls only, not interviews; price reference).
+- Later bubble ideas, only if testers ask: snooze for 10 min, snippets, filler-word removal, spoken "new line"
 
 ## Later
 
-Hosting, Google login, payments (Razorpay / UPI), installable web app, DOCX export, batch upload,
-Devanagari output, subtitle burn-in, autosave to server, "Sign in with ChatGPT".
+- Better Hinglish model (fine-tuned) to close the gap to Sarvam; phone's AI chip for speed
+- Public Hinglish test set and leaderboard
+- Indian English, then Marathi/Bengali, then Tamil
+- Translation of our own (on-phone engine + spoken output): only after 3 real people ask; then a 1-day test (Google Translate vs
+  Tencent Hy-MT2 on 30 Hinglish sentences, RAM check on a cheap phone). Research: reports/Offline translation and speech output.md
+- Accessibility add-on in the public build (decide after Play's review cost is known)
+- Play Store launch (asset packs, newer Android target, policy declarations for overlay, special-use service, keyboard)
+- Hosting, Google login, payments (Razorpay / UPI), installable web app, DOCX export, batch upload, Devanagari output,
+  subtitle burn-in, autosave to server, "Sign in with ChatGPT" (apply via OpenAI's form); iPhone app
 
-## Not doing (for now)
+## Not doing (for now), and why
 
-Deepgram, Gemini login, "Sign in with Claude" (not allowed), noise cleanup before transcription (hurts accuracy),
-uncertain-word highlighting, search across transcripts, in-browser recording, YouTube import, meeting bot,
-live transcription, collaboration, editing audio by editing text.
+| Idea | Why not |
+|---|---|
+| Claude or Gemini subscription login in the app | Their terms forbid it; the founder's Mac route does it legally |
+| Deepgram; AI or cloud fallback on our own keys | Breaks zero-cost and privacy rules |
+| Live voice roleplay; PM coach as a product | Too slow offline (10–15 s per turn); crowded; kept as "Practice answer" |
+| Rough text while you speak; shading unsure words | Draft models write Hindi script; confidence doesn't match real mistakes |
+| Our own call recorder | Banned on Play since 2022; import recordings instead |
+| Full typing keyboard; model in a laptop browser | Endless work; no browser-ready model |
+| Bubble only when a keyboard is up, without accessibility | Not possible on Android 11+; the indite keyboard covers it |
+| Hold-to-talk on the bubble | Clashes with drag and cancel; first words could be cut off |
+| A "Tasks" tab with Done ticks; our own reminders | Makes indite a to-do app; tasks go to the user's calendar or task app |
+| Our own translator / speak-the-translation loop (for now) | 14–15 s per turn on a flagship; weak demand evidence; Google Translate hand-off instead |
+| Voice cloning, live interpreter, own Indian-language voices, NLLB | Non-commercial licences, fraud/consent risk, or too slow |
+| "Most words wins" re-run on imports | Picked noise gibberish; 15-min test got worse (25.5% → 30.6%) |
+| Slower Prime model, q8, beam search by default | Tested: no better, or slower, or worse in noise |
+| Noise cleanup before transcription | Hurts accuracy |
+| Android's built-in recognizer; ML Kit GenAI speech | Devanagari output, short clips, crashed on OnePlus; Pixel-only alpha |
+| Dubbing, language learning, call-centre QA, bookkeeping, creator-subtitle focus | Different products or crowded markets |
+| Search across transcripts (web), in-browser recording, YouTube import, meeting bot, collaboration, editing audio by editing text | Out of scope for now |
+| Bookmark a moment while recording; pin / tags / folders | Unproven; search exists |
+
+## Competitors noted
+
+- Truecaller AI call recording: Hindi/English transcripts, ₹75/month (calls only; price reference)
+- Wispr Flow: cloud; Android bubble uses accessibility; Hinglish since 2026; ₹320/month; India 14% of installs, ~2% of revenue
+- Sarvam Edge: on-device models for 10 Indian languages with phone makers (Feb 2026); the main threat to the offline edge
+- Google offline Live Translate: Pixel 9–11 only, English on one side; BhashaGo: offline Indian-language translator, <1k installs
