@@ -210,7 +210,7 @@ object Notes {
         writeAtomic(File(d, "cuts.json"), "[]")
         val title = name ?: java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.getDefault()).format(java.util.Date(id.toLong()))
         writeAtomic(File(d, "meta.json"), JSONObject().put("name", title).put("created", id.toLong()).put("samples", 0)
-            .put("recording", true).put("live", true).put("test", test).toString())
+            .put("recording", true).put("live", true).put("test", test).put("autoTitle", name == null || name.startsWith("Dictation")).toString())
         refresh()
         return id
     }
@@ -282,6 +282,27 @@ object Notes {
         writeAtomic(f, "$i $tries")
         return tries
     }
+
+    /** Recordings start with a date name; once real words arrive, use the first few of them as the title. */
+    fun autoTitle(id: String, p: Piece) {
+        if (p.junk || p.text.isBlank()) return
+        val f = File(dir(id), "meta.json")
+        val meta = runCatching { JSONObject(f.readText()) }.getOrNull() ?: return
+        if (!meta.optBoolean("autoTitle")) return
+        val words = Settings.applyFixes(p.text).replace(Regex("[^\\p{L}\\p{N}'₹ ]"), " ").split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (words.size < 2) return
+        val title = words.take(6).joinToString(" ").replaceFirstChar { it.uppercase() } + if (words.size > 6) "…" else ""
+        writeAtomic(f, meta.put("name", title).put("autoTitle", false).toString())
+    }
+
+    /** Every note as plain text, newest first: for "Export all notes" (there is no cloud backup). */
+    fun exportAll(): String = list.value.filter { it.pieces.isNotEmpty() }.joinToString("\n\n" + "=".repeat(40) + "\n\n") { n ->
+        val date = java.text.SimpleDateFormat("d MMM yyyy, h:mm a", java.util.Locale.getDefault()).format(java.util.Date(n.created))
+        "${n.name}\n$date · ${(n.seconds / 60).toInt()} min\n\n${n.allText()}" +
+            n.ai.joinToString("") { "\n\n--- ${it.label} (from your AI) ---\n${it.text}" }
+    }
+
+    fun freeBytes(): Long = android.os.StatFs(root.path).availableBytes
 
     fun appendPiece(id: String, p: Piece) {
         val line = JSONObject().put("i", p.i).put("start", p.start).put("end", p.end).put("text", p.text)

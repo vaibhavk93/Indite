@@ -95,6 +95,7 @@ class MainActivity : ComponentActivity() {
      * (or --es test_live NAME: the file is played into the recorder in real time, as if spoken).
      */
     private fun testHook(intent: Intent): Boolean {
+        if (BuildConfig.FLAVOR != "personal") return false  // automated tests run on the founder's build only
         val dir = getExternalFilesDir("tests") ?: return false
         intent.getStringExtra("test_label")?.let { name ->  // --es test_label NAME --ei k 2 : label speakers of a finished test note
             intent.removeExtra("test_label")
@@ -131,6 +132,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun record() {
+        val free = Notes.freeBytes()
+        if (free < 100L * 1024 * 1024) {  // ~50 min of audio; recording would stop mid-way
+            Messages.flow.tryEmit("Your phone is almost full. Free up some space to record.")
+            return
+        }
+        if (free < 500L * 1024 * 1024) Messages.flow.tryEmit("Space is low: about ${free / (2 * 60 * 1024 * 1024)} minutes of recording left.")
+        val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+        if (!prefs.getBoolean("consentShown", false)) {
+            prefs.edit().putBoolean("consentShown", true).apply()
+            Messages.flow.tryEmit("Recording other people? Tell them first.")
+        }
         askNotificationsOnce()
         openRequest = NoteService.startRecording(this)  // if already recording, this reopens that recording
     }

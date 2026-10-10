@@ -68,6 +68,23 @@ fun SettingsScreen(onBack: () -> Unit) {
     val licences = remember { context.resources.openRawResource(R.raw.licenses).bufferedReader().readText() }
     val used by androidx.compose.runtime.produceState(0L, notes.size) { value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { Notes.bytesUsed() } }
     var confirmDeleteAll by remember { mutableStateOf(false) }
+    var showPrivacy by remember { mutableStateOf(false) }
+    val privacy = remember { context.resources.openRawResource(R.raw.privacy).bufferedReader().readText() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val export = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri != null) scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val ok = runCatching { context.contentResolver.openOutputStream(uri)!!.use { it.write(Notes.exportAll().toByteArray()) } }.isSuccess
+            com.whispercppdemo.ui.Messages.flow.tryEmit(if (ok) "Notes exported" else "Couldn't save the file")
+        }
+    }
+
+    if (showPrivacy) AlertDialog(
+        onDismissRequest = { showPrivacy = false },
+        title = { Text("Privacy policy") },
+        text = { Text(privacy, Modifier.verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall) },
+        confirmButton = { TextButton(onClick = { showPrivacy = false }) { Text("Close") } },
+    )
 
     if (showLicences) AlertDialog(
         onDismissRequest = { showLicences = false },
@@ -226,6 +243,9 @@ fun SettingsScreen(onBack: () -> Unit) {
                 Section("Storage") {
                     Text("${notes.size} notes use ${Formatter.formatShortFileSize(context, used)} on this phone.",
                         style = MaterialTheme.typography.bodyLarge)
+                    if (notes.isNotEmpty()) OutlinedButton(onClick = { export.launch("indite notes.txt") }, Modifier.padding(top = 8.dp)) {
+                        Text("Export all notes as text")
+                    }
                     if (notes.isNotEmpty()) OutlinedButton(onClick = { confirmDeleteAll = true }, Modifier.padding(top = 8.dp)) {
                         Text("Delete all notes", color = MaterialTheme.colorScheme.error)
                     }
@@ -240,6 +260,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         "Your audio and text leave the phone only if you copy or share them.", style = MaterialTheme.typography.bodyMedium)
                     Text("When recording other people, ask them first.", Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    TextButton(onClick = { showPrivacy = true }, Modifier.padding(top = 4.dp)) { Text("Privacy policy") }
                 }
             }
             item {
@@ -248,7 +269,10 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text("Speech model: Oriserve Hindi2Hinglish-Apex (Apache-2.0), run with whisper.cpp (MIT). " +
                         "Speech detection: Silero VAD (MIT).", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = { showLicences = true }, Modifier.padding(top = 4.dp)) { Text("Licences") }
+                    Row {
+                        TextButton(onClick = { showLicences = true }, Modifier.padding(top = 4.dp)) { Text("Licences") }
+                        TextButton(onClick = { scope.launch { shareDebugInfo(context, notes) } }, Modifier.padding(top = 4.dp)) { Text("Share debug info") }
+                    }
                 }
             }
         }
@@ -276,4 +300,28 @@ private fun Section(title: String, content: @Composable () -> Unit) {
             content()
         }
     }
+}
+
+/** For bug reports: phone, app, speed numbers and app warnings. Never audio or note text (only exceptions are logged). */
+private suspend fun shareDebugInfo(context: android.content.Context, notes: List<com.whispercppdemo.notes.Note>) {
+    val text = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val cpu = runCatching { java.io.File("/proc/cpuinfo").readLines().firstOrNull { it.startsWith("Features") } }.getOrNull() ?: "?"
+        val log = runCatching {
+            Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-t", "300", "*:W")).inputStream.bufferedReader().readText()
+        }.getOrDefault("(no log)")
+        buildString {
+            appendLine("indite ${BuildConfig.VERSION_NAME} (${BuildConfig.FLAVOR})")
+            appendLine("${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}, Android ${android.os.Build.VERSION.RELEASE}, ${Runtime.getRuntime().availableProcessors()} cores")
+            appendLine("CPU $cpu")
+            appendLine("Free space ${Notes.freeBytes() / 1_000_000} MB, ${notes.size} notes")
+            appendLine("Recent speeds:")
+            notes.take(10).forEach { appendLine("  ${(it.seconds / 60).toInt()} min, ${it.pieces.size} parts: ${it.speed ?: "-"}") }
+            appendLine()
+            appendLine("Warnings:")
+            append(log.takeLast(30_000))
+        }
+    }
+    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
+        .putExtra(Intent.EXTRA_SUBJECT, "indite debug info").putExtra(Intent.EXTRA_TEXT, text), "Share debug info")
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }

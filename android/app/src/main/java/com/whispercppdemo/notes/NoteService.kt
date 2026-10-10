@@ -271,6 +271,9 @@ class NoteService : Service() {
         val text = fresh.allText()
         val n = notification("Text ready: ${note.name}", ongoing = false, recording = false, noteId = note.id)
         val b = Notification.Builder.recoverBuilder(this, n)
+            .setVisibility(Notification.VISIBILITY_PRIVATE)
+            .setPublicVersion(Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_mic)
+                .setContentTitle("indite").setContentText("Text ready").build())
         if (text.isNotEmpty()) {
             b.setContentText(text).setStyle(Notification.BigTextStyle().bigText(text.take(400)).setBigContentTitle("Text ready: ${note.name}"))
             val copy = PendingIntent.getBroadcast(this, note.id.hashCode(),
@@ -370,6 +373,7 @@ class NoteService : Service() {
             }
             if (!Notes.dir(note.id).exists()) return null
             Notes.appendPiece(note.id, piece)
+            Notes.autoTitle(note.id, piece)
             Notes.refresh()
             return piece
         }

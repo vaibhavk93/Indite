@@ -94,7 +94,13 @@ object Settings {
         if (m.value.first().isUpperCase()) c.replaceFirstChar { it.uppercase() } else c
     } ?: text
 
-    private fun userFixes(text: String): String = fixes.value.fold(text) { t, (from, to) ->
-        t.replace(Regex("(?<![\\p{L}\\p{N}])" + Regex.escape(from) + "(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE), Regex.escapeReplacement(to))
+    @Volatile private var compiled: Pair<List<Pair<String, String>>, List<Pair<Regex, String>>>? = null
+
+    private fun userFixes(text: String): String {
+        val now = fixes.value
+        val rules = compiled?.takeIf { it.first === now }?.second ?: now.map { (from, to) ->
+            Regex("(?<![\\p{L}\\p{N}])" + Regex.escape(from) + "(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE) to Regex.escapeReplacement(to)
+        }.also { compiled = now to it }
+        return rules.fold(text) { t, (rx, to) -> t.replace(rx, to) }
     }
 }
