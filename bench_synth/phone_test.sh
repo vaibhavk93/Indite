@@ -3,6 +3,8 @@
 # 1) live dictation: dialogue_2spk.wav played into the recorder in real time (~4 min)
 # 2) imports: long_15min.wav (noise stretches) and dialogue_same_gender.wav
 # 3) speaker labels (2 speakers) on both dialogues; 4) pull results and score.
+# QUICK=1 ./phone_test.sh : skip the 15-min file (~12 min instead of ~50). Use the full run when long-file
+# handling changes, and before giving the app to testers.
 set -u
 cd "$(dirname "$0")"
 A=~/Library/Android/sdk/platform-tools/adb
@@ -10,21 +12,26 @@ PKG=com.indite.app; ACT=$PKG/com.whispercppdemo.MainActivity
 D=/sdcard/Android/data/$PKG/files
 $A shell mkdir -p $D/tests $D/results
 [ -z "${SKIP_LIVE:-}" ] && $A shell rm -f "$D/results/*"
-for f in dialogue_2spk.wav dialogue_same_gender.wav long_15min.wav; do $A push "$f" $D/tests/ >/dev/null; done
+for f in dialogue_2spk.wav dialogue_same_gender.wav long_15min.wav; do
+  [ -n "${QUICK:-}" ] && [ "$f" = long_15min.wav ] && continue
+  $A push "$f" $D/tests/ >/dev/null
+done
 hook() {  # OnePlus freezes background apps: wake indite first, then send the test command
   $A shell am start -n $ACT >/dev/null; sleep 3
   $A shell am start -n $ACT "$@" >/dev/null
 }
 wait_for() {  # result file name, timeout seconds
-  for _ in $(seq 1 $(( $2 / 10 ))); do $A shell "test -f '$D/results/$1.json'" && return 0; sleep 10; done
+  for _ in $(seq 1 $(( $2 / 3 ))); do $A shell "test -f '$D/results/$1.json'" && return 0; sleep 3; done
   echo "timeout waiting for $1"; return 1
 }
 [ -z "${SKIP_LIVE:-}" ] && hook --es test_live dialogue_2spk.wav
 wait_for "live dialogue_2spk" 900
 hook --es test_import dialogue_same_gender.wav
 wait_for "dialogue_same_gender" 900
-hook --es test_import long_15min.wav
-wait_for "long_15min" 3600
+if [ -z "${QUICK:-}" ]; then
+  hook --es test_import long_15min.wav
+  wait_for "long_15min" 3600
+fi
 for n in "live dialogue_2spk" "dialogue_same_gender"; do
   $A shell rm -f "'$D/results/$n.json'"
   hook --es test_label "'$n'" --ei k 2
@@ -38,6 +45,7 @@ python3 score.py diar dialogue_turns.tsv out/phone/live.jsonl | head -2
 echo "=== import: two similar voices"
 python3 phone_result.py out/phone/dialogue_same_gender.json out/phone/same.jsonl
 python3 score.py diar dialogue_same_gender_turns.tsv out/phone/same.jsonl | head -2
+[ -n "${QUICK:-}" ] && { echo "(quick run: 15-min file skipped)"; exit 0; }
 echo "=== import: 15 min with noise stretches"
 python3 phone_result.py out/phone/long_15min.json out/phone/long.jsonl
 python3 score.py long long_15min_ref.tsv out/phone/long.jsonl
