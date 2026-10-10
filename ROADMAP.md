@@ -127,6 +127,20 @@ Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr
 Deferred until testers ask: voice "Me", overlap marking, OpenRouter (no key yet), rest of the look-and-feel list, web
 items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a ₹15k phone.
 
+**Remaining features, split (critic-reviewed 10 Oct):**
+- **A · next build (~16–20 h), only after build 10 passes the hand check:** Show only [name]; recovery banner; space
+  left while recording; speed line; find & replace in a note; search jumps to the paragraph; WhatsApp date titles; one
+  permissions checklist. If time: "Your data" screen, merge speakers.
+- **B · after a gate:** try-it onboarding, model download on first open, targetSdk raise, Play internal testing (gate:
+  ₹15k phone passes; each gets its own phone test) · battery check (measure on build 11) · voice "Me" (tester asks +
+  consent text) · overlap marking (3 real recordings lose > ~3% words) · speaker listen-check (founder first) ·
+  deletion time, other Indian languages (tester sign-up answers) · per-phone benchmark (≥1.5x gain) · web speakers,
+  Windows (phone stable, Windows PC) · remove personal-only features (Play launch).
+- **C · not building:** ChatGPT login in-app (not allowed), Google login (needs hosting), own translation/speak aloud
+  (too slow, no asks), dictation ≤3 s / own models (no offline path), "more use cases" (research), licence & logo
+  (founder decisions).
+- Rule: one batch per build; quick test after every build, phone < ~36 °C, untouched.
+
 ## Now
 
 1. **Build 10 is waiting for the phone** (it was unplugged when the build finished): install it, screenshot the italic
