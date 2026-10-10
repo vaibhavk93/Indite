@@ -102,6 +102,31 @@ Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr
 | One setup checklist for all permissions | Unreviewed; fits the try-it onboarding |
 | Play internal testing track for testers (instead of sideloaded APKs) | Unreviewed |
 
+## Decisions on 10 Oct (latest) and the plan forward
+
+- **Reminders: indite sets its own** (founder decision; overrides the earlier "no own reminders" rule). Exact alarms
+  (an inexact alarm can be up to 1 hour late); Remind me on the card menu, note menu and task rows; Done / Snooze; list in
+  Settings. Gate: 10 reminders over 3 days on the OnePlus (overnight, reboot, swipe-away, Battery Saver), all within 1 min.
+- **Floating mic: one switch.** Drag onto ✕ = off; quick settings tile; accessibility shortcut toggles it (personal).
+- **"Show only [name]"** filter on a recording: next build. **Voice "Me"** (recognise the user's voice in future recordings):
+  accepted, built only behind consent + privacy-policy text, delete button, never exported.
+- **Overlapping speech (2–3 people at once):** not now. First record 3 real conversations with interruptions and measure
+  lost words; build overlap marking only if > ~3% of words or real content is lost.
+- **Run-to-run text differences:** root cause = flash attention reading leftover audio-cache rows. Off fixed it but cost
+  ~6 s per live sentence; testing "audio window rounded to 256" to keep speed.
+- **Brand:** lowercase "indite", pinned in the top bar.
+
+**Plan (critic-reviewed):**
+| Phase | Contents | Gate |
+|---|---|---|
+| Build 9/10 | Engine fix confirmed; reminders; Show only [name] | No regression on bench clips; reminder 3-day gate |
+| **₹15k phone test** (alongside, ~2 h) | Dictation time, 15-min import, RAM | Dictation ≤ ~15 s, no crashes; else speed work first |
+| Build 11 = tester build | Try-it onboarding + one permissions checklist; model download on first open; targetSdk up; battery check; Play internal testing | 3 friends install from a link unaided; battery < ~5%/day |
+| Testers | 10–20 people + interviews | 5+ use it in week 2 unprompted |
+
+Deferred until testers ask: voice "Me", overlap marking, OpenRouter (no key yet), rest of the look-and-feel list, web
+items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a ₹15k phone.
+
 ## Now
 
 1. **Phone test of the latest build** (running): speaker labels per sentence (goal: well above 52%), 15-min file back to ~25%
@@ -177,7 +202,7 @@ Public app stays internet-free; a tester-only key build only if interviews ask (
 | Full typing keyboard; model in a laptop browser | Endless work; no browser-ready model |
 | Bubble only when a keyboard is up, without accessibility | Not possible on Android 11+; the indite keyboard covers it |
 | Hold-to-talk on the bubble | Clashes with drag and cancel; first words could be cut off |
-| A "Tasks" tab with Done ticks; our own reminders | Makes indite a to-do app; tasks go to the user's calendar or task app |
+| A "Tasks" tab with Done ticks | Makes indite a to-do app (own reminders are now built: founder decision 10 Oct) |
 | Our own translator / speak-the-translation loop (for now) | 14–15 s per turn on a flagship; weak demand evidence; Google Translate hand-off instead |
 | Voice cloning, live interpreter, own Indian-language voices, NLLB | Non-commercial licences, fraud/consent risk, or too slow |
 | "Most words wins" re-run on imports | Picked noise gibberish; 15-min test got worse (25.5% → 30.6%) |
