@@ -167,7 +167,7 @@ class NoteService : Service() {
                         }
                     }
                     Recording.active -> { updateRecording(); delay(300); continue }  // still recording: wait for the next pause
-                    else -> { copyBubbleDictations(); break }
+                    else -> { copyBubbleDictations(); labelFinished(); break }
                 }
                 Notes.refresh()
                 Notes.list.value.filter { it.done && it.speed == null && it.id in busy }.forEach { finish(it) }
@@ -249,6 +249,63 @@ class NoteService : Service() {
         Notes.finish(note.id, "%.0f s of speech in %.0f s (%.2fx) · %s · %.1f °C".format(
             audio, took, if (took > 0) audio / took else 0.0, "${Build.MANUFACTURER} ${Build.MODEL}", batteryTemp()))
         notifyDone(note)
+        if (wantsLabels(note)) toLabel += note.id
+    }
+
+    /** Notes this run turned into text, still waiting for their first speaker pass. Touched only by the queue. */
+    private val toLabel = linkedSetOf<String>()
+
+    /** Long enough to be a conversation, not a benchmark note, and not labelled or skipped already. */
+    private fun wantsLabels(n: Note) = !n.test && n.speakers == null && n.pieces.size >= 2 && n.seconds >= 60
+
+    /**
+     * Who spoke, without being asked (founder, 10 Oct: "initial speaker diarization should be done by you").
+     *
+     * Runs only once there is nothing left to transcribe, and inside this service so the foreground notification stays
+     * up and Android doesn't kill it half-done. The text is already on screen and "Text ready" has already been sent,
+     * so nobody is waiting for this.
+     *
+     * ⚠ It is NOT free for a dictation started while it runs: this is the one queue job, so `onStartCommand` won't
+     * start a new one until this returns. Hence `Notes.transcribing = true` (so the recorder keeps making 8 s pieces
+     * instead of piling up 1 s ones) and an abort check passed into the pass, so a new recording stops it within a
+     * window or two rather than at the end of the note.
+     *
+     * Only notes this run finished, never a sweep of every old note. If the phone is hot or the battery is low it is
+     * dropped rather than queued: speaker labels are not urgent, and the note screen's "Find who spoke" card is still
+     * there. The count is a guess; the note screen asks the user to confirm or change it.
+     */
+    private suspend fun labelFinished() {
+        if (toLabel.isEmpty()) return
+        Notes.transcribing = true   // tells the recorder the engine is busy, so a new dictation cuts 8 s pieces, not 1 s
+        try {
+            while (true) {
+                if (Recording.active) return                    // someone is dictating: finish the rest next time
+                notNow()?.let { Log.i(TAG, "speaker labels left for later: phone $it"); return }
+                val id = toLabel.firstOrNull() ?: return
+                val n = Notes.note(id)?.takeIf { wantsLabels(it) }
+                if (n == null) { toLabel -= id; continue }       // deleted, or labelled by hand meanwhile
+                say("${n.name}: finding who spoke…")
+                runCatching { Speakers.labelAuto(this, n) { Recording.active } }   // Throwable: a native load can fail
+                    .onFailure { Log.w(TAG, it) }
+                Notes.refresh()
+                // Drop it only when something was actually written. An aborted pass saves nothing and stays in the
+                // queue for the next run.
+                if (Notes.note(id)?.speakers != null) toLabel -= id else return
+            }
+        } finally { Notes.transcribing = false }
+    }
+
+    /** A reason not to spend phone time on something that isn't urgent, or null. */
+    private fun notNow(): String? {
+        val b = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return null
+        val temp = b.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10f
+        val level = b.getIntExtra(BatteryManager.EXTRA_LEVEL, 100) * 100 / b.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+        val charging = b.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+        return when {
+            temp >= 41f -> "is warm (%.0f °C)".format(temp)
+            level < 15 && !charging -> "is low on battery ($level%)"
+            else -> null
+        }
     }
 
     /** Pause when the phone is hot (it slows itself down anyway) or the battery is low and not charging. */

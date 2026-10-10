@@ -6,6 +6,134 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ## 2026-10-10 (night) · Claude Code (Opus 5)
 
+---
+
+## 2026-10-10 (night) · Claude Code (Opus 5, cloud session) · reminder sound, translation, formal version
+
+**Next step:** build 11 on the Mac, install, then Settings -> Reminders -> **Test the reminder sound** (switch ON, then
+OFF), one real 2-minute reminder with the phone locked, one Translate, one Formal version. **Nothing in this entry was
+compiled:** the cloud container has no Android SDK, no model assets and no signing key.
+
+The founder reported three hand-check failures: "alarm is not giving me sound", "the translations are not working", and
+"making formal statement out of the context I have shared" does not work.
+
+**Reminder sound.** Ranked causes, after an independent critic knocked down the first theory:
+1. **"Ring like an alarm" defaulted to OFF** (`Reminders.ringLikeAlarm` returned `false`), so every reminder was a
+   2.6 s chime on the notification stream - muted by silent/vibrate, Do Not Disturb or a low notification volume.
+   Request #84 was "alarm-like sound" and it shipped as an opt-in switch, off, buried in Settings. **Now ON by default**,
+   and the alarm path is the channel's own sound with `USAGE_ALARM` + `FLAG_INSISTENT` (alarm stream, alarm volume,
+   repeated by the phone until seen, through silent mode and through DND wherever DND allows alarms).
+2. **POST_NOTIFICATIONS was only ever requested when recording or importing**, never when a reminder was set. Denied =
+   nothing appears and nothing sounds. `RemindDialog` now asks when it opens, `show()` reports whether the phone took
+   the notification, and `fire()` marks a reminder `fired` only then, so one that could not be shown is not lost.
+3. **OxygenOS force-stopping indite** drops its alarms. Settings -> Reminders now says so and opens the phone's battery
+   setting; that button existed only under the floating-mic section before.
+
+**Wrong theory, recorded so nobody repeats it:** that the channel's sound URI used the numeric `R.raw.reminder` id and
+that AAPT2 had moved it. `reminder.wav`, the channel ids and `setSound` all arrived in one commit (`3d42717`) and
+`res/raw` has not changed since, so the stored number still resolved. The URI is named anyway (via
+`getResourceEntryName`, which also keeps a code reference so resource shrinking can't strip the WAV), and the channel
+ids went to `_v2` because a channel's sound is frozen at creation and the `USAGE_ALARM` change needed a new id. ⚠ A
+further change needs `_v3`: deleting a channel does not reset it - recreating the same id restores the old settings.
+
+**Written and then deleted: a foreground service that played the alarm itself** (`notes/AlarmRing.kt`). The critic was
+right that it was over-engineering: it marked a reminder `fired` before the notification was confirmed, and opening
+indite removed its own ongoing notification - both ways to lose a reminder, inside the fix for a lost reminder. The
+channel route does the same job with the system playing the sound. Add a player back only if a device test shows the
+phone cutting the channel sound short.
+
+Also fixed: a missed reminder re-announced itself on every app open (`rescheduleAll` notified every past reminder and
+nothing marked it done) - now a `fired` flag in `reminders.json`, shown once, quietly. And there is now a way to test
+the sound in 2 seconds: Settings -> Reminders -> **Test the reminder sound** + Stop, `soundProblem()` naming the
+blocking phone setting (notifications off, channel blocked or muted, silent/vibrate, notification volume 0, DND, alarm
+volume 0), and a "Last reminder: ..." line recording what happened the last time one fired.
+
+**Translate.** Two real bugs: *Ask my AI -> Translate* called `ask("Translate")` with no language, so `{lang}` became
+"English" - and the Hinglish rule was already skipped for Translate, so a Hinglish note came back looking almost
+unchanged; it now opens the language picker. And the Google Translate route (free, offline, no key) was the last line of
+a scrolling dialog; it is now the first button when the app is installed. **But the real block is configuration:**
+indite has no translator or AI of its own, `MacCompanion` needs Tailscale and `OpenRouter` needs a key, so every AI
+request can today only hand the text to another app and wait for a paste. Settings -> AI now prints one line
+(`aiRouteNow()`) saying exactly what will happen. **An OpenRouter key is the highest-value thing the founder can do.**
+
+**Another wrong theory, checked against Google's docs:** that Android 11+ package visibility made
+`startActivity(setPackage(...))` throw for Google Translate and the AI apps. It does not - `startActivity()` needs no
+package visibility, for implicit or explicit intents; filtering hits *queries* and starting another app's *service*.
+`<queries>` was kept for one package only, because `installed()` asks whether Google Translate is there.
+
+**"Formal version" added** to `AskPrompts`: formal English, every fact/name/number/date kept, nothing invented,
+"(unclear)" where it can't tell. It and Translate are in `OwnLanguage`, so the "reply in Hinglish" rule is skipped -
+that rule would have wrecked a formal English statement.
+
+**Speaker labels now run by themselves** (founder: "why does speaker diarization not work automatically? ... the
+initial speaker diarization should be done by you"). The honest answer to "why": **nothing ever decided it had to be
+manual.** It was built as an on-demand card and request #60 removed the *count* question but left the tap. No technical
+blocker either - PLAN.md line 230 records 15.9 s on the phone for a 15-minute file, about 1 s per minute of audio.
+- `NoteService` now labels every note it just finished, once the queue has nothing left to transcribe, inside the
+  foreground service (so Android cannot kill it half-done). Only notes *this run* finished - never a sweep of the whole
+  back catalogue. Dropped rather than queued when the phone is hot or the battery is low: labels are not urgent, and
+  `waitUntilSafe()` would have pinned the foreground service open (it never gives up on a low battery) for a note whose
+  text was already finished.
+- ⚠ **Corrected after the critic:** "never delays a live dictation" was false and had been written into the code, the
+  commit message and three docs. `labelFinished()` runs in the one queue job and `onStartCommand` only starts a queue
+  `if (job?.isActive != true)`, so a recording started mid-pass waits for it - and with `Notes.transcribing` false the
+  recorder would have cut 1 s pieces that piled up unprocessed. Mitigations (both unmeasured on a device):
+  `Notes.transcribing = true` while labelling, and an abort check passed into the pass and tested every 50 windows
+  (~1-2 s of phone time), which saves nothing and leaves the note for the next run.
+- `catch (e: Exception)` became `runCatching` (Throwable): a failed sherpa-onnx native load throws `UnsatisfiedLinkError`
+  and a big `readPcm` can throw `OutOfMemoryError`, neither of which is an `Exception`, and both would have killed the
+  queue coroutine - at the end of every long note instead of only when the user tapped. `Notes.import` already used
+  `Throwable` for the same reason.
+- The one-voice test counts `seg`, not just `of`: a second speaker can live entirely inside paragraphs (the short
+  interview question, which is the shape of the real 15-min recording) and never win one, and the first version would
+  have thrown all those per-sentence turns away.
+- An explicit "2" that collapses to one voice used to show nothing at all, so the run looked like a no-op. The note
+  screen now says "indite could only hear one voice in this note".
+- Gate: over 60 s, 2+ paragraphs, no speakers file yet, and not a `test` note, so `phone_test.sh`'s `--ei k 2` scoring
+  is untouched.
+- `Speakers.labelAuto()` and `Speakers.status` (a MutableStateFlow: `Speakers.running` is a plain set and not
+  observable, so the note screen could not show a run it did not start). The note screen now has one `busy` value for
+  "something is working on this note", whoever started it.
+- **One voice = no labels at all**, however the run started. An explicit "1" used to write "Speaker 1" on every
+  paragraph. `heardOne()` saves `skipped=true, k=1, guessed=<indite decided it>`, and the note screen shows a one-line
+  "indite heard one voice. Two people spoke?" only when indite decided it, not when the user chose 1.
+- The existing "indite heard N people. Is that right?" card is unchanged: that is the "ask and update later" half.
+- The "one voice = no labels" rule is the part that matters most: before it, once `speakers.json` existed there was no
+  way back to plain text (the "Just me" button needs `speakers == null`, and the confirm card's "1" wrote `k=1`
+  *labelled*, putting "Speaker 1" on every paragraph). **A wrong automatic guess is now undoable in one tap.**
+- Consent framing: the only place that said "when you record others, tell them first" was the card that automatic
+  labelling makes disappear. That line moved onto the "indite heard N people" card, and `privacy.txt` / `docs/privacy.md`
+  now say what this does - compared on the phone, within one recording only, no voiceprint saved. `speakers.json` holds
+  only ints, sample offsets and names the user typed; the fingerprints live in RAM for one note and are never written.
+- No setting added on purpose. ⚠ **This is ahead of the project's own gate.** PLAN.md line 230 already says "auto count
+  fragile on real audio", `phone_test.sh` only ever scores a *given* count (so 96.7% / 93.3% are given-count numbers),
+  and #61 "can I trust Find who spoke?" is still waiting on the founder's listen-check - and the guess is now the
+  default output for every long note. `auto()`'s 1-vs-2 call rests on one threshold (centres >= 0.35 cosine distance
+  apart, and 3 windows ~ 4.5 s is enough to declare a second speaker on a 60 s note), so the expected failure is
+  splitting one person into two: background TV, or music, which Silero hears as speech. Keep it in the personal build;
+  it must not reach testers until measured. Also unmeasured: "15.9 s for a 15-min file" is a `--ei k 2` run, while
+  `auto()` runs k-means for k = 2..5 (embedding extraction, the expensive part, still happens once).
+  **Next action, no new code:** `--es test_label "<name>" --ei k 0` runs `auto()` on a benchmark note and writes the
+  labels and `label_ms`; `score.py diar` scores it. Both dialogues plus the 15-min 3-voice file, ~20 min of phone time,
+  answers accuracy and cost together. Numbers go in PLAN.md section 7.
+- Known and not fixed: "Copy all text" on a labelled note joins consecutive turns by the same speaker into one block
+  (`allText()`), so an interview where one person speaks five paragraphs running becomes one wall of text - pre-existing,
+  but automatic labelling makes it the default. Floating-mic dictations over 60 s with 2+ paragraphs also pass the gate,
+  so a long solo dictation with a TV on can pick up labels (the pasted text is unaffected).
+
+Docs: founder requests 178 (reminder sound), 179 (translation), 180 (formal statement), 181 (automatic speaker labels);
+summary counts corrected to 181 rows; ROADMAP "Now" item 0; HANDOFF section 5 tables with the ranked causes and both
+dead theories.
+
+**Open question for the founder:** when the reminder was due, did it appear on screen with no sound, or did nothing
+appear at all? Silent-but-visible points at cause 1; nothing at all points at 2 or 3.
+
+**Untested:** all of the above, plus everything from builds 8-10 that has not been hand-checked.
+
+---
+
+## 2026-10-10 (later) · Claude Code (Opus 5 / Opus 5.5) · builds 8-10
+
 **Next step:** founder's 20-minute hand check of builds 9–10. Then the Sarvam Edge / Gboard Roman-Hinglish desk check
 (1 h), the import-vs-live cut-point run (1 h), real-voice WER on ~6 min (2 h). Batch A (build 11) only after that.
 

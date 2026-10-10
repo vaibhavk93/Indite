@@ -143,6 +143,32 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a �
 
 ## Now
 
+0. **Build 11: the first three hand-check failures, fixed in code but not built or heard yet** (10 Oct, from
+   "alarm not giving sound, translation not working, formal statement not working"):
+   - **Reminder sound.** Most likely cause: **"Ring like an alarm" defaulted to off**, so every reminder was a soft
+     chime on the notification stream, which silent mode, Do Not Disturb and a low notification volume all mute. You
+     asked for an alarm-like sound (#84) and got an opt-in switch, off, inside Settings. It is **on by default** now,
+     and the alarm uses the alarm stream and alarm volume and repeats until you see it. Second possible cause: indite
+     only asked for notification permission when you recorded or imported, never when you set a reminder — the Remind me
+     dialog asks now. Third: this phone force-stopping indite, which deletes its alarms; Settings → Reminders now says
+     so and opens the battery setting. New: **Test the reminder sound**, a line naming whatever phone setting is
+     blocking it, and "Last reminder: …" showing what happened last time.
+   - **Translate.** Two bugs fixed: Translate in the *Ask my AI* list never asked for a language, so it quietly
+     translated into English; and the free offline route (Google Translate) was buried at the bottom of a scrolling
+     dialog, and is now the first button. ⚠ The real block is that **no AI route is set up** — an OpenRouter key
+     (2 minutes) makes Translate, Formal version and every other request answer inside indite today; Tailscale for the
+     Mac route is the harder, second ask. Settings → AI now says in one line what will happen.
+   - **Formal statement.** Did not exist. Added as **Formal version** under Ask my AI. Also needs an AI route.
+   - **Speaker labels now happen by themselves.** Nothing had decided they should be manual — it was built as a button
+     and the tap was never removed (#60 took away the count question, not the tap). It runs after all transcription is
+     done, and is skipped when the phone is hot or the battery is low. The count is still a guess, so the note screen
+     still asks "indite heard N people. Is that right?". One voice now means no labels at all, which is what makes a
+     wrong guess undoable in one tap. ⚠ **This is ahead of your own gate:** the guess has never been scored on real
+     audio (the phone test only ever scores a *given* count), and #61 "can I trust Find who spoke?" is still waiting on
+     your listen-check. Keep it in your personal build; it must not reach testers until the guess is measured —
+     `--es test_label "<name>" --ei k 0` scores it today with no new code (~20 min, see item 3).
+   Gate: build 11, then your ear on the reminder (switch on, then off) and one Translate + one Formal version end to end.
+   One thing only you can answer: when the reminder was due, did it appear with no sound, or not appear at all?
 1. **Build 10 is on the phone** (tag `build-10`). Quick test done; the rounding A/B is done (keep 256: repeatable text,
    live wait 9.1-14.1 s vs 78.8-87.3 s with the old rounding; heat costs ~5 s per +1 °C). **Left to do:** the full
    `./bench_synth/phone_test.sh` on a cool phone (gate: 15-min file ≈ 25%), and decide whether the italic subtitle stays.

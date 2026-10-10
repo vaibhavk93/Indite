@@ -124,6 +124,90 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+- **Fixed in code 10 Oct, NOT built and NOT heard yet** (no Android SDK, no model assets and no signing key in the
+  cloud container, so nothing here was compiled). The founder reported: "alarm is not giving me sound", "the
+  translations are not working", and "making formal statement out of the context I have shared" does not work.
+
+  **Why the reminder was silent — ranked, with what is actually proven** (critic-reviewed; the first theory was wrong,
+  see below):
+  | Rank | Cause | Proven? | What changed |
+  |---|---|---|---|
+  | 1 | **"Ring like an alarm" defaulted to OFF.** So every reminder was a 2.6 s chime on the *notification* stream, which silent/vibrate mode, Do Not Disturb and a low notification volume all mute. Founder request #84 was "alarm-like sound"; it shipped as an opt-in switch, off, inside Settings | Code-proven (`Reminders.ringLikeAlarm` default was `false`). That it is what *he* hit is the best guess, not proven | **Default ON.** The alarm path is now the channel's own sound with `USAGE_ALARM` + `FLAG_INSISTENT`: alarm stream, alarm volume, repeated by the phone until the notification is seen, through silent mode and through DND wherever DND allows alarms |
+  | 2 | **POST_NOTIFICATIONS may be denied.** indite asked for it only when recording or importing, never when a reminder was set. Denied = nothing appears and nothing sounds | Code-proven (`MainActivity.askNotificationsOnce` is called from `record()` and `import()` only) | `RemindDialog` asks when it opens; `Reminders.show()` returns false when notifications are off, and `fire()` then does **not** mark the reminder `fired`, so it is not thrown away |
+  | 3 | **OxygenOS force-stopped indite**, which deletes its alarms. Nothing in the app can stop this | Plausible, untested | Settings → Reminders now says so and opens the phone's battery setting (that button previously existed only under the floating-mic section) |
+  | — | ~~The channel's sound URI used the numeric `R.raw.reminder` id, which AAPT2 moves between builds~~ | **Checked and false.** `reminder.wav`, the channel ids and `setSound` all arrived in one commit (`3d42717`) and `res/raw` is unchanged since, so the stored number still resolved | The URI is named anyway (`.../raw/<entry name>`, via `getResourceEntryName`, which also keeps a code reference so resource shrinking can't strip the WAV). Channel ids went to `_v2` because a channel's sound is frozen at creation — needed for the `USAGE_ALARM` change regardless. **Next change needs `_v3`:** deleting a channel does not reset it, recreating the same id restores the old settings |
+  | — | A missed reminder re-announced itself on every app open | Code-proven (`rescheduleAll` notified every past reminder, with nothing marking it done) | `fired` flag in `reminders.json`; shown once, quietly |
+  | — | No way to test the sound without waiting for 5 pm | — | Settings → Reminders: **Test the reminder sound** + Stop; `soundProblem()` names the blocking phone setting (notifications off, channel blocked or muted, silent/vibrate, notification volume 0, DND, alarm volume 0); "Last reminder: …" records what happened the last time one fired |
+
+  **A foreground service that played the alarm itself was written and then deleted.** The critic was right that it was
+  over-engineering: it could lose a reminder (it marked `fired` before the notification was confirmed) and opening
+  indite removed its own ongoing notification. The channel route does the same job with the system playing the sound.
+  Add a player back **only** if a device test shows the phone cutting the channel sound short.
+
+  **Why Translate did nothing useful:**
+  | Cause | What changed |
+  |---|---|
+  | *Ask my AI → Translate* called `ask("Translate")` with no language, so `{lang}` became **English** — and the Hinglish reply rule was already skipped, so a Hinglish note came back looking almost unchanged | Translate in that list now opens the language picker |
+  | The one route that needs no key and no internet (the Google Translate app) was the last line of a scrolling dialog | It is the first button when the app is installed (`<queries>` for that one package so `installed()` can ask) |
+  | **The real block: no AI route exists on this phone.** `MacCompanion` needs a Tailscale URL + token, `OpenRouter` needs an `sk-` key + a model; both are still waiting on the founder. So every AI request can only hand the text to another app and wait for a paste | Settings → AI prints one line (`aiRouteNow()`) saying exactly what will happen. ⚠ **An OpenRouter key is the single highest-value thing the founder can do**: it makes Translate, Formal version and every other request answer inside indite today |
+  | ~~Android 11+ package visibility made `startActivity(setPackage(…))` throw~~ | **False.** Google's docs: `startActivity()` does not require package visibility, for implicit or explicit intents. Filtering hits *queries* and starting another app's *service* |
+
+  **"Formal statement" did not exist.** Added as **Formal version** in `AskPrompts`: formal English, every fact / name /
+  number / date kept, nothing invented, "(unclear)" where it can't tell. It and Translate are in `OwnLanguage`, so the
+  "reply in Hinglish" rule is not applied to them (that rule would have wrecked a formal English statement).
+
+  **Open question only the founder can answer:** when the reminder was due, did it appear on screen with no sound, or
+  did nothing appear at all? Silent-but-visible points at cause 1; nothing at all points at 2 or 3.
+
+  **To verify (on the Mac):** build 11 → Settings → Reminders → Test the reminder sound with the switch ON, then OFF →
+  one real 2-minute reminder with the phone locked → one Translate → one Formal version. `adb shell dumpsys alarm | grep
+  indite` and `adb shell dumpsys notification --noredact` after a test answer most of the rest.
+- **Speaker labels now run by themselves (10 Oct, code only, not built):** the founder asked why diarization was not
+  automatic. Answer: **nothing ever decided it had to be manual.** It was built as an on-demand action (`ui/NotesApp.kt`
+  card "Was this a conversation? Find who spoke.") and request #60 removed the *count* question but left the tap.
+  | Change | Where |
+  |---|---|
+  | `NoteService` labels every note it just finished, once the queue has nothing left to transcribe, inside the foreground service (so Android can't kill it half-done). Dropped, not queued, when the phone is hot or the battery is low — labels are not urgent | `notes/NoteService.kt`: `finish()` → `toLabel`, `wantsLabels()`, `labelFinished()`, `notNow()` |
+  | Gate: over 60 s, 2+ paragraphs, no speakers file yet, **not a `test` note** (so `phone_test.sh`'s `--ei k 2` scoring stays clean). Only notes *this run* finished — never a sweep of the whole back catalogue | `wantsLabels()` |
+  | `Speakers.labelAuto()` + `Speakers.status` (a `MutableStateFlow`, because `Speakers.running` is not observable, so the note screen could not show a run it did not start). The note screen now has one `busy` value for "something is working on this note", whoever started it | `notes/Speakers.kt`, `NotesApp.kt` |
+  | **One voice = no labels at all**, however the run started. An explicit "1" used to write "Speaker 1" on every paragraph. `heardOne()` saves `skipped=true, k=1`, keeping any names. **This is what makes a wrong guess recoverable in one tap** — before it, once `speakers.json` existed there was no way back to plain text (the "Just me" button needs `speakers == null`) | `Speakers.label()`, `heardOne()` |
+  | The existing "indite heard N people. Is that right?" card is the "ask and update later" half, unchanged — except it now carries the "when you record others, tell them first" line, which used to live on the card that automatic labelling makes disappear | `NotesApp.kt` |
+  | The one-voice test counts `seg` as well as `of`: a second speaker can live entirely inside paragraphs (short interview questions) and never win one, and throwing those turns away would be the worst kind of wrong | `Speakers.label()` |
+  | `privacy.txt` / `docs/privacy.md` say what this does: compared on the phone, within one recording only, no voiceprint saved | both files |
+
+  **⚠ It is not free for a dictation started while it runs** (critic, corrected — an earlier version of this entry and
+  of the commit message claimed "never delays a live dictation", which the code disproves). `labelFinished()` runs in
+  the one queue job, and `onStartCommand` only starts a queue `if (job?.isActive != true)`, so a recording that begins
+  mid-pass waits for it. Two mitigations, both unmeasured on a device: `Notes.transcribing = true` during labelling (so
+  `LiveRecorder` keeps cutting 8 s pieces instead of piling up 1 s ones) and an abort check passed into the pass,
+  checked every 50 windows (~1–2 s of phone time), which saves nothing and leaves the note for the next run.
+
+  **⚠ The cost figure does not cover this path.** "15.9 s for a 15-minute file" (PLAN.md line 230) is a `--ei k 2` run:
+  one k-means. `auto()` runs k-means for k = 2, 3, 4 and 5. Embedding extraction, the expensive part, still happens
+  once, so the true number should be close — but it is **unmeasured**, and the "no setting needed" argument rests on it.
+
+  **⚠ This is ahead of the project's own gate.** PLAN.md line 230 already says "auto count fragile on real audio",
+  `phone_test.sh` only ever scores a *given* count, and #61 ("can I trust Find who spoke?") is still ⏳ waiting on the
+  founder's listen-check. The guess is now the default output for every long note. Keep it in the **personal build**
+  (he asked for it, he is the only user, and auto-labelling is the fastest way for him to do the listen-check); do
+  **not** let it reach testers until the guess is measured. `auto()`'s 1-vs-2 decision rests on a single threshold
+  (centres at least 0.35 cosine distance apart, and 3 windows ≈ 4.5 s is enough to call a second speaker on a 60 s
+  note), so the expected failure is **splitting one person into two** — background TV, or music, which Silero hears as
+  speech.
+  **Next action, no new code needed:** `--es test_label "<name>" --ei k 0` runs `auto()` on a benchmark note and writes
+  the labels and `label_ms` (`MainActivity.testHook` reads `--ei k`, default 2, so 0 means guess); `score.py diar`
+  scores it. Both synthetic dialogues plus the 15-min 3-voice file, about 20 minutes of phone time, answers both the
+  accuracy and the cost question. Put the numbers in PLAN.md section 7.
+  ⚠ Reading that run: if the guess says "one voice", `heardOne()` writes `skipped`, so `exportTestResult` emits
+  `speaker: -1` for every sentence and the score comes out ~0 rather than erroring. A ~0 score on a 2-speaker dialogue
+  therefore means **the guess collapsed to one voice**, not that placement broke — check `k` in the note's
+  `speakers.json` before reading anything else into it.
+
+  **Known, not fixed:** "Copy all text" on a labelled note joins consecutive turns by the same speaker into one block
+  (`Notes.kt` `allText()`), so an interview where one person speaks five paragraphs in a row becomes one wall of text.
+  Pre-existing, but automatic labelling makes it the default for every long note — decide with the founder.
+  Floating-mic dictations over 60 s with 2+ paragraphs also pass the gate, so a long solo dictation with a TV on can
+  pick up labels (the pasted text is unaffected: `copyBubbleDictations()` runs first).
 - **Installed on the founder's phone:** build 10 (0.10, tag `build-10`), personal flavour.
 - **Pushed to GitHub:** everything up to the evening of 10 Oct (and build tags).
 - **Engine consistency (fixed 10 Oct, needs phone confirmation):** same audio gave different text because flash attention
@@ -174,8 +258,10 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 - **ChatGPT login inside the app:** not allowed yet (OpenAI's "Sign in with ChatGPT" = application-only preview, no mobile;
   reusing Codex's login would impersonate OpenAI's client). Founder to apply to the programme.
 - **Founder's checklist of every request:** `docs/FOUNDER_REQUESTS.md` (175 items).
-- **Waiting on the founder:** hand check of builds 9–10; phone free for the quick test; OpenRouter key; Tailscale; back up
-  the signing key; OK to delete ~2.4 GB of old APKs; ₹15k phone; "push".
+- **Waiting on the founder** (highest value first): **an OpenRouter key** — a 2-minute signup that makes Translate,
+  Formal version and every other AI request answer inside indite, instead of handing the text to another app; then the
+  answer to the reminder question above; hand check of builds 9–11; phone free for the quick test; Tailscale (the Mac
+  route, harder than the key); back up the signing key; OK to delete ~2.4 GB of old APKs; ₹15k phone; "push".
 
 ---
 
