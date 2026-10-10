@@ -24,8 +24,14 @@ wait_for() {  # result file name, timeout seconds
   for _ in $(seq 1 $(( $2 / 3 ))); do $A shell "test -f '$D/results/$1.json'" && return 0; sleep 3; done
   echo "timeout waiting for $1"; return 1
 }
+[ -n "${ROUND:-}" ] && hook --ei test_round "$ROUND"   # A/B: ROUND=64 or 256 (audio-window rounding)
 [ -z "${SKIP_LIVE:-}" ] && hook --es test_live dialogue_2spk.wav
 wait_for "live dialogue_2spk" 900
+if [ -n "${LIVE_ONLY:-}" ]; then  # LIVE_ONLY=1: just the live dictation part (~6 min), for speed A/B tests
+  mkdir -p out/phone; $A pull "$D/results/live dialogue_2spk.json" out/phone/ >/dev/null
+  echo "=== live dictation (rounding ${ROUND:-256})"; python3 phone_result.py "out/phone/live dialogue_2spk.json" out/phone/live.jsonl
+  python3 score.py long dialogue_turns_as_long.tsv out/phone/live.jsonl 2>/dev/null | head -1; exit 0
+fi
 hook --es test_import dialogue_same_gender.wav
 wait_for "dialogue_same_gender" 900
 if [ -z "${QUICK:-}" ]; then

@@ -110,6 +110,12 @@ class MainActivity : ComponentActivity() {
             }
             return true
         }
+        if (intent.hasExtra("test_round")) {  // --ei test_round 64|256 : A/B test of the audio-window rounding (live speed)
+            com.whispercppdemo.notes.Pauses.round = intent.getIntExtra("test_round", 256).takeIf { it == 64 || it == 256 } ?: 256
+            intent.removeExtra("test_round")
+            Log.i("indite", "test: audio window rounding = ${com.whispercppdemo.notes.Pauses.round}")
+            return true
+        }
         if (intent.getBooleanExtra("test_dump", false)) {  // --ez test_dump true : copy the 5 newest recordings' audio out, for mic debugging
             intent.removeExtra("test_dump")
             val out = getExternalFilesDir("results") ?: return true

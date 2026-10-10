@@ -66,8 +66,11 @@ object Pauses {
     fun audioCtx(samples: Int): Int {
         val sec = samples / 16000.0
         if (sec <= 13) return 768
-        return min(FULL, (ceil((sec + 2) * 50 / 256) * 256).toInt())
+        return min(FULL, (ceil((sec + 2) * 50 / round) * round).toInt())
     }
+
+    /** 256 (consistent text). Personal-build test hook can set 64 (the old rounding) for an A/B speed test. */
+    @Volatile var round = 256
 
     /** The largest window used (a multiple of 256, unlike whisper's default 1500, which would leak). */
     const val FULL = 1280

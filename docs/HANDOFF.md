@@ -147,6 +147,13 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 - **Build 10 quick test (16:30):** live wait **17.3 s median** (build 7: 9.1 s) though engine time per part is only +6%
   (8.7 → 9.2 s) and threads are 6 as before; live speed 1.03x vs 1.20x. Speakers 96.7% / 93.3%. Cause not known yet:
   re-running the quick test to check run-to-run noise; if still slow, A/B against build 7.
+- **Build 10 quick test, run 2:** live wait 12.0 s (run 1: 17.3 s) on the same build; phone 39.8-40.2 °C vs 35.8 °C for
+  build 7; live WER 20.2% (run 1: 16.9%). Live numbers swing a lot run to run (cut timing + heat).
+- **In progress: A/B speed test of the audio-window rounding** (the only live-path engine change between build 7 and 10).
+  Hidden personal-build hook `--ei test_round 64|256` (`Pauses.round`, in memory only). Script:
+  `cd bench_synth; ROUND=256 LIVE_ONLY=1 ./phone_test.sh` then `ROUND=64 ...`, alternating, 2 rounds each, phone below
+  ~36 °C at the start, untouched. Decide: if 256 is clearly slower live, use 256 only for imports (consistency) and 64
+  for live; otherwise keep 256 everywhere.
 - **Added after build 10 (committed, not installed):** Mac route can answer with ChatGPT via the founder's own Codex CLI
   (`via` in `/api/ask`; Settings → AI → Your Mac); Settings → Your stats dashboard (on-phone counts only).
 - **ChatGPT login inside the app:** not allowed yet (OpenAI's "Sign in with ChatGPT" = application-only preview, no mobile;
