@@ -371,7 +371,9 @@ class NoteService : Service() {
                     // Dropped-text guard. On the phone test, 1 in 5 pieces silently lost words (0.4-0.9 words per second of
                     // speech; normal ones 1.9-2.6). Re-run those with the full window, then in two halves; keep whichever
                     // has the most words and doesn't loop.
-                    if (sparse(best, speechMs)) {
+                    // Live recordings only: on imports it made things worse (15-min test WER 25.5% -> 30.6%; "most words"
+                    // picked noise gibberish and half-pieces). Imports have no one waiting, but the plain pass was best there.
+                    if (note.live && sparse(best, speechMs)) {
                         best = better(best, run(audio, start, 0))
                         if (sparse(best, speechMs) && audio.size > 8 * SR) {
                             val mid = audio.size / 2
