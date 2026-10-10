@@ -368,3 +368,6 @@ is a git commit.
   checked it.
 - When something is dropped: set ❌ with the reason. If you overrule a decision, say so in the row.
 - Update the Summary counts and "Last updated" each time.
+
+| 176 | **Same audio, different text: fix without losing speed** | RCA + fix | 10 Oct | ✅ | Root cause: flash attention read leftover audio from the previous piece. Fix: audio window always a multiple of 256 (`a69dab5`). Phone A/B: same text every run; live wait 9.1-14.1 s vs 79-87 s with the old rounding. Heat adds seconds |
+| 177 | **Keep the handoff updated as we go** | So work can continue from another account if tokens run out | 10 Oct | ✅ | docs/HANDOFF.md section 5 updated after every build/test; WORKLOG + this file too |

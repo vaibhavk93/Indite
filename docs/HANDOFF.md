@@ -149,7 +149,12 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
   re-running the quick test to check run-to-run noise; if still slow, A/B against build 7.
 - **Build 10 quick test, run 2:** live wait 12.0 s (run 1: 17.3 s) on the same build; phone 39.8-40.2 °C vs 35.8 °C for
   build 7; live WER 20.2% (run 1: 16.9%). Live numbers swing a lot run to run (cut timing + heat).
-- **In progress: A/B speed test of the audio-window rounding** (the only live-path engine change between build 7 and 10).
+- **A/B result (10 Oct, 4 live rounds, phone 35-37 °C): keep rounding 256.** 256: wait 9.1 s / 14.1 s, engine 8.7 / 9.0 s
+  per part, 21 parts, WER 20.4% both runs (repeatable). 64 (old): wait 78.8 s / 87.3 s, engine 14.3 / 15.2 s, only 11
+  parts (engine fell behind, recorder switched to long pieces), WER 17.9% both runs. Likely cause (unproven): leaked
+  rows garble pieces, the live dropped-text re-run then runs 2-3x. Heat matters: +0.9 °C ≈ +5 s wait.
+  Next accuracy item: live WER (cut points), not rounding.
+- **(done) A/B speed test of the audio-window rounding** (the only live-path engine change between build 7 and 10).
   Hidden personal-build hook `--ei test_round 64|256` (`Pauses.round`, in memory only). Script:
   `cd bench_synth; ROUND=256 LIVE_ONLY=1 ./phone_test.sh` then `ROUND=64 ...`, alternating, 2 rounds each, phone below
   ~36 °C at the start, untouched. Decide: if 256 is clearly slower live, use 256 only for imports (consistency) and 64
