@@ -49,10 +49,11 @@ data class Note(
     fun turns(i: Int): List<Pair<Int?, String>> {
         val p = pieces[i]
         val each = speakers?.takeIf { !it.skipped }?.seg?.get(i)
-        if (i in edits || each == null || each.size != p.segs.size || p.segs.isEmpty()) return listOf(speakerOf(i) to text(i).trim())
+        val sents = Notes.sentences(p.text)
+        if (i in edits || each == null || each.size != sents.size || sents.size < 2) return listOf(speakerOf(i) to text(i).trim())
         val out = mutableListOf<Pair<Int?, String>>()
-        p.segs.zip(each).forEach { (s, who) ->
-            val t = Settings.applyFixes(s.text).trim()
+        sents.zip(each).forEach { (s, who) ->
+            val t = Settings.applyFixes(s).trim()
             if (out.isNotEmpty() && out.last().first == who) out[out.size - 1] = who to (out.last().second + " " + t)
             else out += who to t
         }
@@ -320,6 +321,9 @@ object Notes {
         exportTestResult(id)
     }
 
+    /** A piece's text split into sentences (the unit speakers are labelled by; the model gives no sentence times). */
+    fun sentences(text: String): List<String> = text.trim().split(Regex("(?<=[.?!])\\s+")).filter { it.isNotBlank() }
+
     /** Test notes only: copy the result where `adb pull` can read it, for the automated benchmark. */
     fun exportTestResult(id: String, extra: Pair<String, Any>? = null) {
         refresh()
@@ -329,8 +333,10 @@ object Notes {
             JSONObject().put("i", it.i).put("start", it.start).put("end", it.end).put("text", it.text).put("shown", note.text(it.i))
                 .put("flags", JSONArray(it.flags)).put("ms", it.latencyMs).put("engine", it.engineMs)
                 .put("speaker", note.speakerOf(it.i) ?: -1)
-                .put("segs", JSONArray(it.segs.mapIndexed { k, s -> JSONObject().put("start", s.start).put("end", s.end).put("text", s.text)
-                    .put("speaker", note.speakers?.seg?.get(it.i)?.getOrNull(k) ?: note.speakerOf(it.i) ?: -1) }))
+                .put("segs", JSONArray(note.speakers?.spans?.get(it.i)?.let { spans ->  // labelled sentences with their estimated times
+                    sentences(it.text).zip(spans).mapIndexed { k, (t, s) -> JSONObject().put("start", s.first).put("end", s.second).put("text", t)
+                        .put("speaker", note.speakers.seg[it.i]?.getOrNull(k) ?: -1) }
+                } ?: listOf(JSONObject().put("start", it.start).put("end", it.end).put("text", it.text).put("speaker", note.speakerOf(it.i) ?: -1))))
         })
         val o = JSONObject().put("name", note.name).put("seconds", note.seconds).put("speed", note.speed).put("pieces", pieces)
         extra?.let { o.put(it.first, it.second) }

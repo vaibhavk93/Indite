@@ -647,7 +647,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         FilledTonalButton(onClick = { whoSpoke = false; startLabel(k) }) { Text("$k") }
                     }
                 }
-                TextButton(onClick = { whoSpoke = false; startLabel(0) }) { Text("Not sure (beta)") }
+                TextButton(onClick = { whoSpoke = false; startLabel(0) }) { Text("Guess for me") }
             }
         },
         confirmButton = { TextButton(onClick = { whoSpoke = false }) { Text("Cancel") } },
@@ -718,17 +718,30 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                     }
                     if (note.done && note.speakers == null && note.pieces.size >= 2 && note.seconds >= 60 && labelling == null &&
                         note.id !in Speakers.running) {
-                        val usual = remember { Speakers.lastCount(context) }
                         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Was this a conversation? Label who spoke.", style = MaterialTheme.typography.titleSmall)
-                                Text("How many people? It all happens on this phone. When you record others, tell them first.",
+                                Text("Was this a conversation? Find who spoke.", style = MaterialTheme.typography.titleSmall)
+                                Text("indite listens for different voices and guesses how many people spoke; you can correct it. " +
+                                    "It all happens on this phone. When you record others, tell them first.",
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     TextButton(onClick = { AppScope.launch(Dispatchers.IO) { Speakers.skip(note.id) } }) { Text("Just me") }
-                                    (2..4).forEach { k ->
-                                        if (k == usual) Button(onClick = { startLabel(k) }) { Text(if (k == 4) "4+" else "$k") }
-                                        else OutlinedButton(onClick = { startLabel(k) }) { Text(if (k == 4) "4+" else "$k") }
+                                    Button(onClick = { startLabel(0) }) { Text("Find who spoke") }
+                                }
+                            }
+                        }
+                    }
+                    // Guess, then confirm: one tap if indite counted right, otherwise pick the real number (re-labels in a moment).
+                    note.speakers?.takeIf { it.guessed && !it.skipped && labelling == null && note.id !in Speakers.running }?.let { sp ->
+                        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(if (sp.k <= 1) "indite heard 1 voice. Is that right?" else "indite heard ${sp.k} people. Is that right?",
+                                    style = MaterialTheme.typography.titleSmall)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Button(onClick = { AppScope.launch(Dispatchers.IO) { Speakers.confirm(note.id) } }) { Text("Right") }
+                                    Text("or", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    (1..5).filter { it != sp.k }.forEach { k ->
+                                        OutlinedButton(onClick = { startLabel(k) }, contentPadding = PaddingValues(horizontal = 12.dp)) { Text("$k") }
                                     }
                                 }
                             }

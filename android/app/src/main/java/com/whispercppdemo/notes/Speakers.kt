@@ -22,7 +22,9 @@ object Speakers {
 
     /** of: one speaker per paragraph (majority); seg: one speaker per sentence inside it (a paragraph often holds several turns). */
     data class Result(val of: Map<Int, Int>, val names: Map<Int, String>, val k: Int = 0, val skipped: Boolean = false,
-                      val seg: Map<Int, List<Int>> = emptyMap())
+                      val seg: Map<Int, List<Int>> = emptyMap(), val spans: Map<Int, List<Pair<Int, Int>>> = emptyMap(),
+                      /** indite guessed how many people spoke; the user hasn't confirmed it yet. */
+                      val guessed: Boolean = false)
 
     /** Ids being labelled right now (so "Who spoke?" can't run twice on one note). */
     val running: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
@@ -39,21 +41,34 @@ object Speakers {
         val names = o.optJSONObject("names")?.let { m -> m.keys().asSequence().associate { it.toInt() to m.getString(it) } } ?: emptyMap()
         val seg = o.optJSONObject("seg")?.let { m -> m.keys().asSequence().associate { key ->
             key.toInt() to m.getJSONArray(key).let { a -> List(a.length()) { a.getInt(it) } } } } ?: emptyMap()
-        Result(of, names, o.optInt("k"), o.optBoolean("skipped"), seg)
+        val spans = o.optJSONObject("spans")?.let { m -> m.keys().asSequence().associate { key ->
+            key.toInt() to m.getJSONArray(key).let { a -> List(a.length()) { a.getJSONArray(it).let { s -> s.getInt(0) to s.getInt(1) } } } } } ?: emptyMap()
+        Result(of, names, o.optInt("k"), o.optBoolean("skipped"), seg, spans, o.optBoolean("guessed"))
     } catch (e: Exception) { null }
 
-    /** k = how many people spoke, or 0 for "not sure" (beta: picks 1-5 by how distinct the voices are). */
+    /**
+     * k = how many people spoke, or 0 to guess (picks 1-5 by how distinct the voices are) and let the user confirm or
+     * change it. The voice fingerprints are kept in memory, so changing the count afterwards takes a moment.
+     */
     fun label(context: Context, note: Note, k: Int, progress: (String) -> Unit) {
         if (!running.add(note.id)) return
         try { labelNow(context, note, k, progress) } finally { running.remove(note.id) }
-        context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt("lastSpeakers", k).apply()
+        if (k > 0) context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt("lastSpeakers", k).apply()
     }
+
+    /** The user said the guessed count is right. */
+    fun confirm(id: String) = update(id) { it.put("guessed", false) }
+
+    /** Last note's fingerprints: (note id, samples) -> windows, stretches, fingerprints. */
+    @Volatile private var cache: Triple<String, Triple<List<Pair<Int, Int>>, List<Pair<Int, Int>>, List<FloatArray>>, Unit>? = null
 
     fun lastCount(context: Context) = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getInt("lastSpeakers", 2)
 
     private fun labelNow(context: Context, note: Note, k: Int, progress: (String) -> Unit) {
+        val key = "${note.id}:${note.samples}"
+        val (windows, stretches, emb) = cache?.takeIf { it.first == key }?.second ?: run {
         progress("Finding where people speak…")
-        val windows = speechWindows(context, note)
+        val (windows, stretches) = speechWindows(context, note)
         if (windows.isEmpty()) { save(note.id, emptyMap(), k); return }
         progress("Listening for different voices…")
         val ex = SpeakerEmbeddingExtractor(context.assets, SpeakerEmbeddingExtractorConfig(model = "models/titanet_small.onnx", numThreads = 4))
@@ -68,10 +83,15 @@ object Speakers {
                 } finally { st.release() }
             }
         } finally { ex.release() }
+        Triple(windows, stretches, emb).also { cache = Triple(key, it, Unit) }
+        }
         progress("Grouping voices…")
         val lab = if (k > 0) kmeans(emb, k) else auto(emb)
-        // The phone test showed why paragraphs alone fail (52-55% of turns right): a 15-25 s paragraph holds several
-        // turns. So each SENTENCE gets the speaker who talks longest inside it; the paragraph keeps its majority.
+        val count = if (k > 0) k else lab.distinct().size
+        // A 15-25 s paragraph often holds several turns, and the model gives no sentence times (one segment per piece).
+        // So each sentence is placed over the piece's speech by its share of the characters, snapped to the nearest
+        // pause, and gets the speaker who talks longest in it. Mac bench 2026-10-10: 51.7% -> 98.3% of turns right
+        // (95.0% with two similar voices), on synthetic dialogue; real conversations will score lower.
         val order = mutableMapOf<Int, Int>()  // number speakers in order of first appearance
         fun who(start: Int, end: Int): Int? {
             val votes = mutableMapOf<Int, Int>()
@@ -83,16 +103,17 @@ object Speakers {
         }
         val of = mutableMapOf<Int, Int>()
         val seg = mutableMapOf<Int, List<Int>>()
+        val spans = mutableMapOf<Int, List<Pair<Int, Int>>>()
         for (p in note.pieces) {
-            if (p.segs.isNotEmpty()) {
-                val each = p.segs.map { who(it.start, it.end) }
-                val fallback = who(p.start, p.end) ?: continue
-                seg[p.i] = each.map { it ?: fallback }
-                of[p.i] = p.segs.zip(seg[p.i]!!).groupBy({ it.second }, { it.first.end - it.first.start })
-                    .maxByOrNull { (_, d) -> d.sum() }!!.key
-            } else who(p.start, p.end)?.let { of[p.i] = it }
+            val fallback = who(p.start, p.end) ?: continue
+            of[p.i] = fallback
+            val place = place(Notes.sentences(p.text), p.start, p.end, stretches) ?: continue
+            val each = place.map { (s, e) -> who(s, e) ?: fallback }
+            seg[p.i] = each
+            spans[p.i] = place
+            of[p.i] = place.zip(each).groupBy({ it.second }, { it.first.second - it.first.first }).maxByOrNull { (_, d) -> d.sum() }!!.key
         }
-        save(note.id, of, k, seg)
+        save(note.id, of, count, seg, spans, guessed = k == 0)
     }
 
     fun rename(id: String, speaker: Int, name: String) = update(id) { it.getJSONObject("names").put(speaker.toString(), name.trim()) }
@@ -111,10 +132,44 @@ object Speakers {
         write(f, o)
     }
 
-    private fun save(id: String, of: Map<Int, Int>, k: Int, seg: Map<Int, List<Int>> = emptyMap()) {
-        val o = JSONObject().put("k", k).put("names", JSONObject())
+    /**
+     * Where each sentence was probably said: spread by character count over speech time only (never the pauses),
+     * each boundary moved to the middle of the nearest pause within 0.75 s. Null if there's nothing to split.
+     */
+    internal fun place(sents: List<String>, start: Int, end: Int, stretches: List<Pair<Int, Int>>): List<Pair<Int, Int>>? {
+        if (sents.size < 2) return null
+        val sp = stretches.mapNotNull { (s, e) -> (maxOf(s, start) to minOf(e, end)).takeIf { it.second > it.first } }
+        val total = sp.sumOf { it.second - it.first }
+        if (total <= 0) return null
+        fun atSpeech(t: Long): Int {  // speech-time offset -> sample position
+            var left = t
+            for ((s, e) in sp) { if (left <= e - s) return s + left.toInt(); left -= e - s }
+            return sp.last().second
+        }
+        val chars = sents.map { it.length.toLong() }
+        val all = chars.sum()
+        val gaps = sp.zipWithNext { a, b -> (a.second + b.first) / 2 }
+        val cuts = mutableListOf<Int>()
+        var acc = 0L
+        for (c in chars.dropLast(1)) {
+            acc += c
+            var b = atSpeech(total * acc / all)
+            gaps.minByOrNull { kotlin.math.abs(it - b) }?.let { g -> if (kotlin.math.abs(g - b) <= (0.75 * SR).toInt()) b = g }
+            cuts += maxOf(b, cuts.lastOrNull() ?: start)
+        }
+        val bounds = listOf(start) + cuts + listOf(end)
+        return bounds.zipWithNext()
+    }
+
+    private fun save(id: String, of: Map<Int, Int>, k: Int, seg: Map<Int, List<Int>> = emptyMap(),
+                     spans: Map<Int, List<Pair<Int, Int>>> = emptyMap(), guessed: Boolean = false) {
+        // keep names the user already gave (re-labelling with a different count keeps "Speaker 1" = Amit)
+        val old = runCatching { JSONObject(File(Notes.dir(id), "speakers.json").readText()).optJSONObject("names") }.getOrNull()
+        val o = JSONObject().put("k", k).put("names", old ?: JSONObject()).put("guessed", guessed)
             .put("of", JSONObject().apply { of.forEach { (p, s) -> put(p.toString(), s) } })
             .put("seg", JSONObject().apply { seg.forEach { (p, s) -> put(p.toString(), org.json.JSONArray(s)) } })
+            .put("spans", JSONObject().apply { spans.forEach { (p, s) ->
+                put(p.toString(), org.json.JSONArray(s.map { org.json.JSONArray(listOf(it.first, it.second)) })) } })
         write(File(Notes.dir(id), "speakers.json"), o)
     }
 
@@ -128,9 +183,11 @@ object Speakers {
     }
 
     /** Speech stretches (split at 0.25 s pauses), cut into 1.5 s windows; tiny leftovers (< 0.4 s) dropped. */
-    private fun speechWindows(context: Context, note: Note): List<Pair<Int, Int>> {
+    /** Returns the 1.5 s windows and the speech stretches they came from (split at 0.25 s pauses). */
+    private fun speechWindows(context: Context, note: Note): Pair<List<Pair<Int, Int>>, List<Pair<Int, Int>>> {
         val det = SpeechDetector(Engine.vadPath(context))
         val out = mutableListOf<Pair<Int, Int>>()
+        val stretches = mutableListOf<Pair<Int, Int>>()
         try {
             val chunk = 10 * 60 * SR
             var base = 0
@@ -142,6 +199,7 @@ object Speakers {
                 fun close(f: Int) {
                     val s = base + start * WIN
                     val e = base + f * WIN
+                    stretches += s to e
                     var w = s
                     while (w < e) { val we = minOf(e, w + PIECE); if (we - w >= (0.4 * SR).toInt()) out += w to we; w = we }
                     start = -1
@@ -154,7 +212,7 @@ object Speakers {
                 base = end
             }
         } finally { det.release() }
-        return out
+        return out to stretches
     }
 
     private fun normalize(v: FloatArray): FloatArray {
