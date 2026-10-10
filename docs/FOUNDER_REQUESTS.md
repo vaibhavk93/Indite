@@ -314,7 +314,7 @@ is a git commit.
 
 | # | Request | What you asked, with context | Date | Status | Where it stands / why not |
 |---|---|---|---|---|---|
-| 173 | **ChatGPT / Codex answers** | Use your ChatGPT plan, like the Claude route | 10 Oct | 🧪 | Personal build: Settings → AI → Your Mac → "Answers come from: Claude / ChatGPT (via Codex)". The Mac runs your own Codex CLI (`codex login` with ChatGPT). **In-app ChatGPT login: not possible** (OpenAI's "Sign in with ChatGPT" has no mobile support; apply via their form). Needs Codex installed on the Mac + Tailscale |
+| 173 | **ChatGPT login inside the app, then use its models** | Clarified: sign in to ChatGPT in indite and use the models for AI features | 10 Oct | 🔬 | **In-app login: not allowed yet.** OpenAI's "Sign in with ChatGPT" for third-party apps is an application-only preview without mobile support (as researched 10 Oct); reusing Codex's login inside indite would impersonate OpenAI's client (terms risk, account ban). **Built instead:** the Mac route can answer with ChatGPT via your own Codex CLI (personal build), and your own API key (OpenRouter). **Next:** founder applies to OpenAI's programme; re-check status before applying |
 | 174 | **Stats dashboard** | How many words transcribed, recordings, all of that | 10 Oct | 🧪 | Settings → Your stats: words, minutes, recordings / dictations / imports, this week's words (7-day bars), typical speed, AI answers, labelled notes, reminders. Counted on the phone only |
 | 175 | **Subtitle "Speak in Hindi, English or both"** | Mentioned again with the italic request | 10 Oct | ❓ | Italic built (real Figtree italic). If you meant different wording (e.g. a comma instead of a full stop), say so |
 

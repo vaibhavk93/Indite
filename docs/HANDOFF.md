@@ -144,7 +144,14 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
   titles, search → paragraph).
 - **Deferred with a plan:** overlapping speech (record 3 real conversations first); other Indian languages in Roman script
   (ask script on tester sign-up first); OpenRouter (no key yet); iPhone (5+ tester asks).
-- **Founder's checklist of every request:** `docs/FOUNDER_REQUESTS.md` (172 items).
+- **Build 10 quick test (16:30):** live wait **17.3 s median** (build 7: 9.1 s) though engine time per part is only +6%
+  (8.7 → 9.2 s) and threads are 6 as before; live speed 1.03x vs 1.20x. Speakers 96.7% / 93.3%. Cause not known yet:
+  re-running the quick test to check run-to-run noise; if still slow, A/B against build 7.
+- **Added after build 10 (committed, not installed):** Mac route can answer with ChatGPT via the founder's own Codex CLI
+  (`via` in `/api/ask`; Settings → AI → Your Mac); Settings → Your stats dashboard (on-phone counts only).
+- **ChatGPT login inside the app:** not allowed yet (OpenAI's "Sign in with ChatGPT" = application-only preview, no mobile;
+  reusing Codex's login would impersonate OpenAI's client). Founder to apply to the programme.
+- **Founder's checklist of every request:** `docs/FOUNDER_REQUESTS.md` (175 items).
 - **Waiting on the founder:** hand check of builds 9–10; phone free for the quick test; OpenRouter key; Tailscale; back up
   the signing key; OK to delete ~2.4 GB of old APKs; ₹15k phone; "push".
 
