@@ -125,17 +125,28 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 ## 5. Where things stand (update every session)
 
 - **Installed on the founder's phone:** build 7 (0.7, tag `build-7`, commit 6876b42), personal flavour.
-- **Pushed to GitHub:** up to `738a118`. Later commits are local until the founder asks to push.
+- **Built, not installed:** build 10 (0.10, commit `7b3259c`). APK at
+  `android/app/build/outputs/apk/personal/release/app-personal-release.apk` (10 Oct 14:35). **The phone was unplugged when
+  the build finished, so nothing after build 7 has run on it.**
+- **Pushed to GitHub:** up to `738a118`. The 21 later commits are local until the founder asks to push.
 - **Last phone test (build 693bdaf):** speaker labels 96.7% (91.7% similar voices); live wait 9.1 s median, 16.5% words
   wrong; 15-min file 28.7% (varies run to run).
-- **Built, not yet tested on the phone (build 7):** Settings groups; bubble hide → "Tap to show"; OpenRouter key + "where AI
-  requests go"; Remind me; keyboard password/OTP guard; transitions, voice glow, fade-in, "All written", day headers,
-  swipe-right copy.
-- **Found (10 Oct):** the 15-min file's run-to-run differences come from flash attention reading audio-cache rows left over
-  from earlier pieces (not temperature fallback). Fixed in build 8 (flash attention off, threads fixed): Mac 27.6% -> 25.1%,
-  repeatable. **Build 8 not installed yet: measure phone speed first** (QUICK test for live speed, full test for accuracy).
-- **Waiting on the founder:** turn the bubble back on; OpenRouter key; back up the signing key; OK to delete ~2.4 GB of old
-  test APKs in `phonetest/` and `APK/` (check `phonetest/` for audio first); Tailscale; hand check; speaker listen-check.
+- **In builds 8-10, none of it tested on the phone:** flash attention finding (below); floating mic = one switch + quick
+  settings tile; password/PIN guard shared by keyboard and bubble; cards with border, Copy button, long-press menu;
+  reminders (own exact alarms, Done / Snooze, list in Settings, soft chime + optional "ring like an alarm"); search-bar
+  line removed; header smaller, pinned; edit sheet buttons on two rows (that was the blank brown button) + Undo/Redo;
+  menu icons; bubble drag (magnetic X, buzz, springy snap, remembers position); swipe-hint animation (Settings -> Look &
+  feel -> Tutorial); italic subtitle (real Figtree italic); keyboard redesign (mic orb, level bars, status pill).
+- **Engine (10 Oct):** run-to-run differences come from flash attention reading audio-cache rows left over from earlier
+  pieces. Turning it off fixed accuracy (Mac 27.6% -> 25.1%, repeatable) but cost ~6 s per live sentence on the phone
+  (9.1 -> 14.8 s median), so **flash attention is back on** (`9af355a`). **Open:** test "audio window rounded to 256"
+  (`audio_ctx`) on the Mac to get repeatable text without losing speed. The agent running it died on a usage limit, so
+  this has not been measured.
+- **Needs a look, not a measurement:** is the italic subtitle an improvement? Screenshot it on the phone and decide;
+  remove it if not.
+- **Waiting on the founder:** plug the phone in (build 10 + screenshot); turn the bubble back on; OpenRouter key; back up
+  the signing key; OK to delete ~2.4 GB of old test APKs in `phonetest/` and `APK/` (check `phonetest/` for audio first);
+  Tailscale; 20-minute hand check; speaker listen-check; the Rs 15k phone test.
 
 ---
 

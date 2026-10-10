@@ -10,3 +10,7 @@ phonetest/
 *.apk
 APK/
 test_recordings/
+
+# research and reports stay local (HANDOFF section 2)
+reports/
+research_notes/
