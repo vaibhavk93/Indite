@@ -1,6 +1,6 @@
 # indite plan: features, decisions, products
 
-Last updated: 2026-10-09. Every "survived" item passed an independent critic review or is the founder's own decision.
+Last updated: 2026-10-10. Every "survived" item passed an independent critic review or is the founder's own decision.
 Short-term roadmap: [ROADMAP.md](ROADMAP.md). Pages: [plan](https://claude.ai/artifact/BPuiRa3MBzHaWkirWVCKZX) · [vision](https://claude.ai/artifact/LJZmUuUP7xP5JXtRrrtkGK) (private links).
 
 **Goal (by 2036):** anyone in India can speak the way they really talk, mixing Hindi and English, and get correct Roman-script text instantly, privately, offline, on a ₹15,000 phone.
@@ -42,7 +42,7 @@ Measured by: #1 on our own public Roman-Hinglish leaderboard (offline tools), wo
 | Privacy policy; crash reports opt-in only | v1 | India's data law (DPDP) |
 | Dictation in the app: text after each pause, 15 s audio window | Month 2 | 4 s sentence ≤ 8 s on phone |
 | Long recordings on phone (meetings, classes) | Phase 2 | v1 has users |
-| Who-said-what (speaker labels) | Phase 2 | Speaker tests pass (blocked: Hugging Face access) |
+| Who-said-what (speaker labels, "Who spoke?") | **Built (v0.4); in the next build** (founder, 2026-10-10) | Before testers: score the per-sentence labels on the phone, founder listen-check, 2–3 hand-marked real recordings (ROADMAP "Now" 3) |
 | Voice input screen any keyboard can switch to (dictate in any app) | Phase 2 | Dictation works |
 | Clean-up rules: numbers, ₹, lakh, one spelling per word, punctuation | Phase 2 | — |
 | Pro one-time unlock (test ₹299 vs ₹999) | Phase 2 | Price unproven |
@@ -226,6 +226,8 @@ Dropped: no-speech score filter (already covered by our speech detector), rate-l
 | Mac, model formats vs q8_0 (closest to original) on 42 pieces | **q5_K 2.1%** (574 MB), q5_0 today 4.3% (574 MB), q4_0 5.1% (474 MB); all 0 loops/empty/junk. **Pick q5_K**: same size, ARM fast path ("repack"), closer to original. Phone speed unmeasured |
 | Synthetic benchmark (bench_synth/, 60 TTS Hinglish sentences, clean + noisy 10 dB), Mac, word error rate | q5_K greedy 18.1% clean / 21.6% noisy → **13.0% / 17.1% with everyday spelling** (49% of errors were spelling variants). Beam 5 + spelling 12.6 / 16.5. q8 + spelling 13.2 / 16.3. Prime + spelling 13.8 / **26.2** (bad in noise). Sarvam cloud + spelling 6.0% clean. Decision: keep q5_K greedy + everyday spelling; closing the gap to Sarvam needs a better (fine-tuned) model |
 | Real-phone transcript errors | Cyrillic "У нас" (now flagged: non_roman), brand names (PTM → Paytm, clever tap → CleverTap), a few garbled jargon stretches |
+| Speaker labels, standard sherpa-onnx route (pyannote segmentation + voice model), 2026-10-10 | Male+female TTS dialogue 100%; **two female voices 50% (heard one speaker)**; 3-voice 15-min file 53%; real 15-min interview: one model put 14.0 vs 0.3 min. Phone 129 s for 15 min. Dropped |
+| Speaker labels, chosen route (Silero → 1.5 s windows → TitaNet-small → grouping into a given count), 2026-10-10 | TTS dialogues 98% of turns (also two female voices); 3-voice file 100%; single voice stays 1; real interview 9.7 vs 2.7 min (matches the other models' second speaker, IoU 0.78; not yet listened to). **Phone: 15.9 s for 15 min**, same labels as the Mac. Auto count fragile on real audio. Scripts: session scratchpad `speaker/` (not in repo) |
 | Phone v2 (build fix + 4 s sentence timer at 30 s / 15 s windows + threads/CPU line + backup off) | Pending |
 
 ## 8. Key facts behind the decisions
