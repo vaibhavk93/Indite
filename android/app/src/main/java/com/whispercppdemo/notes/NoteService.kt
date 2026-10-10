@@ -202,6 +202,14 @@ class NoteService : Service() {
 
     /** Speed log, kept on the phone only: every tester's phone becomes a benchmark. */
     private fun finish(note: Note) {
+        if (note.id == com.whispercppdemo.overlay.BubbleService.pending) {  // floating-button dictation: ready to paste
+            com.whispercppdemo.overlay.BubbleService.pending = null
+            Notes.note(note.id)?.allText()?.takeIf { it.isNotBlank() }?.let { text ->
+                getSystemService(android.content.ClipboardManager::class.java)
+                    .setPrimaryClip(android.content.ClipData.newPlainText("indite", text))
+                if (Build.VERSION.SDK_INT < 33) android.widget.Toast.makeText(this, "Copied. Long-press a text box to paste.", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
         val (audio, took) = busy.remove(note.id) ?: return
         Notes.finish(note.id, "%.0f s of speech in %.0f s (%.2fx) · %s · %.1f °C".format(
             audio, took, if (took > 0) audio / took else 0.0, "${Build.MANUFACTURER} ${Build.MODEL}", batteryTemp()))

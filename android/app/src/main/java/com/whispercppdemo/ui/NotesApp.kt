@@ -576,9 +576,24 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                 Text("Opens your own ChatGPT, Claude or other AI app with this text and a ready request. Only the text is shared.",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp))
+                val viaMac = com.whispercppdemo.ai.MacCompanion.configured(context)
+                if (viaMac) Text("Answered by Claude on your Mac and saved here.", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 4.dp))
                 AskPrompts.forEach { (label, prompt) ->
-                    TextButton(onClick = { asking = false; awaitingReply = label; share(context, prompt + "\n\n---\n" + note.allText()) },
-                        modifier = Modifier.fillMaxWidth()) { Text(label, Modifier.fillMaxWidth()) }
+                    TextButton(onClick = {
+                        asking = false
+                        if (viaMac) {
+                            labelling = "Asking Claude on your Mac: $label…"
+                            val app = context.applicationContext
+                            AppScope.launch {
+                                try {
+                                    val answer = com.whispercppdemo.ai.MacCompanion.ask(app, prompt, note.allText())
+                                    withContext(Dispatchers.IO) { Notes.addAi(note.id, label, answer) }
+                                } catch (e: Exception) { Messages.flow.tryEmit(e.message ?: "Couldn't reach your Mac.") }
+                                finally { labelling = null }
+                            }
+                        } else { awaitingReply = label; share(context, prompt + "\n\n---\n" + note.allText()) }
+                    }, modifier = Modifier.fillMaxWidth()) { Text(label, Modifier.fillMaxWidth()) }
                 }
             }
         },

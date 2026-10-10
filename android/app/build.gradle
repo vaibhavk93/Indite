@@ -24,6 +24,14 @@ android {
 
     }
 
+    // personal: the founder's own build, can ask Claude on his own Mac (needs internet). Removed before launch.
+    // public: what users get. No internet permission at all.
+    flavorDimensions "dist"
+    productFlavors {
+        personal { dimension "dist" }
+        "public" { dimension "dist" }
+    }
+
     buildTypes {
         debug {
             externalNativeBuild {

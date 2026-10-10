@@ -48,6 +48,7 @@ import android.content.Intent
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.whispercppdemo.BuildConfig
@@ -148,6 +149,62 @@ fun SettingsScreen(onBack: () -> Unit) {
                             Text(if (enabled) "Switch keyboard" else "2. Switch to it")
                         }
                     }
+                }
+            }
+            item {
+                Section("Floating mic button") {
+                    var on by remember { mutableStateOf(com.whispercppdemo.overlay.BubbleService.enabled(context)) }
+                    var allowed by remember { mutableStateOf(android.provider.Settings.canDrawOverlays(context)) }
+                    LaunchedEffect(Unit) {  // re-check after the user comes back from the phone's permission screen
+                        while (true) {
+                            val now = android.provider.Settings.canDrawOverlays(context)
+                            if (now && !allowed && on) com.whispercppdemo.overlay.BubbleService.setEnabled(context, true)
+                            allowed = now; delay(1000)
+                        }
+                    }
+                    Text("A small mic bubble on top of every app. Tap it, talk, tap again: the text is copied, ready to paste. " +
+                        "If you use the indite keyboard, use its mic instead: it types the text in directly.",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (on && allowed) "On" else "Off", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                        androidx.compose.material3.Switch(checked = on && allowed, onCheckedChange = { want ->
+                            on = want
+                            if (want && !allowed) context.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:" + context.packageName)))
+                            com.whispercppdemo.overlay.BubbleService.setEnabled(context, want)
+                        })
+                    }
+                    if (on && !allowed) Text("Allow \"Display over other apps\" for indite, then come back.", Modifier.padding(top = 6.dp),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            if (com.whispercppdemo.ai.MacCompanion.available) item {
+                Section("Your Mac (personal build)") {
+                    var url by remember { mutableStateOf(com.whispercppdemo.ai.MacCompanion.url(context)) }
+                    var token by remember { mutableStateOf(com.whispercppdemo.ai.MacCompanion.token(context)) }
+                    var result by remember { mutableStateOf<String?>(null) }
+                    val scope = androidx.compose.runtime.rememberCoroutineScope()
+                    Text("Ask my AI uses Claude on your own Mac, on your own plan. On the Mac: start indite, run " +
+                        "`tailscale serve --bg 8000`, then paste the ts.net address and the token it prints.",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(url, { url = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
+                        label = { Text("Mac address, e.g. https://my-mac.tail1234.ts.net") })
+                    OutlinedTextField(token, { token = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
+                        label = { Text("Token from the Mac") })
+                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        FilledTonalButton(onClick = {
+                            com.whispercppdemo.ai.MacCompanion.save(context, url, token)
+                            result = "Checking…"
+                            scope.launch {
+                                result = try {
+                                    com.whispercppdemo.ai.MacCompanion.ask(context, "Reply with just: OK", "test")
+                                    "✓ Connected to Claude on your Mac"
+                                } catch (e: Exception) { e.message }
+                            }
+                        }, enabled = url.isNotBlank() && token.isNotBlank()) { Text("Save and test") }
+                    }
+                    result?.let { Text(it, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary) }
                 }
             }
             item {

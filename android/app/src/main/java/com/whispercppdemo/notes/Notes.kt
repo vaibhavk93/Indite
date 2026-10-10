@@ -291,7 +291,10 @@ object Notes {
     }
 
     private fun loadAi(d: File): List<AiReply> = File(d, "ai.json").takeIf { it.exists() }?.let { f ->
-        JSONArray(f.readText()).let { a -> List(a.length()) { a.getJSONObject(it).let { o -> AiReply(o.getString("label"), o.getString("text"), o.getLong("created")) } } }
+        runCatching { JSONArray(f.readText()) }.getOrNull()?.let { a ->  // a damaged file must never hide the note itself
+            List(a.length()) { a.optJSONObject(it) }.filterNotNull()
+                .map { o -> AiReply(o.optString("label", "AI"), o.optString("text"), o.optLong("created")) }.filter { it.text.isNotBlank() }
+        }
     } ?: emptyList()
 
     /** Keep an AI answer with the note (newest first). The transcript is never changed. */

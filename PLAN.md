@@ -71,7 +71,7 @@ Web roadmap "Next" items still stand: custom vocabulary (remember corrections), 
 | Rough draft text while speaking (two models) | Cut | Draft models write Devanagari or are untested; Wispr doesn't do it |
 | Shade words the model was unsure of | Cut | Confidence doesn't match real mistakes |
 | Full keyboard (FlorisBoard) | Cut | Endless work; voice input screen does the job |
-| Floating bubble over other apps (Wispr's way) | Cut | Play Store risk (accessibility permission) |
+| Floating bubble over other apps (Wispr's way) | **Built (v0.5), without accessibility** | Overlay bubble + a tiny invisible screen starts the mic; text is copied to paste (or typed in by the indite keyboard). Play reviews the 'special use' service: possible rejection |
 | Own call recorder | Cut | Banned on Play since 2022; import recordings instead |
 | Laptop via Tailscale | Cut | Too technical for users |
 | Cloud fallback / AI on our keys | Cut | Breaks zero-cost and privacy rules |
@@ -194,6 +194,10 @@ Dropped: no-speech score filter (already covered by our speech detector), rate-l
 | Hard-conversation rehearsal; voice roleplay (salary, feedback, pitch) with scoring | Not now | Turn ~10–15 s (STT ~8 s + LLM + TTS) vs ~0.5–2 s for free ChatGPT voice; needs internet; off our edge. Cheap version: record → Practice answer score → retry |
 
 **Plan:** v0.5 = phone-test fixes + record modes + 5 prompts + "Paste AI reply" + Tasks/Calendar hand-off. v0.6 = opt-in API-key build + multi-step brain dump. Tests: Gemma quality; action-item spotter precision. Founder: OpenAI interest form; licence decision.
+
+## 5e. Personal build: Claude on the founder's own Mac (built v0.5; remove before launch)
+
+`personal` build flavour only (has INTERNET); `public` has none. Phone → Tailscale HTTPS → Mac web app `POST /api/ask` (token in ~/.indite_ask_token) → the founder's own unmodified `claude -p` (all tools off) → answer saved in the note. Allowed by Anthropic's terms for one person on their own plan and machine; shipping it to anyone else is not. Full AI spec: docs/AI_MODES.md.
 
 ## 6. Phases and gates
 

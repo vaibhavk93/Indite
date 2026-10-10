@@ -14,7 +14,7 @@ import uuid
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import FastAPI, Form, HTTPException, UploadFile
+from fastapi import FastAPI, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
@@ -208,6 +208,38 @@ def export(job_id: str, style: str):
     return PlainTextResponse(fn(_result(d)), headers={"Content-Disposition": disposition})
 
 
+class Ask(BaseModel):
+    prompt: str
+    text: str
+
+
+ASK_TOKEN_FILE = Path.home() / ".indite_ask_token"
+
+
+def _ask_token() -> str:
+    if not ASK_TOKEN_FILE.exists():
+        import secrets
+        ASK_TOKEN_FILE.write_text(secrets.token_urlsafe(24))
+        ASK_TOKEN_FILE.chmod(0o600)
+    return ASK_TOKEN_FILE.read_text().strip()
+
+
+@app.post("/api/ask")
+def ask(body: Ask, authorization: str = Header("")):
+    """Personal use only: the founder's phone sends a note + request, this Mac's own `claude -p` answers.
+    Reach it from the phone through Tailscale (`tailscale serve --bg 8000`); the server itself stays on 127.0.0.1."""
+    import hmac
+    from .notes import ask as run
+    if not hmac.compare_digest(authorization.removeprefix("Bearer ").strip(), _ask_token()):
+        raise HTTPException(401, "Wrong token. Copy it again from the Mac.")
+    if len(body.text) > 200_000:
+        raise HTTPException(413, "This note is too long to send.")
+    try:
+        return {"answer": run(body.prompt, body.text)}
+    except SystemExit as e:  # not logged in, out of plan usage, claude missing: say so, don't crash the server
+        raise HTTPException(502, str(e))
+
+
 @app.delete("/jobs/{job_id}")
 def delete(job_id: str):
     """Also cancels: a running job notices its folder is gone and stops whisper.cpp."""
@@ -225,4 +257,6 @@ def serve(port: int = 8000) -> None:
     threading.Thread(target=worker, daemon=True).start()
     threading.Thread(target=cleanup, daemon=True).start()
     print(f"indite running at http://127.0.0.1:{port}  (only this Mac can reach it)")
+    print(f"Phone 'Ask my AI' (personal): run `tailscale serve --bg {port}`, then in the app use your Mac's ts.net address "
+          f"and this token: {_ask_token()}")
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
