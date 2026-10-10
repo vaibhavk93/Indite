@@ -108,7 +108,7 @@ class NoteService : Service() {
         channel(this)
         val recordId = intent?.getStringExtra(EXTRA_RECORD)
         if (intent?.action == ACTION_STOP) Recording.stop()  // it saves the last piece on its own thread
-        val recordingNow = recordId != null || Recording.active
+        val recordingNow = recordId != null || (Recording.active && intent?.action != ACTION_STOP)
         val n = notification(if (recordingNow) "Recording…" else "Getting ready…", ongoing = true, recording = recordingNow)
         val type = if (recordingNow) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                    else ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
@@ -135,11 +135,18 @@ class NoteService : Service() {
                 try { Notes.recoverRecording(this, it.id) } catch (e: Exception) { Log.w(TAG, e) }
             }
             var w: WhisperContext? = null
+            var stamp = ""
             while (true) {
-                Notes.refresh()
+                // While only recording, re-read notes just when the recording's files changed (not 3x a second).
+                val rid = Recording.id
+                val now = rid?.let { val d = Notes.dir(it); "${File(d, "cuts.json").length()}:${File(d, "transcript.jsonl").length()}" } ?: ""
+                if (rid == null || now != stamp) { Notes.refresh(); stamp = now }
+                copyBubbleDictations()
                 // A live recording always goes first (someone is waiting for each sentence); imports wait their turn.
                 val waiting = Notes.list.value.filter { it.pending && it.id !in Notes.claimed }
-                val note = waiting.firstOrNull { it.id == Recording.id } ?: waiting.minByOrNull { it.created }
+                val note = waiting.firstOrNull { it.id == Recording.id }
+                    ?: waiting.filter { it.live }.maxByOrNull { it.created }  // a recording that just ended: someone is waiting
+                    ?: waiting.minByOrNull { it.created }
                 when {
                     note != null -> {
                         if (w == null) {
@@ -155,8 +162,8 @@ class NoteService : Service() {
                             }
                         }
                     }
-                    Recording.active -> { updateRecording(); delay(300) }  // still recording: wait for the next pause
-                    else -> break
+                    Recording.active -> { updateRecording(); delay(300); continue }  // still recording: wait for the next pause
+                    else -> { copyBubbleDictations(); break }
                 }
                 Notes.refresh()
                 Notes.list.value.filter { it.done && it.speed == null && it.id in busy }.forEach { finish(it) }
@@ -165,6 +172,7 @@ class NoteService : Service() {
         } catch (e: Exception) {
             Log.w(TAG, e)
             failed = true
+            com.whispercppdemo.overlay.BubbleService.pending.clear()
             Notes.status.value = "Transcription stopped. Open indite to try again."
             while (Recording.active) delay(300)  // never leave the mic running without the notification
         } finally {
@@ -186,7 +194,7 @@ class NoteService : Service() {
             waitUntilSafe()
             if (!Notes.dir(note.id).exists()) return  // deleted while waiting
             // a recording started meanwhile: stop this import after the current part; the queue picks the recording next
-            if (Recording.id != null && Recording.id != note.id && i > note.pieces.size) break
+            if (!note.live && Notes.list.value.any { it.live && it.pending && it.id != note.id } && i > note.pieces.size) break
             if (note.id in Notes.claimed) return  // the voice keyboard is handling this one
             val piece = transcribePiece(w, note, i) ?: return
             val (start, end) = piece.start to piece.end
@@ -200,16 +208,29 @@ class NoteService : Service() {
         busy[note.id] = (a + audioDone / SR.toDouble()) to (t + (System.currentTimeMillis() - t0) / 1000.0)
     }
 
+    /**
+     * Floating-button dictations: once a note is done, copy its text so it's ready to paste. A note with no speech,
+     * or one whose writing failed, is cleared too, with a short message instead of silence.
+     */
+    private fun copyBubbleDictations() {
+        val bubble = com.whispercppdemo.overlay.BubbleService.pending
+        if (bubble.isEmpty()) return
+        for (id in bubble.toList()) {
+            val n = Notes.note(id)
+            if (n == null) { bubble -= id; continue }
+            if (!n.done) continue
+            bubble -= id
+            val text = n.allText()
+            val msg = if (text.isBlank()) "indite didn't hear any speech." else {
+                getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("indite", text))
+                if (Build.VERSION.SDK_INT >= 33) null else "Copied. Long-press a text box to paste."
+            }
+            msg?.let { android.os.Handler(mainLooper).post { android.widget.Toast.makeText(this, it, android.widget.Toast.LENGTH_SHORT).show() } }
+        }
+    }
+
     /** Speed log, kept on the phone only: every tester's phone becomes a benchmark. */
     private fun finish(note: Note) {
-        if (note.id == com.whispercppdemo.overlay.BubbleService.pending) {  // floating-button dictation: ready to paste
-            com.whispercppdemo.overlay.BubbleService.pending = null
-            Notes.note(note.id)?.allText()?.takeIf { it.isNotBlank() }?.let { text ->
-                getSystemService(android.content.ClipboardManager::class.java)
-                    .setPrimaryClip(android.content.ClipData.newPlainText("indite", text))
-                if (Build.VERSION.SDK_INT < 33) android.widget.Toast.makeText(this, "Copied. Long-press a text box to paste.", android.widget.Toast.LENGTH_SHORT).show()
-            }
-        }
         val (audio, took) = busy.remove(note.id) ?: return
         Notes.finish(note.id, "%.0f s of speech in %.0f s (%.2fx) · %s · %.1f °C".format(
             audio, took, if (took > 0) audio / took else 0.0, "${Build.MANUFACTURER} ${Build.MODEL}", batteryTemp()))
@@ -324,18 +345,40 @@ class NoteService : Service() {
             } else {
                 Notes.transcribing = true
                 val e0 = System.currentTimeMillis()
-                val text = try {
-                    w.transcribeData(Notes.readPcm(note.id, start, end), printTimestamp = false,
-                        audioCtx = Pauses.audioCtx(end - start)).trim()
+                val segs = try {
+                    val audio = Notes.readPcm(note.id, start, end)
+                    // sentences with times, shifted to positions in the whole note (samples)
+                    suspend fun run(x: FloatArray, from: Int, ctx: Int) =
+                        w.transcribeSegments(x, ctx).map { Seg(from + it.startMs * SR / 1000, from + it.endMs * SR / 1000, it.text) }
+                    var best = run(audio, start, Pauses.audioCtx(end - start))
+                    // Dropped-text guard. On the phone test, 1 in 5 pieces silently lost words (0.4-0.9 words per second of
+                    // speech; normal ones 1.9-2.6). Re-run those with the full window, then in two halves; keep whichever
+                    // has the most words and doesn't loop.
+                    if (sparse(best, speechMs)) {
+                        best = better(best, run(audio, start, 0))
+                        if (sparse(best, speechMs) && audio.size > 8 * SR) {
+                            val mid = audio.size / 2
+                            best = better(best, run(audio.copyOfRange(0, mid), start, Pauses.audioCtx(mid)) +
+                                run(audio.copyOfRange(mid, audio.size), start + mid, Pauses.audioCtx(audio.size - mid)))
+                        }
+                    }
+                    best
                 } finally { Notes.transcribing = false }
+                val text = segs.joinToString(" ") { it.text }.trim()
                 Piece(i, start, end, text, Guards.flags(text, (end - start) / SR.toDouble(), speechMs / 1000.0),
-                    latencyMs = Notes.sinceCut(note.id, i), engineMs = (System.currentTimeMillis() - e0).toInt())
+                    latencyMs = Notes.sinceCut(note.id, i), engineMs = (System.currentTimeMillis() - e0).toInt(), segs = segs)
             }
             if (!Notes.dir(note.id).exists()) return null
             Notes.appendPiece(note.id, piece)
             Notes.refresh()
             return piece
         }
+
+        private fun words(s: List<Seg>) = s.sumOf { seg -> seg.text.split(Regex("\\s+")).count { it.isNotBlank() } }
+        /** Under 1.2 words per second of detected speech (over at least 4 s): text was probably dropped. */
+        private fun sparse(s: List<Seg>, speechMs: Int) = speechMs >= 4000 && words(s) < 1.2 * speechMs / 1000.0
+        private fun better(a: List<Seg>, b: List<Seg>) =
+            if (words(b) > words(a) && !Guards.hasLoop(b.joinToString(" ") { it.text })) b else a
 
         fun eta(seconds: Double): String = when {
             seconds < 60 -> "${seconds.toInt().coerceAtLeast(5)} s"

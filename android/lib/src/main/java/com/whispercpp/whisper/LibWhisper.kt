@@ -16,6 +16,18 @@ class WhisperContext private constructor(private var ptr: Long) {
         Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     )
 
+    /** indite: the text as sentences with their times (milliseconds from the start of `data`). */
+    data class Segment(val startMs: Int, val endMs: Int, val text: String)
+
+    suspend fun transcribeSegments(data: FloatArray, audioCtx: Int = 0): List<Segment> = withContext(scope.coroutineContext) {
+        require(ptr != 0L)
+        WhisperLib.fullTranscribe(ptr, WhisperCpuConfig.preferredThreadCount, audioCtx, data)
+        List(WhisperLib.getTextSegmentCount(ptr)) { i ->  // whisper times are in 10 ms steps
+            Segment((WhisperLib.getTextSegmentT0(ptr, i) * 10).toInt(), (WhisperLib.getTextSegmentT1(ptr, i) * 10).toInt(),
+                WhisperLib.getTextSegment(ptr, i).trim())
+        }.filter { it.text.isNotEmpty() }
+    }
+
     suspend fun transcribeData(data: FloatArray, printTimestamp: Boolean = true, audioCtx: Int = 0, threads: Int = 0): String = withContext(scope.coroutineContext) {
         require(ptr != 0L)
         val numThreads = if (threads > 0) threads else WhisperCpuConfig.preferredThreadCount

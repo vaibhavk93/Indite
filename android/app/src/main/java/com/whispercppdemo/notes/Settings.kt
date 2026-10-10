@@ -48,11 +48,22 @@ object Settings {
     fun learn(before: String, after: String): Pair<String, String>? {
         val a = before.trim().split(Regex("\\s+"))
         val b = after.trim().split(Regex("\\s+"))
-        if (a.size != b.size) return null
-        val diff = a.indices.filter { a[it] != b[it] }
-        if (diff.size != 1) return null
         val clean = { w: String -> w.trim { !it.isLetterOrDigit() } }
-        val from = clean(a[diff[0]]); val to = clean(b[diff[0]])
+        val (from, to) = when (a.size) {
+            b.size -> {  // one word changed: PTM -> Paytm
+                val diff = a.indices.filter { a[it] != b[it] }
+                if (diff.size != 1) return null
+                clean(a[diff[0]]) to clean(b[diff[0]])
+            }
+            b.size + 1 -> {  // two words joined into one: "pay tm" -> Paytm, "clever tap" -> CleverTap
+                val k = a.indices.firstOrNull { it >= b.size || a[it] != b[it] } ?: return null
+                if (k + 1 >= a.size || a.subList(k + 2, a.size) != b.subList(k + 1, b.size)) return null
+                val joined = clean(a[k]) + clean(a[k + 1])
+                if (!joined.equals(clean(b[k]), ignoreCase = true)) return null
+                "${clean(a[k])} ${clean(a[k + 1])}" to clean(b[k])
+            }
+            else -> return null
+        }
         if (from.isEmpty() || to.isEmpty() || from.equals(to, ignoreCase = true)) return null
         if (fixes.value.any { it.first.equals(from, ignoreCase = true) }) return null
         val key = "learn:${from.lowercase()}>$to"

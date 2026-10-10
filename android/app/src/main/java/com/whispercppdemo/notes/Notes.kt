@@ -20,8 +20,11 @@ import java.nio.ByteOrder
 const val SR = 16000
 
 /** latencyMs: from the moment this part was cut (you paused) to its text being ready; engineMs: model time only. -1 = unknown. */
+/** A sentence inside a piece, with its own start and end (samples from the start of the note). Used for speakers. */
+data class Seg(val start: Int, val end: Int, val text: String)
+
 data class Piece(val i: Int, val start: Int, val end: Int, val text: String, val flags: List<String>,
-                 val latencyMs: Int = -1, val engineMs: Int = -1) {
+                 val latencyMs: Int = -1, val engineMs: Int = -1, val segs: List<Seg> = emptyList()) {
     val startSec get() = start / SR.toDouble()
     /** Nothing worth copying: the engine gave up, or wrote only "nan" for noise. */
     val junk get() = "unclear" in flags || text.trim().equals("nan", ignoreCase = true)
@@ -34,10 +37,28 @@ data class Note(
     val id: String, val name: String, val created: Long, val samples: Int,
     val cuts: List<IntArray>, val pieces: List<Piece>, val edits: Map<Int, String>, val speed: String?,
     val recording: Boolean, val test: Boolean = false, val speakers: Speakers.Result? = null,
-    val ai: List<AiReply> = emptyList(),
+    val ai: List<AiReply> = emptyList(), val live: Boolean = false,
 ) {
     /** Speaker number of a paragraph (0-based), or null if speakers aren't labelled. */
-    fun speakerOf(i: Int): Int? = speakers?.of?.get(i)
+    fun speakerOf(i: Int): Int? = speakers?.takeIf { !it.skipped }?.of?.get(i)
+
+    /**
+     * A paragraph as speaker turns: [(speaker or null, text)]. Uses the per-sentence speakers when the paragraph wasn't
+     * edited; an edited paragraph (or one moved to a speaker) is one turn by its paragraph speaker.
+     */
+    fun turns(i: Int): List<Pair<Int?, String>> {
+        val p = pieces[i]
+        val each = speakers?.takeIf { !it.skipped }?.seg?.get(i)
+        if (i in edits || each == null || each.size != p.segs.size || p.segs.isEmpty()) return listOf(speakerOf(i) to text(i).trim())
+        val out = mutableListOf<Pair<Int?, String>>()
+        p.segs.zip(each).forEach { (s, who) ->
+            val t = Settings.applyFixes(s.text).trim()
+            if (out.isNotEmpty() && out.last().first == who) out[out.size - 1] = who to (out.last().second + " " + t)
+            else out += who to t
+        }
+        return out
+    }
+    val labelled get() = speakers != null && !speakers.skipped
     fun speakerName(n: Int) = speakers?.names?.get(n)?.takeIf { it.isNotBlank() } ?: "Speaker ${n + 1}"
 
     val seconds get() = samples / SR.toDouble()
@@ -50,15 +71,15 @@ data class Note(
     /** Plain text for copying and sharing: edits applied, no "Check" labels, no junk pieces. */
     fun allText(): String {
         val kept = pieces.filter { !it.junk || it.i in edits }
-        if (speakers == null) return kept.joinToString(" ") { text(it.i).trim() }.replace(Regex("\\s+"), " ").trim()
-        // with speakers: one line per turn, "Amit: ..."
+        if (!labelled) return kept.joinToString(" ") { text(it.i).trim() }.replace(Regex("\\s+"), " ").trim()
+        // with speakers: one line per turn, "Amit: ..." (turns can change inside a paragraph)
         val out = StringBuilder()
         var last: Int? = -2
-        for (p in kept) {
-            val s = speakerOf(p.i)
+        for (p in kept) for ((s, t) in turns(p.i)) {
+            if (t.isEmpty()) continue
             if (s != last) { if (out.isNotEmpty()) out.append("\n\n"); out.append(s?.let { speakerName(it) + ": " } ?: ""); last = s }
             else out.append(" ")
-            out.append(text(p.i).trim())
+            out.append(t)
         }
         return out.toString().trim()
     }
@@ -110,8 +131,10 @@ object Notes {
             try {  // a line cut short by a crash is ignored: that piece is simply redone
                 val o = JSONObject(line)
                 val f = o.getJSONArray("flags")
+                val sg = o.optJSONArray("segs")
                 Piece(o.getInt("i"), o.getInt("start"), o.getInt("end"), o.getString("text"), List(f.length()) { f.getString(it) },
-                    o.optInt("ms", -1), o.optInt("engine", -1))
+                    o.optInt("ms", -1), o.optInt("engine", -1),
+                    if (sg == null) emptyList() else List(sg.length()) { sg.getJSONArray(it).let { a -> Seg(a.getInt(0), a.getInt(1), a.getString(2)) } })
             } catch (e: Exception) { null }
         } ?: emptyList()
         val edits = File(d, "edits.json").takeIf { it.exists() }?.let { f ->
@@ -120,7 +143,7 @@ object Notes {
         val recording = meta.optBoolean("recording")
         val samples = if (recording) (File(d, "audio.pcm").length() / 2).toInt() else meta.getInt("samples")
         Note(d.name, meta.getString("name"), meta.getLong("created"), samples, cuts, pieces, edits,
-            meta.optString("speed").ifEmpty { null }, recording, meta.optBoolean("test"), Speakers.load(d.name), loadAi(d))
+            meta.optString("speed").ifEmpty { null }, recording, meta.optBoolean("test"), Speakers.load(d.name), loadAi(d), meta.optBoolean("live"))
     } catch (e: Exception) { null }
 
     /** Copy a shared or picked file in (shared links can expire), decode it and cut it at pauses. Returns the note id. */
@@ -187,7 +210,7 @@ object Notes {
         writeAtomic(File(d, "cuts.json"), "[]")
         val title = name ?: java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.getDefault()).format(java.util.Date(id.toLong()))
         writeAtomic(File(d, "meta.json"), JSONObject().put("name", title).put("created", id.toLong()).put("samples", 0)
-            .put("recording", true).put("test", test).toString())
+            .put("recording", true).put("live", true).put("test", test).toString())
         refresh()
         return id
     }
@@ -262,7 +285,8 @@ object Notes {
 
     fun appendPiece(id: String, p: Piece) {
         val line = JSONObject().put("i", p.i).put("start", p.start).put("end", p.end).put("text", p.text)
-            .put("flags", JSONArray(p.flags)).put("ms", p.latencyMs).put("engine", p.engineMs).toString() + "\n"
+            .put("flags", JSONArray(p.flags)).put("ms", p.latencyMs).put("engine", p.engineMs)
+            .put("segs", JSONArray(p.segs.map { JSONArray(listOf(it.start, it.end, it.text)) })).toString() + "\n"
         FileOutputStream(File(dir(id), "transcript.jsonl"), true).use { it.write(line.toByteArray()); it.fd.sync() }
     }
 
@@ -284,6 +308,8 @@ object Notes {
             JSONObject().put("i", it.i).put("start", it.start).put("end", it.end).put("text", it.text).put("shown", note.text(it.i))
                 .put("flags", JSONArray(it.flags)).put("ms", it.latencyMs).put("engine", it.engineMs)
                 .put("speaker", note.speakerOf(it.i) ?: -1)
+                .put("segs", JSONArray(it.segs.mapIndexed { k, s -> JSONObject().put("start", s.start).put("end", s.end).put("text", s.text)
+                    .put("speaker", note.speakers?.seg?.get(it.i)?.getOrNull(k) ?: note.speakerOf(it.i) ?: -1) }))
         })
         val o = JSONObject().put("name", note.name).put("seconds", note.seconds).put("speed", note.speed).put("pieces", pieces)
         extra?.let { o.put(it.first, it.second) }

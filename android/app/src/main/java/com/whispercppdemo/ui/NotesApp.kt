@@ -156,7 +156,10 @@ private val Gutter = 20.dp
 fun NotesApp(openRequest: String?, onOpenHandled: () -> Unit, onOpenFile: () -> Unit, onRecord: () -> Unit, onStop: () -> Unit) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     var settings by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(openRequest) { if (openRequest != null) { selected = openRequest; settings = false; onOpenHandled() } }
+    var onboarded by remember { mutableStateOf(Settings.onboarded) }
+    LaunchedEffect(openRequest) {
+        if (openRequest != null) { selected = openRequest; settings = false; onOpenHandled(); Settings.setOnboarded(); onboarded = true }
+    }
     val notes by Notes.list.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { Messages.flow.collect { snackbar.showSnackbar(it) } }
@@ -168,7 +171,6 @@ fun NotesApp(openRequest: String?, onOpenHandled: () -> Unit, onOpenFile: () -> 
     }
 
     val note = notes.firstOrNull { it.id == selected }
-    var onboarded by remember { mutableStateOf(Settings.onboarded) }
     when {
         !onboarded && selected == null -> Welcome(
             onTry = { Settings.setOnboarded(); onboarded = true; onRecord() },
@@ -599,6 +601,17 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
         },
         confirmButton = { TextButton(onClick = { asking = false }) { Text("Cancel") } },
     )
+    fun startLabel(k: Int) {
+        if (note.id in Speakers.running) return
+        labelling = "Starting…"
+        val app = context.applicationContext
+        AppScope.launch(Dispatchers.Default) {
+            try { Speakers.label(app, note, k) { labelling = it } }
+            catch (e: Exception) { Messages.flow.tryEmit("Couldn't tell the voices apart in this note.") }
+            finally { labelling = null }
+        }
+    }
+
     if (whoSpoke) AlertDialog(
         onDismissRequest = { whoSpoke = false },
         title = { Text("How many people are speaking?") },
@@ -608,28 +621,10 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     (2..5).forEach { k ->
-                        FilledTonalButton(onClick = {
-                            whoSpoke = false
-                            labelling = "Starting…"
-                            val app = context.applicationContext
-                            AppScope.launch(Dispatchers.Default) {
-                                try { Speakers.label(app, note, k) { labelling = it } }
-                                catch (e: Exception) { Messages.flow.tryEmit("Couldn't tell the voices apart in this note.") }
-                                finally { labelling = null }
-                            }
-                        }) { Text("$k") }
+                        FilledTonalButton(onClick = { whoSpoke = false; startLabel(k) }) { Text("$k") }
                     }
                 }
-                TextButton(onClick = {
-                    whoSpoke = false
-                    labelling = "Starting…"
-                    val app = context.applicationContext
-                    AppScope.launch(Dispatchers.Default) {
-                        try { Speakers.label(app, note, 0) { labelling = it } }
-                        catch (e: Exception) { Messages.flow.tryEmit("Couldn't tell the voices apart in this note.") }
-                        finally { labelling = null }
-                    }
-                }) { Text("Not sure (beta)") }
+                TextButton(onClick = { whoSpoke = false; startLabel(0) }) { Text("Not sure (beta)") }
             }
         },
         confirmButton = { TextButton(onClick = { whoSpoke = false }) { Text("Cancel") } },
@@ -659,7 +654,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Ask my AI…") },
                             onClick = { menu = false; asking = true })
                         if (note.done && note.pieces.size >= 2) DropdownMenuItem(
-                            text = { Text(if (note.speakers == null) "Who spoke?" else "Label speakers again") },
+                            text = { Text(if (!note.labelled) "Who spoke?" else "Label speakers again") },
                             onClick = { menu = false; whoSpoke = true })
                         DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
                         if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Save as subtitles (.srt)") },
@@ -690,6 +685,24 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         Text("Tap any paragraph to edit it, hear it or copy it.", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    if (note.done && note.speakers == null && note.pieces.size >= 2 && note.seconds >= 60 && labelling == null &&
+                        note.id !in Speakers.running) {
+                        val usual = remember { Speakers.lastCount(context) }
+                        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Was this a conversation? Label who spoke.", style = MaterialTheme.typography.titleSmall)
+                                Text("How many people? It all happens on this phone. When you record others, tell them first.",
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(onClick = { AppScope.launch(Dispatchers.IO) { Speakers.skip(note.id) } }) { Text("Just me") }
+                                    (2..4).forEach { k ->
+                                        if (k == usual) Button(onClick = { startLabel(k) }) { Text(if (k == 4) "4+" else "$k") }
+                                        else OutlinedButton(onClick = { startLabel(k) }) { Text(if (k == 4) "4+" else "$k") }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     awaitingReply?.let { label ->
                         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
                             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -698,7 +711,8 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Button(onClick = {
                                         val reply = clipboard.getText()?.text.orEmpty()
-                                        if (reply.isBlank() || reply.contains(note.allText().take(60))) {
+                                        val probe = note.allText().take(60)
+                                        if (reply.isBlank() || (probe.isNotEmpty() && reply.contains(probe))) {
                                             scope.launch { snackbar.showSnackbar("Copy the AI's reply first, then tap Paste.") }
                                         } else {
                                             AppScope.launch(Dispatchers.IO) { Notes.addAi(note.id, label, reply) }
@@ -742,20 +756,20 @@ private fun Paragraph(note: Note, p: Piece, playing: Boolean, onClick: () -> Uni
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            note.speakerOf(p.i)?.let { s ->
-                SpeakerChip(note.speakerName(s), s, Modifier.clickable(onClickLabel = "Rename this speaker") { onSpeaker(s) })
-                Spacer(Modifier.size(8.dp))
-            }
             Text(clock(p.startSec), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (edited) Text("  ·  edited", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
         }
-        Text(note.text(p.i), style = MaterialTheme.typography.bodyLarge,
-            color = if (p.junk && !edited) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onBackground)
+        val textColor = if (p.junk && !edited) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onBackground
+        if (note.labelled) note.turns(p.i).forEach { (s, t) ->  // speaker turns, which can change mid-paragraph
+            if (s != null) SpeakerChip(note.speakerName(s), s,
+                Modifier.padding(top = 4.dp).clip(CircleShape).clickable(onClickLabel = "Rename this speaker") { onSpeaker(s) })
+            Text(t, style = MaterialTheme.typography.bodyLarge, color = textColor)
+        } else Text(note.text(p.i), style = MaterialTheme.typography.bodyLarge, color = textColor)
         if (p.flags.isNotEmpty() && !edited) FlagLine("Check: " + p.flags.joinToString(", ") { Guards.NOTE[it] ?: it })
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, onCopy: () -> Unit, onClose: () -> Unit) {
     val p = note.pieces[i]
@@ -785,9 +799,10 @@ private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, 
                 modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Text from ${clock(p.startSec)}, editable" },
                 textStyle = MaterialTheme.typography.bodyLarge, shape = RoundedCornerShape(14.dp), minLines = 3)
             if (p.flags.isNotEmpty()) FlagLine("Check: " + p.flags.joinToString(", ") { Guards.NOTE[it] ?: it })
-            note.speakers?.let { sp ->
-                val count = (sp.of.values.maxOrNull() ?: 0) + 1
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            note.speakers?.takeIf { note.labelled }?.let { sp ->
+                val count = maxOf(sp.k, (sp.of.values.maxOrNull() ?: 0) + 1)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Spoken by", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     (0 until count).forEach { s ->
                         val on = note.speakerOf(i) == s
@@ -845,10 +860,17 @@ private fun AiCard(r: com.whispercppdemo.notes.AiReply, onCopy: () -> Unit, onDe
 private val SpeakerColors = listOf(Color(0xFFD9822B), Color(0xFF2E9E8F), Color(0xFF8B6FD6), Color(0xFFD45D79), Color(0xFF3F8FD9))
 private fun speakerColor(n: Int) = SpeakerColors[n % SpeakerColors.size]
 
+/** Darker shades for text on the light background (the bright ones fail the 4.5:1 contrast check there). */
+private val SpeakerInk = listOf(Color(0xFF8A4A0E), Color(0xFF14665C), Color(0xFF5B3FA8), Color(0xFF9C2F4C), Color(0xFF1F5E9E))
+
 @Composable
-private fun SpeakerChip(name: String, n: Int, modifier: Modifier = Modifier) = Surface(
-    shape = CircleShape, color = speakerColor(n).copy(alpha = 0.18f), contentColor = speakerColor(n), modifier = modifier,
-) { Text(name, Modifier.padding(horizontal = 10.dp, vertical = 3.dp), style = MaterialTheme.typography.labelMedium) }
+private fun SpeakerChip(name: String, n: Int, modifier: Modifier = Modifier) {
+    val light = MaterialTheme.colorScheme.background.red > 0.5f
+    Surface(shape = CircleShape, color = speakerColor(n).copy(alpha = if (light) 0.16f else 0.22f),
+        contentColor = if (light) SpeakerInk[n % SpeakerInk.size] else speakerColor(n), modifier = modifier) {
+        Text(name, Modifier.padding(horizontal = 10.dp, vertical = 3.dp), style = MaterialTheme.typography.labelMedium)
+    }
+}
 
 @Composable
 private fun FlagLine(text: String) = Row(verticalAlignment = Alignment.CenterVertically) {

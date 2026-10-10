@@ -66,7 +66,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val notes by Notes.list.collectAsState()
     val context = LocalContext.current
     val licences = remember { context.resources.openRawResource(R.raw.licenses).bufferedReader().readText() }
-    val used = remember(notes) { Notes.bytesUsed() }
+    val used by androidx.compose.runtime.produceState(0L, notes.size) { value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { Notes.bytesUsed() } }
     var confirmDeleteAll by remember { mutableStateOf(false) }
 
     if (showLicences) AlertDialog(
@@ -185,7 +185,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     var result by remember { mutableStateOf<String?>(null) }
                     val scope = androidx.compose.runtime.rememberCoroutineScope()
                     Text("Ask my AI uses Claude on your own Mac, on your own plan. On the Mac: start indite, run " +
-                        "`tailscale serve --bg 8000`, then paste the ts.net address and the token it prints.",
+                        "`tailscale serve --bg --set-path /api/ask http://127.0.0.1:8000/api/ask`, then paste the ts.net address and the token indite prints.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(url, { url = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
                         label = { Text("Mac address, e.g. https://my-mac.tail1234.ts.net") })
@@ -233,7 +233,10 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
             item {
                 Section("Privacy") {
-                    Text("Everything happens on this phone. indite has no internet access, and nothing is backed up to the cloud. " +
+                    Text(if (com.whispercppdemo.ai.MacCompanion.available)
+                        "Personal build: speech-to-text happens on this phone. When you use Ask my AI, the note's text goes to your own Mac " +
+                            "over Tailscale, nowhere else. Nothing is backed up to the cloud."
+                    else "Everything happens on this phone. indite has no internet access, and nothing is backed up to the cloud. " +
                         "Your audio and text leave the phone only if you copy or share them.", style = MaterialTheme.typography.bodyMedium)
                     Text("When recording other people, ask them first.", Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -39,6 +39,8 @@ object MacCompanion {
             if (code == 401) error("The Mac didn't accept the token. Copy it again from the Mac.")
             if (code !in 200..299) error(runCatching { JSONObject(body).getString("detail") }.getOrDefault("The Mac couldn't answer ($code)."))
             JSONObject(body).getString("answer")
+        } catch (e: java.net.SocketTimeoutException) {
+            error("Your Mac is taking too long to answer. Try a shorter note.")
         } catch (e: java.io.IOException) {
             error("Couldn't reach your Mac. Is it awake, with indite and Tailscale running?")
         } finally { conn.disconnect() }

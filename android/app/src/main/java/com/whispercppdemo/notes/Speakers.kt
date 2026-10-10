@@ -20,17 +20,38 @@ object Speakers {
     private const val WIN = 512                 // Silero step: 32 ms
     private const val PIECE = (1.5 * SR).toInt() // fingerprint window
 
-    class Result(val of: Map<Int, Int>, val names: Map<Int, String>)
+    /** of: one speaker per paragraph (majority); seg: one speaker per sentence inside it (a paragraph often holds several turns). */
+    data class Result(val of: Map<Int, Int>, val names: Map<Int, String>, val k: Int = 0, val skipped: Boolean = false,
+                      val seg: Map<Int, List<Int>> = emptyMap())
+
+    /** Ids being labelled right now (so "Who spoke?" can't run twice on one note). */
+    val running: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+    /** The user said it was just them: hide the "Who spoke?" card for this note. */
+    fun skip(id: String) {
+        File(Notes.dir(id), "speakers.json").writeText(JSONObject().put("skipped", true).put("of", JSONObject()).toString())
+        Notes.refresh()
+    }
 
     fun load(id: String): Result? = try {
         val o = JSONObject(File(Notes.dir(id), "speakers.json").readText())
         val of = o.getJSONObject("of").let { m -> m.keys().asSequence().associate { it.toInt() to m.getInt(it) } }
         val names = o.optJSONObject("names")?.let { m -> m.keys().asSequence().associate { it.toInt() to m.getString(it) } } ?: emptyMap()
-        Result(of, names)
+        val seg = o.optJSONObject("seg")?.let { m -> m.keys().asSequence().associate { key ->
+            key.toInt() to m.getJSONArray(key).let { a -> List(a.length()) { a.getInt(it) } } } } ?: emptyMap()
+        Result(of, names, o.optInt("k"), o.optBoolean("skipped"), seg)
     } catch (e: Exception) { null }
 
     /** k = how many people spoke, or 0 for "not sure" (beta: picks 1-5 by how distinct the voices are). */
     fun label(context: Context, note: Note, k: Int, progress: (String) -> Unit) {
+        if (!running.add(note.id)) return
+        try { labelNow(context, note, k, progress) } finally { running.remove(note.id) }
+        context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt("lastSpeakers", k).apply()
+    }
+
+    fun lastCount(context: Context) = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getInt("lastSpeakers", 2)
+
+    private fun labelNow(context: Context, note: Note, k: Int, progress: (String) -> Unit) {
         progress("Finding where people speak…")
         val windows = speechWindows(context, note)
         if (windows.isEmpty()) { save(note.id, emptyMap(), k); return }
@@ -49,18 +70,37 @@ object Speakers {
         } finally { ex.release() }
         progress("Grouping voices…")
         val lab = if (k > 0) kmeans(emb, k) else auto(emb)
-        // each paragraph: the speaker with the most windows inside it; number speakers in order of first appearance
-        val order = mutableMapOf<Int, Int>()
-        val of = note.pieces.associate { p ->
-            val votes = windows.indices.filter { windows[it].first < p.end && windows[it].second > p.start }.groupingBy { lab[it] }.eachCount()
-            val raw = votes.maxByOrNull { it.value }?.key ?: -1
-            p.i to if (raw < 0) -1 else order.getOrPut(raw) { order.size }
-        }.filterValues { it >= 0 }
-        save(note.id, of, k)
+        // The phone test showed why paragraphs alone fail (52-55% of turns right): a 15-25 s paragraph holds several
+        // turns. So each SENTENCE gets the speaker who talks longest inside it; the paragraph keeps its majority.
+        val order = mutableMapOf<Int, Int>()  // number speakers in order of first appearance
+        fun who(start: Int, end: Int): Int? {
+            val votes = mutableMapOf<Int, Int>()
+            windows.indices.forEach { w ->
+                val o = minOf(end, windows[w].second) - maxOf(start, windows[w].first)
+                if (o > 0) votes[lab[w]] = (votes[lab[w]] ?: 0) + o
+            }
+            return votes.maxByOrNull { it.value }?.key?.let { order.getOrPut(it) { order.size } }
+        }
+        val of = mutableMapOf<Int, Int>()
+        val seg = mutableMapOf<Int, List<Int>>()
+        for (p in note.pieces) {
+            if (p.segs.isNotEmpty()) {
+                val each = p.segs.map { who(it.start, it.end) }
+                val fallback = who(p.start, p.end) ?: continue
+                seg[p.i] = each.map { it ?: fallback }
+                of[p.i] = p.segs.zip(seg[p.i]!!).groupBy({ it.second }, { it.first.end - it.first.start })
+                    .maxByOrNull { (_, d) -> d.sum() }!!.key
+            } else who(p.start, p.end)?.let { of[p.i] = it }
+        }
+        save(note.id, of, k, seg)
     }
 
     fun rename(id: String, speaker: Int, name: String) = update(id) { it.getJSONObject("names").put(speaker.toString(), name.trim()) }
-    fun move(id: String, piece: Int, speaker: Int) = update(id) { it.getJSONObject("of").put(piece.toString(), speaker) }
+    /** The user moved a whole paragraph to one speaker: that overrides the per-sentence guess. */
+    fun move(id: String, piece: Int, speaker: Int) = update(id) {
+        it.getJSONObject("of").put(piece.toString(), speaker)
+        it.optJSONObject("seg")?.remove(piece.toString())
+    }
 
     private fun update(id: String, change: (JSONObject) -> Unit) {
         val f = File(Notes.dir(id), "speakers.json")
@@ -68,14 +108,22 @@ object Speakers {
         val o = JSONObject(f.readText())
         if (!o.has("names")) o.put("names", JSONObject())
         change(o)
-        f.writeText(o.toString())
-        Notes.refresh()
+        write(f, o)
     }
 
-    private fun save(id: String, of: Map<Int, Int>, k: Int) {
+    private fun save(id: String, of: Map<Int, Int>, k: Int, seg: Map<Int, List<Int>> = emptyMap()) {
         val o = JSONObject().put("k", k).put("names", JSONObject())
             .put("of", JSONObject().apply { of.forEach { (p, s) -> put(p.toString(), s) } })
-        File(Notes.dir(id), "speakers.json").writeText(o.toString())
+            .put("seg", JSONObject().apply { seg.forEach { (p, s) -> put(p.toString(), org.json.JSONArray(s)) } })
+        write(File(Notes.dir(id), "speakers.json"), o)
+    }
+
+    /** Written to a temp file and renamed, so a crash mid-write never leaves a broken file. */
+    private fun write(f: File, o: JSONObject) {
+        if (!f.parentFile!!.exists()) return
+        val tmp = File(f.parentFile, f.name + ".tmp")
+        tmp.writeText(o.toString())
+        tmp.renameTo(f)
         Notes.refresh()
     }
 

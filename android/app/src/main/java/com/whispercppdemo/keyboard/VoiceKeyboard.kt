@@ -46,6 +46,8 @@ class VoiceKeyboard : InputMethodService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var job: Job? = null
     private var noteId: String? = null
+    /** The text box the dictation started in; text is only typed there (never into a box you moved to). */
+    private var field: String? = null
     private lateinit var status: TextView
     private lateinit var mic: FrameLayout
     private lateinit var micIcon: ImageView
@@ -137,6 +139,7 @@ class VoiceKeyboard : InputMethodService() {
         val id = Notes.startRecording("Dictation, " + java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.getDefault())
             .format(java.util.Date()))
         noteId = id
+        field = currentInputEditorInfo?.let { "${it.packageName}:${it.fieldId}" }
         Notes.claimed += id
         Recording.start(id, Engine.vadPath(this))
         show("Listening… pause to type it in", listening = true)
@@ -153,7 +156,8 @@ class VoiceKeyboard : InputMethodService() {
                 if (next < note.cuts.size) {
                     val piece = withContext(Dispatchers.Default) { NoteService.transcribePiece(w, note, next) } ?: break
                     next++
-                    if (!piece.junk) currentInputConnection?.commitText(Settings.applyFixes(piece.text).trim() + " ", 1)
+                    val here = currentInputEditorInfo?.let { "${it.packageName}:${it.fieldId}" }
+                    if (!piece.junk && here == field) currentInputConnection?.commitText(Settings.applyFixes(piece.text).trim() + " ", 1)
                     if (Recording.id == id) show("Listening… pause to type it in", listening = true)
                 } else if (Recording.id == id) {
                     delay(150)

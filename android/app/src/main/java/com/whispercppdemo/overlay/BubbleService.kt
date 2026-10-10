@@ -113,12 +113,16 @@ class BubbleService : Service() {
 
         // Colour follows the state: amber = ready, red = recording, grey = writing the last part.
         scope.launch {
+            var last = -1
             while (true) {
                 val recording = Recording.active
-                val writing = !recording && pending != null
-                circle.setColor(getColor(when { recording -> R.color.kb_record; writing -> R.color.kb_soft; else -> R.color.kb_accent }))
-                icon.setImageResource(if (recording) R.drawable.ic_stop else R.drawable.ic_mic)
-                view.contentDescription = if (recording) "indite: tap to stop" else "indite: tap to dictate"
+                val state = when { recording -> 2; pending.isNotEmpty() -> 1; else -> 0 }
+                if (state != last) {  // only touch the view when something changed
+                    circle.setColor(getColor(when (state) { 2 -> R.color.kb_record; 1 -> R.color.kb_soft; else -> R.color.kb_accent }))
+                    icon.setImageResource(if (recording) R.drawable.ic_stop else R.drawable.ic_mic)
+                    view.contentDescription = if (recording) "indite: tap to stop" else "indite: tap to dictate"
+                    last = state
+                }
                 delay(250)
             }
         }
@@ -149,8 +153,8 @@ class BubbleService : Service() {
         private const val NOTE_ID = 7
         private const val ACTION_OFF = "off"
 
-        /** The bubble dictation still being written; its text is copied when done. */
-        @Volatile var pending: String? = null
+        /** Bubble dictations still being written; each one's text is copied when done (a second tap never loses the first). */
+        val pending: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
         fun enabled(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("bubble", false)
 
@@ -171,7 +175,7 @@ class StartMicActivity : Activity() {
         } else {
             Notes.init(this)
             val stamp = java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.getDefault()).format(java.util.Date())
-            BubbleService.pending = NoteService.startRecording(this, name = "Dictation, $stamp")
+            BubbleService.pending += NoteService.startRecording(this, name = "Dictation, $stamp")
         }
         finish()
         overridePendingTransition(0, 0)

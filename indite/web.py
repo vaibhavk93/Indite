@@ -6,6 +6,7 @@ add a real queue (e.g. arq/Redis) when hosting for many users.
 """
 import json
 import queue
+import subprocess
 import re
 import shutil
 import threading
@@ -238,6 +239,8 @@ def ask(body: Ask, authorization: str = Header("")):
         return {"answer": run(body.prompt, body.text)}
     except SystemExit as e:  # not logged in, out of plan usage, claude missing: say so, don't crash the server
         raise HTTPException(502, str(e))
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "Claude took more than 10 minutes. Try a shorter note.")
 
 
 @app.delete("/jobs/{job_id}")
@@ -257,6 +260,7 @@ def serve(port: int = 8000) -> None:
     threading.Thread(target=worker, daemon=True).start()
     threading.Thread(target=cleanup, daemon=True).start()
     print(f"indite running at http://127.0.0.1:{port}  (only this Mac can reach it)")
-    print(f"Phone 'Ask my AI' (personal): run `tailscale serve --bg {port}`, then in the app use your Mac's ts.net address "
-          f"and this token: {_ask_token()}")
+    print(f"Phone 'Ask my AI' (personal): run `tailscale serve --bg --set-path /api/ask http://127.0.0.1:{port}/api/ask` "
+          f"(shares only that one address, not your transcripts), then in the app use your Mac's ts.net address and this token: "
+          f"{_ask_token()}")
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
