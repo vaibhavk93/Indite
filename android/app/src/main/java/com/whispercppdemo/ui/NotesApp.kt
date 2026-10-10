@@ -278,7 +278,18 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val tipPrefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    var showTip by remember { mutableStateOf(!tipPrefs.getBoolean("tipGestures", false)) }
+    // Swipe hint: the first finished card slides right (Copy) then left (Delete), at most once a day, until both swipes
+    // have been used. Off switch and "show again" in Settings → Look & feel → Tutorial. Never copies or deletes anything.
+    val hint = remember { androidx.compose.animation.core.Animatable(0f) }
+    val hintNote = notes.firstOrNull { it.done && it.pieces.isNotEmpty() }?.id
+    LaunchedEffect(hintNote) {
+        if (hintNote == null || !SwipeHint.due(context)) return@LaunchedEffect
+        SwipeHint.shown(context)
+        delay(700)
+        val spec = androidx.compose.animation.core.tween<Float>(420, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+        hint.animateTo(110f, spec); delay(500); hint.animateTo(0f, spec); delay(250)
+        hint.animateTo(-110f, spec); delay(500); hint.animateTo(0f, spec)
+    }
     var renamingNote by remember { mutableStateOf<Note?>(null) }
     var remindNote by remember { mutableStateOf<Note?>(null) }
     remindNote?.let { n -> RemindDialog(n.id, remindText(n)) { remindNote = null } }
@@ -328,7 +339,10 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
         ) {
             item {
                 Text("Speak in Hindi, English or both. Get it in writing.", Modifier.offset(y = (-6).dp),  // tight under the title
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Font(R.font.figtree_italic,
+                            style = androidx.compose.ui.text.font.FontStyle.Italic))),  // Figtree's real italic, not a slanted fake
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (problem != null) item { Banner(problem, error = true) }
             else if (lowRam) item { Banner("This phone has under 6 GB of memory. Long recordings may be slow.", error = false) }
@@ -338,18 +352,6 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
             else if (shown.isEmpty()) item {
                 Text("Nothing matches \"$query\".", Modifier.padding(vertical = 24.dp), style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            // Gestures aren't obvious: say so once, after the first finished note (the Copy button and long-press work too).
-            if (showTip && notes.any { it.done && it.pieces.isNotEmpty() }) item(key = "tip") {
-                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                    Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Tip: swipe a note right to copy, left to delete. Press and hold for more.", Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        IconButton(onClick = { showTip = false; tipPrefs.edit().putBoolean("tipGestures", true).apply() }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Dismiss tip", tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                    }
-                }
             }
             val byDay = shown.groupBy { dayLabel(it.created) }
             byDay.forEach { (day, dayNotes) ->
@@ -367,19 +369,23 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
             items(dayNotes, key = { it.id }) { note ->
                 val dismiss = rememberDismissState(confirmValueChange = {
                     if (it == DismissValue.DismissedToEnd && note.done && note.pieces.isNotEmpty()) {
+                        SwipeHint.used(context, copy = true)
                         // swipe right = copy the text, with a small buzz; the row springs back
                         val cm = context.getSystemService(android.content.ClipboardManager::class.java)
                         cm.setPrimaryClip(android.content.ClipData.newPlainText("indite", note.allText()))
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         scope.launch { snackbar.showSnackbar("Copied") }
                         false
-                    } else if (it == DismissValue.DismissedToStart && !note.recording) { deleteWithUndo(note); true } else false
+                    } else if (it == DismissValue.DismissedToStart && !note.recording) {
+                        SwipeHint.used(context, copy = false); deleteWithUndo(note); true
+                    } else false
                 })
                 SwipeToDismiss(
                     state = dismiss,
                     directions = setOf(DismissDirection.EndToStart, DismissDirection.StartToEnd),
                     background = {
-                        val copying = dismiss.dismissDirection == DismissDirection.StartToEnd
+                        val hinting = note.id == hintNote && hint.value != 0f
+                        val copying = if (hinting) hint.value > 0f else dismiss.dismissDirection == DismissDirection.StartToEnd
                         Box(Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp))
                             .background(if (copying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer)
                             .padding(horizontal = 24.dp), contentAlignment = if (copying) Alignment.CenterStart else Alignment.CenterEnd) {
@@ -387,9 +393,10 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                                 color = if (copying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer)
                         }
                     },
-                    dismissContent = { NoteRow(note, onClick = { onOpen(note.id) }, onCopy = { copyNote(note) },
+                    dismissContent = { Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(
+                        if (note.id == hintNote) hint.value.dp.roundToPx() else 0, 0) }) { NoteRow(note, onClick = { onOpen(note.id) }, onCopy = { copyNote(note) },
                         onShare = { share(context, note.allText()) }, onRename = { renamingNote = note }, onDelete = { deleteWithUndo(note) },
-                        onRemind = { remindNote = note }) },
+                        onRemind = { remindNote = note }) } },
                 )
             }
             }
@@ -1415,4 +1422,21 @@ internal fun clearDate(by: String, now: java.util.Calendar = java.util.Calendar.
 internal fun remindText(n: Note): String {
     val body = n.allText().take(300)
     return if (body.isBlank() || n.name.startsWith(body.take(20))) body.ifBlank { n.name } else "${n.name}\n$body"
+}
+
+/** When to play the home screen's swipe hint (see HomeScreen). */
+internal object SwipeHint {
+    private fun p(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    private fun today() = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
+    fun enabled(c: Context) = p(c).getBoolean("swipeHint", true)
+    fun setEnabled(c: Context, on: Boolean) = p(c).edit().putBoolean("swipeHint", on).apply()
+    fun due(c: Context): Boolean {
+        val noAnim = android.provider.Settings.Global.getFloat(c.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+        return enabled(c) && !noAnim && p(c).getString("swipeHintDay", "") != today() &&
+            !(p(c).getBoolean("swipedCopy", false) && p(c).getBoolean("swipedDelete", false))
+    }
+    fun shown(c: Context) = p(c).edit().putString("swipeHintDay", today()).apply()
+    fun used(c: Context, copy: Boolean) = p(c).edit().putBoolean(if (copy) "swipedCopy" else "swipedDelete", true).apply()
+    /** "Show again": forget that it was shown today and that the swipes were used. */
+    fun reset(c: Context) = p(c).edit().remove("swipeHintDay").remove("swipedCopy").remove("swipedDelete").putBoolean("swipeHint", true).apply()
 }

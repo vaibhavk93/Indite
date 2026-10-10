@@ -115,7 +115,11 @@ class BubbleService : Service() {
             dp(56), dp(56), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
-        ).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = dp(240) }
+        ).apply {  // comes back where you left it
+            val p = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            gravity = Gravity.TOP or Gravity.START; x = p.getInt("bubbleX", 0); y = p.getInt("bubbleY", dp(240))
+        }
+        var overTarget = false
 
         // Drag anywhere; a short touch without movement is a tap. On release it snaps to the nearest side.
         var downX = 0f; var downY = 0f; var startX = 0; var startY = 0; var moved = false; var downAt = 0L
@@ -136,22 +140,39 @@ class BubbleService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     if (abs(e.rawX - downX) + abs(e.rawY - downY) > dp(8)) moved = true
                     if (moved) {
-                        lp.x = startX + (e.rawX - downX).toInt(); lp.y = startY + (e.rawY - downY).toInt(); wm.updateViewLayout(v, lp)
-                        showDropZone(e.rawY > resources.displayMetrics.heightPixels - dp(120))
+                        val m = resources.displayMetrics
+                        val over = e.rawY > m.heightPixels - dp(150)
+                        if (over) {  // magnetic: near the ✕, the bubble jumps onto it
+                            lp.x = m.widthPixels / 2 - dp(28); lp.y = m.heightPixels - dp(48) - dp(60)
+                        } else { lp.x = startX + (e.rawX - downX).toInt(); lp.y = startY + (e.rawY - downY).toInt() }
+                        wm.updateViewLayout(v, lp)
+                        if (over != overTarget) {  // a small buzz when it reaches the ✕
+                            overTarget = over
+                            if (over) v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                        }
+                        showDropZone(over)
                     }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (moved && e.rawY > resources.displayMetrics.heightPixels - dp(120)) {
+                    if (moved && overTarget) {
+                        overTarget = false
                         // dropped on the X: the floating mic turns off (one switch, as the founder asked)
                         hideDropZone()
                         toast("Floating mic off. Turn it on from the quick settings tile or indite → Settings.")
                         setEnabled(this, false)
                     } else if (moved) {
                         hideDropZone()
+                        // springs to the nearest edge instead of jumping; remembers the spot
                         val w = resources.displayMetrics.widthPixels
-                        lp.x = if (lp.x + dp(28) < w / 2) 0 else w - dp(56)
-                        wm.updateViewLayout(v, lp)
+                        val target = if (lp.x + dp(28) < w / 2) 0 else w - dp(56)
+                        android.animation.ValueAnimator.ofInt(lp.x, target).apply {
+                            duration = 320
+                            interpolator = android.view.animation.OvershootInterpolator(1.2f)
+                            addUpdateListener { a -> if (v.isAttachedToWindow) { lp.x = a.animatedValue as Int; wm.updateViewLayout(v, lp) } }
+                            start()
+                        }
+                        getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt("bubbleX", target).putInt("bubbleY", lp.y).apply()
                     } else if (!heldToCancel) { v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); tap() }
                     downAt = 0L
                     true

@@ -71,43 +71,90 @@ class VoiceKeyboard : InputMethodService() {
         val ink = getColor(R.color.kb_ink)
         val soft = getColor(R.color.kb_soft)
 
+        // Keys: soft pills that sink a little when pressed (spring back on release), with a light tick.
         fun keyButton(label: String, desc: String, weight: Float, onClick: () -> Unit) = TextView(c).apply {
             text = label
             contentDescription = desc
             gravity = Gravity.CENTER
             setTextColor(ink)
-            textSize = 16f
+            textSize = 15f
             typeface = Typeface.create(font, Typeface.BOLD)
-            background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(key) }
-            layoutParams = LinearLayout.LayoutParams(0, dp(48), weight).apply { setMargins(dp(4), 0, dp(4), 0) }
+            background = GradientDrawable().apply { cornerRadius = dp(22).toFloat(); setColor(key) }
+            elevation = dp(1).toFloat()
+            layoutParams = LinearLayout.LayoutParams(0, dp(46), weight).apply { setMargins(dp(4), 0, dp(4), 0) }
+            setOnTouchListener { v, e ->
+                when (e.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> v.animate().scaleX(0.92f).scaleY(0.92f).setDuration(70).start()
+                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL ->
+                        v.animate().scaleX(1f).scaleY(1f).setDuration(220).setInterpolator(android.view.animation.OvershootInterpolator(3f)).start()
+                }
+                false
+            }
             setOnClickListener { performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); onClick() }
         }
 
+        // Status pill at the top: a coloured dot + what's happening.
+        dot = View(c).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(getColor(R.color.kb_accent)) }
+            layoutParams = LinearLayout.LayoutParams(dp(8), dp(8)).apply { setMargins(0, 0, dp(8), 0) }
+        }
         status = TextView(c).apply {
-            gravity = Gravity.CENTER
-            setTextColor(soft)
-            textSize = 14f
+            setTextColor(ink)
+            textSize = 13f
             typeface = font
             text = "Tap the mic and speak · Hindi, English or both"
         }
+        val pill = LinearLayout(c).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(key) }
+            setPadding(dp(14), dp(7), dp(16), dp(7))
+            addView(dot); addView(status)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                .apply { gravity = Gravity.CENTER_HORIZONTAL }
+        }
+
+        // Live voice bars under the pill (move with your voice while listening).
+        bars = LevelBars(c, getColor(R.color.kb_record)).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(120), dp(22)).apply { gravity = Gravity.CENTER_HORIZONTAL; setMargins(0, dp(8), 0, 0) }
+            alpha = 0f
+        }
+
+        // The mic orb: a gradient circle with a soft halo that swells with your voice.
         micIcon = ImageView(c).apply {
             setImageResource(R.drawable.ic_mic)
             setColorFilter(getColor(R.color.kb_on_accent))
-            layoutParams = FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER)
+            layoutParams = FrameLayout.LayoutParams(dp(32), dp(32), Gravity.CENTER)
         }
         spinner = android.widget.ProgressBar(c).apply {
             isIndeterminate = true
             indeterminateTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.kb_on_accent))
-            layoutParams = FrameLayout.LayoutParams(dp(66), dp(66), Gravity.CENTER)
+            layoutParams = FrameLayout.LayoutParams(dp(74), dp(74), Gravity.CENTER)
             visibility = View.GONE
+        }
+        halo = View(c).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(getColor(R.color.kb_record)) }
+            alpha = 0f
+            layoutParams = FrameLayout.LayoutParams(dp(80), dp(80), Gravity.CENTER)
         }
         mic = FrameLayout(c).apply {
             contentDescription = "Start dictation"
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(getColor(R.color.kb_accent)) }
+            background = orb(getColor(R.color.kb_accent))
+            elevation = dp(6).toFloat()
             addView(micIcon)
             addView(spinner)
-            layoutParams = LinearLayout.LayoutParams(dp(72), dp(72)).apply { gravity = Gravity.CENTER_HORIZONTAL; setMargins(0, dp(12), 0, dp(14)) }
-            setOnClickListener { performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); toggle() }
+            layoutParams = FrameLayout.LayoutParams(dp(80), dp(80), Gravity.CENTER)
+            setOnClickListener {
+                performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                animate().scaleX(0.9f).scaleY(0.9f).setDuration(80).withEndAction {
+                    animate().scaleX(1f).scaleY(1f).setDuration(260).setInterpolator(android.view.animation.OvershootInterpolator(2.5f)).start()
+                }.start()
+                toggle()
+            }
+        }
+        val stage = FrameLayout(c).apply {
+            addView(halo); addView(mic)
+            layoutParams = LinearLayout.LayoutParams(dp(120), dp(120)).apply { gravity = Gravity.CENTER_HORIZONTAL; setMargins(0, dp(4), 0, dp(4)) }
         }
         val keys = LinearLayout(c).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -116,13 +163,39 @@ class VoiceKeyboard : InputMethodService() {
             addView(keyButton("⌫", "Delete", 1.2f) { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) })
             addView(keyButton("↵", "Enter", 1.2f) { enter() })
         }
+        // Gentle top-to-bottom gradient with rounded top corners.
         return LinearLayout(c).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(bg)
-            setPadding(dp(8), dp(14), dp(8), dp(12))
-            addView(status)
-            addView(mic)
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(bg, androidx.core.graphics.ColorUtils.blendARGB(bg, ink, 0.06f)))
+                .apply { cornerRadii = floatArrayOf(dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), 0f, 0f, 0f, 0f) }
+            setPadding(dp(10), dp(14), dp(10), dp(12))
+            addView(pill)
+            addView(bars)
+            addView(stage)
             addView(keys)
+        }
+    }
+
+    private fun orb(color: Int) = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+        intArrayOf(androidx.core.graphics.ColorUtils.blendARGB(color, android.graphics.Color.WHITE, 0.18f), color,
+            androidx.core.graphics.ColorUtils.blendARGB(color, android.graphics.Color.BLACK, 0.18f))).apply { shape = GradientDrawable.OVAL }
+
+    private lateinit var dot: View
+    private lateinit var halo: View
+    private lateinit var bars: LevelBars
+
+    /** Five rounded bars that follow the microphone level. */
+    private class LevelBars(c: android.content.Context, private val color: Int) : View(c) {
+        private val levels = FloatArray(5)
+        private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { this.color = color }
+        fun push(v: Float) { System.arraycopy(levels, 1, levels, 0, levels.size - 1); levels[levels.size - 1] = v.coerceIn(0f, 1f); invalidate() }
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            val n = levels.size; val gap = width / (n * 3f); val w = gap * 2
+            for (k in 0 until n) {
+                val h = height * (0.2f + 0.8f * levels[(k * 2 + 1) % n])
+                val x = k * (w + gap) + gap / 2
+                canvas.drawRoundRect(x, (height - h) / 2, x + w, (height + h) / 2, w / 2, w / 2, paint)
+            }
         }
     }
 
@@ -159,8 +232,15 @@ class VoiceKeyboard : InputMethodService() {
         job = scope.launch { typeAsYouGo(id) }
         scope.launch {  // a running clock, so it's obvious the mic is on
             while (Recording.id == id) {
-                if (current == State.LISTENING) status.text = "● Listening ${clock()} · pause to type it in"
-                delay(500)
+                if (current == State.LISTENING) {
+                    status.text = "Listening ${clock()} · pause to type it in"
+                    val lv = Notes.level.value
+                    bars.push(lv)
+                    halo.alpha = 0.18f + 0.3f * lv
+                    val sc = 1f + 0.35f * lv
+                    halo.animate().scaleX(sc).scaleY(sc).setDuration(110).start()
+                }
+                delay(110)
             }
         }
     }
@@ -208,10 +288,19 @@ class VoiceKeyboard : InputMethodService() {
         current = st
         if (!::status.isInitialized) return
         status.text = text
-        (mic.background as GradientDrawable).setColor(getColor(when (st) {
+        val col = getColor(when (st) {
             State.LISTENING -> R.color.kb_record; State.WRITING -> R.color.kb_soft; State.DONE -> R.color.kb_ready; State.IDLE -> R.color.kb_accent
-        }))
-        micIcon.setImageResource(if (st == State.LISTENING) R.drawable.ic_stop else R.drawable.ic_mic)
+        })
+        mic.background = orb(col)
+        (dot.background as GradientDrawable).setColor(col)
+        bars.animate().alpha(if (st == State.LISTENING) 1f else 0f).setDuration(200).start()
+        if (st != State.LISTENING) halo.animate().alpha(0f).setDuration(200).start()
+        if (st == State.DONE) {  // a little "done" pop
+            micIcon.setImageResource(R.drawable.ic_copy)
+            mic.scaleX = 0.8f; mic.scaleY = 0.8f
+            mic.animate().scaleX(1f).scaleY(1f).setDuration(380).setInterpolator(android.view.animation.OvershootInterpolator(3f)).start()
+        }
+        if (st != State.DONE) micIcon.setImageResource(if (st == State.LISTENING) R.drawable.ic_stop else R.drawable.ic_mic)
         spinner.visibility = if (st == State.WRITING) View.VISIBLE else View.GONE
         mic.contentDescription = when (st) {
             State.LISTENING -> "Stop dictation"; State.WRITING -> "Writing your text"; else -> "Start dictation"

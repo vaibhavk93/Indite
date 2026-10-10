@@ -178,6 +178,21 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
+            if (shown == "look") item {
+                Section("Tutorial") {
+                    var on by remember { mutableStateOf(com.whispercppdemo.ui.SwipeHint.enabled(context)) }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Swipe hint on the home screen", style = MaterialTheme.typography.bodyLarge)
+                            Text("A card slides to show swipe right = copy, left = delete. At most once a day; stops after you've used both.",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        androidx.compose.material3.Switch(checked = on, onCheckedChange = { on = it; com.whispercppdemo.ui.SwipeHint.setEnabled(context, it) })
+                    }
+                    TextButton(onClick = { com.whispercppdemo.ui.SwipeHint.reset(context); on = true
+                        com.whispercppdemo.ui.Messages.flow.tryEmit("The hint will play next time you open the home screen.") }) { Text("Show it again") }
+                }
+            }
             if (shown == "dictation") item {
                 Section("Spelling") {
                     val chat by Settings.chatSpelling.collectAsState()
