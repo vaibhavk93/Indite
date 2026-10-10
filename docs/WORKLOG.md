@@ -37,6 +37,17 @@ usage limit mid-handoff, so this entry and HANDOFF section 5 were written in the
 
 ---
 
+## 2026-10-10 (evening) · Claude Code (Opus 5.5)
+
+**Next step:** founder hand check of builds 9–10; full phone test on a cool phone; then build 11 per ROADMAP.
+
+- Root cause of "same audio, different text" confirmed on the phone: audio window rounded to 256 → identical text across
+  runs; A/B vs old rounding: live wait 9.1/14.1 s vs 78.8/87.3 s. Heat (+1 °C) costs ~5 s. Kept 256.
+- Added: Mac route can answer with ChatGPT via the founder's own Codex CLI; Settings → Your stats dashboard; header and
+  subtitle fixes; chips padding; A/B test hook + `phone_test.sh` ROUND= / LIVE_ONLY=.
+- ChatGPT login inside the app: not allowed yet (application-only preview, no mobile); founder may apply.
+- Repo: GitHub `vaibhavk93/Indite` (public) at `790924c`; local is 32 commits ahead (not pushed).
+
 ## 2026-10-10 (afternoon) · Claude Code (Opus 5.5)
 
 **Next step:** quick phone test of build 10 (engine fix), founder hand check, then build 11 per ROADMAP plan.
