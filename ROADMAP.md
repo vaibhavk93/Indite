@@ -77,7 +77,7 @@ Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr
 
 - Try-it screen for first-time users; smaller install (model downloads on first open)
 - Test on a ₹15k phone (parked by the founder; still the biggest unknown)
-- Give it to 10–20 people; interviews alongside; ask an open question about translation
+- Give it to 10–20 people; interviews alongside; ask an open question about translation; sign-up asks "Android or iPhone?"
 
 ## Next
 
@@ -105,7 +105,10 @@ Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr
 - Accessibility add-on in the public build (decide after Play's review cost is known)
 - Play Store launch (asset packs, newer Android target, policy declarations for overlay, special-use service, keyboard)
 - Hosting, Google login, payments (Razorpay / UPI), installable web app, DOCX export, batch upload, Devanagari output,
-  subtitle burn-in, autosave to server, "Sign in with ChatGPT" (apply via OpenAI's form); iPhone app
+  subtitle burn-in, autosave to server, "Sign in with ChatGPT" (apply via OpenAI's form)
+- **iPhone app** (critic-reviewed 2026-10-10): not now. Trigger: 5+ testers ask for iPhone (tester sign-up asks "Android or
+  iPhone?"). First step then: a 1-day speed test of whisper.cpp's own iOS example on a real iPhone (free Apple ID install).
+  iOS blocks the floating bubble, mic in keyboards and auto-paste; the $99/yr developer account is needed to give it to others.
 
 ## Not doing (for now), and why
 
