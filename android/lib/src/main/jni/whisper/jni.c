@@ -108,14 +108,15 @@ static void asset_close(void *ctx) {
 }
 
 /*
- * indite: flash attention off. With it on (the default), the decoder reads padded rows of the audio cache that the
+ * indite: about flash attention. With it on (the default), the decoder reads padded rows of the audio cache that the
  * encoder never wrote for short audio windows, so a piece's text depended on which pieces ran before it (run-to-run
  * differences, some pieces losing most of their text). Mac test 2026-10-10: 15-min file 27.6% -> 25.1% words wrong,
  * repeatable. Phone speed impact: measure.
  */
 static struct whisper_context_params indite_params(void) {
     struct whisper_context_params p = whisper_context_default_params();
-    p.flash_attn = false;
+    p.flash_attn = true;  // kept ON: off made live dictation ~6 s slower per sentence on the phone (build 8 test).
+                          // The leak is avoided instead by sizing audio_ctx to a multiple of 256 (Pauses.audioCtx).
     return p;
 }
 
