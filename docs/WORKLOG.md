@@ -4,39 +4,6 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
-## 2026-10-10 (later) · Claude Code (Opus 5 / Opus 5.5) · builds 8-10
-
-**Next step:** plug the phone in -> install build 10 -> screenshot the italic subtitle -> `QUICK=1 ./phone_test.sh`.
-Then run the Mac test of "audio window rounded to 256" (it never ran: the agent died on a usage limit).
-
-Built (21 commits, `af9ea88`..`7b3259c`, all local; last pushed is `738a118`):
-- Engine: found that run-to-run text differences come from flash attention reading leftover audio-cache rows
-  (`420bb28`). Off = repeatable and more accurate on the Mac (27.6% -> 25.1%) but ~6 s slower per live sentence on the
-  phone, so it is back on (`9af355a`). Untried: `audio_ctx` rounded to 256.
-- Privacy: the keyboard and the bubble share one password/PIN/OTP rule (`1044bf4`, `63a5b7a`).
-- Floating mic: one switch, drag onto the X to turn it off, quick settings tile (`7d4f227`); drag polish - magnetic X,
-  a buzz on arrival, springy edge snap, remembers where you left it.
-- Reminders (founder decision, overrides the old "no own reminders"): exact alarms, Remind me on the card, note menu and
-  task rows, quick picks + any date/time, Done / Snooze 1 h, re-set on open/reboot/update, list in Settings (`d5d0188`);
-  soft two-note chime + nudge vibration, optional "ring like an alarm until I respond" (`3d42717`).
-- Home and notes: cards with a border, Copy button, long-press menu (`6b291cd`); header back to the original size and
-  weight, pinned (`84ea88b`), then slightly smaller with less space below (`3d42717`); search-bar line removed; the empty
-  brown button was "Done" squeezed to zero width - buttons now sit on two rows, plus Undo/Redo and "Back to original"
-  (`3d42717`); menu icons; swipe-hint animation replaces the tip card (card peeks right = Copy, left = Delete, once a
-  day, switch + "Show it again" under Settings -> Look & feel -> Tutorial) (`963545b`).
-- Keyboard redesign: gradient mic orb with a halo that swells with your voice, live level bars, status pill, springy
-  keys, a "done" pop (`963545b`). Italic subtitle using Figtree's real italic file, not a slanted fake.
-- Docs: `docs/FOUNDER_REQUESTS.md` - all 172 founder requests with status, why and open questions; agents must keep it
-  current (`7b3259c`). Roadmap: reminders decision, plan forward (build 10 -> Rs 15k phone test -> tester build ->
-  testers), overlap deferred with a measurement plan (`671c8c8`).
-- Research (critic-reviewed, local only in `reports/` and `research_notes/`): value-adds per journey (top 8) and Gujarati
-  / Marathi into Roman script (possible in two steps, demand unproven - ask on tester sign-up first).
-
-**Untested:** everything in builds 8-10. The phone was unplugged when build 10 finished, and the session then hit a
-usage limit mid-handoff, so this entry and HANDOFF section 5 were written in the next session from the git log.
-
----
-
 ## 2026-10-10 (evening) · Claude Code (Opus 5.5)
 
 **Next step:** founder hand check of builds 9–10; full phone test on a cool phone; then build 11 per ROADMAP.

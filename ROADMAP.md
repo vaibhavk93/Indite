@@ -143,9 +143,10 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a �
 
 ## Now
 
-1. **Build 10 is waiting for the phone** (it was unplugged when the build finished): install it, screenshot the italic
-   subtitle to decide if it stays, then `QUICK=1 ./phone_test.sh` for live speed. Nothing after build 7 has run on the
-   phone. Still unmeasured: "audio window rounded to 256" on the Mac (repeatable text without losing speed).
+1. **Build 10 is on the phone** (tag `build-10`). Quick test done; the rounding A/B is done (keep 256: repeatable text,
+   live wait 9.1-14.1 s vs 78.8-87.3 s with the old rounding; heat costs ~5 s per +1 °C). **Left to do:** the full
+   `./bench_synth/phone_test.sh` on a cool phone (gate: 15-min file ≈ 25%), and decide whether the italic subtitle stays.
+   Next accuracy item is live word errors (cut points), not rounding.
 2. **Founder's 20-minute hand check** (12 items: bubble, auto-paste, Find who spoke, Make notes, Action items, Translate,
    practice scores, export, "no speech" screen). Then fix what fails.
 3. **Speaker labels before testers:** founder listens to the real 15-min interview split (1:34–1:47, 7:00–7:14, 13:07–13:28
