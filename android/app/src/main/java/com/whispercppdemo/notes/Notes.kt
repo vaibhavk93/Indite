@@ -388,6 +388,28 @@ object Notes {
         refresh()
     }
 
+    /**
+     * Founder request (10 Oct): delete the audio but keep the text, or the text but keep the audio. Audio is almost all
+     * of a note's size (15 min ~ 29 MB); the text is a few KB. Neither can be undone, so the caller must confirm first.
+     */
+    fun deleteAudio(id: String) {
+        if (id == Recording.id) return
+        File(dir(id), "audio.pcm").delete()
+        refresh()
+    }
+
+    /** Keeps the audio (and the cuts, so it can be written again later); throws away the text and the speaker labels. */
+    fun deleteText(id: String) {
+        if (id == Recording.id) return
+        File(dir(id), "transcript.jsonl").delete()
+        File(dir(id), "edits.json").delete()
+        File(dir(id), "speakers.json").delete()
+        refresh()
+    }
+
+    /** True when the audio is gone (deleted to save space): playing is not possible, the text is still there. */
+    fun hasAudio(id: String) = File(dir(id), "audio.pcm").length() > 0
+
     fun deleteAll() {
         root.listFiles()?.filter { it.name != Recording.id }?.forEach { it.deleteRecursively() }
         refresh()

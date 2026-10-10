@@ -341,6 +341,20 @@ is a git commit.
 | 190 | **Run the 1-hour free-model test** | Does it need my phone? | 10 Oct | ✅ | Mac only, no phone. 45 requests (3 free models × 3 prompts × 5 notes) on real transcript text. **Winner: `apodex/apodex-1.1-mini:free`** — 15/15 worked, median 25 s, kept Roman Hinglish everywhere, followed the `task | who | by when` format, no Devanagari, no invented tasks. `dots-3-note`: 15/15 but median 46 s (up to 80 s) and it **translated action items into English**. `gemma-4-31b`: 13 of 15 failed — Google AI Studio rate-limits that free endpoint upstream. Outputs saved locally. Key stored at `~/.indite/openrouter.key` (outside the repo, 600); **rotate it, it was pasted in chat** |
 
 
+### Added 10 Oct (late night) — build 12
+
+| # | Request | What you asked | Date | Status | Where it stands |
+|---|---|---|---|---|---|
+| 191 | **Key added but AI features do nothing** | OpenRouter key saved, nothing answers | 10 Oct | 🧪 | **Root cause:** a saved key only worked if "Answer inside indite" was *also* ticked under Settings → AI → Where AI requests go. It never was. Now a working key is always a route (build 12) |
+| 192 | **Alarm still silent after turning the switch on; sound should be the default** | — | 10 Oct | 🧪 | The default-on change was built *after* build 11 was installed, so your phone never had it. Build 12 has it, plus the cloud session's "Test the sound" button, a line naming the phone setting that is muting it, and "Last reminder: …" |
+| 193 | **Formal / email / informal / tones conversion** | Convert a recording to a sendable message | 10 Oct | 🧪 | **Rewrite to send** under Ask my AI, with a style picker: formal English, polite request, WhatsApp Hinglish, casual Hinglish, email with subject, firm, apology, thank-you, short-and-crisp, or type your own. Replaces the narrower "Formal version". Needs an AI route (key or Mac) |
+| 194 | **Speaker labels by default, correct them later** | — | 🧪 | Automatic labelling came from the cloud branch (runs when the text is ready, skipped when hot or low battery). Correction already exists: the note asks "indite heard N people. Is that right?", and ⋮ → Who spoke? re-runs with a count you choose or a fresh guess |
+| 195 | **Choose audio / text / both when deleting** | — | 10 Oct | 🧪 | Delete now asks: audio only (keeps the text), text only (keeps the recording), or the whole note. It shows how many MB the note uses |
+| 196 | **Accessibility: can we pass a test so banks don't flag indite?** | — | 10 Oct | ✅ | **No such test exists** (researched + critic-reviewed). Banks' security SDKs flag *any* enabled third-party accessibility service, not specific flags; allowlists are per-bank and need a Play-store install. Setting `isAccessibilityTool="true"` would be a Play policy strike — never do it. The public build already ships no service; the keyboard types with `commitText()` (no accessibility, no clipboard). Decision: keep the service personal-only, switch it off before banking apps |
+| 197 | **Several keys + rotation to raise the 50/day limit** | 50 → 150 or 200 | 10 Oct | ❌ | OpenRouter's own docs: *"Making additional accounts or API keys will not affect your rate limits, as we govern capacity globally."* Limits are per account, not per key, and multi-accounting risks a ban. The only supported raise is ≥10 credits once: 50 → 1000 a day |
+| 198 | **Key disabled** | I disabled the key I pasted | 10 Oct | ✅ | Local copy deleted from `~/.indite/openrouter.key` |
+
+
 ## Open questions for the founder
 
 **⚠ Remember:** these block work. Nothing below moves until you answer or act.
