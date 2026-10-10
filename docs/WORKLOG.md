@@ -61,8 +61,31 @@ package visibility, for implicit or explicit intents; filtering hits *queries* a
 "(unclear)" where it can't tell. It and Translate are in `OwnLanguage`, so the "reply in Hinglish" rule is skipped -
 that rule would have wrecked a formal English statement.
 
-Docs: founder requests 178 (reminder sound), 179 (translation), 180 (formal statement); summary counts corrected to 180
-rows; ROADMAP "Now" item 0; HANDOFF section 5 table with the ranked causes and both dead theories.
+**Speaker labels now run by themselves** (founder: "why does speaker diarization not work automatically? ... the
+initial speaker diarization should be done by you"). The honest answer to "why": **nothing ever decided it had to be
+manual.** It was built as an on-demand card and request #60 removed the *count* question but left the tap. No technical
+blocker either - PLAN.md line 230 records 15.9 s on the phone for a 15-minute file, about 1 s per minute of audio.
+- `NoteService` now labels every note it just finished, but only once the queue has nothing left to transcribe (so a
+  live dictation is never delayed), inside the foreground service (so Android cannot kill it half-done), after
+  `waitUntilSafe()`, and it bails out if a recording starts. Only notes *this run* finished - never a sweep of the
+  whole back catalogue.
+- Gate: over 60 s, 2+ paragraphs, no speakers file yet, and not a `test` note, so `phone_test.sh`'s `--ei k 2` scoring
+  is untouched.
+- `Speakers.labelAuto()` and `Speakers.status` (a MutableStateFlow: `Speakers.running` is a plain set and not
+  observable, so the note screen could not show a run it did not start). The note screen now has one `busy` value for
+  "something is working on this note", whoever started it.
+- **One voice = no labels at all**, however the run started. An explicit "1" used to write "Speaker 1" on every
+  paragraph. `heardOne()` saves `skipped=true, k=1, guessed=<indite decided it>`, and the note screen shows a one-line
+  "indite heard one voice. Two people spoke?" only when indite decided it, not when the user chose 1.
+- The existing "indite heard N people. Is that right?" card is unchanged: that is the "ask and update later" half.
+- No setting added on purpose. ⚠ **The count guess is unmeasured on real audio** (PLAN.md: "auto count fragile on real
+  audio"; the phone test only scores a given count, so 96.7% / 93.3% are given-count numbers). Before testers: score
+  the guess on the 3 real recordings, and measure battery and heat for auto-labelling a 15-min import. If either is
+  bad, add a switch - the hook is one `if`.
+
+Docs: founder requests 178 (reminder sound), 179 (translation), 180 (formal statement), 181 (automatic speaker labels);
+summary counts corrected to 181 rows; ROADMAP "Now" item 0; HANDOFF section 5 tables with the ranked causes and both
+dead theories.
 
 **Open question for the founder:** when the reminder was due, did it appear on screen with no sound, or did nothing
 appear at all? Silent-but-visible points at cause 1; nothing at all points at 2 or 3.

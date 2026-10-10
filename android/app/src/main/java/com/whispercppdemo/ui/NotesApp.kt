@@ -719,6 +719,10 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var whoSpoke by remember { mutableStateOf(false) }
     var renamingSpeaker by remember { mutableStateOf<Int?>(null) }
     var labelling by remember { mutableStateOf<String?>(null) }
+    // indite labels speakers by itself once the text is ready (NoteService), so the note screen has to show a run it
+    // did not start. `busy` = anything working on this note right now, whoever started it.
+    val autoLabel by Speakers.status.collectAsState()
+    val busy = labelling ?: autoLabel?.takeIf { it.first == note.id }?.second
     // The request the user just sent to their AI app; kept in prefs so it survives leaving the note or the app being killed.
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     var awaitingReply by remember(note.id) { mutableStateOf(prefs.getString("awaiting:${note.id}", null)) }
@@ -843,7 +847,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
         title = { Text("What kind of notes?") },
         text = {
             Column {
-                if (!note.labelled && note.pieces.size >= 2) Text("Tip: tap Find who spoke first, so the notes say who said what.",
+                if (note.speakers == null && note.pieces.size >= 2) Text("Tip: tap Find who spoke first, so the notes say who said what.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 6.dp))
                 listOf("Meeting notes" to "Decisions, action items, open questions",
                     "Lecture notes" to "Topics, key ideas, revision questions",
@@ -1003,14 +1007,14 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedButton(onClick = { pickingNotes = true }, Modifier.weight(1f).height(46.dp),
-                                enabled = labelling == null, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Make notes", maxLines = 1) }
+                                enabled = busy == null, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Make notes", maxLines = 1) }
                             OutlinedButton(onClick = { ask("Action items") }, Modifier.weight(1f).height(46.dp),
-                                enabled = labelling == null, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Action items", maxLines = 1) }
+                                enabled = busy == null, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Action items", maxLines = 1) }
                             OutlinedButton(onClick = { pickingLanguage = true }, Modifier.weight(1f).height(46.dp),
-                                enabled = labelling == null, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Translate", maxLines = 1) }
+                                enabled = busy == null, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Translate", maxLines = 1) }
                         }
                     }
-                    if (note.done && note.speakers == null && note.pieces.size >= 2 && note.seconds >= 60 && labelling == null &&
+                    if (note.done && note.speakers == null && note.pieces.size >= 2 && note.seconds >= 60 && busy == null &&
                         note.id !in Speakers.running) {
                         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1026,7 +1030,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         }
                     }
                     // Guess, then confirm: one tap if indite counted right, otherwise pick the real number (re-labels in a moment).
-                    note.speakers?.takeIf { it.guessed && !it.skipped && labelling == null && note.id !in Speakers.running }?.let { sp ->
+                    note.speakers?.takeIf { it.guessed && !it.skipped && busy == null && note.id !in Speakers.running }?.let { sp ->
                         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(if (sp.k <= 1) "indite heard 1 voice. Is that right?" else "indite heard ${sp.k} people. Is that right?",
@@ -1039,6 +1043,13 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                                     }
                                 }
                             }
+                        }
+                    }
+                    note.speakers?.takeIf { it.skipped && it.k == 1 && it.guessed && busy == null && note.id !in Speakers.running }?.let {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("indite heard one voice.", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            TextButton(onClick = { whoSpoke = true }) { Text("Two people spoke?") }
                         }
                     }
                     failed?.let { (card, prompt, err) ->
@@ -1085,7 +1096,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                     }
                     note.ai.forEach { r -> AiCard(r, note.id, onCopy = { copy(r.text) },
                         onDelete = { AppScope.launch(Dispatchers.IO) { Notes.deleteAi(note.id, r.created) } }) }
-                    labelling?.let {
+                    busy?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape))
                     }

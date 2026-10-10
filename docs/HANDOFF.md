@@ -162,6 +162,23 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
   **To verify (on the Mac):** build 11 → Settings → Reminders → Test the reminder sound with the switch ON, then OFF →
   one real 2-minute reminder with the phone locked → one Translate → one Formal version. `adb shell dumpsys alarm | grep
   indite` and `adb shell dumpsys notification --noredact` after a test answer most of the rest.
+- **Speaker labels now run by themselves (10 Oct, code only, not built):** the founder asked why diarization was not
+  automatic. Answer: **nothing ever decided it had to be manual.** It was built as an on-demand action (`ui/NotesApp.kt`
+  card "Was this a conversation? Find who spoke.") and request #60 removed the *count* question but left the tap. There
+  was no technical blocker: PLAN.md line 230 records **15.9 s on the phone for a 15-minute file** (~1 s per minute of
+  audio), against minutes for transcription.
+  | Change | Where |
+  |---|---|
+  | `NoteService` labels every note it just finished, once the queue has nothing left to transcribe (so a live dictation is never delayed), inside the foreground service (so Android does not kill it half-done), after `waitUntilSafe()` (heat/battery), and bails out if a recording starts | `notes/NoteService.kt`: `finish()` → `toLabel`, `wantsLabels()`, `labelFinished()` |
+  | Gate: over 60 s, 2+ paragraphs, no speakers file yet, **not a `test` note** (so `phone_test.sh`'s `--ei k 2` scoring stays clean). Only notes *this run* finished — never a sweep of the whole back catalogue | `wantsLabels()` |
+  | `Speakers.labelAuto()` + `Speakers.status` (a `MutableStateFlow`, because `Speakers.running` is not observable, so the note screen could not show a run it did not start) | `notes/Speakers.kt` |
+  | **One voice = no labels at all**, however the run started. An explicit "1" used to write "Speaker 1" on every paragraph; now `heardOne()` saves `skipped=true, k=1, guessed=<indite decided>` and the note screen shows a one-line "indite heard one voice. Two people spoke?" only when indite decided it | `Speakers.label()`, `heardOne()`, `NotesApp.kt` |
+  | The existing "indite heard N people. Is that right?" card is the founder's "ask and update later" — unchanged | `NotesApp.kt` |
+  ⚠ **The count guess is unmeasured on real audio.** PLAN.md line 230 says "auto count fragile on real audio", and
+  `phone_test.sh` only ever scores a *given* count (`--ei k 2`). The 96.7% / 93.3% figures are given-count numbers, not
+  guess numbers. Before testers: score the guess on the 3 real recordings (ROADMAP "Now" 3), and measure the battery
+  and heat cost of auto-labelling a 15-minute import. If either is bad, add a switch (the hook is one `if`).
+  No setting was added on purpose: the cost is small and nothing waits on it.
 - **Installed on the founder's phone:** build 10 (0.10, tag `build-10`), personal flavour.
 - **Pushed to GitHub:** everything up to the evening of 10 Oct (and build tags).
 - **Engine consistency (fixed 10 Oct, needs phone confirmation):** same audio gave different text because flash attention

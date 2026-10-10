@@ -4,6 +4,7 @@ import android.content.Context
 import com.k2fsa.sherpa.onnx.SpeakerEmbeddingExtractor
 import com.k2fsa.sherpa.onnx.SpeakerEmbeddingExtractorConfig
 import com.whispercpp.whisper.SpeechDetector
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.json.JSONObject
 import java.io.File
 import kotlin.math.sqrt
@@ -29,6 +30,33 @@ object Speakers {
     /** Ids being labelled right now (so "Who spoke?" can't run twice on one note). */
     val running: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
+    /** What a run started by indite itself is doing: note id -> message, null when nothing is running. */
+    val status = MutableStateFlow<Pair<String, String>?>(null)
+
+    /**
+     * The first pass, run by [NoteService] as soon as the text is ready, without being asked (founder, 10 Oct:
+     * "initial speaker diarization should be done by you"). The count is a guess, so the note screen then asks the
+     * user to confirm or change it — that is the cheap half of the job, because the voice fingerprints stay in memory.
+     *
+     * One voice found (or no speech) is saved as nothing to label, so a note that is only the user talking never gets
+     * a pointless "Speaker 1" on every paragraph.
+     */
+    fun labelAuto(context: Context, note: Note) {
+        try { label(context, note, 0) { status.value = note.id to it } } finally { status.value = null }
+    }
+
+    /**
+     * Only one voice in this recording: no labels. `k = 1` separates it from the user tapping "Just me" (which leaves k
+     * at 0), and `guessed` says indite decided this by itself — together they let the note screen offer "two people
+     * spoke?" once, on a recording long enough to be a conversation, without nagging someone who chose 1 themselves.
+     */
+    private fun heardOne(id: String, guessed: Boolean) {
+        val f = File(Notes.dir(id), "speakers.json")
+        val names = runCatching { JSONObject(f.readText()).optJSONObject("names") }.getOrNull()  // keep any names given
+        write(f, JSONObject().put("skipped", true).put("k", 1).put("guessed", guessed)
+            .put("names", names ?: JSONObject()).put("of", JSONObject()))
+    }
+
     /** The user said it was just them: hide the "Who spoke?" card for this note. */
     fun skip(id: String) {
         File(Notes.dir(id), "speakers.json").writeText(JSONObject().put("skipped", true).put("of", JSONObject()).toString())
@@ -52,7 +80,11 @@ object Speakers {
      */
     fun label(context: Context, note: Note, k: Int, progress: (String) -> Unit) {
         if (!running.add(note.id)) return
-        try { labelNow(context, note, k, progress) } finally { running.remove(note.id) }
+        try {
+            labelNow(context, note, k, progress)
+            // One voice (or none) means labels add nothing: drop them rather than write "Speaker 1" on every paragraph.
+            if ((load(note.id)?.of?.values?.distinct()?.size ?: 0) < 2) heardOne(note.id, guessed = k == 0)
+        } finally { running.remove(note.id) }
         if (k > 0) context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putInt("lastSpeakers", k).apply()
     }
 

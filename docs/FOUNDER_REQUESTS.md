@@ -41,13 +41,13 @@ is a git commit.
 | Status | Count |
 |---|---|
 | ✅ Built / answered | 121 |
-| 🧪 Built, not tested on phone | 14 |
+| 🧪 Built, not tested on phone | 15 |
 | 🟡 Partly | 17 |
 | ⏳ Pending | 10 |
 | 🔬 Researching / needs decision | 9 |
 | ❌ Not doing | 6 |
 | ❓ Unclear | 3 |
-| **Total** | **180** |
+| **Total** | **181** |
 
 **Bottom line:** most of what you asked for is built. What's left falls into four groups:
 
@@ -143,10 +143,11 @@ is a git commit.
 | 57 | **Separate the speakers** | Will it tell speakers apart? You approved free local speaker separation | 8 Oct | 🟡 | Phone: ✅ v0.4. **Web app: ⏳** (re-use the phone method) |
 | 58 | **Speaker tests 1 and 2** | Run them (you accepted the model terms) | 8–9 Oct | ✅ | Test 1 done. Test 2 replaced by the phone method |
 | 59 | **Speakers are not being told apart** | "We discussed this capability" | 10 Oct | ✅ | Fixed: labels per sentence. 51.7% → 96.7% on the phone test |
-| 60 | **Find the speaker count automatically** | Don't make me say 2, 3 or 4 people; "guess and then confirm" | 10 Oct | ✅ | indite guesses, you confirm (`cf0337f`) |
+| 60 | **Find the speaker count automatically** | Don't make me say 2, 3 or 4 people; "guess and then confirm" | 10 Oct | ✅ | indite guesses, you confirm (`cf0337f`). It still needed a tap to start, which you raised again — see **#181** |
 | 61 | **Can I trust "Find who spoke"?** | It seems to work, but I can't check the quality | 10 Oct | ⏳ | You listen at 1:34–1:47, 7:00–7:14, 13:07–13:28. "Show only [name]" filter is in the next build |
 | 62 | **Focus on one speaker among many** | If 4–5 voices come in at once, can we tell them apart? Feasibility test | 10 Oct | 🔬 | Folded into #63. Many voices at once is not handled today |
 | 63 | **Keep the 2–3 s when people talk over each other** | Track them, or convince me it's not worth it | 10 Oct | ⏳ | Deferred, with a measurement plan: record 3 real conversations; build only if > ~3% of words are lost |
+| 181 | **Do the first speaker pass without being asked** | "Why does speaker diarization not work automatically? It is possible to ask and update at a later stage, but the initial speaker diarization should be done by you" | 10 Oct | 🧪 | **Nothing decided that it had to be manual** — it was built as a button and the trigger was never removed; #60 took away the *count* question but left the tap. No technical blocker either: it costs about 1 s of phone time per minute of audio (measured: 15.9 s for a 15-min file). **Now:** as soon as the text is ready, indite labels who spoke by itself, for any recording over a minute with 2+ paragraphs. It runs only after all transcription is done, so nothing waits for it. The count is still a guess, so the note screen asks "indite heard N people. Is that right?" — your "ask and update later". One voice = no labels at all (a solo dictation no longer gets "Speaker 1" on every paragraph, which an explicit "1" used to do too), with a one-line "Two people spoke?" if it was long enough to be a conversation. ⚠ The count guess is **unmeasured on real audio** — the phone test only ever scores a given count |
 | 64 | **Recognise my voice ("Me")** | You accepted it if there's consent and a privacy-policy line | 10 Oct | ⏳ | Accepted. Built only with consent, a delete button, and never exported |
 
 ### 6. Notes / AI features

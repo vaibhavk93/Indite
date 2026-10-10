@@ -159,6 +159,11 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a �
      (2 minutes) makes Translate, Formal version and every other request answer inside indite today; Tailscale for the
      Mac route is the harder, second ask. Settings → AI now says in one line what will happen.
    - **Formal statement.** Did not exist. Added as **Formal version** under Ask my AI. Also needs an AI route.
+   - **Speaker labels now happen by themselves.** Nothing had decided they should be manual — it was built as a button
+     and the tap was never removed (#60 took away the count question, not the tap). It costs about 1 s of phone time
+     per minute of audio, and runs only after all transcription is done, so nothing waits for it. The count is still a
+     guess, so the note screen still asks "indite heard N people. Is that right?". One voice now means no labels at
+     all. ⚠ The guess is **unmeasured on real audio** — that is item 3 below.
    Gate: build 11, then your ear on the reminder (switch on, then off) and one Translate + one Formal version end to end.
    One thing only you can answer: when the reminder was due, did it appear with no sound, or not appear at all?
 1. **Build 10 is waiting for the phone** (it was unplugged when the build finished): install it, screenshot the italic

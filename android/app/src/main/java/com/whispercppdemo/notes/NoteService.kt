@@ -167,7 +167,7 @@ class NoteService : Service() {
                         }
                     }
                     Recording.active -> { updateRecording(); delay(300); continue }  // still recording: wait for the next pause
-                    else -> { copyBubbleDictations(); break }
+                    else -> { copyBubbleDictations(); labelFinished(); break }
                 }
                 Notes.refresh()
                 Notes.list.value.filter { it.done && it.speed == null && it.id in busy }.forEach { finish(it) }
@@ -249,6 +249,38 @@ class NoteService : Service() {
         Notes.finish(note.id, "%.0f s of speech in %.0f s (%.2fx) · %s · %.1f °C".format(
             audio, took, if (took > 0) audio / took else 0.0, "${Build.MANUFACTURER} ${Build.MODEL}", batteryTemp()))
         notifyDone(note)
+        if (wantsLabels(note)) toLabel += note.id
+    }
+
+    /** Notes this run turned into text, still waiting for their first speaker pass. Touched only by the queue. */
+    private val toLabel = linkedSetOf<String>()
+
+    /** Long enough to be a conversation, not a benchmark note, and not labelled or skipped already. */
+    private fun wantsLabels(n: Note) = !n.test && n.speakers == null && n.pieces.size >= 2 && n.seconds >= 60
+
+    /**
+     * Who spoke, without being asked (founder, 10 Oct: "initial speaker diarization should be done by you").
+     *
+     * Runs only once there is nothing left to transcribe, so it never delays a live dictation, and inside this service
+     * so the foreground notification stays up and Android doesn't kill it half-done. It costs about 1 s of phone time
+     * per minute of audio (measured: 15.9 s for a 15-minute file), and nothing is waiting on it — the text is already
+     * on screen and "Text ready" has already been sent.
+     *
+     * Only notes this run finished, never a sweep of every old note. The count is a guess; the note screen asks the
+     * user to confirm or change it. If a recording starts, the rest is left for the next run (the note screen's
+     * "Find who spoke" card is still there as the fallback).
+     */
+    private suspend fun labelFinished() {
+        while (toLabel.isNotEmpty() && !Recording.active) {
+            val id = toLabel.first()
+            toLabel -= id
+            val n = Notes.note(id)?.takeIf { wantsLabels(it) } ?: continue
+            waitUntilSafe()
+            if (Recording.active) return
+            say("${n.name}: finding who spoke…")
+            try { Speakers.labelAuto(this, n) } catch (e: Exception) { Log.w(TAG, e) }
+            Notes.refresh()
+        }
     }
 
     /** Pause when the phone is hot (it slows itself down anyway) or the battery is low and not charging. */
