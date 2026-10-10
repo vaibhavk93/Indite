@@ -130,8 +130,9 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 - **Built, not yet tested on the phone (build 7):** Settings groups; bubble hide → "Tap to show"; OpenRouter key + "where AI
   requests go"; Remind me; keyboard password/OTP guard; transitions, voice glow, fade-in, "All written", day headers,
   swipe-right copy.
-- **Open investigation:** why the 15-min file's text differs run to run (whisper.cpp temperature fallback suspected; a Mac
-  agent was started on 10 Oct; result not yet recorded).
+- **Found (10 Oct):** the 15-min file's run-to-run differences come from flash attention reading audio-cache rows left over
+  from earlier pieces (not temperature fallback). Fixed in build 8 (flash attention off, threads fixed): Mac 27.6% -> 25.1%,
+  repeatable. **Build 8 not installed yet: measure phone speed first** (QUICK test for live speed, full test for accuracy).
 - **Waiting on the founder:** turn the bubble back on; OpenRouter key; back up the signing key; OK to delete ~2.4 GB of old
   test APKs in `phonetest/` and `APK/` (check `phonetest/` for audio first); Tailscale; hand check; speaker listen-check.
 
