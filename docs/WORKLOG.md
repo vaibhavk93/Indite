@@ -6,7 +6,11 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ## 2026-10-10 · Claude Code (Opus 5.5)
 
-**Next step:** finish the look-and-feel top 10, install, `QUICK=1` phone test, founder hand check.
+**Next step:** founder tries build 7; then `QUICK=1` phone test; record the 15-min run-to-run finding.
+
+Later the same day (build 7, tag `build-7`): Settings in 6 groups; bubble hide → notification; OpenRouter key +
+"where AI requests go"; Remind me; password/OTP guard; versioning (0.7, build 7, git hash in About); handoff docs;
+look-and-feel batch (transitions, voice glow, fade-in, "All written", day headers, swipe-right copy).
 
 Built (all committed; pushed up to `738a118`):
 - v0.6 part 2: export, privacy policy, debug info, auto titles, storage check, consent reminder, test hooks personal-only.

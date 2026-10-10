@@ -123,16 +123,17 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
-- **Latest commit:** see `git log -1`. Last pushed to GitHub: `ae368df`-era commits up to `738a118`; later commits are local
-  until the founder asks to push.
-- **Phone test (10 Oct, build 693bdaf):** speaker labels 96.7% (91.7% similar voices); live wait 9.1 s median, 16.5% words
-  wrong; 15-min file 28.7% (varies run to run, see below).
-- **Built but not yet tested on the phone:** Settings groups; bubble hide → "Tap to show" notification; OpenRouter key and
-  "where AI requests go" (tick several); Remind me (Clock app); keyboard skips password/OTP boxes.
-- **In progress:** look-and-feel top 10 (ROADMAP "Next build").
-- **Open investigations:** why the 15-min file's text differs run to run (whisper.cpp temperature fallback suspected).
-- **Waiting on the founder:** bubble switch back on; OpenRouter key; Tailscale on Mac + phone; 20-minute hand check;
-  listen-check of speaker labels; Google Translate Hinglish check.
+- **Installed on the founder's phone:** build 7 (0.7, tag `build-7`, commit 6876b42), personal flavour.
+- **Pushed to GitHub:** up to `738a118`. Later commits are local until the founder asks to push.
+- **Last phone test (build 693bdaf):** speaker labels 96.7% (91.7% similar voices); live wait 9.1 s median, 16.5% words
+  wrong; 15-min file 28.7% (varies run to run).
+- **Built, not yet tested on the phone (build 7):** Settings groups; bubble hide → "Tap to show"; OpenRouter key + "where AI
+  requests go"; Remind me; keyboard password/OTP guard; transitions, voice glow, fade-in, "All written", day headers,
+  swipe-right copy.
+- **Open investigation:** why the 15-min file's text differs run to run (whisper.cpp temperature fallback suspected; a Mac
+  agent was started on 10 Oct; result not yet recorded).
+- **Waiting on the founder:** turn the bubble back on; OpenRouter key; back up the signing key; OK to delete ~2.4 GB of old
+  test APKs in `phonetest/` and `APK/` (check `phonetest/` for audio first); Tailscale; hand check; speaker listen-check.
 
 ---
 

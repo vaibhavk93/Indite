@@ -83,6 +83,25 @@ Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr
 | Speak the translation aloud; live interpreter | **Parked** (14–15 s per turn; waits for 3 real asks) |
 | iPhone app | **Not now** (trigger: 5+ tester asks) |
 
+### Also open (found in a full review of the chat, 10 Oct)
+
+| Item | Status |
+|---|---|
+| Accessibility shortcut should toggle the floating mic | Not possible on Android (it only controls the accessibility setting); Settings explains it; build 7 |
+| "Where AI requests go": tick several | **Built** (build 7) |
+| OpenRouter key, answers saved inside indite | **Built** (build 7, personal); waiting for the founder's key |
+| Reminders / timers | **Built** as "Remind me" → Clock app (indite stores nothing); build 7 |
+| Wispr Flow comparison | Done: password/OTP guard built; snippets later; no accounts, streaks or per-app tone |
+| Mac web app: restarting still starts jobs from scratch (PLAN §5) | Next (web) |
+| Check whether Sarvam Edge / Gboard already do Roman Hinglish | Research, before testers |
+| Repo has no LICENSE (public repo) | Founder decision, before testers |
+| Home-screen widget / quick tile for dictation | Re-assess (dictation now exists) |
+| Native Mac app vs the web app | Not assessed |
+| Restore notes on a new phone (export exists, import doesn't) | Unreviewed idea |
+| Battery use of the always-on bubble / keyboard | Unreviewed; measure before testers |
+| One setup checklist for all permissions | Unreviewed; fits the try-it onboarding |
+| Play internal testing track for testers (instead of sideloaded APKs) | Unreviewed |
+
 ## Now
 
 1. **Phone test of the latest build** (running): speaker labels per sentence (goal: well above 52%), 15-min file back to ~25%
