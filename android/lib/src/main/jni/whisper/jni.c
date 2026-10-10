@@ -107,6 +107,18 @@ static void asset_close(void *ctx) {
     AAsset_close((AAsset *) ctx);
 }
 
+/*
+ * indite: flash attention off. With it on (the default), the decoder reads padded rows of the audio cache that the
+ * encoder never wrote for short audio windows, so a piece's text depended on which pieces ran before it (run-to-run
+ * differences, some pieces losing most of their text). Mac test 2026-10-10: 15-min file 27.6% -> 25.1% words wrong,
+ * repeatable. Phone speed impact: measure.
+ */
+static struct whisper_context_params indite_params(void) {
+    struct whisper_context_params p = whisper_context_default_params();
+    p.flash_attn = false;
+    return p;
+}
+
 static struct whisper_context *whisper_init_from_asset(
         JNIEnv *env,
         jobject assetManager,
@@ -127,7 +139,7 @@ static struct whisper_context *whisper_init_from_asset(
             .close = &asset_close
     };
 
-    return whisper_init_with_params(&loader, whisper_context_default_params());
+    return whisper_init_with_params(&loader, indite_params());
 }
 
 JNIEXPORT jlong JNICALL
@@ -147,7 +159,7 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_initContext(
     UNUSED(thiz);
     struct whisper_context *context = NULL;
     const char *model_path_chars = (*env)->GetStringUTFChars(env, model_path_str, NULL);
-    context = whisper_init_from_file_with_params(model_path_chars, whisper_context_default_params());
+    context = whisper_init_from_file_with_params(model_path_chars, indite_params());
     (*env)->ReleaseStringUTFChars(env, model_path_str, model_path_chars);
     return (jlong) context;
 }

@@ -5,12 +5,14 @@ import java.io.BufferedReader
 import java.io.FileReader
 
 object WhisperCpuConfig {
-    val preferredThreadCount: Int
+    // Worked out once (not on every call): a changing thread count slightly changed the text between runs.
+    val preferredThreadCount: Int by lazy {
         // Always use at least 2 threads. indite: when every core is the same (budget phones with 8 identical
         // cores, emulators) the fast-core count is 0; use up to 4 cores instead of falling back to 2.
-        get() = CpuInfo.getHighPerfCpuCount()
+        CpuInfo.getHighPerfCpuCount()
             .let { if (it == 0) Runtime.getRuntime().availableProcessors().coerceAtMost(4) else it }
             .coerceAtLeast(2)
+    }
 }
 
 private class CpuInfo(private val lines: List<String>) {
