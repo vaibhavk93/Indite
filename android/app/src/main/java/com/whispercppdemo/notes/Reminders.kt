@@ -26,7 +26,7 @@ data class Reminder(val id: Long, val noteId: String?, val text: String, val at:
 
 object Reminders {
     val list = MutableStateFlow<List<Reminder>>(emptyList())
-    private const val CHANNEL = "reminders"
+    private const val CHANNEL = "reminders_alarm"  // new id: a channel's sound can't change once created
 
     private fun file(c: Context) = File(c.filesDir, "reminders.json")
 
@@ -75,13 +75,26 @@ object Reminders {
 
     fun notify(c: Context, r: Reminder) {
         val nm = c.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(CHANNEL, "Reminders", NotificationManager.IMPORTANCE_HIGH))
+        // A soft chime with gentle double-buzz nudges. Default: notification volume (silent mode respected, so no loud ring
+        // in a meeting). Optional "ring like an alarm": alarm volume, even on silent, repeating until you respond.
+        val alarm = ringLikeAlarm(c)
+        val channel = if (alarm) CHANNEL_ALARM else CHANNEL
+        nm.deleteNotificationChannel("reminders")  // the first version's plain channel
+        nm.createNotificationChannel(NotificationChannel(channel, if (alarm) "Reminders (alarm)" else "Reminders",
+            NotificationManager.IMPORTANCE_HIGH).apply {
+            setSound(android.net.Uri.parse("android.resource://${c.packageName}/${R.raw.reminder}"),
+                android.media.AudioAttributes.Builder()
+                    .setUsage(if (alarm) android.media.AudioAttributes.USAGE_ALARM else android.media.AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 180, 120, 180, 700, 180, 120, 180, 700, 180, 120, 180)
+        })
         val open = PendingIntent.getActivity(c, r.id.toInt(), Intent(c, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .apply { r.noteId?.let { putExtra(MainActivity.EXTRA_NOTE, it) } }, PendingIntent.FLAG_IMMUTABLE)
         fun action(a: String) = PendingIntent.getBroadcast(c, (r.id + a.hashCode()).toInt(),
             Intent(c, ReminderReceiver::class.java).setAction(a).putExtra("id", r.id), PendingIntent.FLAG_IMMUTABLE)
-        nm.notify(r.id.toInt(), Notification.Builder(c, CHANNEL)
+        nm.notify(r.id.toInt(), Notification.Builder(c, channel)
             .setSmallIcon(R.drawable.ic_mic)
             .setContentTitle("Reminder")
             .setContentText(r.text)
@@ -90,8 +103,12 @@ object Reminders {
             .setCategory(Notification.CATEGORY_REMINDER)
             .addAction(Notification.Action.Builder(null, "Done", action(DONE)).build())
             .addAction(Notification.Action.Builder(null, "Snooze 1 h", action(SNOOZE)).build())
-            .build())
+            .build().apply { if (alarm) flags = flags or Notification.FLAG_INSISTENT })  // repeats until seen
     }
+
+    private const val CHANNEL_ALARM = "reminders_ring"
+    fun ringLikeAlarm(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("reminderAlarm", false)
+    fun setRingLikeAlarm(c: Context, on: Boolean) = c.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putBoolean("reminderAlarm", on).apply()
 
     const val DONE = "done"
     const val SNOOZE = "snooze"

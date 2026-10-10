@@ -17,6 +17,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -393,17 +394,38 @@ fun SettingsScreen(onBack: () -> Unit) {
                     LaunchedEffect(Unit) { com.whispercppdemo.notes.Reminders.load(context) }
                     if (rs.isEmpty()) Text("None. Use \"Remind me\" on a note or a task.", style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    rs.forEach { r ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    var confirm by remember { mutableStateOf<com.whispercppdemo.notes.Reminder?>(null) }
+                    confirm?.let { r -> AlertDialog(
+                        onDismissRequest = { confirm = null },
+                        title = { Text("Delete this reminder?") },
+                        text = { Text(r.text, maxLines = 4) },
+                        confirmButton = { TextButton(onClick = { com.whispercppdemo.notes.Reminders.remove(context, r.id); confirm = null }) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error) } },
+                        dismissButton = { TextButton(onClick = { confirm = null }) { Text("Keep") } },
+                    ) }
+                    rs.forEachIndexed { k, r ->
+                        if (k > 0) androidx.compose.material3.Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f))
+                        Row(Modifier.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(android.text.format.DateUtils.formatDateTime(context, r.at, android.text.format.DateUtils.FORMAT_SHOW_TIME or
                                     android.text.format.DateUtils.FORMAT_SHOW_WEEKDAY or android.text.format.DateUtils.FORMAT_SHOW_DATE),
                                     style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                 Text(r.text, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
                             }
-                            IconButton(onClick = { com.whispercppdemo.notes.Reminders.remove(context, r.id) }) {
-                                Icon(Icons.Filled.Close, contentDescription = "Delete reminder") }
+                            IconButton(onClick = { confirm = r }) {
+                                Icon(Icons.Filled.Delete, contentDescription = "Delete reminder", tint = MaterialTheme.colorScheme.error) }
                         }
+                    }
+                    var ring by remember { mutableStateOf(com.whispercppdemo.notes.Reminders.ringLikeAlarm(context)) }
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Ring like an alarm until I respond", style = MaterialTheme.typography.bodyLarge)
+                            Text("Alarm volume, even on silent. Off: a soft chime at notification volume.",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        androidx.compose.material3.Switch(checked = ring, onCheckedChange = {
+                            ring = it; com.whispercppdemo.notes.Reminders.setRingLikeAlarm(context, it)
+                        })
                     }
                     if (!com.whispercppdemo.notes.Reminders.canBeExact(context)) TextButton(onClick = {
                         runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,

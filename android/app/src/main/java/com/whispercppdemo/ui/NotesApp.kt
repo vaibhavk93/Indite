@@ -117,6 +117,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.semantics.customActions
@@ -297,7 +304,8 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(BRAND, style = MaterialTheme.typography.displaySmall) },  // same look as before, but pinned (doesn't scroll away)
+                // same weight and look as before, a bit smaller, pinned (doesn't scroll away)
+                title = { Text(BRAND, style = MaterialTheme.typography.displaySmall.copy(fontSize = 30.sp, lineHeight = 34.sp)) },
                 actions = {
                     if (problem == null) TextButton(onClick = onOpenFile) {
                         Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -319,7 +327,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Text("Speak in Hindi, English or both. Get it in writing.", Modifier.padding(bottom = 6.dp),
+                Text("Speak in Hindi, English or both. Get it in writing.", Modifier.offset(y = (-6).dp),  // tight under the title
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (problem != null) item { Banner(problem, error = true) }
@@ -399,7 +407,7 @@ private fun SearchField(query: String, onChange: (String) -> Unit) = TextField(
     shape = RoundedCornerShape(16.dp),
     colors = TextFieldDefaults.colors(
         focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-        focusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant, unfocusedIndicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+        focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, disabledIndicatorColor = Color.Transparent,
     ),
 )
 
@@ -494,12 +502,16 @@ private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare
                 }
                 Box {
                     DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                        if (ready) DropdownMenuItem(text = { Text("Copy text") }, onClick = { menu = false; onCopy() })
-                        if (ready) DropdownMenuItem(text = { Text("Share") }, onClick = { menu = false; onShare() })
-                        DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
-                        DropdownMenuItem(text = { Text("Remind me") }, onClick = { menu = false; onRemind() })
+                        if (ready) DropdownMenuItem(text = { Text("Copy text") }, onClick = { menu = false; onCopy() },
+                            leadingIcon = { Icon(painterResource(R.drawable.ic_copy), null, Modifier.size(20.dp)) })
+                        if (ready) DropdownMenuItem(text = { Text("Share") }, onClick = { menu = false; onShare() },
+                            leadingIcon = { Icon(Icons.Filled.Share, null) })
+                        DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() }, leadingIcon = { Icon(Icons.Filled.Edit, null) })
+                        DropdownMenuItem(text = { Text("Remind me") }, onClick = { menu = false; onRemind() },
+                            leadingIcon = { Icon(Icons.Filled.Notifications, null) })
                         if (!note.recording) DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            onClick = { menu = false; onDelete() })
+                            onClick = { menu = false; onDelete() },
+                            leadingIcon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) })
                     }
                 }
             }
@@ -663,6 +675,16 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var pickingNotes by remember { mutableStateOf(false) }
     var pickingLanguage by remember { mutableStateOf(false) }
     var reminding by remember { mutableStateOf(false) }
+    var cancelReminder by remember { mutableStateOf<com.whispercppdemo.notes.Reminder?>(null) }
+    cancelReminder?.let { r -> AlertDialog(
+        onDismissRequest = { cancelReminder = null },
+        title = { Text("Cancel this reminder?") },
+        text = { Text(DateUtils.formatDateTime(context, r.at, DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_SHOW_DATE)) },
+        confirmButton = { TextButton(onClick = { cancelReminder = null
+            AppScope.launch(Dispatchers.IO) { com.whispercppdemo.notes.Reminders.remove(context, r.id) } }) {
+            Text("Cancel reminder", color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = { cancelReminder = null }) { Text("Keep") } },
+    ) }
     var choosing by remember { mutableStateOf<Triple<String, String, List<String>>?>(null) }
     var warnFirst by remember { mutableStateOf<Pair<String, String>?>(null) }
     var failed by remember { mutableStateOf<Triple<String, String, String>?>(null) }  // card, prompt, error
@@ -898,17 +920,20 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                     }
                     IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "More options") }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        // icons on every item (Material 3: all or none), same set as the card's long-press menu
                         if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Ask my AI…") },
-                            onClick = { menu = false; asking = true })
+                            onClick = { menu = false; asking = true }, leadingIcon = { Icon(Icons.Filled.Star, null) })
                         if (note.done && note.pieces.size >= 2) DropdownMenuItem(
                             text = { Text(if (!note.labelled) "Who spoke?" else "Label speakers again") },
-                            onClick = { menu = false; whoSpoke = true })
-                        DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true })
-                        DropdownMenuItem(text = { Text("Remind me") }, onClick = { menu = false; reminding = true })
+                            onClick = { menu = false; whoSpoke = true }, leadingIcon = { Icon(Icons.Filled.Person, null) })
+                        DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renaming = true }, leadingIcon = { Icon(Icons.Filled.Edit, null) })
+                        DropdownMenuItem(text = { Text("Remind me") }, onClick = { menu = false; reminding = true },
+                            leadingIcon = { Icon(Icons.Filled.Notifications, null) })
                         if (note.done && note.pieces.isNotEmpty()) DropdownMenuItem(text = { Text("Save as subtitles (.srt)") },
-                            onClick = { menu = false; exportSrt.launch("${note.name}.srt") })
+                            onClick = { menu = false; exportSrt.launch("${note.name}.srt") }, leadingIcon = { Icon(Icons.Filled.Share, null) })
                         DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                            onClick = { menu = false; confirmDelete = true })
+                            onClick = { menu = false; confirmDelete = true },
+                            leadingIcon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) })
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -932,7 +957,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                             Row(Modifier.padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text("⏰  " + DateUtils.formatDateTime(context, r.at, DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_SHOW_DATE),
                                     style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                IconButton(onClick = { AppScope.launch(Dispatchers.IO) { com.whispercppdemo.notes.Reminders.remove(context, r.id) } }) {
+                                IconButton(onClick = { cancelReminder = r }) {
                                     Icon(Icons.Filled.Close, contentDescription = "Cancel reminder", modifier = Modifier.size(18.dp))
                                 }
                             }
@@ -1108,6 +1133,13 @@ private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, 
                     Text(if (playing) "  Stop" else "  Play")
                 }
             }
+            // Undo / Redo of your edits in this sheet (a step is saved after you pause typing)
+            val steps = remember(note.id, i) { mutableStateListOf(note.text(i)) }
+            var at by remember(note.id, i) { mutableStateOf(0) }
+            LaunchedEffect(text) {
+                delay(700)
+                if (text != steps[at]) { while (steps.size > at + 1) steps.removeAt(steps.size - 1); steps.add(text); at = steps.size - 1 }
+            }
             OutlinedTextField(value = text, onValueChange = { text = it },
                 modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Text from ${clock(p.startSec)}, editable" },
                 textStyle = MaterialTheme.typography.bodyLarge, shape = RoundedCornerShape(14.dp), minLines = 3)
@@ -1125,14 +1157,19 @@ private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, 
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { at -= 1; text = steps[at] }, enabled = at > 0) { Text("↶ Undo") }
+                TextButton(onClick = { at += 1; text = steps[at] }, enabled = at < steps.size - 1) { Text("Redo ↷") }
+                Spacer(Modifier.weight(1f))
+                AnimatedVisibility(edited, enter = fadeIn(), exit = fadeOut()) {
+                    TextButton(onClick = { text = note.auto(i) }) { Text("Back to original") }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedButton(onClick = onCopy) { Text("Copy") }
                 // Delete this paragraph's text (hidden from the note, copy and export; the audio stays; Undo brings it back)
                 if (text.isNotEmpty()) OutlinedButton(onClick = { text = ""; onDeleted(); onClose() }) {
-                    Text("Delete paragraph", color = MaterialTheme.colorScheme.error) }
-                AnimatedVisibility(edited, enter = fadeIn(), exit = fadeOut()) {
-                    OutlinedButton(onClick = { text = note.auto(i) }) { Text("Undo my edit") }
-                }
+                    Text("Delete", color = MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.weight(1f))
                 Button(onClick = onClose) { Text("Done") }
             }
