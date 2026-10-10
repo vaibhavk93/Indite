@@ -16,4 +16,8 @@ class AiParseTest {
     @Test fun actionRowsParseAndSkipOtherLines() = assertEquals(
         listOf(Triple("Deck bhejna", "Priya", "Monday"), Triple("Vendor ko call", "not said", "not said")),
         actionRows("Here you go:\n1. Deck bhejna | Priya | Monday\n- Vendor ko call | | not said"))
+
+    @Test fun actionRowsFromMarkdownTable() = assertEquals(
+        listOf(Triple("Deck bhejna", "Priya", "Monday")),
+        actionRows("| Task | Who | By when |\n|---|---|---|\n| **Deck bhejna** | Priya | Monday |"))
 }

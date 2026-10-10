@@ -142,8 +142,9 @@ private val AskPrompts = listOf(
     // needs a back-and-forth, so only through the user's own AI app (not the Mac route)
     "Brain dump + questions" to "Before organising, ask me up to 3 short questions that would most improve the result, one at a time, " +
         "and wait for each answer. Then organise it as: themes, ideas under each, open questions, next steps. Don't add ideas I didn't say.",
-    "Meeting notes" to "Turn this meeting transcript into notes with these headings: Decisions, Action items (who, what, by when), " +
-        "Open questions, Key points. Short bullets. If a person or date is not said, write 'not said'. Don't invent decisions.",
+    "Meeting notes" to "Turn this meeting transcript into notes with these headings: Decisions, Action items, Open questions, " +
+        "Key points. Short bullets. Under Action items write one per line, exactly as: task | who | by when (plain lines, not a " +
+        "table). If a person or date is not said, write 'not said'. Don't invent decisions or tasks.",
     "Lecture notes" to "Turn this lecture transcript into study notes: the main topics as headings, key ideas and definitions as bullets, " +
         "examples, and 5 quick revision questions at the end.",
     "Action items" to "List every task, promise or follow-up in this, one per line, exactly as: task | who | by when. Write 'not said' " +
@@ -545,11 +546,19 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var asking by remember { mutableStateOf(false) }
     var pickingNotes by remember { mutableStateOf(false) }
     var pickingLanguage by remember { mutableStateOf(false) }
-    var askedAt by remember { mutableStateOf(0L) }
     var whoSpoke by remember { mutableStateOf(false) }
     var renamingSpeaker by remember { mutableStateOf<Int?>(null) }
     var labelling by remember { mutableStateOf<String?>(null) }
-    var awaitingReply by rememberSaveable(note.id) { mutableStateOf<String?>(null) }  // the prompt the user just sent to their AI
+    // The request the user just sent to their AI app; kept in prefs so it survives leaving the note or the app being killed.
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    var awaitingReply by remember(note.id) { mutableStateOf(prefs.getString("awaiting:${note.id}", null)) }
+    var askedAt by remember(note.id) { mutableStateOf(prefs.getLong("awaitingAt:${note.id}", 0L)) }
+    LaunchedEffect(awaitingReply, askedAt) {
+        prefs.edit().apply {
+            if (awaitingReply == null) remove("awaiting:${note.id}").remove("awaitingAt:${note.id}")
+            else putString("awaiting:${note.id}", awaitingReply).putLong("awaitingAt:${note.id}", askedAt)
+        }.apply()
+    }
     val exportSrt = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-subrip")) { uri ->
         if (uri != null) AppScope.launch(Dispatchers.IO) {
             context.contentResolver.openOutputStream(uri)?.use { it.write(Notes.srt(note).toByteArray()) }
@@ -931,12 +940,14 @@ private fun AiCard(r: com.whispercppdemo.notes.AiReply, onCopy: () -> Unit, onDe
                 Text("  from your AI", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             val context = LocalContext.current
-            val rows = if (r.label == "Action items") actionRows(r.text) else emptyList()
+            val rows = if (r.label == "Action items" || r.label == "Meeting notes") actionRows(r.text) else emptyList()
             if (r.label == "Practice answer") Text(practiceScores(r.text)?.let { s ->
                 "Structure ${s[0]} · Clarity ${s[1]} · Numbers ${s[2]} · Concise ${s[3]} · Total ${s.sum()}/40"
             } ?: "Your AI didn't give scores this time.", style = MaterialTheme.typography.titleSmall)
-            if (rows.isEmpty()) Text(r.text, style = MaterialTheme.typography.bodyMedium, maxLines = if (open) Int.MAX_VALUE else 4,
-                overflow = TextOverflow.Ellipsis)
+            // Action items: just the rows. Meeting notes: decisions, questions and key points as text, then the task rows.
+            val rest = if (rows.isEmpty()) r.text else r.text.lines().filter { !isActionLine(it) }.joinToString("\n").trim()
+            if (r.label != "Action items" || rows.isEmpty()) Text(rest, style = MaterialTheme.typography.bodyMedium,
+                maxLines = if (open) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis)
             // Action items: one row per task, handed to the user's own calendar or task app (indite is not a to-do app)
             rows.take(if (open) rows.size else 3).forEach { (task, who, by) ->
                 Column(Modifier.padding(top = 4.dp)) {
@@ -1031,10 +1042,19 @@ object Player {
 }
 
 /** "task | who | by when" lines from an Action items reply; other lines are ignored (the card shows plain text if none parse). */
-internal fun actionRows(text: String): List<Triple<String, String, String>> = text.lines().mapNotNull { line ->
-    val parts = line.trim().trimStart('-', '*', '•', ' ').replace(Regex("^\\d+[.)]\\s*"), "").split("|").map { it.trim() }
-    if (parts.size == 3 && parts[0].isNotEmpty()) Triple(parts[0], parts[1].ifEmpty { "not said" }, parts[2].ifEmpty { "not said" }) else null
+internal fun actionRows(text: String): List<Triple<String, String, String>> = text.lines().mapNotNull(::actionRow)
+
+/** One "task | who | by when" line; also a markdown table row ("| task | who | when |"). Header and --- lines are skipped. */
+private fun actionRow(line: String): Triple<String, String, String>? {
+    val parts = line.trim().trimStart('-', '*', '•', ' ').replace(Regex("^\\d+[.)]\\s*"), "").trim().removePrefix("|").removeSuffix("|")
+        .split("|").map { it.trim().trim('*') }
+    if (parts.size != 3 || parts[0].isEmpty() || parts.all { it.matches(Regex(":?-{2,}:?")) }) return null
+    if (parts[0].equals("task", true) && parts[1].equals("who", true)) return null  // table header
+    return Triple(parts[0], parts[1].ifEmpty { "not said" }, parts[2].ifEmpty { "not said" })
 }
+
+private fun isActionLine(line: String) = actionRow(line) != null || line.trim().matches(Regex("\\|?\\s*:?-{2,}.*")) ||
+    line.replace(" ", "").equals("|task|who|bywhen|", true)
 
 /** "SCORES: structure=7 clarity=6 numbers=4 concise=8" (markdown around it is fine) -> four 1-10 scores, or null. */
 internal fun practiceScores(text: String): List<Int>? {
