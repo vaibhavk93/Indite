@@ -64,6 +64,7 @@ object Recording {
     /** Id of the note being recorded, or null. Derived from the recorder itself, so it can't go stale. */
     val id: String? get() = recorder?.takeIf { it.isAlive }?.id
     val active get() = id != null
+    val listening get() = recorder?.listening == true
 
     /** `simulate`: a 16 kHz PCM file played into the recorder in real time instead of the mic (automated tests only). */
     fun start(id: String, vadPath: String, simulate: File? = null) {

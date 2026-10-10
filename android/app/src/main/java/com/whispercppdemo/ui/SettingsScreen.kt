@@ -205,7 +205,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         "`tailscale serve --bg --set-path /api/ask http://127.0.0.1:8000/api/ask`, then paste the ts.net address and the token indite prints.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(url, { url = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
-                        label = { Text("Mac address, e.g. https://my-mac.tail1234.ts.net") })
+                        label = { Text("Your Mac's Tailscale link, e.g. https://my-mac.tail1234.ts.net") })
                     OutlinedTextField(token, { token = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
                         label = { Text("Token from the Mac") })
                     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

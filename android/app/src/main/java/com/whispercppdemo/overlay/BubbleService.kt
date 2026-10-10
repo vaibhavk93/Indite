@@ -166,8 +166,14 @@ class BubbleService : Service() {
     }
 }
 
-/** Invisible, opens for a moment so Android lets indite start the microphone, then closes. */
+/**
+ * Invisible, opens for a moment so Android lets indite start the microphone, then closes.
+ * It must stay open until the mic is really capturing: Android feeds silence to a mic opened after the app's
+ * screen is gone (phone test 2026-10-10: every bubble dictation came out "No speech found").
+ */
 class StartMicActivity : Activity() {
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -176,7 +182,17 @@ class StartMicActivity : Activity() {
             Notes.init(this)
             val stamp = java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.getDefault()).format(java.util.Date())
             BubbleService.pending += NoteService.startRecording(this, name = "Dictation, $stamp")
+            val until = System.currentTimeMillis() + 3000
+            fun check() {
+                if (Recording.listening || System.currentTimeMillis() > until) close() else handler.postDelayed(::check, 50)
+            }
+            check()
+            return
         }
+        close()
+    }
+
+    private fun close() {
         finish()
         overridePendingTransition(0, 0)
     }

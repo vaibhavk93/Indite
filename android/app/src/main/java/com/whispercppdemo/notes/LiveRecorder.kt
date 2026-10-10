@@ -32,6 +32,10 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
 
     val isAlive get() = thread.isAlive
 
+    /** True once the microphone is actually capturing. */
+    @Volatile var listening = false
+        private set
+
     @SuppressLint("MissingPermission")  // the activity asks for the mic before starting
     private fun run() {
         // Audio priority and a 5 s buffer: the engine uses every big core, and a dropped buffer is lost speech.
@@ -54,6 +58,7 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
         var synced = 0
         try {
             rec?.startRecording()
+            listening = true
             while (running) {
                 var got = 0
                 if (sim != null) {  // test mode: a file, paced like a real microphone
