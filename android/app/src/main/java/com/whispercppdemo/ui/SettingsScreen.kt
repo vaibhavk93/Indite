@@ -420,7 +420,8 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
             if (shown == "about") item {
                 Section("About") {
-                    Text("indite ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyLarge)
+                    Text("indite ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE} · ${BuildConfig.GIT} · ${BuildConfig.FLAVOR})",
+                        style = MaterialTheme.typography.bodyLarge)
                     Text("Speech model: Oriserve Hindi2Hinglish-Apex (Apache-2.0), run with whisper.cpp (MIT). " +
                         "Speech detection: Silero VAD (MIT).", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)

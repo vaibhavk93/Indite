@@ -70,6 +70,24 @@ Files that are **not in git** but are needed to build:
 | `sherpa-onnx-1.13.8.aar` | `android/app/libs/` | link in `android/app/build.gradle` |
 | Signing key | `~/.indite/indite-testers.keystore` | **irreplaceable**: same key = updates install over the old app |
 
+Model fingerprints (SHA-256), so a rebuild uses exactly the same files:
+| File | SHA-256 |
+|---|---|
+| `ggml-apex-q5_k.bin` | `6f7ab66782c3969cbfc500bc88c43f77be66838937cccb622d184638c62edb9b` |
+| `ggml-silero.bin` | `2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987` |
+| `titanet_small.onnx` | `ad4a1802485d8b34c722d2a9d04249662f2ece5d28a7a039063ca22f515a789e` |
+
+**Keeping old versions (critic-reviewed 10 Oct):**
+- Every build installed on a phone: bump `versionCode`/`versionName` in `android/app/build.gradle`, then
+  `git tag build-<versionCode>`. Settings → About shows "build N · git hash" so you can see what's on the phone.
+- Keep **one** last-known-good personal APK outside the repo: `~/.indite/apks/` (disk is tight; tags cover older ones).
+- **The signing key `~/.indite/indite-testers.keystore` is the one file that can't be replaced.** Founder keeps a copy
+  (and its password, `android`) in a password manager or a private, unshared Drive folder. Optional: a copy of the
+  574 MB model there too.
+- Rollback: Settings → Export all notes → `adb install -r -d <old.apk>` → if notes don't load, uninstall, reinstall,
+  re-import the text. Notes have no format version yet, so rollback isn't guaranteed; add a version check when the
+  note format changes.
+
 Testing on the phone (USB debugging on, phone untouched while it runs):
 ```sh
 cd bench_synth

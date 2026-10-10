@@ -11,8 +11,10 @@ android {
         applicationId "com.indite.app"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "0.1"
+        // Bump both for every build installed on a phone (and tag it in git), so you can tell which one is installed.
+        versionCode 7
+        versionName "0.7"
+        buildConfigField "String", "GIT", "\"${'git rev-parse --short HEAD'.execute([], rootDir).text.trim()}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
