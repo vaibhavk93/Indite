@@ -117,6 +117,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.rememberScrollState
@@ -163,6 +166,9 @@ private val AskPrompts = listOf(
 )
 
 private val Gutter = 20.dp
+
+/** App name as shown in the top bar (the brand is lowercase everywhere else). */
+private const val BRAND = "indite"
 
 @Composable
 fun NotesApp(openRequest: String?, onOpenHandled: () -> Unit, onOpenFile: () -> Unit, onRecord: () -> Unit, onStop: () -> Unit) {
@@ -251,7 +257,7 @@ private fun Promise(text: String) = Row(verticalAlignment = Alignment.Top) {
 
 // ---------------------------------------------------------------- Home
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFile: () -> Unit, onRecord: () -> Unit,
                        onSettings: () -> Unit, onOpen: (String) -> Unit) {
@@ -264,6 +270,24 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
     val hidden = remember { mutableStateListOf<String>() }  // swiped away, waiting for Undo
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
+    val tipPrefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    var showTip by remember { mutableStateOf(!tipPrefs.getBoolean("tipGestures", false)) }
+    var renamingNote by remember { mutableStateOf<Note?>(null) }
+    renamingNote?.let { n -> RenameDialog(n.name, onDone = { renamingNote = null; if (it != null) Notes.rename(n.id, it) }) }
+    fun copyNote(n: Note) {
+        context.getSystemService(android.content.ClipboardManager::class.java)
+            .setPrimaryClip(android.content.ClipData.newPlainText("indite", n.allText()))
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        scope.launch { snackbar.showSnackbar("Copied") }
+    }
+    fun deleteWithUndo(n: Note) {
+        hidden += n.id
+        scope.launch {
+            val r = snackbar.showSnackbar("Note deleted", actionLabel = "Undo", withDismissAction = true)
+            if (r == SnackbarResult.ActionPerformed) hidden -= n.id
+            else { withContext(Dispatchers.IO) { Notes.delete(n.id) }; hidden -= n.id }
+        }
+    }
     val shown = notes.filter { it.id !in hidden }.filter { n ->
         query.isBlank() || n.name.contains(query, true) || n.pieces.indices.any { n.text(it).contains(query, true) }
     }
@@ -271,7 +295,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {},
+                title = { Text(BRAND, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold) },  // pinned, doesn't scroll away
                 actions = {
                     if (problem == null) TextButton(onClick = onOpenFile) {
                         Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -290,14 +314,11 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(pad),
             contentPadding = PaddingValues(start = Gutter, end = Gutter, bottom = 96.dp),  // room for the Record button
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-                Column(Modifier.padding(bottom = 6.dp)) {
-                    Text("indite", style = MaterialTheme.typography.displaySmall)
-                    Text("Speak in Hindi, English or both. Get it in writing.", style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                Text("Speak in Hindi, English or both. Get it in writing.", Modifier.padding(bottom = 6.dp),
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (problem != null) item { Banner(problem, error = true) }
             else if (lowRam) item { Banner("This phone has under 6 GB of memory. Long recordings may be slow.", error = false) }
@@ -308,11 +329,30 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                 Text("Nothing matches \"$query\".", Modifier.padding(vertical = 24.dp), style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            // Gestures aren't obvious: say so once, after the first finished note (the Copy button and long-press work too).
+            if (showTip && notes.any { it.done && it.pieces.isNotEmpty() }) item(key = "tip") {
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Tip: swipe a note right to copy, left to delete. Press and hold for more.", Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        IconButton(onClick = { showTip = false; tipPrefs.edit().putBoolean("tipGestures", true).apply() }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Dismiss tip", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                    }
+                }
+            }
             val byDay = shown.groupBy { dayLabel(it.created) }
             byDay.forEach { (day, dayNotes) ->
-            item(key = "day:$day") {
-                Text(day, Modifier.padding(top = 14.dp, bottom = 2.dp), style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary)
+            // The day stays pinned at the top while you scroll its notes; the next day pushes it away.
+            stickyHeader(key = "day:$day") {
+                Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(top = 10.dp, bottom = 4.dp)) {
+                    val today = day == "Today"
+                    Surface(shape = CircleShape, color = if (today) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant) {
+                        Text(day, Modifier.padding(horizontal = 12.dp, vertical = 5.dp), style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (today) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
             items(dayNotes, key = { it.id }) { note ->
                 val dismiss = rememberDismissState(confirmValueChange = {
@@ -323,29 +363,22 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         scope.launch { snackbar.showSnackbar("Copied") }
                         false
-                    } else if (it == DismissValue.DismissedToStart && !note.recording) {
-                        hidden += note.id
-                        scope.launch {
-                            val r = snackbar.showSnackbar("Note deleted", actionLabel = "Undo", withDismissAction = true)
-                            if (r == SnackbarResult.ActionPerformed) hidden -= note.id
-                            else { withContext(Dispatchers.IO) { Notes.delete(note.id) }; hidden -= note.id }
-                        }
-                        true
-                    } else false
+                    } else if (it == DismissValue.DismissedToStart && !note.recording) { deleteWithUndo(note); true } else false
                 })
                 SwipeToDismiss(
                     state = dismiss,
                     directions = setOf(DismissDirection.EndToStart, DismissDirection.StartToEnd),
                     background = {
                         val copying = dismiss.dismissDirection == DismissDirection.StartToEnd
-                        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp))
+                        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp))
                             .background(if (copying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer)
                             .padding(horizontal = 24.dp), contentAlignment = if (copying) Alignment.CenterStart else Alignment.CenterEnd) {
                             Text(if (copying) "Copy" else "Delete", style = MaterialTheme.typography.labelLarge,
                                 color = if (copying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer)
                         }
                     },
-                    dismissContent = { NoteRow(note) { onOpen(note.id) } },
+                    dismissContent = { NoteRow(note, onClick = { onOpen(note.id) }, onCopy = { copyNote(note) },
+                        onShare = { share(context, note.allText()) }, onRename = { renamingNote = note }, onDelete = { deleteWithUndo(note) }) },
                 )
             }
             }
@@ -427,18 +460,43 @@ private fun StatusLine(text: String, working: Boolean) = Column(Modifier.animate
 }
 
 @Composable
-private fun NoteRow(note: Note, onClick: () -> Unit) {
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit) {
     val context = LocalContext.current
-    // A plain row with a hairline under it (boxed cards everywhere read as "template")
+    val haptics = LocalHapticFeedback.current
+    var menu by remember { mutableStateOf(false) }
+    val ready = note.done && note.pieces.isNotEmpty()
+    // A card with a visible border (fill colours alone are too close to the background: contrast 1.07).
     Surface(
-        shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.background,
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-            .clickable(role = Role.Button, onClickLabel = "Open note", onClick = onClick),
+        shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .combinedClickable(onClickLabel = "Open note", onLongClickLabel = "More actions", onClick = onClick,
+                onLongClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); menu = true })
+            .semantics {  // screen readers can't swipe: offer the same actions
+                customActions = listOfNotNull(
+                    if (ready) androidx.compose.ui.semantics.CustomAccessibilityAction("Copy text") { onCopy(); true } else null,
+                    androidx.compose.ui.semantics.CustomAccessibilityAction("Delete note") { onDelete(); true },
+                )
+            },
     ) {
-        Column(Modifier.padding(horizontal = 4.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(note.name, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (note.recording) LiveDot()
+                if (ready) IconButton(onClick = onCopy) {  // 48 dp touch target
+                    Icon(painterResource(R.drawable.ic_copy), contentDescription = "Copy text", tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp))
+                }
+                Box {
+                    DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                        if (ready) DropdownMenuItem(text = { Text("Copy text") }, onClick = { menu = false; onCopy() })
+                        if (ready) DropdownMenuItem(text = { Text("Share") }, onClick = { menu = false; onShare() })
+                        DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; onRename() })
+                        if (!note.recording) DropdownMenuItem(text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            onClick = { menu = false; onDelete() })
+                    }
+                }
             }
             when {
                 note.recording -> Text("Recording now", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
@@ -457,7 +515,6 @@ private fun NoteRow(note: Note, onClick: () -> Unit) {
                 if (note.done && toCheck > 0) Chip(if (toCheck == 1) "1 to check" else "$toCheck to check")
                 if (note.pending && !note.recording) Chip("Writing ${note.pieces.size}/${note.cuts.size}", accent = false)
             }
-            androidx.compose.material3.Divider(Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
         }
     }
 }
@@ -466,7 +523,10 @@ private fun NoteRow(note: Note, onClick: () -> Unit) {
 private fun dayLabel(t: Long): String = when {
     DateUtils.isToday(t) -> "Today"
     DateUtils.isToday(t + DateUtils.DAY_IN_MILLIS) -> "Yesterday"
-    else -> java.text.SimpleDateFormat("EEE d MMM", java.util.Locale.getDefault()).format(java.util.Date(t))
+    else -> java.text.SimpleDateFormat(  // the year only when it isn't this year (10 Oct 2025 ≠ 10 Oct 2026)
+        if (java.util.Calendar.getInstance().apply { timeInMillis = t }.get(java.util.Calendar.YEAR) ==
+            java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)) "EEE d MMM" else "EEE d MMM yyyy",
+        java.util.Locale.getDefault()).format(java.util.Date(t))
 }
 
 @Composable
@@ -808,7 +868,14 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     } }
     if (renaming) RenameDialog(note.name, onDone = { renaming = false; if (it != null) Notes.rename(note.id, it) })
     editing?.let { i -> if (i < note.pieces.size) EditSheet(note, i, playing == i, onPlay = { play(note.pieces[i]) },
-        onCopy = { copy(note.text(i).trim()) }, onClose = { editing = null }) }
+        onCopy = { copy(note.text(i).trim()) }, onClose = { editing = null },
+        onDeleted = {
+            val before = note.edits[i]  // what to restore on Undo (null = the model's text)
+            scope.launch {
+                if (snackbar.showSnackbar("Paragraph deleted", actionLabel = "Undo", withDismissAction = true) == SnackbarResult.ActionPerformed)
+                    withContext(Dispatchers.IO) { Notes.saveEdit(note.id, i, before) }
+            }
+        }) }
 
     Scaffold(
         topBar = {
@@ -997,7 +1064,7 @@ private fun Paragraph(note: Note, p: Piece, playing: Boolean, onClick: () -> Uni
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, onCopy: () -> Unit, onClose: () -> Unit) {
+private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, onCopy: () -> Unit, onDeleted: () -> Unit, onClose: () -> Unit) {
     val p = note.pieces[i]
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var text by remember(note.id, i) { mutableStateOf(note.text(i)) }
@@ -1041,7 +1108,8 @@ private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = onCopy) { Text("Copy") }
                 // Delete this paragraph's text (hidden from the note, copy and export; the audio stays; Undo brings it back)
-                if (text.isNotEmpty()) OutlinedButton(onClick = { text = "" }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                if (text.isNotEmpty()) OutlinedButton(onClick = { text = ""; onDeleted(); onClose() }) {
+                    Text("Delete paragraph", color = MaterialTheme.colorScheme.error) }
                 AnimatedVisibility(edited, enter = fadeIn(), exit = fadeOut()) {
                     OutlinedButton(onClick = { text = note.auto(i) }) { Text("Undo my edit") }
                 }
@@ -1094,6 +1162,10 @@ private fun AiCard(r: com.whispercppdemo.notes.AiReply, onCopy: () -> Unit, onDe
                             val i = Intent(Intent.ACTION_INSERT, android.provider.CalendarContract.Events.CONTENT_URI)
                                 .putExtra(android.provider.CalendarContract.Events.TITLE, task)
                                 .putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "From indite. Who: $who. By: $by")
+                            clearDate(by)?.let {  // "Monday", "12 Oct": an all-day event that day (you check it in the editor)
+                                i.putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, it)
+                                    .putExtra(android.provider.CalendarContract.EXTRA_EVENT_ALL_DAY, true)
+                            }
                             try { context.startActivity(i) } catch (e: android.content.ActivityNotFoundException) {
                                 Messages.flow.tryEmit("No calendar app found. Use Share instead.")
                             }
@@ -1101,7 +1173,7 @@ private fun AiCard(r: com.whispercppdemo.notes.AiReply, onCopy: () -> Unit, onDe
                         // Reminder = the phone's Clock app, pre-filled with the task; you pick the time there (indite stores nothing)
                         TextButton(onClick = {
                             val i = Intent(android.provider.AlarmClock.ACTION_SET_ALARM)
-                                .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, task)
+                                .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, if (by == "not said") task else "$task (by $by)")
                             try { context.startActivity(i) } catch (e: android.content.ActivityNotFoundException) {
                                 Messages.flow.tryEmit("No clock app found. Use Calendar instead.")
                             }
@@ -1261,4 +1333,28 @@ private fun sendToAi(context: Context, text: String, pkg: String?) {
         catch (e: android.content.ActivityNotFoundException) { Messages.flow.tryEmit("That AI app isn't installed. Pick one from the list.") }
     }
     context.startActivity(Intent.createChooser(send, "Send to your AI app"))
+}
+
+/**
+ * A clear English date in an action item's "by when": a weekday ("Monday" = the next Monday) or "12 Oct" / "Oct 12".
+ * Hinglish relative words ("kal", "parso") are left alone: a wrong date is worse than none.
+ */
+internal fun clearDate(by: String, now: java.util.Calendar = java.util.Calendar.getInstance()): Long? {
+    val t = by.lowercase()
+    val days = listOf("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday")
+    val c = now.clone() as java.util.Calendar
+    c.set(java.util.Calendar.HOUR_OF_DAY, 9); c.set(java.util.Calendar.MINUTE, 0); c.set(java.util.Calendar.SECOND, 0); c.set(java.util.Calendar.MILLISECOND, 0)
+    days.indexOfFirst { Regex("\\b$it\\b").containsMatchIn(t) }.takeIf { it >= 0 }?.let { d ->
+        var add = (d + 1 - c.get(java.util.Calendar.DAY_OF_WEEK) + 7) % 7
+        if (add == 0) add = 7
+        c.add(java.util.Calendar.DAY_OF_MONTH, add); return c.timeInMillis
+    }
+    val months = listOf("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+    val m = Regex("\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+([a-z]{3})|\\b([a-z]{3})[a-z]*\\s+(\\d{1,2})\\b").find(t) ?: return null
+    val day = (m.groupValues[1].ifEmpty { m.groupValues[4] }).toInt()
+    val mon = months.indexOf(m.groupValues[2].ifEmpty { m.groupValues[3] }).takeIf { it >= 0 } ?: return null
+    if (day !in 1..31) return null
+    c.set(java.util.Calendar.MONTH, mon); c.set(java.util.Calendar.DAY_OF_MONTH, day)
+    if (c.before(now)) c.add(java.util.Calendar.YEAR, 1)
+    return c.timeInMillis
 }

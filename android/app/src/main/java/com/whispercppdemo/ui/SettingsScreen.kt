@@ -141,6 +141,15 @@ fun SettingsScreen(onBack: () -> Unit) {
                             Text(summary[g.id] ?: "", style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                        if (g.id == "dictation") {  // the one setting worth a switch here: floating mic on/off
+                            var mic by remember { mutableStateOf(bubbleOn && android.provider.Settings.canDrawOverlays(context)) }
+                            Text("Floating mic", Modifier.padding(end = 8.dp), style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            androidx.compose.material3.Switch(checked = mic, onCheckedChange = { want ->
+                                if (want && !android.provider.Settings.canDrawOverlays(context)) { page = "dictation"; return@Switch }
+                                mic = want; com.whispercppdemo.overlay.BubbleService.setEnabled(context, want)
+                            }, Modifier.padding(end = 8.dp))
+                        }
                         Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
