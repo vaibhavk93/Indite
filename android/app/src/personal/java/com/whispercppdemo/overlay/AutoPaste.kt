@@ -52,8 +52,19 @@ object AutoPaste {
 }
 
 class PasteService : AccessibilityService() {
-    override fun onServiceConnected() { instance = this }
-    override fun onUnbind(intent: android.content.Intent?): Boolean { instance = null; return super.onUnbind(intent) }
+    // The accessibility shortcut (volume keys / button) turns this service on and off. The founder wants that to be the
+    // floating mic's on/off switch, so the bubble follows the service. (Starting it from here may be blocked on some
+    // Android versions; then it fails quietly and the Settings switch or the quick tile still work.)
+    override fun onServiceConnected() {
+        instance = this
+        if (android.provider.Settings.canDrawOverlays(this))
+            runCatching { BubbleService.setEnabled(this, true) }.onFailure { android.util.Log.w("indite", "bubble from shortcut", it) }
+    }
+    override fun onUnbind(intent: android.content.Intent?): Boolean {
+        instance = null
+        runCatching { BubbleService.setEnabled(this, false) }
+        return super.onUnbind(intent)
+    }
     override fun onDestroy() { instance = null; super.onDestroy() }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}  // no events subscribed
     override fun onInterrupt() {}

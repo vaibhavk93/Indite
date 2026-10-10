@@ -224,7 +224,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         }
                     }
                     Text("A small mic bubble on top of every app. Tap it, talk, tap again. When it turns green, tap it to copy the text. " +
-                        "Hold it while recording to cancel. Drag it to the bottom edge to hide it. " +
+                        "Hold it while recording to cancel. Drag it onto the ✕ at the bottom to turn it off. " +
                         "If you use the indite keyboard, use its mic instead: it types the text in directly.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -238,14 +238,12 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                     if (on && !allowed) Text("Allow \"Display over other apps\" for indite, then come back.", Modifier.padding(top = 6.dp),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                    // The switch = the feature is on. Dragged away, it's hidden: say so, with one tap to show it again.
-                    var hiddenNow by remember { mutableStateOf(com.whispercppdemo.overlay.BubbleService.hidden) }
-                    LaunchedEffect(Unit) { while (true) { hiddenNow = com.whispercppdemo.overlay.BubbleService.hidden; delay(700) } }
-                    if (on && allowed && hiddenNow) Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Hidden (you dragged it away)", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        TextButton(onClick = { com.whispercppdemo.overlay.BubbleService.setEnabled(context, true) }) { Text("Show") }
-                    }
+                    // Quick way back after dragging it onto the X: a tile in the phone's pull-down quick settings.
+                    if (android.os.Build.VERSION.SDK_INT >= 33) TextButton(onClick = {
+                        context.getSystemService(android.app.StatusBarManager::class.java).requestAddTileService(
+                            android.content.ComponentName(context, com.whispercppdemo.overlay.MicTile::class.java), "indite mic",
+                            android.graphics.drawable.Icon.createWithResource(context, R.drawable.ic_mic), context.mainExecutor) {}
+                    }) { Text("Add an on/off tile to quick settings") }
                     var auto by remember { mutableStateOf(com.whispercppdemo.overlay.BubbleService.autoCopy(context)) }
                     Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Copy automatically (no green button)", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)

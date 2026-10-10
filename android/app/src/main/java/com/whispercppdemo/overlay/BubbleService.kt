@@ -51,15 +51,36 @@ class BubbleService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_OFF) { setEnabled(this, false); stopSelf(); return START_NOT_STICKY }
         if (!AndroidSettings.canDrawOverlays(this)) { stopSelf(); return START_NOT_STICKY }
-        hidden = false  // any start (Settings, opening indite, "Tap to show") brings it back
         val n = notification()
         if (Build.VERSION.SDK_INT >= 34) startForeground(NOTE_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         else startForeground(NOTE_ID, n)
-        if (bubble == null) show() else bubble?.visibility = android.view.View.VISIBLE
+        if (bubble == null) show()
         return START_STICKY
     }
 
+    /** A round "X" at the bottom while dragging: drop the bubble on it to turn the floating mic off. */
+    private var dropZone: android.widget.TextView? = null
+    private fun showDropZone(over: Boolean) {
+        val wm = getSystemService(WindowManager::class.java)
+        val z = dropZone ?: android.widget.TextView(this).apply {
+            text = "✕"; textSize = 22f; gravity = Gravity.CENTER
+            setTextColor(getColor(R.color.kb_on_accent))
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(getColor(R.color.kb_soft)) }
+            wm.addView(this, WindowManager.LayoutParams(dp(64), dp(64), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT)
+                .apply { gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; y = dp(48) })
+            dropZone = this
+        }
+        (z.background as GradientDrawable).setColor(getColor(if (over) R.color.kb_record else R.color.kb_soft))
+        z.scaleX = if (over) 1.2f else 1f; z.scaleY = z.scaleX
+    }
+    private fun hideDropZone() {
+        dropZone?.let { getSystemService(WindowManager::class.java).removeView(it) }
+        dropZone = null
+    }
+
     override fun onDestroy() {
+        hideDropZone()
         bubble?.let { getSystemService(WindowManager::class.java).removeView(it) }
         bubble = null
         scope.cancel()
@@ -114,17 +135,20 @@ class BubbleService : Service() {
                 }
                 MotionEvent.ACTION_MOVE -> {
                     if (abs(e.rawX - downX) + abs(e.rawY - downY) > dp(8)) moved = true
-                    if (moved) { lp.x = startX + (e.rawX - downX).toInt(); lp.y = startY + (e.rawY - downY).toInt(); wm.updateViewLayout(v, lp) }
+                    if (moved) {
+                        lp.x = startX + (e.rawX - downX).toInt(); lp.y = startY + (e.rawY - downY).toInt(); wm.updateViewLayout(v, lp)
+                        showDropZone(e.rawY > resources.displayMetrics.heightPixels - dp(120))
+                    }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
                     if (moved && e.rawY > resources.displayMetrics.heightPixels - dp(120)) {
-                        // dragged to the bottom edge: hide it. It stays switched on; the notification says "Tap to show".
-                        v.visibility = android.view.View.GONE
-                        hidden = true
-                        getSystemService(NotificationManager::class.java).notify(NOTE_ID, notification())
-                        toast("Floating mic hidden. Tap its notification to show it again.")
+                        // dropped on the X: the floating mic turns off (one switch, as the founder asked)
+                        hideDropZone()
+                        toast("Floating mic off. Turn it on from the quick settings tile or indite → Settings.")
+                        setEnabled(this, false)
                     } else if (moved) {
+                        hideDropZone()
                         val w = resources.displayMetrics.widthPixels
                         lp.x = if (lp.x + dp(28) < w / 2) 0 else w - dp(56)
                         wm.updateViewLayout(v, lp)
@@ -195,12 +219,11 @@ class BubbleService : Service() {
             NotificationChannel(CHANNEL, "Floating mic", NotificationManager.IMPORTANCE_LOW))
         val off = PendingIntent.getService(this, 2, Intent(this, BubbleService::class.java).setAction(ACTION_OFF), PendingIntent.FLAG_IMMUTABLE)
         val open = PendingIntent.getActivity(this, 3, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        val showIt = PendingIntent.getService(this, 4, Intent(this, BubbleService::class.java), PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_mic)
-            .setContentTitle(if (hidden) "Floating mic hidden" else "Floating mic is on")
-            .setContentText(if (hidden) "Tap to show it again." else "Tap the bubble in any app to dictate.")
-            .setContentIntent(if (hidden) showIt else open)
+            .setContentTitle("Floating mic is on")
+            .setContentText("Tap the bubble in any app to dictate.")
+            .setContentIntent(open)
             .addAction(Notification.Action.Builder(null, "Turn off", off).build())
             .setOngoing(true)
             .build()
@@ -213,8 +236,6 @@ class BubbleService : Service() {
 
         /** Bubble dictations still being written; each one's text is copied when done (a second tap never loses the first). */
         val pending: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
-        /** Dragged away: switched on, but not on screen until the notification or Settings shows it again. */
-        @Volatile var hidden = false
         /** Dictations the user cancelled (hold while recording); deleted, never copied. */
         val cancelled: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
         /** The last dictation's text, waiting for a tap on the green copy button. */
@@ -227,6 +248,8 @@ class BubbleService : Service() {
 
         fun setEnabled(c: Context, on: Boolean) {
             c.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putBoolean("bubble", on).apply()
+            if (Build.VERSION.SDK_INT >= 24) android.service.quicksettings.TileService.requestListeningState(c,
+                android.content.ComponentName(c, MicTile::class.java))  // keep the quick settings tile in step
             if (on && AndroidSettings.canDrawOverlays(c)) c.startForegroundService(Intent(c, BubbleService::class.java))
             else if (!on) c.stopService(Intent(c, BubbleService::class.java))
         }
@@ -261,6 +284,39 @@ class StartMicActivity : Activity() {
     }
 
     private fun close() {
+        finish()
+        overridePendingTransition(0, 0)
+    }
+}
+
+/**
+ * Quick settings tile "indite mic": turns the floating mic on and off from the pull-down panel, in any app.
+ * Turning on goes through a brief invisible screen, because Android only lets a visible app start it.
+ */
+class MicTile : android.service.quicksettings.TileService() {
+    override fun onStartListening() {
+        qsTile?.apply {
+            state = if (BubbleService.enabled(this@MicTile)) android.service.quicksettings.Tile.STATE_ACTIVE
+                else android.service.quicksettings.Tile.STATE_INACTIVE
+            updateTile()
+        }
+    }
+
+    override fun onClick() {
+        if (BubbleService.enabled(this)) { BubbleService.setEnabled(this, false); onStartListening(); return }
+        val i = Intent(this, MicOnActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (Build.VERSION.SDK_INT >= 34)
+            startActivityAndCollapse(PendingIntent.getActivity(this, 5, i, PendingIntent.FLAG_IMMUTABLE))
+        else @Suppress("DEPRECATION") startActivityAndCollapse(i)
+    }
+}
+
+/** Invisible: turns the floating mic on (or opens the permission screen first), then closes. */
+class MicOnActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (AndroidSettings.canDrawOverlays(this)) BubbleService.setEnabled(this, true)
+        else startActivity(Intent(AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")))
         finish()
         overridePendingTransition(0, 0)
     }
