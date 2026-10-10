@@ -37,6 +37,17 @@ usage limit mid-handoff, so this entry and HANDOFF section 5 were written in the
 
 ---
 
+## 2026-10-10 (afternoon) · Claude Code (Opus 5.5)
+
+**Next step:** quick phone test of build 10 (engine fix), founder hand check, then build 11 per ROADMAP plan.
+
+- Root cause of "same audio, different text": flash attention + audio windows not a multiple of 256. Fixed (`a69dab5`).
+- Builds 9–10: reminders, floating-mic switch rework + tile, cards/menus/sticky dates, swipe hint, keyboard redesign,
+  password guard, Undo/Redo, Settings Reminders/Tutorial, header/subtitle polish. Tags `build-9`, `build-10`.
+- Research: one-speaker focus (feasible for turn-taking; overlap not now), value-adds per journey (top 8), vernacular
+  Roman script (demand check first), iOS costs. All critic-reviewed.
+- New doc: `docs/FOUNDER_REQUESTS.md` (every founder request + status).
+
 ## 2026-10-10 · Claude Code (Opus 5.5)
 
 **Next step:** founder tries build 7; then `QUICK=1` phone test; record the 15-min run-to-run finding.
