@@ -21,6 +21,9 @@ object MacCompanion {
     fun save(c: Context, url: String, token: String) =
         prefs(c).edit().putString("url", url.trim().trimEnd('/')).putString("token", token.trim()).apply()
     fun configured(c: Context) = url(c).startsWith("https://") && token(c).isNotEmpty()
+    /** Which AI on the Mac answers: "claude" (Claude plan) or "codex" (ChatGPT plan via the Codex CLI). */
+    fun via(c: Context) = prefs(c).getString("via", "claude")!!
+    fun setVia(c: Context, v: String) = prefs(c).edit().putString("via", v).apply()
 
     /** Returns Claude's answer, or throws with a plain message. */
     suspend fun ask(c: Context, prompt: String, text: String): String = withContext(Dispatchers.IO) {
@@ -33,7 +36,7 @@ object MacCompanion {
             setRequestProperty("Authorization", "Bearer " + token(c))
         }
         try {
-            conn.outputStream.use { it.write(JSONObject().put("prompt", prompt).put("text", text).toString().toByteArray()) }
+            conn.outputStream.use { it.write(JSONObject().put("prompt", prompt).put("text", text).put("via", via(c)).toString().toByteArray()) }
             val code = conn.responseCode
             val body = (if (code in 200..299) conn.inputStream else conn.errorStream)?.bufferedReader()?.readText().orEmpty()
             if (code == 401) error("The Mac didn't accept the token. Copy it again from the Mac.")

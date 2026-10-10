@@ -39,23 +39,27 @@ def _claude(text: str, cwd: str, system: str = SYSTEM) -> str:
     return out["result"]
 
 
-def _codex(text: str, cwd: str) -> str:
+def _codex(text: str, cwd: str, system: str = SYSTEM) -> str:
     """ponytail: untested here (codex not installed); flags from OpenAI's non-interactive docs."""
     answer = Path(cwd) / "answer.md"
     r = subprocess.run(["codex", "exec", "--sandbox", "read-only", "--skip-git-repo-check", "--ephemeral",
-                        "-o", str(answer), "-"], input=f"{SYSTEM}\n\n{text}", capture_output=True, text=True,
+                        "-o", str(answer), "-"], input=f"{system}\n\n{text}", capture_output=True, text=True,
                        timeout=600, cwd=cwd)
     if r.returncode or not answer.exists():
         raise SystemExit(f"codex failed: {(r.stderr or r.stdout).strip()[:300]}")
     return answer.read_text()
 
 
-def ask(prompt: str, text: str) -> str:
-    """The phone's "Ask my AI" (personal build), answered by this Mac's own logged-in `claude`."""
-    if not shutil.which("claude"):
-        raise SystemExit("'claude' is not installed on the Mac. Install Claude Code and log in with your own account.")
+def ask(prompt: str, text: str, via: str = "claude") -> str:
+    """The phone's "Ask my AI" (personal build), answered by this Mac's own logged-in `claude`, or `codex` (ChatGPT plan)."""
+    if via not in ("claude", "codex"):
+        raise SystemExit(f"Unknown AI '{via}'.")
+    if not shutil.which(via):
+        name = "Claude Code (`claude`)" if via == "claude" else "OpenAI Codex CLI (`codex`, then `codex login` with ChatGPT)"
+        raise SystemExit(f"{name} is not installed on the Mac. Install it and log in with your own account.")
     with tempfile.TemporaryDirectory() as d:  # empty folder: nothing on the Mac for it to see
-        return _claude(f"{prompt}\n\n<transcript>\n{text}\n</transcript>", d, ASK_SYSTEM)
+        run = _claude if via == "claude" else _codex
+        return run(f"{prompt}\n\n<transcript>\n{text}\n</transcript>", d, ASK_SYSTEM)
 
 
 def notes(transcript: dict, via: str = "claude") -> str:

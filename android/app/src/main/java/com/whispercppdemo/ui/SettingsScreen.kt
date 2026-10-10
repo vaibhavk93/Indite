@@ -125,6 +125,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         if (shown == null) {
             val bubbleOn = remember { com.whispercppdemo.overlay.BubbleService.enabled(context) }
             val summary = mapOf(
+                "stats" to "Words, recordings, this week",
                 "look" to theme.label,
                 "dictation" to (if (bubbleOn) "Floating mic on" else "Keyboard and floating mic"),
                 "ai" to (com.whispercppdemo.ui.aiTargets(context).joinToString(", ") { com.whispercppdemo.ui.aiTargetName(it).substringBefore(" (") }
@@ -177,6 +178,10 @@ fun SettingsScreen(onBack: () -> Unit) {
                         }
                     }
                 }
+            }
+            if (shown == "stats") item {
+                val rs by com.whispercppdemo.notes.Reminders.list.collectAsState()
+                com.whispercppdemo.ui.StatsPanel(remember(notes, rs) { com.whispercppdemo.ui.Stats(notes, rs.size) })
             }
             if (shown == "look") item {
                 Section("Tutorial") {
@@ -380,9 +385,17 @@ fun SettingsScreen(onBack: () -> Unit) {
                     var token by remember { mutableStateOf(com.whispercppdemo.ai.MacCompanion.token(context)) }
                     var result by remember { mutableStateOf<String?>(null) }
                     val scope = androidx.compose.runtime.rememberCoroutineScope()
-                    Text("Ask my AI uses Claude on your own Mac, on your own plan. On the Mac: start indite, run " +
+                    Text("Ask my AI uses Claude or ChatGPT (Codex) on your own Mac, on your own plan. On the Mac: start indite, run " +
                         "`tailscale serve --bg --set-path /api/ask http://127.0.0.1:8000/api/ask`, then paste the ts.net address and the token indite prints.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    var via by remember { mutableStateOf(com.whispercppdemo.ai.MacCompanion.via(context)) }
+                    Text("Answers come from", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.labelLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("claude" to "Claude (your Claude plan)", "codex" to "ChatGPT (your plan, via Codex)").forEach { (v, label) ->
+                            androidx.compose.material3.FilterChip(selected = via == v, label = { Text(label) },
+                                onClick = { via = v; com.whispercppdemo.ai.MacCompanion.setVia(context, v) })
+                        }
+                    }
                     OutlinedTextField(url, { url = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
                         label = { Text("Your Mac's Tailscale link, e.g. https://my-mac.tail1234.ts.net") })
                     OutlinedTextField(token, { token = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
@@ -506,7 +519,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 }
 
 private class SettingsGroup(val id: String, val title: String)
-private val SettingsGroups = listOf(SettingsGroup("look", "Look & feel"), SettingsGroup("dictation", "Dictation"),
+private val SettingsGroups = listOf(SettingsGroup("stats", "Your stats"), SettingsGroup("look", "Look & feel"), SettingsGroup("dictation", "Dictation"),
     SettingsGroup("ai", "AI"), SettingsGroup("reminders", "Reminders"), SettingsGroup("fixes", "Word fixes"), SettingsGroup("storage", "Storage"),
     SettingsGroup("about", "About"))
 

@@ -212,6 +212,7 @@ def export(job_id: str, style: str):
 class Ask(BaseModel):
     prompt: str
     text: str
+    via: str = "claude"  # or "codex": the founder's ChatGPT plan through his own Codex CLI
 
 
 ASK_TOKEN_FILE = Path.home() / ".indite_ask_token"
@@ -236,11 +237,11 @@ def ask(body: Ask, authorization: str = Header("")):
     if len(body.text) > 200_000:
         raise HTTPException(413, "This note is too long to send.")
     try:
-        return {"answer": run(body.prompt, body.text)}
+        return {"answer": run(body.prompt, body.text, body.via)}
     except SystemExit as e:  # not logged in, out of plan usage, claude missing: say so, don't crash the server
         raise HTTPException(502, str(e))
     except subprocess.TimeoutExpired:
-        raise HTTPException(504, "Claude took more than 10 minutes. Try a shorter note.")
+        raise HTTPException(504, "The AI took more than 10 minutes. Try a shorter note.")
 
 
 @app.delete("/jobs/{job_id}")

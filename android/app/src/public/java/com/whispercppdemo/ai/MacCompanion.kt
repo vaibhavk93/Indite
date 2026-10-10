@@ -9,5 +9,7 @@ object MacCompanion {
     fun token(c: Context) = ""
     fun save(c: Context, url: String, token: String) {}
     fun configured(c: Context) = false
+    fun via(c: Context) = "claude"
+    fun setVia(c: Context, v: String) {}
     suspend fun ask(c: Context, prompt: String, text: String): String = error("Not available in this version.")
 }
