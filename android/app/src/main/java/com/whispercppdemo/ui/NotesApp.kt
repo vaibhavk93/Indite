@@ -295,7 +295,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(BRAND, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold) },  // pinned, doesn't scroll away
+                title = { Text(BRAND, style = MaterialTheme.typography.displaySmall) },  // same look as before, but pinned (doesn't scroll away)
                 actions = {
                     if (problem == null) TextButton(onClick = onOpenFile) {
                         Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
