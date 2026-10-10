@@ -41,9 +41,13 @@ object Reminders {
     // ⚠ Android freezes a channel's sound when it first creates the channel: setSound() on a channel that already
     // exists does nothing, and deleting a channel does not help either (recreating the same id restores the old
     // settings). So changing the sound means a new id. If it must change again, use _v3.
-    private const val CHIME = "reminders_chime_v2"
-    private const val ALARM = "reminders_ring_v2"
-    private val OLD = listOf("reminders", "reminders_alarm", "reminders_ring")
+    // A notification channel's sound, stream and vibration are frozen when it is first created: later changes by the
+    // app are ignored, for ever. Measured on the phone 10 Oct: "reminders_ring_v2" existed with usage=USAGE_NOTIFICATION
+    // (made while "ring like an alarm" was still off), so the alarm sound played on the notification stream and was
+    // inaudible. The id therefore carries a fingerprint of the settings: change the settings, get a new channel.
+    private const val CHIME = "reminders_chime"
+    private const val ALARM = "reminders_ring"
+    private val OLD = listOf("reminders", "reminders_alarm", "reminders_ring", "reminders_chime_v2", "reminders_ring_v2")
 
     /** Settings → Reminders → "Test the sound" uses this; it is never saved to disk. */
     const val TEST_ID = -1L
@@ -108,14 +112,21 @@ object Reminders {
 
     // ---------------------------------------------------------------- the sound
 
-    fun channelId(c: Context) = if (ringLikeAlarm(c)) ALARM else CHIME
+    /** Channel id = what it should sound like. A different sound, stream or buzz means a different channel. */
+    fun channelId(c: Context) = (if (ringLikeAlarm(c)) ALARM else CHIME) + "_" + FINGERPRINT
+
+    /** Bump this when the sound, the stream or the vibration changes, so a fresh channel is made. */
+    private const val FINGERPRINT = "alarmstream1"
 
     /** Make sure the right channel exists, and return its id. Old ids are deleted so they don't clutter Settings. */
     fun channel(c: Context): String {
         val nm = c.getSystemService(NotificationManager::class.java)
         OLD.forEach { runCatching { nm.deleteNotificationChannel(it) } }
         val alarm = ringLikeAlarm(c)
-        val id = if (alarm) ALARM else CHIME
+        val id = channelId(c)
+        // Anything of ours that is not the current channel is stale: a channel keeps the settings it was born with.
+        runCatching { nm.notificationChannels.map { it.id }.filter { it.startsWith("reminders") && it != id }
+            .forEach { nm.deleteNotificationChannel(it) } }
         // The sound is named, not numbered: resource numbers are a build detail and nothing should store one. (This is
         // belt and braces — `res/raw` has not changed since the channel was first made, so the old numeric URI still
         // resolved; it was never the reason a reminder was silent.) Going through getResourceEntryName also keeps a
