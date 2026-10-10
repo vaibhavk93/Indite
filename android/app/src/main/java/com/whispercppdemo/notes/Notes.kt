@@ -71,7 +71,7 @@ data class Note(
     fun text(i: Int) = edits[i] ?: auto(i)
     /** Plain text for copying and sharing: edits applied, no "Check" labels, no junk pieces. */
     fun allText(): String {
-        val kept = pieces.filter { !it.junk || it.i in edits }
+        val kept = pieces.filter { (!it.junk || it.i in edits) && edits[it.i] != "" }  // "" = paragraph deleted by the user
         if (!labelled) return kept.joinToString(" ") { text(it.i).trim() }.replace(Regex("\\s+"), " ").trim()
         // with speakers: one line per turn, "Amit: ..." (turns can change inside a paragraph)
         val out = StringBuilder()

@@ -8,5 +8,6 @@ object AutoPaste {
     fun enabled() = false
     fun capture() {}
     fun forget() {}
+    fun sensitiveFocus() = false  // the public build can't see which box you're in
     fun paste(c: Context, text: String) = false
 }

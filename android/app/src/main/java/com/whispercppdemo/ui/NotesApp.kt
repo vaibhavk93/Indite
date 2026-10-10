@@ -963,7 +963,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                     }
                 }
             }
-            items(note.pieces, key = { it.i }) { p ->
+            items(note.pieces.filter { note.edits[it.i] != "" }, key = { it.i }) { p ->  // deleted paragraphs are hidden
                 Paragraph(note, p, playing == p.i, onClick = { editing = p.i }, onSpeaker = { renamingSpeaker = it })
             }
             if (note.pending) item { Box(Modifier.padding(vertical = 10.dp)) { Writing(note.pieces.size, note.cuts.size) } }
@@ -1040,6 +1040,8 @@ private fun EditSheet(note: Note, i: Int, playing: Boolean, onPlay: () -> Unit, 
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = onCopy) { Text("Copy") }
+                // Delete this paragraph's text (hidden from the note, copy and export; the audio stays; Undo brings it back)
+                if (text.isNotEmpty()) OutlinedButton(onClick = { text = "" }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
                 AnimatedVisibility(edited, enter = fadeIn(), exit = fadeOut()) {
                     OutlinedButton(onClick = { text = note.auto(i) }) { Text("Undo my edit") }
                 }

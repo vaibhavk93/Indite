@@ -406,7 +406,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
-            if (shown == "storage") item {
+            if (shown == "about") item {
                 Section("Privacy") {
                     Text(if (com.whispercppdemo.ai.MacCompanion.available)
                         "Personal build: speech-to-text happens on this phone. When you use Ask my AI, the note's text goes to your own Mac " +
@@ -438,7 +438,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
 private class SettingsGroup(val id: String, val title: String)
 private val SettingsGroups = listOf(SettingsGroup("look", "Look & feel"), SettingsGroup("dictation", "Dictation"),
-    SettingsGroup("ai", "AI"), SettingsGroup("fixes", "Word fixes"), SettingsGroup("storage", "Storage & privacy"),
+    SettingsGroup("ai", "AI"), SettingsGroup("fixes", "Word fixes"), SettingsGroup("storage", "Storage"),
     SettingsGroup("about", "About"))
 
 @Composable

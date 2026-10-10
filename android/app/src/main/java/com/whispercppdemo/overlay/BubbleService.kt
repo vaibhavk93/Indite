@@ -176,6 +176,7 @@ class BubbleService : Service() {
             if (Build.VERSION.SDK_INT < 33) toast("Copied. Long-press a text box to paste.")  // Android 13+ shows its own
             return
         }
+        if (AutoPaste.sensitiveFocus()) { toast("Not for password or code boxes. Type it with your keyboard."); return }
         AutoPaste.capture()  // the box you're typing in, if "Type into the box for me" is on
         startActivity(Intent(this, StartMicActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION))
     }
