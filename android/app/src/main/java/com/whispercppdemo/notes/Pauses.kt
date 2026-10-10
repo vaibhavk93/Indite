@@ -57,10 +57,18 @@ object Pauses {
         return BooleanArray(n) { rms[it] > threshold }
     }
 
-    /** Audio window for whisper.cpp: 15 s for short pieces, else the piece length + 2 s (tested: 0 loops). 1500 = full 30 s. */
+    /**
+     * Audio window for whisper.cpp: 15 s (768) for short pieces, else the piece length + 2 s, always a MULTIPLE OF 256
+     * and at most 1280 (25.6 s; pieces are cut at 25 s). With flash attention the decoder reads the window rounded up to
+     * 256; any rows the encoder didn't write held the previous piece's audio, so the same audio gave different text
+     * (Mac 10 Oct: 15-min file 10/39 parts repeatable -> 39/39, 27.6% -> 24.7% words wrong, same speed).
+     */
     fun audioCtx(samples: Int): Int {
         val sec = samples / 16000.0
         if (sec <= 13) return 768
-        return min(1500, (ceil((sec + 2) * 50 / 64) * 64).toInt())
+        return min(FULL, (ceil((sec + 2) * 50 / 256) * 256).toInt())
     }
+
+    /** The largest window used (a multiple of 256, unlike whisper's default 1500, which would leak). */
+    const val FULL = 1280
 }

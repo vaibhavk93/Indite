@@ -116,7 +116,7 @@ static void asset_close(void *ctx) {
 static struct whisper_context_params indite_params(void) {
     struct whisper_context_params p = whisper_context_default_params();
     p.flash_attn = true;  // kept ON: off made live dictation ~6 s slower per sentence on the phone (build 8 test).
-                          // The leak is avoided instead by sizing audio_ctx to a multiple of 256 (Pauses.audioCtx).
+                          // The leak is avoided instead by sizing audio_ctx to a multiple of 256 (Pauses.audioCtx). Never pass 0 (=1500).
     return p;
 }
 

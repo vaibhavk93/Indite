@@ -374,7 +374,7 @@ class NoteService : Service() {
                     // Live recordings only: on imports it made things worse (15-min test WER 25.5% -> 30.6%; "most words"
                     // picked noise gibberish and half-pieces). Imports have no one waiting, but the plain pass was best there.
                     if (note.live && sparse(best, speechMs)) {
-                        best = better(best, run(audio, start, 0))
+                        best = better(best, run(audio, start, Pauses.FULL))  // largest window, still a multiple of 256
                         if (sparse(best, speechMs) && audio.size > 8 * SR) {
                             val mid = audio.size / 2
                             best = better(best, run(audio.copyOfRange(0, mid), start, Pauses.audioCtx(mid)) +
