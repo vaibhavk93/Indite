@@ -61,6 +61,28 @@ Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr
 
 ---
 
+## Founder's requests (10 Oct 2026) and their status
+
+| Request | Status |
+|---|---|
+| Bubble: show processing, copy button, typed into the box (personal), cancel, shrink, hide | **Built** (cancel at 0.4 s hold; hiding is temporary) |
+| Keyboard: show recording → writing → typed in, like the bubble | **Built**, to test |
+| Notes and action items as their own buttons; action items with Calendar / Share | **Built**; Meeting notes also give action items |
+| Request opens your AI app directly with the prompt + text (no app list) | **Built** (Settings → Your AI app) |
+| AI replies saved back without copy-paste | **Personal: Mac route** (needs Tailscale, founder setup); others: copy → Paste reply (card now waits). Share-back not built (no tap saved) |
+| Translate: pick a language, prompt goes with the text | **Built** (remembered language; Google Translate as offline option) |
+| Speaker count: guess, then confirm | **Built**; speaker labels 51.7% → 96.7% on the phone test |
+| Shorter phone test | **Built** (`QUICK=1`, ~12 min) |
+| Sleeker home screen (record button) | **Built** (floating Record button) |
+| Bubble only when a keyboard is up | **Later:** needs the accessibility add-on (public build decision pending) |
+| Modern look, themes, animations ("feels made by AI") | **Planned (critic-reviewed):** motion first, palette stays; top 10 list below |
+| Settings split into sections instead of one long scroll | **Planned:** 6 rows with sub-screens |
+| Optional API key (e.g. OpenRouter free models): key / share / both | **Planned, personal build first:** 1-hour quality test of free models before any code; no "Both" setting |
+| Editable AI prompts (incl. translation prompt) | **Later:** language choice covers the main need |
+| Check speaker-label quality yourself (e.g. play one speaker's parts) | **To review** |
+| Speak the translation aloud; live interpreter | **Parked** (14–15 s per turn; waits for 3 real asks) |
+| iPhone app | **Not now** (trigger: 5+ tester asks) |
+
 ## Now
 
 1. **Phone test of the latest build** (running): speaker labels per sentence (goal: well above 52%), 15-min file back to ~25%
@@ -72,6 +94,20 @@ Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr
    Known limits: the count guess is fragile on real audio (you confirm it); very short replies ("haan") can get the wrong
    label; overlapping speech isn't handled.
 4. **Check Google Translate with spoken Hinglish** (2 minutes): decides whether the hand-off is enough.
+
+## Next build (planned, critic-reviewed)
+
+**Look and feel** (research: colours and font are fine; what feels "AI-made" is no motion and everything looking the same):
+1. Screen transitions (S) · 2. "Done" moment: check-mark + haptic on the note screen (S) · 3. Writing dots → real progress,
+paragraphs fade in (S) · 4. **Settings split into 6 groups:** Look & feel, Dictation, AI, Word fixes, Storage & privacy, About (M)
+· 5. Stop button pulses with your voice (S) · 6. Record button press spring (S) · 7. Home: plain rows instead of boxed cards (S)
+· 8. Bigger title, Today / Yesterday headers, one-line help text (S) · 9. Custom icons (S) · 10. Animations respect
+"Remove animations" (S). Cut: framework upgrade, shared-element transitions, Lottie/Rive, settings search.
+
+**Your own API key (personal build first):** first a 1-hour test: 3 free OpenRouter models × 5 real Hinglish notes vs Claude
+on the Mac. Stop if clearly worse. If good: OpenRouter only; order = Mac → key → your AI app; on error, a "Send to my AI app"
+button; no "Both" setting. ⚠ About half the free models may train on what you send: one-time warning before meeting notes.
+Public app stays internet-free; a tester-only key build only if interviews ask (15–25 h).
 
 ## Before testers
 
