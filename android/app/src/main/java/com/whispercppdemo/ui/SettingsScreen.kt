@@ -194,6 +194,10 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                     if (on && !allowed) Text("Allow \"Display over other apps\" for indite, then come back.", Modifier.padding(top = 6.dp),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    // Dragged away (hidden)? It stays switched on; this brings it back without opening anything else.
+                    if (on && allowed) TextButton(onClick = { com.whispercppdemo.overlay.BubbleService.setEnabled(context, true) }) {
+                        Text("Show the floating mic now")
+                    }
                     var auto by remember { mutableStateOf(com.whispercppdemo.overlay.BubbleService.autoCopy(context)) }
                     Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Copy automatically (no green button)", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
@@ -232,6 +236,27 @@ fun SettingsScreen(onBack: () -> Unit) {
                     // Some phones (OnePlus, Xiaomi, Vivo…) stop background apps to save battery; this opens the phone's own list.
                     TextButton(onClick = { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) } }) {
                         Text("Bubble disappears? Allow indite in battery settings")
+                    }
+                }
+            }
+            item {
+                Section("Your AI app") {
+                    var app by remember { mutableStateOf(context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+                        .getString("aiApp", "ask") ?: "ask") }
+                    Text("Make notes, Action items and Translate open this app with your request and the text already filled in. " +
+                        "Copy its reply and come back to save it with the note." +
+                        if (com.whispercppdemo.ai.MacCompanion.available) " (When your Mac is set up below, answers come straight into indite.)" else "",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(Modifier.selectableGroup().padding(top = 6.dp)) {
+                        com.whispercppdemo.ui.AiApps.forEach { (pkg, name) ->
+                            Row(Modifier.fillMaxWidth().selectable(selected = app == pkg, role = Role.RadioButton, onClick = {
+                                app = pkg
+                                context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE).edit().putString("aiApp", pkg).apply()
+                            }).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = app == pkg, onClick = null)
+                                Text(name, Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
                     }
                 }
             }

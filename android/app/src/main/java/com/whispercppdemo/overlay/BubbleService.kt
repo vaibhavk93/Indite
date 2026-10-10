@@ -101,7 +101,16 @@ class BubbleService : Service() {
             lastTouch = System.currentTimeMillis()
             v.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(120).start()
             when (e.action) {
-                MotionEvent.ACTION_DOWN -> { downX = e.rawX; downY = e.rawY; startX = lp.x; startY = lp.y; moved = false; downAt = lastTouch; true }
+                MotionEvent.ACTION_DOWN -> {
+                    downX = e.rawX; downY = e.rawY; startX = lp.x; startY = lp.y; moved = false; downAt = lastTouch; heldToCancel = false
+                    // hold while recording = cancel, as soon as 0.4 s have passed (no need to lift the finger)
+                    if (Recording.active) v.postDelayed({
+                        if (!moved && downAt != 0L && Recording.active) {
+                            heldToCancel = true; v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); cancel()
+                        }
+                    }, 400)
+                    true
+                }
                 MotionEvent.ACTION_MOVE -> {
                     if (abs(e.rawX - downX) + abs(e.rawY - downY) > dp(8)) moved = true
                     if (moved) { lp.x = startX + (e.rawX - downX).toInt(); lp.y = startY + (e.rawY - downY).toInt(); wm.updateViewLayout(v, lp) }
@@ -109,16 +118,15 @@ class BubbleService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     if (moved && e.rawY > resources.displayMetrics.heightPixels - dp(120)) {
-                        // dragged to the bottom edge: hide it (Settings or the app turns it back on)
-                        toast("Floating mic hidden. Turn it on again in indite → Settings.")
-                        setEnabled(this, false)
+                        // dragged to the bottom edge: hide it for now; it stays switched on and comes back when indite opens
+                        toast("Floating mic hidden. Open indite to bring it back.")
+                        stopSelf()
                     } else if (moved) {
                         val w = resources.displayMetrics.widthPixels
                         lp.x = if (lp.x + dp(28) < w / 2) 0 else w - dp(56)
                         wm.updateViewLayout(v, lp)
-                    } else if (Recording.active && System.currentTimeMillis() - downAt > 500) {
-                        v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); cancel()
-                    } else { v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); tap() }
+                    } else if (!heldToCancel) { v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); tap() }
+                    downAt = 0L
                     true
                 }
                 else -> false
@@ -153,6 +161,7 @@ class BubbleService : Service() {
     }
 
     private var lastTouch = System.currentTimeMillis()
+    private var heldToCancel = false
 
     private fun toast(msg: String) = android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
 

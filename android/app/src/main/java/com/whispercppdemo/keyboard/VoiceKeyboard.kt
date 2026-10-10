@@ -51,6 +51,10 @@ class VoiceKeyboard : InputMethodService() {
     private lateinit var status: TextView
     private lateinit var mic: FrameLayout
     private lateinit var micIcon: ImageView
+    private lateinit var spinner: android.widget.ProgressBar
+    private var startedAt = 0L
+    /** What the keyboard is doing, shown the same way as the floating mic: listening / writing / typed in. */
+    private enum class State { IDLE, LISTENING, WRITING, DONE }
 
     override fun onCreate() {
         super.onCreate()
@@ -91,10 +95,17 @@ class VoiceKeyboard : InputMethodService() {
             setColorFilter(getColor(R.color.kb_on_accent))
             layoutParams = FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER)
         }
+        spinner = android.widget.ProgressBar(c).apply {
+            isIndeterminate = true
+            indeterminateTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.kb_on_accent))
+            layoutParams = FrameLayout.LayoutParams(dp(66), dp(66), Gravity.CENTER)
+            visibility = View.GONE
+        }
         mic = FrameLayout(c).apply {
             contentDescription = "Start dictation"
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(getColor(R.color.kb_accent)) }
             addView(micIcon)
+            addView(spinner)
             layoutParams = LinearLayout.LayoutParams(dp(72), dp(72)).apply { gravity = Gravity.CENTER_HORIZONTAL; setMargins(0, dp(12), 0, dp(14)) }
             setOnClickListener { performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); toggle() }
         }
@@ -127,7 +138,7 @@ class VoiceKeyboard : InputMethodService() {
     }
 
     private fun toggle() {
-        if (noteId != null && Recording.id == noteId) { Recording.stop(); show("Writing the last part…", listening = false); return }
+        if (noteId != null && Recording.id == noteId) { Recording.stop(); state(State.WRITING, "Writing the last part…"); return }
         if (job?.isActive == true) return  // still writing the previous dictation
         PhoneCheck.problem()?.let { show(it, listening = false); return }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -142,8 +153,15 @@ class VoiceKeyboard : InputMethodService() {
         field = currentInputEditorInfo?.let { "${it.packageName}:${it.fieldId}" }
         Notes.claimed += id
         Recording.start(this, id, Engine.vadPath(this))
-        show("Listening… pause to type it in", listening = true)
+        startedAt = System.currentTimeMillis()
+        state(State.LISTENING, "Listening… pause to type it in")
         job = scope.launch { typeAsYouGo(id) }
+        scope.launch {  // a running clock, so it's obvious the mic is on
+            while (Recording.id == id) {
+                if (current == State.LISTENING) status.text = "● Listening ${clock()} · pause to type it in"
+                delay(500)
+            }
+        }
     }
 
     /** Transcribe each part as soon as the recorder cuts it, and type it into the text box. */
@@ -154,34 +172,52 @@ class VoiceKeyboard : InputMethodService() {
             while (true) {
                 val note = Notes.note(id) ?: break
                 if (next < note.cuts.size) {
+                    if (Recording.id == id) spinner.visibility = View.VISIBLE  // still listening, and writing the last part
+                    else state(State.WRITING, "Writing your text…")
                     val piece = withContext(Dispatchers.Default) { NoteService.transcribePiece(w, note, next) } ?: break
                     next++
                     val here = currentInputEditorInfo?.let { "${it.packageName}:${it.fieldId}" }
-                    if (!piece.junk && here == field) currentInputConnection?.commitText(Settings.applyFixes(piece.text).trim() + " ", 1)
-                    if (Recording.id == id) show("Listening… pause to type it in", listening = true)
+                    val typed = !piece.junk && here == field
+                    if (typed) currentInputConnection?.commitText(Settings.applyFixes(piece.text).trim() + " ", 1)
+                    if (Recording.id == id) { spinner.visibility = View.GONE; state(State.LISTENING, "✓ Typed in · still listening") }
                 } else if (Recording.id == id) {
                     delay(150)
                 } else if (Notes.note(id)?.pending != true) break
             }
         } catch (e: Exception) {
             Log.w("indite", e)
-            show("Couldn't type that in. It's saved in the indite app.", listening = false)
+            state(State.IDLE, "Couldn't type that in. It's saved in the indite app.")
             return
         } finally {
             Notes.claimed -= id
             if (noteId == id) noteId = null
             Notes.refresh()
         }
-        show("Tap the mic and speak · Hindi, English or both", listening = false)
+        state(State.DONE, "✓ Done · all typed in")
+        delay(2500)
+        if (job?.isActive != true && current == State.DONE) state(State.IDLE, "Tap the mic and speak · Hindi, English or both")
     }
 
-    private fun show(text: String, listening: Boolean) {
+    private var current = State.IDLE
+
+    private fun clock(): String { val s = (System.currentTimeMillis() - startedAt) / 1000; return "%d:%02d".format(s / 60, s % 60) }
+
+    /** Colour, icon and words follow the state: amber = ready, red = listening, grey + spinner = writing, green = typed in. */
+    private fun state(st: State, text: String) {
+        current = st
         if (!::status.isInitialized) return
         status.text = text
-        (mic.background as GradientDrawable).setColor(getColor(if (listening) R.color.kb_record else R.color.kb_accent))
-        micIcon.setImageResource(if (listening) R.drawable.ic_stop else R.drawable.ic_mic)
-        mic.contentDescription = if (listening) "Stop dictation" else "Start dictation"
+        (mic.background as GradientDrawable).setColor(getColor(when (st) {
+            State.LISTENING -> R.color.kb_record; State.WRITING -> R.color.kb_soft; State.DONE -> R.color.kb_ready; State.IDLE -> R.color.kb_accent
+        }))
+        micIcon.setImageResource(if (st == State.LISTENING) R.drawable.ic_stop else R.drawable.ic_mic)
+        spinner.visibility = if (st == State.WRITING) View.VISIBLE else View.GONE
+        mic.contentDescription = when (st) {
+            State.LISTENING -> "Stop dictation"; State.WRITING -> "Writing your text"; else -> "Start dictation"
+        }
     }
+
+    private fun show(text: String, listening: Boolean) = state(if (listening) State.LISTENING else State.IDLE, text)
 
     private fun enter() {
         val ei = currentInputEditorInfo
