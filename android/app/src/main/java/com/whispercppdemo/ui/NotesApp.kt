@@ -117,6 +117,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -181,24 +183,33 @@ fun NotesApp(openRequest: String?, onOpenHandled: () -> Unit, onOpenFile: () -> 
     }
 
     val note = notes.firstOrNull { it.id == selected }
-    when {
-        !onboarded && selected == null -> Welcome(
-            onTry = { Settings.setOnboarded(); onboarded = true; onRecord() },
-            onSkip = { Settings.setOnboarded(); onboarded = true },
-        )
-        settings -> {
-            BackHandler { settings = false }
-            SettingsScreen(onBack = { settings = false })
+    val screen = when {
+        !onboarded && selected == null -> "welcome"
+        settings -> "settings"
+        note != null && note.recording -> "rec"
+        note != null -> "note"
+        else -> "home"
+    }
+    BackHandler(enabled = screen == "settings") { settings = false }
+    BackHandler(enabled = screen == "rec") { selected = null }
+    BackHandler(enabled = screen == "note") { Player.stop(); selected = null }
+    // Screens glide in instead of jumping (fade + a small rise); follows the phone's animation setting.
+    androidx.compose.animation.AnimatedContent(screen to note?.id, label = "screen", transitionSpec = {
+        (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(240)) +
+            androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(240)) { it / 24 }) togetherWith
+            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(140))
+    }) { (sc, id) ->
+        val n = notes.firstOrNull { it.id == id }
+        when {
+            sc == "welcome" -> Welcome(
+                onTry = { Settings.setOnboarded(); onboarded = true; onRecord() },
+                onSkip = { Settings.setOnboarded(); onboarded = true },
+            )
+            sc == "settings" -> SettingsScreen(onBack = { settings = false })
+            sc == "rec" && n != null -> RecordingScreen(n, onStop, onMinimise = { selected = null })
+            sc == "note" && n != null -> NoteScreen(n, snackbar, onBack = { Player.stop(); selected = null })
+            else -> HomeScreen(notes, snackbar, onOpenFile, onRecord, onSettings = { settings = true }, onOpen = { selected = it })
         }
-        note != null && note.recording -> {
-            BackHandler { selected = null }
-            RecordingScreen(note, onStop, onMinimise = { selected = null })
-        }
-        note != null -> {
-            BackHandler { Player.stop(); selected = null }
-            NoteScreen(note, snackbar, onBack = { Player.stop(); selected = null })
-        }
-        else -> HomeScreen(notes, snackbar, onOpenFile, onRecord, onSettings = { settings = true }, onOpen = { selected = it })
     }
 }
 
@@ -251,6 +262,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
     val lowRam = remember { PhoneCheck.lowRam(context) }
     var query by rememberSaveable { mutableStateOf("") }
     val hidden = remember { mutableStateListOf<String>() }  // swiped away, waiting for Undo
+    val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val shown = notes.filter { it.id !in hidden }.filter { n ->
         query.isBlank() || n.name.contains(query, true) || n.pieces.indices.any { n.text(it).contains(query, true) }
@@ -278,7 +290,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(pad),
             contentPadding = PaddingValues(start = Gutter, end = Gutter, bottom = 96.dp),  // room for the Record button
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             item {
                 Column(Modifier.padding(bottom = 6.dp)) {
@@ -296,9 +308,22 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                 Text("Nothing matches \"$query\".", Modifier.padding(vertical = 24.dp), style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            items(shown, key = { it.id }) { note ->
+            val byDay = shown.groupBy { dayLabel(it.created) }
+            byDay.forEach { (day, dayNotes) ->
+            item(key = "day:$day") {
+                Text(day, Modifier.padding(top = 14.dp, bottom = 2.dp), style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary)
+            }
+            items(dayNotes, key = { it.id }) { note ->
                 val dismiss = rememberDismissState(confirmValueChange = {
-                    if (it == DismissValue.DismissedToStart && !note.recording) {
+                    if (it == DismissValue.DismissedToEnd && note.done && note.pieces.isNotEmpty()) {
+                        // swipe right = copy the text, with a small buzz; the row springs back
+                        val cm = context.getSystemService(android.content.ClipboardManager::class.java)
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("indite", note.allText()))
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        scope.launch { snackbar.showSnackbar("Copied") }
+                        false
+                    } else if (it == DismissValue.DismissedToStart && !note.recording) {
                         hidden += note.id
                         scope.launch {
                             val r = snackbar.showSnackbar("Note deleted", actionLabel = "Undo", withDismissAction = true)
@@ -310,15 +335,19 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                 })
                 SwipeToDismiss(
                     state = dismiss,
-                    directions = setOf(DismissDirection.EndToStart),
+                    directions = setOf(DismissDirection.EndToStart, DismissDirection.StartToEnd),
                     background = {
-                        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.errorContainer)
-                            .padding(horizontal = 24.dp), contentAlignment = Alignment.CenterEnd) {
-                            Text("Delete", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.labelLarge)
+                        val copying = dismiss.dismissDirection == DismissDirection.StartToEnd
+                        Box(Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp))
+                            .background(if (copying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer)
+                            .padding(horizontal = 24.dp), contentAlignment = if (copying) Alignment.CenterStart else Alignment.CenterEnd) {
+                            Text(if (copying) "Copy" else "Delete", style = MaterialTheme.typography.labelLarge,
+                                color = if (copying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer)
                         }
                     },
                     dismissContent = { NoteRow(note) { onOpen(note.id) } },
                 )
+            }
             }
         }
     }
@@ -400,12 +429,13 @@ private fun StatusLine(text: String, working: Boolean) = Column(Modifier.animate
 @Composable
 private fun NoteRow(note: Note, onClick: () -> Unit) {
     val context = LocalContext.current
+    // A plain row with a hairline under it (boxed cards everywhere read as "template")
     Surface(
-        shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp)).clickable(role = Role.Button, onClickLabel = "Open note", onClick = onClick),
+        shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.background,
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+            .clickable(role = Role.Button, onClickLabel = "Open note", onClick = onClick),
     ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.padding(horizontal = 4.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(note.name, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (note.recording) LiveDot()
@@ -427,8 +457,16 @@ private fun NoteRow(note: Note, onClick: () -> Unit) {
                 if (note.done && toCheck > 0) Chip(if (toCheck == 1) "1 to check" else "$toCheck to check")
                 if (note.pending && !note.recording) Chip("Writing ${note.pieces.size}/${note.cuts.size}", accent = false)
             }
+            androidx.compose.material3.Divider(Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
         }
     }
+}
+
+/** "Today", "Yesterday", or the date: headers for the home list. */
+private fun dayLabel(t: Long): String = when {
+    DateUtils.isToday(t) -> "Today"
+    DateUtils.isToday(t + DateUtils.DAY_IN_MILLIS) -> "Yesterday"
+    else -> java.text.SimpleDateFormat("EEE d MMM", java.util.Locale.getDefault()).format(java.util.Date(t))
 }
 
 @Composable
@@ -487,12 +525,17 @@ private fun RecordingScreen(note: Note, onStop: () -> Unit, onMinimise: () -> Un
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = listState,
                 contentPadding = PaddingValues(horizontal = Gutter, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(note.pieces, key = { it.i }) { p ->
-                    Text(note.text(p.i), style = MaterialTheme.typography.bodyLarge,
+                    Text(note.text(p.i), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.fadeInOnce(),
                         color = if (p.junk) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onBackground)
                 }
-                if (note.pending) item { Writing() }
+                if (note.pending) item { Writing(note.pieces.size, note.cuts.size) }
             }
             Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 18.dp, top = 8.dp), contentAlignment = Alignment.Center) {
+                // a soft ring that swells with your voice: obvious that it's listening
+                val glow by animateFloatAsState(1f + 0.45f * level.coerceIn(0f, 1f),
+                    androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 300f), label = "glow")
+                Box(Modifier.size(80.dp).graphicsLayer { scaleX = glow; scaleY = glow; alpha = 0.25f }.clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.error))
                 Box(
                     Modifier.size(80.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error)
                         .clickable(role = Role.Button, onClickLabel = "Stop recording") {
@@ -523,11 +566,19 @@ private fun Waveform(levels: List<Float>, modifier: Modifier) {
     }
 }
 
+/** Real progress (parts written so far), not looping dots. */
 @Composable
-private fun Writing() {
-    var dots by remember { mutableStateOf(1) }
-    LaunchedEffect(Unit) { while (true) { delay(400); dots = dots % 3 + 1 } }
-    Text("Writing" + ".".repeat(dots), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun Writing(done: Int, total: Int) = Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Text("Writing part ${done + 1} of $total…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    LinearProgressIndicator(Modifier.fillMaxWidth(0.5f).clip(CircleShape))
+}
+
+/** Fades a newly written paragraph in once (respects the phone's "remove animations" setting). */
+@Composable
+private fun Modifier.fadeInOnce(): Modifier {
+    val a = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(Unit) { a.animateTo(1f, androidx.compose.animation.core.tween(450)) }
+    return this.graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 12f }
 }
 
 // ---------------------------------------------------------------- Note
@@ -550,6 +601,19 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var warnFirst by remember { mutableStateOf<Pair<String, String>?>(null) }
     var failed by remember { mutableStateOf<Triple<String, String, String>?>(null) }  // card, prompt, error
 
+    // "Done" moment: when the last part is written, a check mark pops in with a small confirm buzz.
+    var wasWriting by remember(note.id) { mutableStateOf(note.pending || note.recording) }
+    var justDone by remember(note.id) { mutableStateOf(false) }
+    val view = androidx.compose.ui.platform.LocalView.current
+    LaunchedEffect(note.done) {
+        if (note.done && wasWriting && note.pieces.isNotEmpty()) {
+            justDone = true
+            view.performHapticFeedback(if (android.os.Build.VERSION.SDK_INT >= 30) android.view.HapticFeedbackConstants.CONFIRM
+                else android.view.HapticFeedbackConstants.LONG_PRESS)
+            delay(2600); justDone = false
+        }
+        wasWriting = !note.done
+    }
     var whoSpoke by remember { mutableStateOf(false) }
     var renamingSpeaker by remember { mutableStateOf<Int?>(null) }
     var labelling by remember { mutableStateOf<String?>(null) }
@@ -787,6 +851,15 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                 Column(Modifier.padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("${clock(note.seconds)}  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}",
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    androidx.compose.animation.AnimatedVisibility(justDone,
+                        enter = androidx.compose.animation.scaleIn(androidx.compose.animation.core.spring(dampingRatio = 0.5f)) +
+                            androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.fadeOut()) {
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                            Text("✓  All written", Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                    }
                     if (note.done && note.cuts.isEmpty()) Text("No speech found in this recording. Try again a little closer to the phone.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (note.done && note.pieces.isNotEmpty()) {
@@ -893,7 +966,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
             items(note.pieces, key = { it.i }) { p ->
                 Paragraph(note, p, playing == p.i, onClick = { editing = p.i }, onSpeaker = { renamingSpeaker = it })
             }
-            if (note.pending) item { Box(Modifier.padding(vertical = 10.dp)) { Writing() } }
+            if (note.pending) item { Box(Modifier.padding(vertical = 10.dp)) { Writing(note.pieces.size, note.cuts.size) } }
         }
     }
 }
