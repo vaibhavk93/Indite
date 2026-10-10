@@ -109,6 +109,16 @@ class MainActivity : ComponentActivity() {
             }
             return true
         }
+        if (intent.getBooleanExtra("test_dump", false)) {  // --ez test_dump true : copy the 5 newest recordings' audio out, for mic debugging
+            intent.removeExtra("test_dump")
+            val out = getExternalFilesDir("results") ?: return true
+            AppScope.launch(Dispatchers.IO) {
+                Notes.list.value.filter { !it.test }.sortedByDescending { it.created }.take(5).forEach { n ->
+                    runCatching { File(Notes.dir(n.id), "audio.pcm").copyTo(File(out, "dump-${n.created}.pcm"), overwrite = true) }
+                }
+            }
+            return true
+        }
         val import = intent.getStringExtra("test_import")
         val live = intent.getStringExtra("test_live")
         val name = import ?: live ?: return false

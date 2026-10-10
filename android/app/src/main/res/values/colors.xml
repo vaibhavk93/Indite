@@ -8,4 +8,5 @@
     <color name="kb_accent">#FFB45A16</color>
     <color name="kb_on_accent">#FFFFFFFF</color>
     <color name="kb_record">#FFE5484D</color>
+    <color name="kb_ready">#FF2E8B57</color>
 </resources>

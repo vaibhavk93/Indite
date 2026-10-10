@@ -64,12 +64,13 @@ object Recording {
     /** Id of the note being recorded, or null. Derived from the recorder itself, so it can't go stale. */
     val id: String? get() = recorder?.takeIf { it.isAlive }?.id
     val active get() = id != null
-    val listening get() = recorder?.listening == true
+    /** The mic is really capturing for note [id] (an older, finished recorder doesn't count). */
+    fun listening(id: String) = recorder?.let { it.id == id && it.isAlive && it.listening } == true
 
     /** `simulate`: a 16 kHz PCM file played into the recorder in real time instead of the mic (automated tests only). */
-    fun start(id: String, vadPath: String, simulate: File? = null) {
+    fun start(context: Context, id: String, vadPath: String, simulate: File? = null) {
         if (active) return
-        recorder = LiveRecorder(id, vadPath, simulate).also { it.start() }
+        recorder = LiveRecorder(id, vadPath, simulate, context.applicationContext).also { it.start() }
     }
 
     fun stop() = recorder?.stop()
@@ -109,12 +110,14 @@ class NoteService : Service() {
         channel(this)
         val recordId = intent?.getStringExtra(EXTRA_RECORD)
         if (intent?.action == ACTION_STOP) Recording.stop()  // it saves the last piece on its own thread
-        val recordingNow = recordId != null || (Recording.active && intent?.action != ACTION_STOP)
+        // Keep the microphone type until the recorder has really finished: dropping it on "stop" cut the mic off
+        // mid-read, the last piece was lost, and short dictations came out "No speech found" (2026-10-10).
+        val recordingNow = recordId != null || Recording.active
         val n = notification(if (recordingNow) "Recording…" else "Getting ready…", ongoing = true, recording = recordingNow)
         val type = if (recordingNow) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                    else ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         if (Build.VERSION.SDK_INT >= 30) startForeground(ONGOING, n, type) else startForeground(ONGOING, n)
-        if (recordId != null) Recording.start(recordId, Engine.vadPath(this), intent.getStringExtra(EXTRA_SIMULATE)?.let(::File))
+        if (recordId != null) Recording.start(this, recordId, Engine.vadPath(this), intent.getStringExtra(EXTRA_SIMULATE)?.let(::File))
         if (job?.isActive != true) job = scope.launch { runQueue() }
         // Not sticky: if Android kills the app, it resumes the next time indite opens (restarting in the background isn't allowed).
         return START_NOT_STICKY
@@ -216,15 +219,24 @@ class NoteService : Service() {
     private fun copyBubbleDictations() {
         val bubble = com.whispercppdemo.overlay.BubbleService.pending
         if (bubble.isEmpty()) return
+        val cancelled = com.whispercppdemo.overlay.BubbleService.cancelled
         for (id in bubble.toList()) {
             val n = Notes.note(id)
-            if (n == null) { bubble -= id; continue }
+            if (n == null) { bubble -= id; cancelled -= id; continue }
+            if (id in cancelled) {  // thrown away by the user: delete once the recorder has let go of it
+                if (!n.recording && id != Recording.id) { bubble -= id; cancelled -= id; Notes.delete(id) }
+                continue
+            }
             if (!n.done) continue
             bubble -= id
             val text = n.allText()
-            val msg = if (text.isBlank()) "indite didn't hear any speech." else {
-                getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("indite", text))
-                if (Build.VERSION.SDK_INT >= 33) null else "Copied. Long-press a text box to paste."
+            val msg = when {
+                text.isBlank() -> "indite didn't hear any speech."
+                com.whispercppdemo.overlay.BubbleService.autoCopy(this) -> {
+                    getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("indite", text))
+                    if (Build.VERSION.SDK_INT >= 33) null else "Copied. Long-press a text box to paste."
+                }
+                else -> { com.whispercppdemo.overlay.BubbleService.readyText = text; "Text ready: tap the green button to copy." }
             }
             msg?.let { android.os.Handler(mainLooper).post { android.widget.Toast.makeText(this, it, android.widget.Toast.LENGTH_SHORT).show() } }
         }

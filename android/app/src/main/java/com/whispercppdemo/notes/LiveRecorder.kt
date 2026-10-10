@@ -21,7 +21,8 @@ import kotlin.math.sqrt
  * Speech vs noise comes from Silero (a small neural speech detector), so fans, traffic and clatter don't count as speech.
  * Audio is flushed to storage every 5 s: a crash or power loss costs at most the last 5 s.
  */
-class LiveRecorder(val id: String, private val vadPath: String, private val simulate: File? = null) {
+class LiveRecorder(val id: String, private val vadPath: String, private val simulate: File? = null,
+                   private val context: android.content.Context? = null) {
     @Volatile private var running = true
     private val thread = Thread(::run, "indite-recorder")
 
@@ -56,6 +57,8 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
         var speech = 0     // speech windows (32 ms) in the current piece
         var silent = 0     // non-speech windows in a row
         var synced = 0
+        var cuts = 0
+        var heard = 0      // all speech windows, for the log
         try {
             rec?.startRecording()
             listening = true
@@ -71,7 +74,7 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
                     if (wait > 0) Thread.sleep(wait / 1_000_000, (wait % 1_000_000).toInt())
                 } else while (got < W && running) {  // always hand the detector whole 32 ms windows
                     val n = rec!!.read(frame, got, W - got)
-                    if (n < 0) error("microphone read failed ($n)")
+                    if (n < 0) { if (!running) break; error("microphone read failed ($n)") }  // a read cut off by "stop" is a normal end
                     got += n
                 }
                 if (got < W) break
@@ -92,7 +95,7 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
                     if (recent.size > 94) recent.removeFirst()
                     rms > max(recent.sorted()[recent.size / 10] * 2.5f, 0.004f)
                 }
-                if (isSpeech) { speech++; silent = 0 } else silent++
+                if (isSpeech) { speech++; heard++; silent = 0 } else silent++
 
                 val len = total - pieceStart
                 // Cut at a pause (0.6 s without speech after 0.3 s of speech). Each piece costs the engine about the same
@@ -100,16 +103,17 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
                 val pauseAfterSpeech = speech >= 10 && silent >= 19
                 val minLen = if (Notes.transcribing) 8 * SR else SR  // phone test: 15 s pieces meant ~35 s waits
                 if ((pauseAfterSpeech && len >= minLen) || len >= 25 * SR) {
-                    if (speech * MS >= 250) Notes.addCut(id, intArrayOf(pieceStart, total, speech * MS))
+                    if (speech * MS >= 250) { Notes.addCut(id, intArrayOf(pieceStart, total, speech * MS)); cuts++ }
                     pieceStart = total; speech = 0; silent = 0
                 }
                 if (total - synced >= 5 * SR) { out.fd.sync(); synced = total }
             }
-            if (speech * MS >= 250 && total > pieceStart) Notes.addCut(id, intArrayOf(pieceStart, total, speech * MS))
         } catch (e: Exception) {
             Log.w("indite", e)
             Notes.status.value = "Recording stopped because the microphone stopped working. What was recorded is saved."
         } finally {
+            // the last piece is saved however the loop ended
+            if (speech * MS >= 250 && total > pieceStart) { Notes.addCut(id, intArrayOf(pieceStart, total, speech * MS)); cuts++ }
             try { out.fd.sync() } catch (_: Exception) {}
             out.close()
             try { rec?.stop() } catch (_: Exception) {}
@@ -117,6 +121,15 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
             sim?.close()
             vad?.release()
             Notes.level.value = 0f
+            Log.i("indite", "recording ended: ${total / 16} ms, speech ${heard * MS} ms, detector ${if (vad != null) "silero" else "loudness"}, parts $cuts")
+            // Safety net: the live detector found nothing, so re-check the whole recording the way imports do
+            // (bubble dictations of clear speech came out "No speech found", 2026-10-10).
+            val ctx = context
+            if (cuts == 0 && total > SR / 2 && ctx != null) {
+                val found = runCatching { Notes.cutRange(ctx, id, 0, total) }.getOrDefault(emptyList())
+                Log.i("indite", "re-check found ${found.size} part(s)")
+                found.forEach { Notes.addCut(id, it) }
+            }
             Notes.stopRecording(id, total)
         }
     }

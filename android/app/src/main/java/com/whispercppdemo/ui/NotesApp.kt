@@ -678,6 +678,8 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                 Column(Modifier.padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("${clock(note.seconds)}  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}",
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (note.done && note.cuts.isEmpty()) Text("No speech found in this recording. Try again a little closer to the phone.",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (note.done && note.pieces.isNotEmpty()) {
                         Button(onClick = { copy(note.allText()) }, Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp)) {
                             Text("Copy all text")

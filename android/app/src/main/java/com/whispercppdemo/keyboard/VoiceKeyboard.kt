@@ -141,7 +141,7 @@ class VoiceKeyboard : InputMethodService() {
         noteId = id
         field = currentInputEditorInfo?.let { "${it.packageName}:${it.fieldId}" }
         Notes.claimed += id
-        Recording.start(id, Engine.vadPath(this))
+        Recording.start(this, id, Engine.vadPath(this))
         show("Listening… pause to type it in", listening = true)
         job = scope.launch { typeAsYouGo(id) }
     }

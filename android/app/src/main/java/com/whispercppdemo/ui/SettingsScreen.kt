@@ -179,7 +179,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                             allowed = now; delay(1000)
                         }
                     }
-                    Text("A small mic bubble on top of every app. Tap it, talk, tap again: the text is copied, ready to paste. " +
+                    Text("A small mic bubble on top of every app. Tap it, talk, tap again. When it turns green, tap it to copy the text. " +
+                        "Hold it while recording to cancel. Drag it to the bottom edge to hide it. " +
                         "If you use the indite keyboard, use its mic instead: it types the text in directly.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -193,6 +194,17 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                     if (on && !allowed) Text("Allow \"Display over other apps\" for indite, then come back.", Modifier.padding(top = 6.dp),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    var auto by remember { mutableStateOf(com.whispercppdemo.overlay.BubbleService.autoCopy(context)) }
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Copy automatically (no green button)", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        androidx.compose.material3.Switch(checked = auto, onCheckedChange = {
+                            auto = it; com.whispercppdemo.overlay.BubbleService.setAutoCopy(context, it)
+                        })
+                    }
+                    // Some phones (OnePlus, Xiaomi, Vivo…) stop background apps to save battery; this opens the phone's own list.
+                    TextButton(onClick = { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) } }) {
+                        Text("Bubble disappears? Allow indite in battery settings")
+                    }
                 }
             }
             if (com.whispercppdemo.ai.MacCompanion.available) item {

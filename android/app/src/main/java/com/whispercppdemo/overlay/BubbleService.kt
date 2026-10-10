@@ -88,20 +88,28 @@ class BubbleService : Service() {
         ).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = dp(240) }
 
         // Drag anywhere; a short touch without movement is a tap. On release it snaps to the nearest side.
-        var downX = 0f; var downY = 0f; var startX = 0; var startY = 0; var moved = false
+        var downX = 0f; var downY = 0f; var startX = 0; var startY = 0; var moved = false; var downAt = 0L
         view.setOnTouchListener { v, e ->
+            lastTouch = System.currentTimeMillis()
+            v.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(120).start()
             when (e.action) {
-                MotionEvent.ACTION_DOWN -> { downX = e.rawX; downY = e.rawY; startX = lp.x; startY = lp.y; moved = false; true }
+                MotionEvent.ACTION_DOWN -> { downX = e.rawX; downY = e.rawY; startX = lp.x; startY = lp.y; moved = false; downAt = lastTouch; true }
                 MotionEvent.ACTION_MOVE -> {
                     if (abs(e.rawX - downX) + abs(e.rawY - downY) > dp(8)) moved = true
                     if (moved) { lp.x = startX + (e.rawX - downX).toInt(); lp.y = startY + (e.rawY - downY).toInt(); wm.updateViewLayout(v, lp) }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (moved) {
+                    if (moved && e.rawY > resources.displayMetrics.heightPixels - dp(120)) {
+                        // dragged to the bottom edge: hide it (Settings or the app turns it back on)
+                        toast("Floating mic hidden. Turn it on again in indite → Settings.")
+                        setEnabled(this, false)
+                    } else if (moved) {
                         val w = resources.displayMetrics.widthPixels
                         lp.x = if (lp.x + dp(28) < w / 2) 0 else w - dp(56)
                         wm.updateViewLayout(v, lp)
+                    } else if (Recording.active && System.currentTimeMillis() - downAt > 500) {
+                        v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); cancel()
                     } else { v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); tap() }
                     true
                 }
@@ -111,26 +119,49 @@ class BubbleService : Service() {
         wm.addView(view, lp)
         bubble = view
 
-        // Colour follows the state: amber = ready, red = recording, grey = writing the last part.
+        // Colour follows the state: amber = ready to listen, red = recording, grey = writing, green = text ready to copy.
         scope.launch {
             var last = -1
             while (true) {
                 val recording = Recording.active
-                val state = when { recording -> 2; pending.isNotEmpty() -> 1; else -> 0 }
+                val state = when { recording -> 2; pending.any { it !in cancelled } -> 1; readyText != null -> 3; else -> 0 }
                 if (state != last) {  // only touch the view when something changed
-                    circle.setColor(getColor(when (state) { 2 -> R.color.kb_record; 1 -> R.color.kb_soft; else -> R.color.kb_accent }))
-                    icon.setImageResource(if (recording) R.drawable.ic_stop else R.drawable.ic_mic)
-                    view.contentDescription = if (recording) "indite: tap to stop" else "indite: tap to dictate"
+                    circle.setColor(getColor(when (state) { 2 -> R.color.kb_record; 1 -> R.color.kb_soft; 3 -> R.color.kb_ready; else -> R.color.kb_accent }))
+                    icon.setImageResource(when (state) { 2 -> R.drawable.ic_stop; 3 -> R.drawable.ic_copy; else -> R.drawable.ic_mic })
+                    view.contentDescription = when (state) {
+                        2 -> "indite: tap to stop, hold to cancel"; 3 -> "indite: tap to copy the text"; else -> "indite: tap to dictate"
+                    }
                     last = state
+                    lastTouch = System.currentTimeMillis()
                 }
+                // idle for 5 s: shrink and fade so it covers less of the app underneath
+                if (state == 0 && System.currentTimeMillis() - lastTouch > 5000 && view.scaleX == 1f)
+                    view.animate().scaleX(0.6f).scaleY(0.6f).alpha(0.5f).setDuration(200).start()
                 delay(250)
             }
         }
     }
 
+    private var lastTouch = System.currentTimeMillis()
+
+    private fun toast(msg: String) = android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
+
     private fun tap() {
         if (Recording.active) { NoteService.stopRecording(this); return }
+        readyText?.let { text ->
+            getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("indite", text))
+            readyText = null
+            if (Build.VERSION.SDK_INT < 33) toast("Copied. Long-press a text box to paste.")  // Android 13+ shows its own
+            return
+        }
         startActivity(Intent(this, StartMicActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION))
+    }
+
+    /** Hold while recording: throw this dictation away (the note is deleted once the recorder has stopped). */
+    private fun cancel() {
+        Recording.id?.let { cancelled += it }
+        NoteService.stopRecording(this)
+        toast("Cancelled")
     }
 
     private fun notification(): Notification {
@@ -155,6 +186,13 @@ class BubbleService : Service() {
 
         /** Bubble dictations still being written; each one's text is copied when done (a second tap never loses the first). */
         val pending: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+        /** Dictations the user cancelled (hold while recording); deleted, never copied. */
+        val cancelled: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+        /** The last dictation's text, waiting for a tap on the green copy button. */
+        @Volatile var readyText: String? = null
+
+        fun autoCopy(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("bubbleAutoCopy", false)
+        fun setAutoCopy(c: Context, on: Boolean) = c.getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putBoolean("bubbleAutoCopy", on).apply()
 
         fun enabled(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("bubble", false)
 
@@ -181,10 +219,11 @@ class StartMicActivity : Activity() {
         } else {
             Notes.init(this)
             val stamp = java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.getDefault()).format(java.util.Date())
-            BubbleService.pending += NoteService.startRecording(this, name = "Dictation, $stamp")
+            val id = NoteService.startRecording(this, name = "Dictation, $stamp")
+            BubbleService.pending += id
             val until = System.currentTimeMillis() + 3000
             fun check() {
-                if (Recording.listening || System.currentTimeMillis() > until) close() else handler.postDelayed(::check, 50)
+                if (Recording.listening(id) || System.currentTimeMillis() > until) close() else handler.postDelayed(::check, 50)
             }
             check()
             return
