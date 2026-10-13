@@ -112,6 +112,16 @@ object Reminders {
 
     // ---------------------------------------------------------------- the sound
 
+    /** Used while indite rings the alarm itself: the shade entry is just the card with Done and Snooze. */
+    private const val SILENT = "reminders_alarm_owned1"
+
+    private fun silentChannel(c: Context): String {
+        val nm = c.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel(SILENT, "Reminders (ringing)", NotificationManager.IMPORTANCE_HIGH)
+            .apply { setSound(null, null); enableVibration(false) })
+        return SILENT
+    }
+
     /** Channel id = what it should sound like. A different sound, stream or buzz means a different channel. */
     fun channelId(c: Context) = (if (ringLikeAlarm(c)) ALARM else CHIME) + "_" + FINGERPRINT
 
@@ -125,7 +135,7 @@ object Reminders {
         val alarm = ringLikeAlarm(c)
         val id = channelId(c)
         // Anything of ours that is not the current channel is stale: a channel keeps the settings it was born with.
-        runCatching { nm.notificationChannels.map { it.id }.filter { it.startsWith("reminders") && it != id }
+        runCatching { nm.notificationChannels.map { it.id }.filter { it.startsWith("reminders") && it != id && it != SILENT }
             .forEach { nm.deleteNotificationChannel(it) } }
         // The sound is named, not numbered: resource numbers are a build detail and nothing should store one. (This is
         // belt and braces — `res/raw` has not changed since the channel was first made, so the old numeric URI still
@@ -147,7 +157,8 @@ object Reminders {
 
     /** The reminder notification. `insistent`: the phone repeats the sound until the notification is seen. */
     private fun build(c: Context, r: Reminder, insistent: Boolean): Notification {
-        val id = channel(c)
+        val silent = ringLikeAlarm(c)  // we are playing the alarm ourselves; a second sound here would double up
+        val id = if (silent) silentChannel(c) else channel(c)
         val open = PendingIntent.getActivity(c, r.id.toInt(), Intent(c, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .apply { r.noteId?.let { putExtra(MainActivity.EXTRA_NOTE, it) } }, PendingIntent.FLAG_IMMUTABLE)
@@ -162,7 +173,8 @@ object Reminders {
             .setCategory(Notification.CATEGORY_REMINDER)
             .addAction(Notification.Action.Builder(null, "Done", action(DONE)).build())
             .addAction(Notification.Action.Builder(null, "Snooze 1 h", action(SNOOZE)).build())
-            .build().apply { if (insistent) flags = flags or Notification.FLAG_INSISTENT }
+            .setOnlyAlertOnce(silent)
+            .build().apply { if (insistent && !silent) flags = flags or Notification.FLAG_INSISTENT }
     }
 
     /** Put a reminder in the shade. false = the phone would not show it, so the caller must not mark it done with. */
@@ -178,16 +190,61 @@ object Reminders {
      */
     fun fire(c: Context, r: Reminder) {
         val alarm = ringLikeAlarm(c)
+        if (alarm) AlarmSound.start(c)   // the alarm stream, played by us; the channel's own sound is ignored below
         val shown = show(c, r, insistent = alarm)
         recordFire(c, (if (alarm) "ring like an alarm" else "chime") +
             (if (shown) ", shown" else ", NOT shown: notifications are off for indite"))
         if (shown && r.id != TEST_ID) markFired(c, r.id)
     }
 
+    /**
+     * Measured on the founder's OnePlus (13 Oct): a notification channel created with USAGE_ALARM is stored by this ROM
+     * as usage=USAGE_NOTIFICATION, so the "alarm" sound played on the notification stream at notification volume and was
+     * inaudible. The channel cannot win that argument, so when "ring like an alarm" is on indite plays the sound itself
+     * on the alarm stream, the way an alarm clock does, and the notification stays silent.
+     * ponytail: one player for the whole app; reminders never overlap by design (one fires at a time).
+     */
+    object AlarmSound {
+        private var player: android.media.MediaPlayer? = null
+        private val stopper = android.os.Handler(android.os.Looper.getMainLooper())
+
+        @Synchronized fun start(c: Context) {
+            stop()
+            val uri = Uri.parse("android.resource://${c.packageName}/raw/${c.resources.getResourceEntryName(R.raw.reminder)}")
+            player = runCatching {
+                android.media.MediaPlayer().apply {
+                    setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+                    setDataSource(c, uri)
+                    isLooping = true
+                    prepare()
+                    start()
+                }
+            }.getOrNull()
+            // A reminder that nobody answers must not ring for ever.
+            stopper.postDelayed({ stop() }, 2 * 60_000L)
+            val vib = c.getSystemService(android.os.Vibrator::class.java)
+            runCatching {
+                vib.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 180, 120, 180, 700), 0),
+                    android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+            }
+        }
+
+        @Synchronized fun stop() {
+            stopper.removeCallbacksAndMessages(null)
+            runCatching { player?.stop(); player?.release() }
+            player = null
+        }
+
+        fun playing() = player?.isPlaying == true
+    }
+
     /** Settings → Reminders → "Test the sound": the real path, right now, without saving anything. */
     fun test(c: Context) = fire(c, testReminder())
 
     fun stopTest(c: Context) {
+        AlarmSound.stop()
         runCatching { c.getSystemService(NotificationManager::class.java).cancel(TEST_ID.toInt()) }
     }
 
@@ -245,6 +302,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val id = intent.getLongExtra("id", 0)
         val nm = c.getSystemService(NotificationManager::class.java)
         // The test reminder is never saved, so its buttons are handled here.
+        Reminders.AlarmSound.stop()   // Done, Snooze or opening it: the ringing stops
         if (id == Reminders.TEST_ID) { nm.cancel(id.toInt()); return }
         val r = Reminders.load(c).firstOrNull { it.id == id } ?: return
         when (intent.action) {
