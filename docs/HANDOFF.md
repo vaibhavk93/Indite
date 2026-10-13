@@ -225,6 +225,17 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 - **⚠ Trap:** `SKIP_LIVE=1` reuses whatever live result is already on the phone. In that run it was the **ROUND=64**
   A/B arm, so the printed live block (87.3 s wait, 11 parts, 15.2 s per part, WER 17.9%) is **not** build 10's live
   number. Build 10's real live figures are the 256 arm: 9.1–14.1 s wait. Clear `results/` or re-run live to measure it.
+- **Build 14 on the phone (0.14).** Reminder sound, where it stands: the old channel `reminders_ring_v2` had been
+  created while "ring like an alarm" was still off, so Android froze it on `usage=USAGE_NOTIFICATION` and ignored every
+  later change — that is why turning the switch on never worked. Fix: the channel id now carries a fingerprint of its
+  sound settings (`reminders_ring_alarmstream1`), and any older `reminders*` channel is deleted. Measured after the fix:
+  the new channel exists with the right sound and importance 4, `soundProblem = null`, the notification posts.
+  **Not yet confirmed: that sound actually reaches the ear.** The phone's alarm volume read **5 of 16**, and the phone
+  dropped off the cable before a clean fresh-process test finished. Next: alarm volume up, then Settings → Reminders →
+  Test the sound, or re-run `adb shell am start -n com.indite.app/com.whispercppdemo.MainActivity --ez test_reminder true`
+  from a force-stopped app and watch `dumpsys audio | grep state:started`.
+- **New personal-build test hook:** `--ez test_reminder true` fires a reminder over the cable and logs the channel, the
+  alarm setting and any sound problem.
 - **Next:** founder's hand check of builds 9–10; then the Sarvam Edge / Gboard Roman-Hinglish desk check, the
   import-vs-live cut-point run, and real-voice WER on ~6 min. Batch A only after the hand check.
 - **Built in builds 9–10, waiting for the founder's hand check:** indite's own reminders (exact alarms, chime + nudges,

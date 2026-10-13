@@ -4,6 +4,35 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-11 (early) · Claude Code (Opus 5) · builds 12-14
+
+**Next step:** alarm volume up, then Settings → Reminders → Test the sound. If it still doesn't ring, read the line
+under the button. Then a new OpenRouter key → `apodex/apodex-1.1-mini:free` → one "Rewrite to send" end to end.
+
+- **Merged the cloud branch** (automatic speaker labels, reminder diagnostics + test button, Translate language fix,
+  Formal version). Three conflicts resolved by hand; pushed to GitHub (`df70283..caff151`).
+- **Why AI features did nothing:** a saved OpenRouter key only counted if "Answer inside indite" was also ticked under
+  "Where AI requests go". A working key is now always a route.
+- **Why the reminder was silent:** a notification channel freezes its sound and stream at creation.
+  `reminders_ring_v2` was born while the alarm switch was off (`usage=USAGE_NOTIFICATION`), so every later change was
+  ignored. Channel ids now carry a fingerprint of their sound settings; stale `reminders*` channels are deleted.
+  Verified after the fix: new channel, right sound, importance 4, no blocking setting. **Sound at the ear: unverified**
+  (alarm volume is 5/16; the phone left the cable mid-test).
+- **Rewrite to send**: one request with 9 styles (formal, polite, WhatsApp Hinglish, casual Hinglish, email, firm,
+  apology, thank-you, short-and-crisp) or your own. Replaces "Formal version".
+- **Delete asks what to delete**: audio only, text only, or the whole note, with the size. Now on the home long-press
+  menu as well as inside the note — one shared dialog.
+- **Free-model test (Mac, 45 requests):** `apodex/apodex-1.1-mini:free` 15/15, median 25 s, keeps Roman Hinglish and the
+  `task | who | by when` format. `dots-3-note` translates to English and is slow. `gemma-4-31b` is rate-limited upstream.
+- **Accessibility vs banking apps (researched + critic):** no test or certification exists; bank security SDKs flag any
+  enabled third-party accessibility service. Never set `isAccessibilityTool="true"` (Play policy strike). Keep the
+  service personal-only; the keyboard types with `commitText()` and never touches the clipboard.
+- **Multiple keys to raise the free limit: no.** OpenRouter governs capacity per account, not per key.
+- Invented words in silence: both model-side filters measured and killed (no_speech_prob 0.000 even on pure silence;
+  95.5% word confidence on noise). Reverted; the finding is recorded in `NoteService.kt`.
+
+---
+
 ## 2026-10-10 (night) · Claude Code (Opus 5)
 
 ---

@@ -116,6 +116,14 @@ class MainActivity : ComponentActivity() {
             Log.i("indite", "test: audio window rounding = ${com.whispercppdemo.notes.Pauses.round}")
             return true
         }
+        if (intent.getBooleanExtra("test_reminder", false)) {  // --ez test_reminder true : fire a reminder right now
+            intent.removeExtra("test_reminder")
+            com.whispercppdemo.notes.Reminders.test(applicationContext)
+            Log.i("indite", "test: reminder fired; channel = " + com.whispercppdemo.notes.Reminders.channelId(applicationContext) +
+                "; alarm = " + com.whispercppdemo.notes.Reminders.ringLikeAlarm(applicationContext) +
+                "; problem = " + com.whispercppdemo.notes.Reminders.soundProblem(applicationContext))
+            return true
+        }
         if (intent.getBooleanExtra("test_dump", false)) {  // --ez test_dump true : copy the 5 newest recordings' audio out, for mic debugging
             intent.removeExtra("test_dump")
             val out = getExternalFilesDir("results") ?: return true

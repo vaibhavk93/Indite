@@ -300,6 +300,8 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
         hint.animateTo(-110f, spec); delay(500); hint.animateTo(0f, spec)
     }
     var renamingNote by remember { mutableStateOf<Note?>(null) }
+    // Long-press -> Delete asks the same question as the note screen: audio, text, or the whole note.
+    var deleting by remember { mutableStateOf<Note?>(null) }
     var remindNote by remember { mutableStateOf<Note?>(null) }
     remindNote?.let { n -> RemindDialog(n.id, remindText(n)) { remindNote = null } }
     renamingNote?.let { n -> RenameDialog(n.name, onDone = { renamingNote = null; if (it != null) Notes.rename(n.id, it) }) }
@@ -317,6 +319,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
             else { withContext(Dispatchers.IO) { Notes.delete(n.id) }; hidden -= n.id }
         }
     }
+    deleting?.let { n -> DeleteChoice(n, onClose = { deleting = null }, onWholeNote = { deleteWithUndo(n) }) }
     val shown = notes.filter { it.id !in hidden }.filter { n ->
         query.isBlank() || n.name.contains(query, true) || n.pieces.indices.any { n.text(it).contains(query, true) }
     }
@@ -406,7 +409,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                     },
                     dismissContent = { Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(
                         if (note.id == hintNote) hint.value.dp.roundToPx() else 0, 0) }) { NoteRow(note, onClick = { onOpen(note.id) }, onCopy = { copyNote(note) },
-                        onShare = { share(context, note.allText()) }, onRename = { renamingNote = note }, onDelete = { deleteWithUndo(note) },
+                        onShare = { share(context, note.allText()) }, onRename = { renamingNote = note }, onDelete = { deleting = note },
                         onRemind = { remindNote = note }) } },
                 )
             }
@@ -759,35 +762,9 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
         }
     }
 
-    // Founder request (10 Oct): choose what goes - the audio, the text, or both. Audio is nearly all of the size.
-    if (confirmDelete) AlertDialog(
-        onDismissRequest = { confirmDelete = false },
-        title = { Text("Delete what?") },
-        text = {
-            Column {
-                Text("Nothing here can be undone.", style = MaterialTheme.typography.bodyMedium)
-                val mb = remember(note.id) { Notes.dir(note.id).walkBottomUp().filter { it.isFile }.sumOf { it.length() } / (1024.0 * 1024) }
-                Text("This note uses %.1f MB. Almost all of it is the audio.".format(mb),
-                    Modifier.padding(top = 4.dp), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (Notes.hasAudio(note.id)) OutlinedButton(
-                    onClick = { confirmDelete = false; Player.stop(); Notes.deleteAudio(note.id)
-                        Messages.flow.tryEmit("Audio deleted. The text is still here.") },
-                    Modifier.fillMaxWidth().padding(top = 12.dp)) { Text("Audio only · keep the text") }
-                if (note.pieces.isNotEmpty()) OutlinedButton(
-                    onClick = { confirmDelete = false; Notes.deleteText(note.id)
-                        Messages.flow.tryEmit("Text deleted. The recording is still here.") },
-                    Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Text only · keep the recording") }
-                Button(onClick = { confirmDelete = false; Player.stop(); onBack(); Notes.delete(note.id) },
-                    Modifier.fillMaxWidth().padding(top = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
-                    Text("Delete the whole note")
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
-    )
+    if (confirmDelete) DeleteChoice(note, onClose = { confirmDelete = false },
+        onWholeNote = { Player.stop(); onBack(); Notes.delete(note.id) })
+
     /** Ask the user's AI for one of the ready requests: through their Mac (personal build) or their own AI app. */
     /** Send one request to one place: inside indite (OpenRouter), an AI app, or (null) the share list. */
     fun send(card: String, prompt: String, target: String?) {
@@ -1431,6 +1408,42 @@ private val Tones = listOf(
     "a thank-you message, warm and short",
     "short and crisp: the same thing in half the words",
 )
+
+/**
+ * Founder request (10 Oct): choose what goes - the audio, the text, or the whole note. Audio is nearly all of a note's
+ * size (15 min ~ 29 MB); the text is a few KB. Nothing here can be undone, except whole-note delete from the home list.
+ */
+@Composable
+private fun DeleteChoice(note: Note, onClose: () -> Unit, onWholeNote: () -> Unit) {
+    val mb = remember(note.id) {
+        Notes.dir(note.id).walkBottomUp().filter { it.isFile }.sumOf { it.length() } / (1024.0 * 1024)
+    }
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Delete what?") },
+        text = {
+            Column {
+                Text("This note uses %.1f MB. Almost all of it is the audio.".format(mb),
+                    style = MaterialTheme.typography.bodyMedium)
+                if (Notes.hasAudio(note.id)) OutlinedButton(
+                    onClick = { onClose(); Player.stop(); Notes.deleteAudio(note.id)
+                        Messages.flow.tryEmit("Audio deleted. The text is still here.") },
+                    Modifier.fillMaxWidth().padding(top = 12.dp)) { Text("Audio only · keep the text") }
+                if (note.pieces.isNotEmpty()) OutlinedButton(
+                    onClick = { onClose(); Notes.deleteText(note.id)
+                        Messages.flow.tryEmit("Text deleted. The recording is still here.") },
+                    Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Text only · keep the recording") }
+                Button(onClick = { onClose(); onWholeNote() },
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                    Text("Delete the whole note")
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onClose) { Text("Cancel") } },
+    )
+}
 
 @Composable
 private fun TonePicker(onPick: (String?) -> Unit) {
