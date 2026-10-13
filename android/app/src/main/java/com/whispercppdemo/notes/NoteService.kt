@@ -422,8 +422,15 @@ class NoteService : Service() {
                 val segs = try {
                     val audio = Notes.readPcm(note.id, start, end)
                     // sentences with times, shifted to positions in the whole note (samples)
+                    // Noise alone makes the model write "nan" (measured on the Mac, 13 Oct, over all five no-speech
+                    // stretches of the 15-min file). Dropping those segments is safe because they carry no words;
+                    // turning whisper's own speech detector on instead was tried and rejected - it lost 1,017 of 1,545
+                    // real words against 748 without it.
+                    fun junkOnly(t: String) = t.isBlank() || t.replace(Regex("[^A-Za-z]"), "").lowercase()
+                        .let { it.isEmpty() || it == "nan" || it == "nannan" }
                     suspend fun run(x: FloatArray, from: Int, ctx: Int) =
-                        w.transcribeSegments(x, ctx).map { Seg(from + it.startMs * SR / 1000, from + it.endMs * SR / 1000, it.text) }
+                        w.transcribeSegments(x, ctx).filterNot { junkOnly(it.text) }
+                            .map { Seg(from + it.startMs * SR / 1000, from + it.endMs * SR / 1000, it.text) }
                     var best = run(audio, start, Pauses.audioCtx(end - start))
                     // Dropped-text guard. On the phone test, 1 in 5 pieces silently lost words (0.4-0.9 words per second of
                     // speech; normal ones 1.9-2.6). Re-run those with the full window, then in two halves; keep whichever

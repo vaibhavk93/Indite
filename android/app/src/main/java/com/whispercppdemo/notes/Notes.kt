@@ -125,6 +125,9 @@ object Notes {
 
     private fun load(d: File): Note? = try {
         val meta = JSONObject(File(d, "meta.json").readText())
+        // A note written by a newer indite is left closed rather than half-read (older builds had no version at all,
+        // so a missing "fmt" means "as old as or older than this build" and is fine).
+        if (meta.optInt("fmt", 0) > Backup.FMT) throw IllegalStateException("note is newer than this app")
         val cuts = JSONArray(File(d, "cuts.json").readText()).let { a ->
             List(a.length()) { a.getJSONArray(it).let { c -> IntArray(c.length()) { k -> c.getInt(k) } } }
         }
@@ -210,8 +213,9 @@ object Notes {
         File(d, "audio.pcm").createNewFile()
         writeAtomic(File(d, "cuts.json"), "[]")
         val title = name ?: java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.getDefault()).format(java.util.Date(id.toLong()))
-        writeAtomic(File(d, "meta.json"), JSONObject().put("name", title).put("created", id.toLong()).put("samples", 0)
-            .put("recording", true).put("live", true).put("test", test).put("autoTitle", name == null || name.startsWith("Dictation")).toString())
+        writeAtomic(File(d, "meta.json"), JSONObject().put("fmt", Backup.FMT).put("name", title).put("created", id.toLong())
+            .put("samples", 0).put("recording", true).put("live", true).put("test", test)
+            .put("autoTitle", name == null || name.startsWith("Dictation")).toString())
         refresh()
         return id
     }

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -78,6 +79,28 @@ fun SettingsScreen(onBack: () -> Unit) {
         if (uri != null) scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val ok = runCatching { context.contentResolver.openOutputStream(uri)!!.use { it.write(Notes.exportAll().toByteArray()) } }.isSuccess
             com.whispercppdemo.ui.Messages.flow.tryEmit(if (ok) "Notes exported" else "Couldn't save the file")
+        }
+    }
+
+    // AUD-001: a backup that can be restored. The zip holds the text, the timestamps and the speaker labels; audio is
+    // optional because it is about 29 MB per 15 minutes.
+    var withAudio by remember { mutableStateOf(false) }
+    val backup = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val r = runCatching { context.contentResolver.openOutputStream(uri)!!.use { com.whispercppdemo.notes.Backup.write(it, withAudio) } }
+            com.whispercppdemo.ui.Messages.flow.tryEmit(r.fold(
+                { "Backed up ${it.notes} notes (${android.text.format.Formatter.formatShortFileSize(context, it.bytes)})" },
+                { "Couldn't save the backup" }))
+        }
+    }
+    val restore = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val r = runCatching { context.contentResolver.openInputStream(uri)!!.use { com.whispercppdemo.notes.Backup.read(it) } }
+            com.whispercppdemo.ui.Messages.flow.tryEmit(r.fold({ res ->
+                res.problem ?: ("Restored ${res.restored} notes" + if (res.skipped > 0) " · ${res.skipped} were already here" else "")
+            }, { "Couldn't read that file" }))
         }
     }
 
@@ -525,9 +548,29 @@ fun SettingsScreen(onBack: () -> Unit) {
                 Section("Storage") {
                     Text("${notes.size} notes use ${Formatter.formatShortFileSize(context, used)} on this phone.",
                         style = MaterialTheme.typography.bodyLarge)
-                    if (notes.isNotEmpty()) OutlinedButton(onClick = { export.launch("indite notes.txt") }, Modifier.padding(top = 8.dp)) {
-                        Text("Export all notes as text")
+                    val stamp = java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.ENGLISH).format(java.util.Date())
+                    if (notes.isNotEmpty()) Button(onClick = { backup.launch("indite backup $stamp.zip") },
+                        Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Back up everything") }
+                    if (notes.isNotEmpty()) Text("A zip you can keep anywhere: the text, the times and the speaker labels. " +
+                        "This is the only way to get your notes onto a new phone.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (notes.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Checkbox(checked = withAudio, onCheckedChange = { withAudio = it })
+                        Column(Modifier.weight(1f)) {
+                            Text("Include the recordings", style = MaterialTheme.typography.bodyMedium)
+                            Text("Much bigger: about 29 MB for every 15 minutes recorded.",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
+                    OutlinedButton(onClick = { restore.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
+                        Modifier.padding(top = 8.dp)) { Text("Restore from a backup") }
+                    Text("Notes already on this phone are left as they are.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (notes.isNotEmpty()) OutlinedButton(onClick = { export.launch("indite notes.txt") }, Modifier.padding(top = 10.dp)) {
+                        Text("Export as plain text")
+                    }
+                    Text("Text only, for reading elsewhere. Not a backup: it cannot be restored.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (notes.isNotEmpty()) OutlinedButton(onClick = { confirmDeleteAll = true }, Modifier.padding(top = 8.dp)) {
                         Text("Delete all notes", color = MaterialTheme.colorScheme.error)
                     }

@@ -410,7 +410,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                     dismissContent = { Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(
                         if (note.id == hintNote) hint.value.dp.roundToPx() else 0, 0) }) { NoteRow(note, onClick = { onOpen(note.id) }, onCopy = { copyNote(note) },
                         onShare = { share(context, note.allText()) }, onRename = { renamingNote = note }, onDelete = { deleting = note },
-                        onRemind = { remindNote = note }) } },
+                        onRemind = { remindNote = note }, onAi = { onOpen(note.id) }) } },
                 )
             }
             }
@@ -494,7 +494,7 @@ private fun StatusLine(text: String, working: Boolean) = Column(Modifier.animate
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit,
-                    onRemind: () -> Unit) {
+                    onRemind: () -> Unit, onAi: () -> Unit) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     var menu by remember { mutableStateOf(false) }
@@ -523,6 +523,10 @@ private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare
                 }
                 Box {
                     DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                        // Same actions, same order, as the menu inside the note (AUD-029). A note is one object; it
+                        // should not offer a different set depending on which screen you are on.
+                        if (ready) DropdownMenuItem(text = { Text("Do something with this\u2026") }, onClick = { menu = false; onAi() },
+                            leadingIcon = { Icon(Icons.Filled.Star, null) })
                         if (ready) DropdownMenuItem(text = { Text("Copy text") }, onClick = { menu = false; onCopy() },
                             leadingIcon = { Icon(painterResource(R.drawable.ic_copy), null, Modifier.size(20.dp)) })
                         if (ready) DropdownMenuItem(text = { Text("Share") }, onClick = { menu = false; onShare() },
@@ -551,6 +555,9 @@ private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare
                 Spacer(Modifier.weight(1f))
                 val toCheck = note.pieces.count { it.flags.isNotEmpty() }
                 if (note.done && toCheck > 0) Chip(if (toCheck == 1) "1 to check" else "$toCheck to check")
+                // Work already done on this note, visible where the user looks first (AUD-031).
+                note.speakers?.takeIf { !it.skipped && it.k >= 2 }?.let { Chip("${it.k} voices", accent = false) }
+                if (note.ai.isNotEmpty()) Chip(if (note.ai.size == 1) note.ai.first().label else "${note.ai.size} AI answers", accent = false)
                 if (note.pending && !note.recording) Chip("Writing ${note.pieces.size}/${note.cuts.size}", accent = false)
             }
         }
@@ -693,7 +700,6 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var editing by remember { mutableStateOf<Int?>(null) }
     var playing by remember { mutableStateOf<Int?>(null) }
     var asking by remember { mutableStateOf(false) }
-    var pickingNotes by remember { mutableStateOf(false) }
     var pickingLanguage by remember { mutableStateOf(false) }
     var pickingTone by remember { mutableStateOf(false) }
     var reminding by remember { mutableStateOf(false) }
@@ -850,54 +856,56 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
         dismissButton = { TextButton(onClick = { warnFirst = null }) { Text("Cancel") } },
     ) }
     if (reminding) RemindDialog(note.id, remindText(note)) { reminding = false }
-    if (pickingNotes) AlertDialog(
-        onDismissRequest = { pickingNotes = false },
-        title = { Text("What kind of notes?") },
+    // One door for AI (AUD-026): grouped by what the user is trying to do, every item says what it gives back, the
+    // route is stated once at the top, and the two that ask a follow-up are marked with an arrow.
+    if (asking) AlertDialog(
+        onDismissRequest = { asking = false },
+        title = { Text("Do something with this") },
         text = {
-            Column {
-                if (note.speakers == null && note.pieces.size >= 2) Text("Tip: tap Find who spoke first, so the notes say who said what.",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 6.dp))
-                listOf("Meeting notes" to "Decisions, action items, open questions",
-                    "Lecture notes" to "Topics, key ideas, revision questions",
-                    "Brain dump" to "Your thinking out loud, organised").forEach { (label, hint) ->
-                    TextButton(onClick = { pickingNotes = false; ask(label) }, Modifier.fillMaxWidth()) {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                val viaMac = com.whispercppdemo.ai.MacCompanion.configured(context)
+                val ready = viaMac || com.whispercppdemo.ai.OpenRouter.configured(context) || aiTargets(context).isNotEmpty()
+                Text(if (ready) "Only the text is sent, speaker names included. Then " + aiRouteNow(context)
+                     else "Nothing on this phone can answer yet. Settings \u2192 AI sets this up in about 2 minutes.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (ready) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
+                if (note.allText().split(Regex("\\s+")).size < 20) Text(
+                    "This note is very short, so there isn't much to work with.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp))
+
+                val usable = AiActions.filter { !(viaMac && it.label == "Brain dump + questions") }
+                val suggested = suggestedFor(note)
+                val go = { a: AiAction -> asking = false
+                    when (a.label) { "Translate" -> pickingLanguage = true
+                        "Rewrite to send" -> pickingTone = true
+                        else -> ask(a.label) } }
+
+                Text("SUGGESTED FOR THIS NOTE", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 14.dp))
+                usable.filter { it.label in suggested }.forEach { a ->
+                    TextButton(onClick = { go(a) }, Modifier.fillMaxWidth()) {
                         Column(Modifier.fillMaxWidth()) {
-                            Text(label)
-                            Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(if (a.asks) a.label + "  \u203a" else a.label, style = MaterialTheme.typography.bodyLarge)
+                            Text(a.gets, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                usable.filterNot { it.label in suggested }.groupBy { it.group }.forEach { (group, items) ->
+                    Text(group.uppercase(), style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 14.dp))
+                    items.forEach { a ->
+                        TextButton(onClick = { go(a) }, Modifier.fillMaxWidth()) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Text(if (a.asks) a.label + "  \u203a" else a.label, style = MaterialTheme.typography.bodyLarge)
+                                Text(a.gets, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { pickingNotes = false }) { Text("Cancel") } },
-    )
-    if (asking) AlertDialog(
-        onDismissRequest = { asking = false },
-        title = { Text("Ask my AI") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Opens your own ChatGPT, Claude or other AI app with this text and a ready request. Only the text is shared, " +
-                    "including speaker names." + if (note.allText().split(Regex("\\s+")).size < 20)
-                    " This note is very short. The AI may not have much to work with." else "",
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp))
-                val viaMac = com.whispercppdemo.ai.MacCompanion.configured(context)
-                if (viaMac) Text("Answered by Claude on your Mac and saved here.", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 4.dp))
-                else if (aiTargets(context).isEmpty()) Text("No AI is set up yet, so this opens your phone's share list and you " +
-                    "paste the reply back. Settings → AI chooses where answers go.", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 4.dp))
-                AskPrompts.filter { !(viaMac && it.first == "Brain dump + questions") }.forEach { (label, _) ->
-                    // Translate has to know the language first, or it quietly translates into English.
-                    TextButton(onClick = { asking = false
-                        when (label) { "Translate" -> pickingLanguage = true
-                            "Rewrite to send" -> pickingTone = true
-                            else -> ask(label) } },
-                        modifier = Modifier.fillMaxWidth()) { Text(label, Modifier.fillMaxWidth()) }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = { asking = false }) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { asking = false }) { Text("Close") } },
     )
     fun startLabel(k: Int) {
         if (note.id in Speakers.running) return
@@ -1014,16 +1022,17 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         Button(onClick = { copy(note.allText()) }, Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp)) {
                             Text("Copy all text")
                         }
-                        Text("Tap any paragraph to edit it, hear it or copy it.", style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            OutlinedButton(onClick = { pickingNotes = true }, Modifier.weight(1f).height(46.dp),
-                                enabled = busy == null, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Make notes", maxLines = 1) }
-                            OutlinedButton(onClick = { ask("Action items") }, Modifier.weight(1f).height(46.dp),
-                                enabled = busy == null, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Action items", maxLines = 1) }
-                            OutlinedButton(onClick = { pickingLanguage = true }, Modifier.weight(1f).height(46.dp),
-                                enabled = busy == null, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Translate", maxLines = 1) }
+                        if (Learned.showing(context, "paragraph")) Text("Tap any paragraph to edit it, hear it or copy it.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        // One AI door, visible on the screen instead of hidden in the menu, and no longer three
+                        // buttons that repeat five items of the list behind them (AUD-026, AUD-030).
+                        OutlinedButton(onClick = { asking = true }, Modifier.fillMaxWidth().height(48.dp),
+                            enabled = busy == null) {
+                            Text(if (busy == null) "Do something with this\u2026" else "Your AI is working\u2026")
                         }
+                        Text(if (busy == null) "Notes, action items, a summary, a rewrite, a translation \u2014 " + aiRouteNow(context)
+                             else "One request at a time. This one is still going.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (note.done && note.speakers == null && note.pieces.size >= 2 && note.seconds >= 60 && busy == null &&
                         note.id !in Speakers.running) {
@@ -1111,7 +1120,8 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         }
                     }
                     note.ai.forEach { r -> AiCard(r, note.id, onCopy = { copy(r.text) },
-                        onDelete = { AppScope.launch(Dispatchers.IO) { Notes.deleteAi(note.id, r.created) } }) }
+                        onDelete = { AppScope.launch(Dispatchers.IO) { Notes.deleteAi(note.id, r.created) } },
+                        onAgain = { asking = true }) }
                     busy?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape))
@@ -1124,7 +1134,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                 }
             }
             items(note.pieces.filter { note.edits[it.i] != "" }, key = { it.i }) { p ->  // deleted paragraphs are hidden
-                Paragraph(note, p, playing == p.i, onClick = { editing = p.i }, onSpeaker = { renamingSpeaker = it })
+                Paragraph(note, p, playing == p.i, onClick = { Learned.did(context, "paragraph"); editing = p.i }, onSpeaker = { renamingSpeaker = it })
             }
             if (note.pending) item { Box(Modifier.padding(vertical = 10.dp)) { Writing(note.pieces.size, note.cuts.size) } }
         }
@@ -1238,7 +1248,8 @@ private fun RenameDialog(current: String, title: String = "Rename", onDone: (Str
 }
 
 @Composable
-private fun AiCard(r: com.whispercppdemo.notes.AiReply, noteId: String, onCopy: () -> Unit, onDelete: () -> Unit) {
+private fun AiCard(r: com.whispercppdemo.notes.AiReply, noteId: String, onCopy: () -> Unit, onDelete: () -> Unit,
+                   onAgain: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     var remindTask by remember { mutableStateOf<String?>(null) }
     remindTask?.let { t -> RemindDialog(noteId, t) { remindTask = null } }
@@ -1287,6 +1298,8 @@ private fun AiCard(r: com.whispercppdemo.notes.AiReply, noteId: String, onCopy: 
             if (open) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onCopy) { Text("Copy") }
                 OutlinedButton(onClick = { share(context, r.text) }) { Text(if (rows.isEmpty()) "Share" else "Share all") }
+                // Trying again, in another style or another language, was a whole journey away (AUD-036).
+                TextButton(onClick = onAgain) { Text("Ask again") }
                 TextButton(onClick = onDelete) { Text("Remove", color = MaterialTheme.colorScheme.error) }
             }
         }
@@ -1358,44 +1371,6 @@ object Player {
 }
 
 /** "task | who | by when" lines from an Action items reply; other lines are ignored (the card shows plain text if none parse). */
-internal fun actionRows(text: String): List<Triple<String, String, String>> = text.lines().mapNotNull(::actionRow)
-
-/** One "task | who | by when" line; also a markdown table row ("| task | who | when |"). Header and --- lines are skipped. */
-private fun actionRow(line: String): Triple<String, String, String>? {
-    val parts = line.trim().trimStart('-', '*', '•', ' ').replace(Regex("^\\d+[.)]\\s*"), "").trim().removePrefix("|").removeSuffix("|")
-        .split("|").map { it.trim().trim('*') }
-    if (parts.size != 3 || parts[0].isEmpty() || parts.all { it.matches(Regex(":?-{2,}:?")) }) return null
-    if (parts[0].equals("task", true) && parts[1].equals("who", true)) return null  // table header
-    return Triple(parts[0], parts[1].ifEmpty { "not said" }, parts[2].ifEmpty { "not said" })
-}
-
-private fun isActionLine(line: String) = actionRow(line) != null || line.trim().matches(Regex("\\|?\\s*:?-{2,}.*")) ||
-    line.replace(" ", "").equals("|task|who|bywhen|", true)
-
-/** "SCORES: structure=7 clarity=6 numbers=4 concise=8" (markdown around it is fine) -> four 1-10 scores, or null. */
-internal fun practiceScores(text: String): List<Int>? {
-    val m = Regex("SCORES:?\\**\\s*structure\\s*=\\s*(\\d+)\\W+clarity\\s*=\\s*(\\d+)\\W+numbers\\s*=\\s*(\\d+)\\W+concise\\s*=\\s*(\\d+)",
-        RegexOption.IGNORE_CASE).find(text) ?: return null
-    return m.groupValues.drop(1).map { it.toInt() }.takeIf { v -> v.all { it in 1..10 } }
-}
-
-private const val GOOGLE_TRANSLATE = "Google Translate app"
-private const val GOOGLE_TRANSLATE_PKG = "com.google.android.apps.translate"
-
-/** Is this app on the phone? Needs the <queries> list in the manifest (Android 11+ hides everything else). */
-internal fun installed(c: Context, pkg: String) =
-    runCatching { c.packageManager.getPackageInfo(pkg, 0); true }.getOrDefault(false)
-
-private val Languages = listOf("Hindi (Devanagari)", "English", "Tamil", "Telugu", "Marathi", "Gujarati", "Bengali", "Kannada",
-    "Malayalam", "Punjabi", "Urdu", "Arabic", "Chinese (Simplified)")
-
-/**
- * Pick a language once; it's remembered. The request names it, so the AI translates straight away.
- *
- * indite has no translator of its own, so there are two routes and the dialog says which is which: the Google Translate
- * app (free, offline, installed on most phones) or whatever AI the user has set up. Google Translate goes first because
- * it needs no key and no internet.
- */
 /** How a message should sound when it is sent on. Your last choice comes first, like the language picker. */
 private val Tones = listOf(
     "formal English, for a manager or a client",
@@ -1587,6 +1562,17 @@ internal fun remindText(n: Note): String {
 }
 
 /** When to play the home screen's swipe hint (see HomeScreen). */
+/**
+ * First-run teaching that goes away (AUD-033). A tip is shown until the user has done the thing a few times; after
+ * that the screen is theirs. The swipe hint already worked this way; the written tips did not.
+ */
+internal object Learned {
+    private fun p(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    /** True while the tip is still worth showing. */
+    fun showing(c: Context, what: String, times: Int = 3) = p(c).getInt("learned:$what", 0) < times
+    fun did(c: Context, what: String) = p(c).edit().putInt("learned:$what", p(c).getInt("learned:$what", 0) + 1).apply()
+}
+
 internal object SwipeHint {
     private fun p(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE)
     private fun today() = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
