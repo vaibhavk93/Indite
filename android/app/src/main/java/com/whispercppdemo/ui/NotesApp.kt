@@ -1165,7 +1165,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                     }
                     note.ai.forEach { r -> AiCard(r, note.id, onCopy = { copy(r.text) },
                         onDelete = { AppScope.launch(Dispatchers.IO) { Notes.deleteAi(note.id, r.created) } },
-                        onAgain = { asking = true }) }
+                        onAgain = { asking = true }, note = note, onOpenPassage = { editing = it }) }
                     busy?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape))
@@ -1323,7 +1323,7 @@ private fun RenameDialog(current: String, title: String = "Rename", onDone: (Str
 
 @Composable
 private fun AiCard(r: com.whispercppdemo.notes.AiReply, noteId: String, onCopy: () -> Unit, onDelete: () -> Unit,
-                   onAgain: () -> Unit) {
+                   onAgain: () -> Unit, note: Note? = null, onOpenPassage: (Int) -> Unit = {}) {
     var open by remember { mutableStateOf(false) }
     var remindTask by remember { mutableStateOf<String?>(null) }
     remindTask?.let { t -> RemindDialog(noteId, t) { remindTask = null } }
@@ -1346,10 +1346,27 @@ private fun AiCard(r: com.whispercppdemo.notes.AiReply, noteId: String, onCopy: 
                 maxLines = if (open) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis)
             // Action items: one row per task, handed to the user's own calendar or task app (indite is not a to-do app)
             rows.take(if (open) rows.size else 3).forEach { (task, who, by) ->
+                // N02: what happened to this one. Done and Not mine are the user's call, never the AI's, and neither
+                // touches the transcript or the answer - only how the row is shown from now on.
+                var state by remember(noteId, task) { mutableStateOf(Notes.taskState(noteId, task)) }
+                fun set(v: String) { state = v; AppScope.launch(Dispatchers.IO) { Notes.setTaskState(noteId, task, v) } }
                 Column(Modifier.padding(top = 4.dp)) {
-                    Text(task, style = MaterialTheme.typography.bodyLarge)
-                    Text("$who · by $by", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Checkbox(checked = state == "done",
+                            onCheckedChange = { set(if (it) "done" else "open") })
+                        Text(task, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f),
+                            textDecoration = if (state == "done") androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
+                            color = if (state == "open") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text("$who · by $by" + if (state == "dismissed") " · not mine" else "",
+                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // N01: where this came from. Shown only when the words really match a paragraph.
+                    val from = remember(noteId, task) { note?.let { sourceOf(it, task) } }
+                    if (open && from != null) TextButton(onClick = { onOpenPassage(from) }) { Text("Where was this said?") }
                     if (open) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { set(if (state == "dismissed") "open" else "dismissed") }) {
+                            Text(if (state == "dismissed") "Bring back" else "Not mine")
+                        }
                         TextButton(onClick = {
                             val i = Intent(Intent.ACTION_INSERT, android.provider.CalendarContract.Events.CONTENT_URI)
                                 .putExtra(android.provider.CalendarContract.Events.TITLE, task)

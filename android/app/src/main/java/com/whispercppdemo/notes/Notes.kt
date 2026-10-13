@@ -332,6 +332,25 @@ object Notes {
         refresh()
     }
 
+    /**
+     * N02: what happened to an action item after the AI found it - done, or not for me. Kept per note in tasks.json,
+     * keyed by the task's own words, so regenerating the brief keeps the states that still apply and quietly forgets
+     * the ones that no longer do. The transcript and the AI answer are never changed by any of this.
+     */
+    fun taskState(id: String, task: String): String =
+        runCatching { JSONObject(File(dir(id), "tasks.json").readText()).optString(taskKey(task), "open") }.getOrDefault("open")
+
+    fun setTaskState(id: String, task: String, state: String) {
+        val f = File(dir(id), "tasks.json")
+        val o = runCatching { JSONObject(f.readText()) }.getOrDefault(JSONObject())
+        if (state == "open") o.remove(taskKey(task)) else o.put(taskKey(task), state)
+        writeAtomic(f, o.toString())
+        refresh()
+    }
+
+    /** The task's words, not its position: a brief written again puts the same task in a different place. */
+    private fun taskKey(task: String) = task.lowercase().replace(Regex("[^a-z0-9 ]"), "").trim().take(80)
+
     fun finish(id: String, speed: String) {
         val f = File(dir(id), "meta.json")
         if (!f.exists()) return

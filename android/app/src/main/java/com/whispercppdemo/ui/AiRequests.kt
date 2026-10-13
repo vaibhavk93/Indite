@@ -78,3 +78,23 @@ internal val Languages = listOf("Hindi (Devanagari)", "English", "Tamil", "Telug
  * app (free, offline, installed on most phones) or whatever AI the user has set up. Google Translate goes first because
  * it needs no key and no internet.
  */
+
+/**
+ * N01: which paragraph a decision or an action item came from. The AI is not asked for timestamps - it invents them.
+ * Instead the words are matched back against the transcript, which is evidence the user can check in one tap.
+ * Returns null when nothing matches well enough, and says nothing rather than pointing at the wrong line.
+ */
+internal fun sourceOf(note: Note, claim: String): Int? {
+    val stop = setOf("the","a","an","to","of","and","is","are","was","were","be","will","for","on","in","it","this",
+        "that","hai","ka","ki","ko","se","me","mein","kar","karna","kare","hoga","not","said","by")
+    val words = claim.lowercase().split(Regex("[^a-z0-9]+")).filter { it.length > 2 && it !in stop }.toSet()
+    if (words.size < 2) return null
+    var best = -1
+    var bestScore = 0.0
+    note.pieces.indices.forEach { i ->
+        val para = note.text(i).lowercase().split(Regex("[^a-z0-9]+")).toSet()
+        val score = words.count { it in para } / words.size.toDouble()
+        if (score > bestScore) { bestScore = score; best = i }
+    }
+    return if (bestScore >= 0.5) best else null   // half the distinctive words, or it is not the source
+}
