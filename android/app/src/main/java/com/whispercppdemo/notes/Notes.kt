@@ -316,6 +316,22 @@ object Notes {
         FileOutputStream(File(dir(id), "transcript.jsonl"), true).use { it.write(line.toByteArray()); it.fd.sync() }
     }
 
+    /**
+     * R03: one part came out wrong or empty, so write just that part again. Its line is taken out of the transcript,
+     * its crash-guard count is cleared, and the queue picks it up on the next kick. Everything else is untouched, and
+     * the user's own edit of that part (if any) is kept out of the way - it is theirs, not the model's.
+     */
+    fun retryPiece(id: String, i: Int) {
+        val f = File(dir(id), "transcript.jsonl")
+        if (!f.exists()) return
+        val kept = f.readLines().filter { line ->
+            runCatching { JSONObject(line).getInt("i") != i }.getOrDefault(true)
+        }
+        writeAtomic(f, kept.joinToString("\n").let { if (it.isEmpty()) "" else it + "\n" })
+        File(dir(id), "attempt").delete()
+        refresh()
+    }
+
     fun finish(id: String, speed: String) {
         val f = File(dir(id), "meta.json")
         if (!f.exists()) return

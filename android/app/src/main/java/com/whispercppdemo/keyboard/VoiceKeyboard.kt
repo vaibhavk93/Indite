@@ -167,6 +167,47 @@ class VoiceKeyboard : InputMethodService() {
             addView(halo); addView(mic)
             layoutParams = LinearLayout.LayoutParams(dp(104), dp(104)).apply { gravity = Gravity.CENTER_HORIZONTAL; setMargins(0, dp(2), 0, dp(6)) }
         }
+        // N03: rewrite what was just dictated, without leaving the app you are typing in. Hidden unless an AI route
+        // exists, and never automatic - the raw text is already in the box, and one tap puts it back.
+        fun rewriteChip(label: String, style: String) = TextView(c).apply {
+            text = label
+            contentDescription = "Rewrite: $label"
+            gravity = Gravity.CENTER
+            setTextColor(ink)
+            textSize = 13f
+            typeface = bold(font)
+            background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(key) }
+            setPadding(dp(14), dp(7), dp(14), dp(7))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(4), 0, dp(4), 0) }
+            setOnClickListener { performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); rewrite(style) }
+        }
+        rewriteRow = LinearLayout(c).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            visibility = View.GONE
+            setPadding(0, dp(2), 0, dp(8))
+            addView(rewriteChip("Say it calmly", "say this calmly - with the insults taken out"))
+            addView(rewriteChip("Formal", "formal English, for a manager or a client"))
+            addView(rewriteChip("Shorter", "short and crisp: the same thing in half the words"))
+            addView(TextView(c).apply {
+                text = "Undo"
+                contentDescription = "Undo the rewrite"
+                gravity = Gravity.CENTER
+                setTextColor(getColor(R.color.kb_accent))
+                textSize = 13f
+                typeface = bold(font)
+                setPadding(dp(14), dp(7), dp(14), dp(7))
+                setOnClickListener {
+                    val back = undoText ?: return@setOnClickListener
+                    currentInputConnection?.deleteSurroundingText(typedSoFar.length, 0)
+                    currentInputConnection?.commitText(back, 1)
+                    typedSoFar = StringBuilder(back)
+                    undoText = null
+                    state(State.IDLE, "Your own words are back")
+                }
+            })
+        }
         val keys = LinearLayout(c).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(keyPill(word("ABC"), "Switch to your other keyboard", 1.2f) { switchBack() })
@@ -184,6 +225,7 @@ class VoiceKeyboard : InputMethodService() {
             addView(pill)
             addView(bars)
             addView(stage)
+            addView(rewriteRow)
             addView(keys)
         }
     }
@@ -248,6 +290,8 @@ class VoiceKeyboard : InputMethodService() {
         Recording.start(this, id, Engine.vadPath(this))
         startedAt = System.currentTimeMillis()
         state(State.LISTENING, "Listening… pause to type it in")
+        typedSoFar = StringBuilder()
+        rewriteRow.visibility = View.GONE
         job = scope.launch { typeAsYouGo(id) }
         scope.launch {  // a running clock, so it's obvious the mic is on
             while (Recording.id == id) {
@@ -278,7 +322,11 @@ class VoiceKeyboard : InputMethodService() {
                     next++
                     val here = currentInputEditorInfo?.let { "${it.packageName}:${it.fieldId}" }
                     val typed = !piece.junk && here == field
-                    if (typed) currentInputConnection?.commitText(Settings.applyFixes(piece.text).trim() + " ", 1)
+                    if (typed) {
+                        val t = Settings.applyFixes(piece.text).trim() + " "
+                        currentInputConnection?.commitText(t, 1)
+                        typedSoFar.append(t)
+                    }
                     if (Recording.id == id) { spinner.visibility = View.GONE; state(State.LISTENING, "✓ Typed in · still listening") }
                 } else if (Recording.id == id) {
                     delay(150)
@@ -293,6 +341,8 @@ class VoiceKeyboard : InputMethodService() {
             if (noteId == id) noteId = null
             Notes.refresh()
         }
+        // N03: the text is already in the box. A rewrite is an offer, never an automatic replacement.
+        if (typedSoFar.isNotBlank() && com.whispercppdemo.ai.Route.ready(this)) rewriteRow.visibility = View.VISIBLE
         state(State.DONE, "✓ Done · all typed in")
         delay(2500)
         // `job` IS this coroutine, so the old check (job?.isActive != true) was never true: the keyboard stayed on
@@ -301,6 +351,9 @@ class VoiceKeyboard : InputMethodService() {
     }
 
     private lateinit var enterKey: TextView
+    private lateinit var rewriteRow: LinearLayout
+    /** What this dictation typed in, so a rewrite can replace exactly that and nothing the user wrote themselves. */
+    private var typedSoFar = StringBuilder()
 
     /** Figtree is a variable font: Typeface.BOLD only slants/thickens it. Ask for weight 700 where Android allows. */
     private fun bold(font: android.graphics.Typeface?) =
@@ -344,6 +397,40 @@ class VoiceKeyboard : InputMethodService() {
             State.LISTENING -> "Stop dictation"; State.WRITING -> "Writing your text"; else -> "Start dictation"
         }
     }
+
+    /** Replaces exactly what this dictation typed - never anything the user wrote themselves - and keeps the original. */
+    private fun rewrite(style: String) {
+        val original = typedSoFar.toString()
+        if (original.isBlank() || job?.isActive == true) return
+        rewriteRow.visibility = View.GONE
+        state(State.WRITING, "Rewriting\u2026")
+        job = scope.launch {
+            val prompt = "Rewrite this so I can send it to someone, in this style: $style. Keep every fact, name, " +
+                "number and date exactly as said. Don't add anything I didn't say, and don't answer the text. Write " +
+                "only the message, nothing before or after it." +
+                (if (style.startsWith("say this calmly")) " Remove every insult, swear word, personal attack and " +
+                    "threat; keep the request and the facts. If nothing is left but anger, write exactly: " +
+                    "(nothing to send - this is a vent)" else "")
+            val answer = runCatching {
+                withContext(Dispatchers.IO) { com.whispercppdemo.ai.Route.ask(this@VoiceKeyboard, prompt, original) }
+            }.getOrElse {
+                state(State.IDLE, it.message ?: "That didn't work. Your text is still there.")
+                rewriteRow.visibility = View.VISIBLE
+                return@launch
+            }.trim()
+            val ic = currentInputConnection
+            if (ic == null || answer.isEmpty()) { state(State.IDLE, READY); return@launch }
+            ic.deleteSurroundingText(original.length, 0)
+            ic.commitText("$answer ", 1)
+            typedSoFar = StringBuilder("$answer ")
+            undoText = original
+            state(State.DONE, "\u2713 Rewritten \u00b7 tap Undo to put yours back")
+            rewriteRow.visibility = View.VISIBLE
+        }
+    }
+
+    /** The text as it was before a rewrite, so one tap undoes it. */
+    private var undoText: String? = null
 
     private fun show(text: String, listening: Boolean) = state(if (listening) State.LISTENING else State.IDLE, text)
 

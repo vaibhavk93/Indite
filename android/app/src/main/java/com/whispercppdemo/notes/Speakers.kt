@@ -75,7 +75,10 @@ object Speakers {
             key.toInt() to m.getJSONArray(key).let { a -> List(a.length()) { a.getInt(it) } } } } ?: emptyMap()
         val spans = o.optJSONObject("spans")?.let { m -> m.keys().asSequence().associate { key ->
             key.toInt() to m.getJSONArray(key).let { a -> List(a.length()) { a.getJSONArray(it).let { s -> s.getInt(0) to s.getInt(1) } } } } } ?: emptyMap()
-        Result(of, names, o.optInt("k"), o.optBoolean("skipped"), seg, spans, o.optBoolean("guessed"))
+        // The user's corrections win over the model's guess, and -1 means they said "not sure".
+        val fix = o.optJSONObject("fix")?.let { m -> m.keys().asSequence().associate { it.toInt() to m.getInt(it) } } ?: emptyMap()
+        val fixedOf = (of + fix.filterValues { it >= 0 }) - fix.filterValues { it < 0 }.keys
+        Result(fixedOf, names, o.optInt("k"), o.optBoolean("skipped"), seg - fix.keys, spans, o.optBoolean("guessed"))
     } catch (e: Exception) { null }
 
     /**
@@ -215,6 +218,33 @@ object Speakers {
             .put("spans", JSONObject().apply { spans.forEach { (p, s) ->
                 put(p.toString(), org.json.JSONArray(s.map { org.json.JSONArray(listOf(it.first, it.second)) })) } })
         write(File(Notes.dir(id), "speakers.json"), o)
+    }
+
+    /**
+     * R06: who the user says spoke. Kept in its own "fix" map, so re-running the labels (a different count, a better
+     * guess) never throws away a correction. A fix of -1 means "not sure" - the paragraph shows no label at all.
+     */
+    fun setSpeaker(id: String, paragraph: Int, speaker: Int?) {
+        val f = File(Notes.dir(id), "speakers.json")
+        val o = runCatching { JSONObject(f.readText()) }.getOrNull() ?: return
+        val fix = o.optJSONObject("fix") ?: JSONObject()
+        fix.put(paragraph.toString(), speaker ?: -1)
+        write(f, o.put("fix", fix))
+        Notes.refresh()
+    }
+
+    /** Two names for one person: everything labelled `from` becomes `into`, and the correction sticks. */
+    fun merge(id: String, from: Int, into: Int) {
+        val f = File(Notes.dir(id), "speakers.json")
+        val o = runCatching { JSONObject(f.readText()) }.getOrNull() ?: return
+        val of = o.getJSONObject("of")
+        val fix = o.optJSONObject("fix") ?: JSONObject()
+        of.keys().asSequence().toList().forEach { k -> if (of.getInt(k) == from) fix.put(k, into) }
+        fix.keys().asSequence().toList().forEach { k -> if (fix.getInt(k) == from) fix.put(k, into) }
+        val names = o.optJSONObject("names") ?: JSONObject()
+        names.remove(from.toString())
+        write(f, o.put("fix", fix).put("names", names))
+        Notes.refresh()
     }
 
     /** Written to a temp file and renamed, so a crash mid-write never leaves a broken file. */

@@ -40,6 +40,12 @@ class MainActivity : ComponentActivity() {
         if (granted) record() else Messages.flow.tryEmit("indite needs the microphone to record. You can allow it in Settings → Apps → indite.")
     }
 
+    /** Anything that brings indite to the front stops a ringing reminder. */
+    override fun onResume() {
+        super.onResume()
+        com.whispercppdemo.notes.Reminders.AlarmSound.stop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Settings.init(this)
@@ -108,6 +114,12 @@ class MainActivity : ComponentActivity() {
                 runCatching { com.whispercppdemo.notes.Speakers.label(app, note, k) {} }.onFailure { Log.w("indite", "test label failed", it) }
                 Notes.exportTestResult(note.id, extra = "label_ms" to (System.currentTimeMillis() - t0))
             }
+            return true
+        }
+        if (intent.hasExtra("test_ctx")) {  // --ei test_ctx 512|768 : A/B of the audio window for short live pieces
+            com.whispercppdemo.notes.Pauses.shortCtx = intent.getIntExtra("test_ctx", 768).takeIf { it == 512 || it == 768 } ?: 768
+            intent.removeExtra("test_ctx")
+            Log.i("indite", "test: short-piece audio window = ${com.whispercppdemo.notes.Pauses.shortCtx}")
             return true
         }
         if (intent.hasExtra("test_round")) {  // --ei test_round 64|256 : A/B test of the audio-window rounding (live speed)

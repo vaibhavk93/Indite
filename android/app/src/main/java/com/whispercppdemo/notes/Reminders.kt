@@ -170,8 +170,12 @@ object Reminders {
             .setContentText(r.text)
             .setStyle(Notification.BigTextStyle().bigText(r.text))
             .setContentIntent(open).setAutoCancel(true)
+            // Swiping the notification away stops the ringing too: Done was the only way out before, and a sound you
+            // cannot stop is worse than no sound at all.
+            .setDeleteIntent(action(STOP))
             .setCategory(Notification.CATEGORY_REMINDER)
-            .addAction(Notification.Action.Builder(null, "Done", action(DONE)).build())
+            .addAction(Notification.Action.Builder(null, if (silent) "Stop" else "Done", action(if (silent) STOP else DONE)).build())
+            .let { if (silent) it.addAction(Notification.Action.Builder(null, "Done", action(DONE)).build()) else it }
             .addAction(Notification.Action.Builder(null, "Snooze 1 h", action(SNOOZE)).build())
             .setOnlyAlertOnce(silent)
             .build().apply { if (insistent && !silent) flags = flags or Notification.FLAG_INSISTENT }
@@ -206,10 +210,12 @@ object Reminders {
      */
     object AlarmSound {
         private var player: android.media.MediaPlayer? = null
+        private var startedAt = 0L
         private val stopper = android.os.Handler(android.os.Looper.getMainLooper())
 
         @Synchronized fun start(c: Context) {
             stop()
+            startedAt = System.currentTimeMillis()
             val uri = Uri.parse("android.resource://${c.packageName}/raw/${c.resources.getResourceEntryName(R.raw.reminder)}")
             player = runCatching {
                 android.media.MediaPlayer().apply {
@@ -232,6 +238,9 @@ object Reminders {
         }
 
         @Synchronized fun stop() {
+            // indite comes to the front as part of firing a reminder, and that must not silence the reminder it just
+            // started. Anything in the first second and a half is the app's own startup, not the user answering.
+            if (player != null && System.currentTimeMillis() - startedAt < 1500) return
             stopper.removeCallbacksAndMessages(null)
             runCatching { player?.stop(); player?.release() }
             player = null
@@ -292,6 +301,7 @@ object Reminders {
         return null
     }
 
+    const val STOP = "stop"
     const val DONE = "done"
     const val SNOOZE = "snooze"
 }
@@ -302,7 +312,8 @@ class ReminderReceiver : BroadcastReceiver() {
         val id = intent.getLongExtra("id", 0)
         val nm = c.getSystemService(NotificationManager::class.java)
         // The test reminder is never saved, so its buttons are handled here.
-        Reminders.AlarmSound.stop()   // Done, Snooze or opening it: the ringing stops
+        Reminders.AlarmSound.stop()   // Stop, Done, Snooze, swiping it away or opening indite: the ringing stops
+        if (intent.action == Reminders.STOP) { nm.cancel(id.toInt()); return }
         if (id == Reminders.TEST_ID) { nm.cancel(id.toInt()); return }
         val r = Reminders.load(c).firstOrNull { it.id == id } ?: return
         when (intent.action) {

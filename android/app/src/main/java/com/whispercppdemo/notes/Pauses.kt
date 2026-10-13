@@ -65,9 +65,16 @@ object Pauses {
      */
     fun audioCtx(samples: Int): Int {
         val sec = samples / 16000.0
-        if (sec <= 13) return 768
+        if (sec <= 13) return shortCtx
         return min(FULL, (ceil((sec + 2) * 50 / round) * round).toInt())
     }
+
+    /**
+     * The window used for a short piece. 768 is 15 s: a 5-second sentence pays for 15 seconds of encoder either way,
+     * which is why the live wait has a ~9 s floor. 512 (10.2 s, still a multiple of 256) is the untried lever.
+     * Personal-build test hook: --ei test_ctx 512.
+     */
+    @Volatile var shortCtx = 768
 
     /** 256 (consistent text). Personal-build test hook can set 64 (the old rounding) for an A/B speed test. */
     @Volatile var round = 256
