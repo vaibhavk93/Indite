@@ -1,6 +1,7 @@
 package com.whispercppdemo.notes
 
 import kotlin.math.ceil
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
@@ -65,16 +66,22 @@ object Pauses {
      */
     fun audioCtx(samples: Int): Int {
         val sec = samples / 16000.0
-        if (sec <= 13) return shortCtx
-        return min(FULL, (ceil((sec + 2) * 50 / round) * round).toInt())
+        if (shortCtx > 0) return shortCtx          // test hook only: --ei test_ctx 512|768
+        // The window follows the piece, rounded up to the next multiple of 256, never below 512. A flat number was
+        // wrong in both directions (measured 13 Oct): 768 made a 5 s sentence pay for 15 s of encoder, so the engine
+        // fell behind and the wait compounded to 65 s; 512 was shorter than an 11 s piece, cut its end off, and word
+        // errors jumped 18.3% -> 32.8% while re-runs pushed the wait to 91 s.
+        return min(FULL, max(512, (ceil((sec + 2) * 50 / round) * round).toInt()))
     }
 
     /**
-     * The window used for a short piece. 768 is 15 s: a 5-second sentence pays for 15 seconds of encoder either way,
-     * which is why the live wait has a ~9 s floor. 512 (10.2 s, still a multiple of 256) is the untried lever.
-     * Personal-build test hook: --ei test_ctx 512.
+     * The window used for a short piece. 768 is 15 s, so a 5-second sentence paid for 15 seconds of encoder and the
+     * engine could not keep pace: it fell behind and the wait compounded (13 Oct: 65.5 s median, 0.73x real time).
+     * 512 is 10.2 s, still a multiple of 256 so the flash-attention fix holds. Measured on the phone, same audio,
+     * same cuts: engine 8.3 -> 5.5 s per piece, wait 65.5 -> 16.6 s, 0.99x real time, words wrong 18.1 -> 18.3%
+     * (unchanged). Personal-build test hook: --ei test_ctx 768 puts the old value back.
      */
-    @Volatile var shortCtx = 768
+    @Volatile var shortCtx = 0
 
     /** 256 (consistent text). Personal-build test hook can set 64 (the old rounding) for an A/B speed test. */
     @Volatile var round = 256

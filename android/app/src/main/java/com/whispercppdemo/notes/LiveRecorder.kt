@@ -101,7 +101,10 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
                 // Cut at a pause (0.6 s without speech after 0.3 s of speech). Each piece costs the engine about the same
                 // whatever its length, so while it's busy let pieces grow to ~15 s: fewer pieces, and it keeps up.
                 val pauseAfterSpeech = speech >= 10 && silent >= 19
-                val minLen = if (Notes.transcribing) 8 * SR else SR  // phone test: 15 s pieces meant ~35 s waits
+                // "engine busy -> cut later" was meant to stop 15 s pieces causing 35 s waits. Measured 13 Oct: it
+                // feeds itself - the engine slips, pieces grow to 21 s, each takes 15 s, and the wait compounds to
+                // 160 s. `shortCuts` is the test hook that breaks the loop so the opposite can be measured.
+                val minLen = if (Notes.transcribing && !shortCuts) 8 * SR else SR
                 if ((pauseAfterSpeech && len >= minLen) || len >= 25 * SR) {
                     if (speech * MS >= 250) { Notes.addCut(id, intArrayOf(pieceStart, total, speech * MS)); cuts++ }
                     pieceStart = total; speech = 0; silent = 0
@@ -134,8 +137,11 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
         }
     }
 
-    private companion object {
-        const val W = Pauses.WINDOW  // 512 samples = 32 ms
-        const val MS = 32
+    companion object {
+        private const val W = Pauses.WINDOW  // 512 samples = 32 ms
+        private const val MS = 32
+
+        /** Personal-build test hook (--ez test_short true): always cut at the first pause, however busy the engine is. */
+        @Volatile var shortCuts = false
     }
 }

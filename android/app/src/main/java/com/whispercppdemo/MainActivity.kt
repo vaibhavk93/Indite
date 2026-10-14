@@ -116,6 +116,12 @@ class MainActivity : ComponentActivity() {
             }
             return true
         }
+        if (intent.hasExtra("test_short")) {  // --ez test_short true : always cut at the first pause
+            com.whispercppdemo.notes.LiveRecorder.shortCuts = intent.getBooleanExtra("test_short", false)
+            intent.removeExtra("test_short")
+            Log.i("indite", "test: short cuts = ${com.whispercppdemo.notes.LiveRecorder.shortCuts}")
+            return true
+        }
         if (intent.hasExtra("test_ctx")) {  // --ei test_ctx 512|768 : A/B of the audio window for short live pieces
             com.whispercppdemo.notes.Pauses.shortCtx = intent.getIntExtra("test_ctx", 768).takeIf { it == 512 || it == 768 } ?: 768
             intent.removeExtra("test_ctx")
