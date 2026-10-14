@@ -355,6 +355,22 @@ is a git commit.
 | 198 | **Key disabled** | I disabled the key I pasted | 10 Oct | ✅ | Local copy deleted from `~/.indite/openrouter.key` |
 
 
+### Added 13–14 Oct — builds 16–29
+
+| # | Request | What you asked | Date | Status | Where it stands |
+|---|---|---|---|---|---|
+| 199 | **Dictation is still slow** | the wait after a pause | 13 Oct | ✅ | **9.6 s median, 17.1% words wrong** (build 29). The audio window now follows the piece instead of being a flat 15 s. Two wrong turns on the way, both caught by the phone test |
+| 200 | **Logo: smaller, orange dots on the i's** | — | 13 Oct | ✅ | Smaller wordmark; the two i's are orange. Hand-drawn dots were tried and dropped — a circle placed from glyph metrics drifts when the font scales. A dot-only logo needs a vector asset, not code |
+| 201 | **"Writing part 1 of 1" is half the screen** | — | 14 Oct | ✅ | The bar was literally coded to half width and looped instead of filling. Now full width, real progress, and a one-piece note says "Writing it now…" |
+| 202 | **UI breaks after using Ask AI a few times** | — | 13 Oct | 🧪 | Cause found: every AI answer added a chip to a single-line row, which overflowed the card. Capped at two chips plus a count; the time truncates instead of being pushed off |
+| 203 | **Turn anger or abuse into a formal message** | — | 13 Oct | 🟡 | Critic-reviewed. Built as the style **"say this calmly — the insults taken out"**, with a prompt carve-out that removes insults and keeps the request, and says "(nothing to send — this is a vent)" when nothing remains. Refused: any "sharper / firmer" sibling style. **Gate: 10 real angry messages, 7 of 10 sent unedited** |
+| 204 | **A Mac and Windows app like Wispr Flow** | — | 14 Oct | 🔬 | Mac engine, web UI and benchmarks already exist (910 lines of Python). Missing on both: global hotkey, typing into the focused app, tray presence, installer, signing. **Blocker before any of it: desktop latency has never been measured.** Windows deferred by your decision; Mac first |
+| 205 | **Is the model licence OK?** | can we ship and sell this | 14 Oct | ✅ | **Apache 2.0 — commercial use allowed, no permission needed.** Verified on the model card and Oriserve's own announcement. whisper.cpp is MIT. Keep the licence text and notices (`res/raw/licenses.txt`). ⚠ Your own repo still has no LICENSE |
+| 206 | **Can I test a Mac app without paying $99/yr?** | — | 14 Oct | ✅ | **Yes.** Build and run on your own Mac for free; macOS asks once ("Open Anyway"). The $99 only matters when someone else installs it — without notarization they see "developer cannot be verified" |
+| 207 | **Keep the project in the cloud and locally** | — | 14 Oct | 🟡 | Code: both (GitHub, pushed). Not in the cloud by design: 587 MB models, 2 GB tools, test audio, reports. **⚠ The signing key is still in one place and is the only irreplaceable file** |
+| 208 | **Can indite keep working when I switch apps?** | — | 14 Oct | ✅ | Yes — transcription runs as a foreground service with its own notification. Caveat: OnePlus freezes background apps unless battery optimisation is off for indite |
+
+
 ## Open questions for the founder
 
 **⚠ Remember:** these block work. Nothing below moves until you answer or act.
