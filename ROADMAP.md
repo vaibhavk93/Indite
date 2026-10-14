@@ -143,43 +143,17 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a �
 
 ## Now
 
-0. **Build 11: the first three hand-check failures, fixed in code but not built or heard yet** (10 Oct, from
-   "alarm not giving sound, translation not working, formal statement not working"):
-   - **Reminder sound.** Most likely cause: **"Ring like an alarm" defaulted to off**, so every reminder was a soft
-     chime on the notification stream, which silent mode, Do Not Disturb and a low notification volume all mute. You
-     asked for an alarm-like sound (#84) and got an opt-in switch, off, inside Settings. It is **on by default** now,
-     and the alarm uses the alarm stream and alarm volume and repeats until you see it. Second possible cause: indite
-     only asked for notification permission when you recorded or imported, never when you set a reminder — the Remind me
-     dialog asks now. Third: this phone force-stopping indite, which deletes its alarms; Settings → Reminders now says
-     so and opens the battery setting. New: **Test the reminder sound**, a line naming whatever phone setting is
-     blocking it, and "Last reminder: …" showing what happened last time.
-   - **Translate.** Two bugs fixed: Translate in the *Ask my AI* list never asked for a language, so it quietly
-     translated into English; and the free offline route (Google Translate) was buried at the bottom of a scrolling
-     dialog, and is now the first button. ⚠ The real block is that **no AI route is set up** — an OpenRouter key
-     (2 minutes) makes Translate, Formal version and every other request answer inside indite today; Tailscale for the
-     Mac route is the harder, second ask. Settings → AI now says in one line what will happen.
-   - **Formal statement.** Did not exist. Added as **Formal version** under Ask my AI. Also needs an AI route.
-   - **Speaker labels now happen by themselves.** Nothing had decided they should be manual — it was built as a button
-     and the tap was never removed (#60 took away the count question, not the tap). It runs after all transcription is
-     done, and is skipped when the phone is hot or the battery is low. The count is still a guess, so the note screen
-     still asks "indite heard N people. Is that right?". One voice now means no labels at all, which is what makes a
-     wrong guess undoable in one tap. ⚠ **This is ahead of your own gate:** the guess has never been scored on real
-     audio (the phone test only ever scores a *given* count), and #61 "can I trust Find who spoke?" is still waiting on
-     your listen-check. Keep it in your personal build; it must not reach testers until the guess is measured —
-     `--es test_label "<name>" --ei k 0` scores it today with no new code (~20 min, see item 3).
-   Gate: build 11, then your ear on the reminder (switch on, then off) and one Translate + one Formal version end to end.
-   One thing only you can answer: when the reminder was due, did it appear with no sound, or not appear at all?
-1. **Build 10 is on the phone** (tag `build-10`). Quick test done; the rounding A/B is done (keep 256: repeatable text,
-   live wait 9.1-14.1 s vs 78.8-87.3 s with the old rounding; heat costs ~5 s per +1 °C). **Left to do:** the full
-   `./bench_synth/phone_test.sh` on a cool phone (gate: 15-min file ≈ 25%), and decide whether the italic subtitle stays.
-   Next accuracy item is live word errors (cut points), not rounding.
-2. **Founder's 20-minute hand check** (12 items: bubble, auto-paste, Find who spoke, Make notes, Action items, Translate,
-   practice scores, export, "no speech" screen). Then fix what fails.
-3. **Speaker labels before testers:** founder listens to the real 15-min interview split (1:34–1:47, 7:00–7:14, 13:07–13:28
-   should be the second speaker; 0:20–0:55 the main one); 2–3 real recordings with hand-marked turns.
-   Known limits: the count guess is fragile on real audio (you confirm it); very short replies ("haan") can get the wrong
-   label; overlapping speech isn't handled.
-4. **Check Google Translate with spoken Hinglish** (2 minutes): decides whether the hand-off is enough.
+1. **Founder's hand check of build 29** — everything built since build 15 is untested by a human: the backup and
+   restore, the rebuilt Ask AI sheet, speaker correction, retry-a-part, task ticks, the keyboard rewrite chips,
+   reminders ringing and stopping. The code is verified by compiler and 22 unit tests; none of it has been *used*.
+2. **Back up the signing key** (`~/.indite/indite-testers.keystore`). One copy. Five minutes. Without it no tester can
+   ever receive an update.
+3. **A new OpenRouter key.** No AI feature has ever produced an answer on the phone. Until one does, Translate,
+   Rewrite to send, meeting notes and the keyboard chips are untested promises. Pick `apodex/apodex-1.1-mini:free`
+   (measured: 15/15 answers, 25 s median, keeps Roman Hinglish).
+4. **The ₹15k phone.** Still the biggest unknown, and everything in the tester plan sits behind it.
+5. **The install size.** 681 MB takes 34 minutes over a cable; on mobile data it is where most testers stop. The gate
+   for a smaller model is set: it must match 25.0% on the 15-min file and 13.0% on clean synthetic.
 
 ## Next build (planned, critic-reviewed)
 

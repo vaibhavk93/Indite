@@ -4,6 +4,35 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-13/14 · Claude Code (Opus 5) · builds 16-29
+
+**Next step:** founder's hand check of everything since build 15; back up the signing key; a new OpenRouter key so
+an AI feature can answer on the phone for the first time; then the ₹15k phone and the install-size decision.
+
+**Live dictation is under 10 seconds for the first time with accuracy intact: 9.6 s median, 17.1% words wrong,
+15-min import unchanged at 25.0%, speakers 96.7%** (build 29, phone 33.5 → 36.9 °C).
+
+- **The engine fix.** `Pauses.audioCtx` sizes the window to the piece instead of using a flat number. Two wrong turns
+  first, both caught by the phone test: a flat 512 truncated 11 s pieces (live WER 18.3 → 32.8%), and the test
+  override shipped enabled in build 28 so every piece got a 10.2 s window (15-min import 25.0 → 75.7%). `AudioCtxTest`
+  now fails on all three mistakes.
+- **`adb install` is 60x slower than push + `pm install`** for a 681 MB APK: 34 minutes vs 30 seconds. Three installs
+  failed before this was found. Recorded in HANDOFF section 3.
+- **Built:** restorable backup with a format version; one AI door replacing three duplicate buttons and a ten-label
+  menu; per-paragraph speaker correction with merge and "Not sure"; retry one failed part; briefs linking tasks back to
+  their paragraph; task states; keyboard rewrite chips; "say this calmly"; delete asks audio/text/both; reminders that
+  ring on the alarm stream and stop every way a user might try.
+- **Audit (Stage A) delivered:** 37 findings, coverage register, eight batches, published as an artifact. Stage B ran
+  batches 1-5 and 8; R01 and R02 remain partly open (R02's speed half is now done).
+- **Licence question closed:** the Hinglish model is Apache 2.0 — commercial use allowed, no permission needed.
+  whisper.cpp is MIT. The repo still has no LICENSE of its own.
+- **Corrections to earlier claims:** the model does *not* invent sentences from silence (it writes `nan`); the
+  "invented words" in the scorer are real speech whose timestamps drift into a silence window. Whisper's own VAD was
+  measured and rejected for transcription: 1,017 real words lost against 748 without it.
+- Housekeeping: 2.4 GB of old speed-test APKs deleted (test audio kept), 4.3 GB free; `docs/PRD.md` written.
+
+---
+
 ## 2026-10-11 (early) · Claude Code (Opus 5) · builds 12-14
 
 **Next step:** alarm volume up, then Settings → Reminders → Test the sound. If it still doesn't ring, read the line
