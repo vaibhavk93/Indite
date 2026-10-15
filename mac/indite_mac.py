@@ -295,6 +295,28 @@ class MicProblem(Exception):
     """The microphone could not be opened, with a reason worth showing someone."""
 
 
+def _rescan() -> None:
+    """
+    Makes PortAudio read the device list again (it reads it once, at import).
+
+    This is Pa_Terminate + Pa_Initialize underneath, and it deadlocks against CoreAudio's lock if a stream is still
+    on its way down - which is how four threads ended up wedged (16 Oct). So: never while a stream is open, on a
+    thread of its own, and the app carries on with the old list if it does not come back.
+    """
+    def go() -> None:
+        try:
+            sd._terminate()
+            sd._initialize()
+        except Exception as e:                           # noqa: BLE001
+            print("mic: could not re-read the device list:", e)
+
+    t = threading.Thread(target=go, daemon=True)
+    t.start()
+    t.join(1.5)
+    if t.is_alive():
+        print("mic: re-reading the device list did not come back; using the list we have")
+
+
 class Mic:
     """Records only while the key is held. Nothing is captured before the press or after the release."""
 
@@ -324,11 +346,7 @@ class Mic:
         if DEMO_FEED.exists():                          # demo video only: this recording instead of the microphone
             self._feed(DEMO_FEED)
             return
-        try:                                            # re-read the device list (3 ms), so a headset connected
-            sd._terminate()                             # after launch shows up - PortAudio reads it only once
-            sd._initialize()
-        except Exception:                               # noqa: BLE001
-            pass
+        _rescan()                                       # so a headset plugged in after launch shows up
         self.q = queue.Queue()
 
         def cb(indata, frames, time_info, status):      # noqa: ANN001 - sounddevice's signature
@@ -400,15 +418,32 @@ class Mic:
         return unique
 
     def _drop(self) -> None:
-        """Let go of the stream whatever it does on the way out. The one rule: afterwards there is no stream."""
-        try:
-            self.stream.stop()
-            self.stream.close()
-        except Exception as e:                           # noqa: BLE001
-            print("mic: closing the old stream failed:", e)
-        finally:
-            self.stream = None
-            self.level = 0.0
+        """
+        Let go of the stream. The one rule: this returns, and afterwards there is no stream.
+
+        16 Oct: four of indite's threads were found wedged in CoreAudio's own lock, inside PortAudio's
+        FinishStoppingStream. `stream.stop()` never came back, so the release of the key never wrote anything and
+        every press after that was dead - the pill appeared, the bars never moved, nothing was typed. CoreAudio is
+        not ours to fix, so it does not get to hold the app: the close runs on a thread of its own, and if it has
+        not finished in a second and a half the stream object is simply abandoned.
+        """
+        stream, self.stream, self.level = self.stream, None, 0.0
+
+        def close() -> None:
+            try:
+                stream.abort()                           # abort, not stop: do not wait for buffers to drain
+            except Exception:                            # noqa: BLE001
+                pass
+            try:
+                stream.close()
+            except Exception:                            # noqa: BLE001
+                pass
+
+        t = threading.Thread(target=close, daemon=True)
+        t.start()
+        t.join(1.5)
+        if t.is_alive():
+            print("mic: CoreAudio would not let go of the stream; abandoned it and carried on")
 
     def stop(self) -> np.ndarray:
         if not self.stream:
@@ -1306,8 +1341,17 @@ class InditeApp(rumps.App):
             text = ""
             if len(audio) >= RATE // 2:
                 text = self.tidy(self.engine.transcribe(audio))
+            wav = store.DIR / "mictest.wav"              # kept, so the audio itself can be listened to and re-run
+            with wave.open(str(wav), "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(RATE)
+                w.writeframes((np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes())
+            rms = float(np.sqrt(np.mean(audio ** 2))) if len(audio) else 0.0
             out.write_text(json.dumps({"mic": self.mic.using, "seconds": round(len(audio) / RATE, 2),
-                                       "loudest": max(levels or [0]), "heard": text}, indent=1))
+                                       "loudest": max(levels or [0]), "rms": round(rms, 5),
+                                       "peak": round(float(np.abs(audio).max()) if len(audio) else 0.0, 4),
+                                       "heard": text}, indent=1))
         except Exception as e:                            # noqa: BLE001
             out.write_text(json.dumps({"error": f"{type(e).__name__}: {e}"}, indent=1))
 
