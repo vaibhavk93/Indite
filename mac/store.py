@@ -32,6 +32,7 @@ DEFAULTS = {
     "hf_key": "",               # hands-free key; "" = the same key you hold to talk
     "hf_taps": 2,               # taps of that key that lock hands-free: 2 or 3
     "pill_glass": 0.45,         # how much frosted glass the pill shows: 0 = clear, 1 = Apple's default
+    "preview": False,           # show what was written in a small card above the pill for a few seconds
 }
 
 
@@ -54,33 +55,82 @@ def set_pref(key: str, value) -> dict:
     return p
 
 
-def add(text: str, seconds: float, took: float, where: str, app: str) -> None:
-    if not prefs()["keep_history"] or not text:
-        return
-    DIR.mkdir(parents=True, exist_ok=True)
-    line = json.dumps({"at": time.time(), "text": text, "seconds": round(seconds, 1),
-                       "took": round(took, 2), "where": where, "app": app})
-    with HISTORY.open("a", encoding="utf-8") as f:
-        f.write(line + "\n")
-    rows = HISTORY.read_text(encoding="utf-8").splitlines()
-    if len(rows) > CAP:
-        HISTORY.write_text("\n".join(rows[-CAP:]) + "\n", encoding="utf-8")
+def keep(row: dict) -> bool:
+    """Notes you have marked - a star, a to-do, a transcribed file - are kept until you delete them yourself.
+    Only plain dictations are capped and cleared, so "Clear history" can never take a note you meant to keep."""
+    return bool(row.get("star") or row.get("todo") or row.get("kind", "dictation") != "dictation")
 
 
-def history() -> list[dict]:
-    """Newest first, bad lines skipped rather than crashing the window."""
+def _read() -> list[dict]:
     out = []
     if HISTORY.exists():
         for line in HISTORY.read_text(encoding="utf-8").splitlines():
             try:
-                out.append(json.loads(line))
-            except Exception:   # noqa: BLE001
+                row = json.loads(line)
+            except Exception:   # noqa: BLE001 - a bad line is skipped, never a crash
                 continue
-    return out[::-1]
+            row.setdefault("id", repr(row.get("at", 0)))     # rows written before ids existed
+            out.append(row)
+    return out
 
 
-def clear() -> None:
-    HISTORY.unlink(missing_ok=True)
+def _write(rows: list[dict]) -> None:
+    plain = [r for r in rows if not keep(r)]
+    drop = {id(r) for r in plain[:-CAP]} if len(plain) > CAP else set()     # oldest plain dictations first
+    rows = [r for r in rows if id(r) not in drop]
+    DIR.mkdir(parents=True, exist_ok=True)
+    tmp = HISTORY.with_suffix(".tmp")
+    tmp.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+    tmp.replace(HISTORY)                                   # all or nothing: a crash mid-write loses no notes
+
+
+def add(text: str, seconds: float, took: float, where: str, app: str, **extra) -> str | None:
+    """One dictation, or a note (extra: kind, title, segments, source). Returns its id."""
+    if not text or (not prefs()["keep_history"] and extra.get("kind", "dictation") == "dictation"):
+        return None
+    now = time.time()
+    row = {"id": repr(now), "at": now, "text": text, "seconds": round(seconds, 1), "took": round(took, 2),
+           "where": where, "app": app, **extra}
+    _write(_read() + [row])
+    return row["id"]
+
+
+def update(note_id: str, **fields) -> None:
+    """Star, to-do, title, improved text... only the fields given change. None removes a field."""
+    rows = _read()
+    for r in rows:
+        if r["id"] == note_id:
+            for k, v in fields.items():
+                if v is None:
+                    r.pop(k, None)
+                else:
+                    r[k] = v
+    _write(rows)
+
+
+def delete(note_id: str) -> dict | None:
+    rows = _read()
+    gone = next((r for r in rows if r["id"] == note_id), None)
+    _write([r for r in rows if r["id"] != note_id])
+    return gone
+
+
+def restore(row: dict) -> None:
+    """Undo a delete: the note goes back exactly as it was, in time order."""
+    _write(sorted(_read() + [row], key=lambda r: r.get("at", 0)))
+
+
+def history() -> list[dict]:
+    """Newest first."""
+    return _read()[::-1]
+
+
+def clear() -> int:
+    """Deletes plain dictations; starred, to-do and file notes stay. Returns how many were deleted."""
+    rows = _read()
+    kept = [r for r in rows if keep(r)]
+    _write(kept)
+    return len(rows) - len(kept)
 
 
 # ---- your own word fixes ---------------------------------------------------------------------------------------
@@ -145,4 +195,13 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert apply_my_fixes("c++ seekho", pairs) == "C++ seekho"
     assert apply_my_fixes("addr1", [("addr1", r"12 \1 Road")]) == r"12 \1 Road"   # replacement taken literally
     assert parse_fixes("a = b\n" + "pay tm = Paytm\n")[0] == ("pay tm", "Paytm")
+    import tempfile
+    HISTORY = Path(tempfile.mkdtemp()) / "h.jsonl"         # the notes rules, on a scratch file
+    DIR = HISTORY.parent
+    a = add("one", 1, 1, "done", "")
+    b = add("two", 1, 1, "done", "", kind="file", title="call.m4a")
+    update(a, star=True)
+    assert [r["text"] for r in history()] == ["two", "one"] and history()[1]["star"]
+    gone = delete(a); assert len(history()) == 1; restore(gone); assert len(history()) == 2
+    update(a, star=None); assert clear() == 1 and [r["text"] for r in history()] == ["two"]   # file note kept
     print("ok")

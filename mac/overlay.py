@@ -286,3 +286,71 @@ class Pill:
         """A gentle pulse while the engine works, so a slow sentence does not look like a frozen app."""
         self.view.phase = (self.view.phase + 0.32) % (2 * math.pi)     # ~1 wave a second at 20 Hz
         self.view.setNeedsDisplay_(True)
+
+
+class Preview:
+    """
+    The words just written, in a small glass card above the pill, for a few seconds (Settings → Show the words).
+    Off by default: the words are already where you typed them. On, it lets you check a dictation without looking
+    away - and it is the only place to see one that went to the clipboard. Click-through and never focused, like
+    the pill. Called from any thread; all AppKit work is handed to the main thread.
+    """
+
+    PW, PH = 380.0, 66.0
+
+    def __init__(self) -> None:
+        screen = NSScreen.mainScreen().frame()
+        x = screen.origin.x + (screen.size.width - self.PW) / 2
+        y = screen.origin.y + 96 + H + 10                 # just above the pill
+        self.panel = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+            NSMakeRect(x, y, self.PW, self.PH),
+            NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel, NSBackingStoreBuffered, False)
+        self.panel.setOpaque_(False)
+        self.panel.setBackgroundColor_(NSColor.clearColor())
+        self.panel.setLevel_(25)
+        self.panel.setIgnoresMouseEvents_(True)
+        self.panel.setCollectionBehavior_(
+            NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorStationary
+            | NSWindowCollectionBehaviorFullScreenAuxiliary)
+        box = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, self.PW, self.PH))
+        Liquid = getattr(AppKit, "NSGlassEffectView", None)
+        if Liquid is not None:
+            glass = Liquid.alloc().initWithFrame_(NSMakeRect(0, 0, self.PW, self.PH))
+            glass.setCornerRadius_(14.0)
+        else:
+            glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, self.PW, self.PH))
+            glass.setMaterial_(NSVisualEffectMaterialHUDWindow)
+            glass.setState_(NSVisualEffectStateActive)
+            glass.setWantsLayer_(True)
+            glass.layer().setCornerRadius_(14.0)
+            glass.layer().setMasksToBounds_(True)
+        box.addSubview_(glass)
+        self.label = AppKit.NSTextField.wrappingLabelWithString_("")
+        self.label.setFrame_(NSMakeRect(14, 8, self.PW - 28, self.PH - 16))
+        self.label.setFont_(NSFont.systemFontOfSize_(12.5))
+        self.label.setTextColor_(NSColor.labelColor())
+        self.label.setMaximumNumberOfLines_(3)
+        self.label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+        box.addSubview_(self.label)
+        box.setWantsLayer_(True)
+        box.layer().setCornerRadius_(14.0)
+        box.layer().setBorderWidth_(1.0)
+        box.layer().setBorderColor_(NSColor.colorWithCalibratedWhite_alpha_(0.0, 0.18).CGColor())
+        self.panel.setContentView_(box)
+        self.shown_at = 0.0
+
+    def show(self, text: str) -> None:
+        from PyObjCTools import AppHelper
+        AppHelper.callAfter(self._show, text)
+
+    def _show(self, text: str) -> None:
+        self.label.setStringValue_(text)
+        self.panel.setAlphaValue_(1.0)
+        self.panel.orderFrontRegardless()
+        self.shown_at = t = time.time()
+        from PyObjCTools import AppHelper
+        AppHelper.callLater(4.0, self._hide, t)
+
+    def _hide(self, t: float) -> None:
+        if t == self.shown_at:                            # a newer dictation restarts the clock
+            self.panel.orderOut_(None)

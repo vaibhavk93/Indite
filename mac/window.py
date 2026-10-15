@@ -74,6 +74,8 @@ class Bridge(NSObject):
             "fixes": len(store.my_fixes()),
             "mics": __import__("indite_mac").mic_names(),
             "using": self.app.mic.using,
+            "job": self.app.job,
+            "file_error": self.app.file_error,
         }
 
     @objc.python_method
@@ -100,6 +102,19 @@ class Bridge(NSObject):
             self.app.reload_prefs()
         elif act == "copy":
             self.app.typer.copy(msg.get("text", ""))
+        elif act == "note":                              # star / to-do / title: only these fields may change
+            fields = {k: v for k, v in (msg.get("set") or {}).items() if k in ("star", "todo", "title")}
+            store.update(str(msg.get("id", "")), **fields)
+        elif act == "delete":
+            self.undo = store.delete(str(msg.get("id", "")))
+        elif act == "undo":
+            if getattr(self, "undo", None):
+                store.restore(self.undo)
+                self.undo = None
+        elif act == "export":
+            self.app.export(str(msg.get("id", "")), str(msg.get("fmt", "txt")))
+        elif act == "dismiss":
+            self.app.file_error = ""
         elif act == "add_fix":
             store.add_fix(msg.get("heard", ""), msg.get("want", ""))
         elif act == "files":
@@ -108,10 +123,11 @@ class Bridge(NSObject):
             self.app.edit_fixes(None)
         elif act == "clear":
             from AppKit import NSAlert, NSAlertFirstButtonReturn
-            n = len(store.history())
+            n = sum(1 for r in store.history() if not store.keep(r))
             alert = NSAlert.alloc().init()
-            alert.setMessageText_(f"Delete all {n} saved dictation{'s' if n != 1 else ''}?")
-            alert.setInformativeText_("They are removed from this Mac. This cannot be undone.")
+            alert.setMessageText_(f"Delete {n} dictation{'s' if n != 1 else ''}?")
+            alert.setInformativeText_("Starred notes, to-dos and transcribed files are kept. "
+                                      "The rest is removed from this Mac and cannot be undone.")
             alert.addButtonWithTitle_("Delete")
             alert.addButtonWithTitle_("Cancel")
             alert.buttons()[0].setHasDestructiveAction_(True)

@@ -31,7 +31,7 @@ from pynput import keyboard
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import store              # noqa: E402
-from overlay import Pill   # noqa: E402 - needs the path above
+from overlay import Pill, Preview   # noqa: E402 - needs the path above
 from window import Window, front_app   # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -326,6 +326,11 @@ class Mic:
         return np.concatenate(chunks).flatten() if chunks else np.zeros(0, dtype="float32")
 
 
+def NSApp_activate() -> None:
+    from AppKit import NSApp
+    NSApp.activateIgnoringOtherApps_(True)
+
+
 def mic_names() -> list[str]:
     """Physical inputs for the Settings picker. Virtual ones (Zoom, BlackHole) are left out: they are never a voice."""
     try:
@@ -443,7 +448,10 @@ class InditeApp(rumps.App):
         self.held_keys: set = set()
         self.last = ""
         self.web_proc: subprocess.Popen | None = None
+        self.job: dict | None = None     # a file being transcribed: name, parts done, parts in all
+        self.file_error = ""
         self.pill = Pill()
+        self.preview = Preview()
         self.pill.set_glass(self.prefs["pill_glass"])
         self.done_until = 0.0
         self.done_state = "done"
@@ -698,8 +706,9 @@ class InditeApp(rumps.App):
         self.done_until = time.time() + 1.6
         took = time.time() - t0
         store.add(text, len(audio) / RATE, took, self.done_state, where)
-        if self.window:
-            self.window.bridge.push()    # the list grows while it is open, so a dictation shows up as it lands
+        self.refresh()                   # the list grows while it is open, so a dictation shows up as it lands
+        if self.prefs["preview"]:
+            self.preview.show(text)
         print(f"{len(audio) / RATE:.1f}s of speech -> {took:.2f}s -> {text}")
 
     # ---- menu ----------------------------------------------------------------------------------------------
@@ -718,35 +727,87 @@ class InditeApp(rumps.App):
         subprocess.run(["open", "-e", str(store.fixes_file())], check=False)
 
     def open_files(self, _) -> None:                     # noqa: ANN001
-        threading.Thread(target=self._files, daemon=True).start()
+        """Pick an audio or video file and transcribe it here (main thread: the open panel is AppKit)."""
+        from AppKit import NSOpenPanel
+        if self.job:
+            rumps.alert("indite is still on another file", f"{self.job['name']} is {self.job['done']} of "
+                        f"{self.job['total']} parts in. It will be in Home when it is done.")
+            return
+        panel = NSOpenPanel.openPanel()
+        panel.setTitle_("Transcribe a file")
+        panel.setPrompt_("Transcribe")
+        panel.setAllowsMultipleSelection_(False)
+        NSApp_activate()
+        if panel.runModal() == 1 and panel.URLs():
+            path = Path(str(panel.URLs()[0].path()))
+            threading.Thread(target=self.transcribe_file, args=(path,), daemon=True).start()
 
-    def _files(self) -> None:
+    def transcribe_file(self, path: Path) -> None:
         """
-        Files, long recordings, the editor and SRT export already exist in the web app (indite/web.py), so this opens
-        it instead of building them twice. Started on first use, as its own process: it loads torch for its speech
-        detector (about 19 s) and a second model, which the always-on dictation app should never carry.
+        Any audio or video file -> a note in Home, with times for subtitles. Decoded by the same reader the web app
+        uses (PyAV, no torch), cut by the same quiet-point rule as a long hold, one piece at a time through the
+        engine that is already loaded - so a file needs no second model and no web page. Dictation still works
+        while it runs: each piece takes the engine for ~2 s, then lets go.
         """
-        import urllib.request
-        url = f"http://127.0.0.1:{WEB_PORT}/"
-        def up() -> bool:
-            try:
-                urllib.request.urlopen(url, timeout=1)
-                return True
-            except Exception:                            # noqa: BLE001
-                return False
-        if not up():
-            self.web_proc = subprocess.Popen(
-                [str(ROOT / ".venv/bin/indite"), "serve", "--port", str(WEB_PORT)], cwd=str(ROOT),
-                stdout=open(Path.home() / "Library/Logs/indite-web.log", "a"), stderr=subprocess.STDOUT)
-            for _ in range(60):
-                time.sleep(0.5)
-                if up() or self.web_proc.poll() is not None:
-                    break
-        if up():
-            subprocess.run(["open", url], check=False)
+        sys.path.insert(0, str(ROOT))
+        from indite.core import load_audio
+        t0 = time.time()
+        self.job = {"name": path.name, "done": 0, "total": 0}
+        self.refresh()
+        try:
+            audio, _damaged = load_audio(path)
+            parts = pieces(audio)
+            self.job["total"] = len(parts)
+            segments, at = [], 0.0
+            for p in parts:
+                text = self.engine.transcribe(p)
+                text = apply_fixes(text, self.table) if self.prefs["spelling"] else text
+                text = store.apply_my_fixes(text, store.my_fixes())
+                if text:
+                    segments.append({"start": round(at, 2), "end": round(at + len(p) / RATE, 2), "text": text})
+                at += len(p) / RATE
+                self.job["done"] += 1
+                self.title = f"📄 {self.job['done']}/{self.job['total']}"
+                self.refresh()
+            body = "\n\n".join(s["text"] for s in segments)
+            if body:
+                store.add(body, at, time.time() - t0, "file", "", kind="file", title=path.name,
+                          segments=segments, source=str(path))
+            print(f"file {path.name}: {at:.0f}s of audio -> {time.time() - t0:.0f}s, {len(segments)} parts")
+            self.done_state = "done" if body else "nothing"
+        except Exception as e:                           # noqa: BLE001 - say so, keep the app alive
+            print("file failed:", path, e)
+            self.done_state = "failed"
+            self.file_error = f"{path.name}: {e}"
+        finally:
+            self.job = None
+            self.title = "🎙"
+            self.done_until = time.time() + 2.0
+            self.refresh()
+
+    def refresh(self) -> None:
+        """Tell the window something changed. WKWebView must be touched on the main thread only."""
+        if self.window:
+            from PyObjCTools import AppHelper
+            AppHelper.callAfter(self.window.bridge.push)
+
+    def export(self, note_id: str, fmt: str) -> None:
+        """Save a note as plain text or as subtitles (.srt), where the user picks (main thread)."""
+        from AppKit import NSSavePanel
+        row = next((r for r in store.history() if r["id"] == note_id), None)
+        if not row:
+            return
+        sys.path.insert(0, str(ROOT))
+        from indite.styles import srt
+        name = Path(row.get("title") or "indite note").stem
+        if fmt == "srt" and row.get("segments"):
+            body, ext = srt({"segments": row["segments"]}), ".srt"
         else:
-            print("web app did not start - see ~/Library/Logs/indite-web.log")
-            self.done_state, self.done_until = "failed", time.time() + 2.0
+            body, ext = (row.get("improved") or row["text"]) if fmt == "improved" else row["text"], ".txt"
+        panel = NSSavePanel.savePanel()
+        panel.setNameFieldStringValue_(name + ext)
+        if panel.runModal() == 1 and panel.URL():
+            Path(str(panel.URL().path())).write_text(body, encoding="utf-8")
 
     def copy_last(self, _) -> None:                      # noqa: ANN001
         if self.last:
