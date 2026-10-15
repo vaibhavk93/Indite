@@ -31,14 +31,23 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 
 # -u: print at once, so the log shows each dictation (without it nothing appeared until the buffer filled)
+# Python lives INSIDE the bundle (a copy of the interpreter, ~70 MB), the code and libraries stay in this folder.
+# macOS checks Screen & System Audio Recording against the program actually running: with the interpreter outside
+# the app, the switch for "indite" never applied and meetings could not hear calls (15 Oct, log said False).
+PY_HOME="$("$ROOT/.venv/bin/python" -c 'import sys; print(sys.base_prefix)')"
+cp -R "$PY_HOME" "$APP/Contents/Resources/python"
+SITE="$("$ROOT/.venv/bin/python" -c 'import site; print(site.getsitepackages()[0])')"
 cat > "$APP/Contents/MacOS/indite" <<LAUNCH
 #!/bin/bash
-exec "$ROOT/.venv/bin/python" -u "$ROOT/mac/indite_mac.py" >> "\$HOME/Library/Logs/indite-mac.log" 2>&1
+export PYTHONPATH="$SITE:$ROOT"
+export PYTHONNOUSERSITE=1
+HERE="\$(cd "\$(dirname "\$0")/../Resources" && pwd)"
+exec "\$HERE/python/bin/python3" -u "$ROOT/mac/indite_mac.py" >> "\$HOME/Library/Logs/indite-mac.log" 2>&1
 LAUNCH
 chmod +x "$APP/Contents/MacOS/indite"
 cp "$ROOT/mac/brand/indite.icns" "$APP/Contents/Resources/indite.icns"     # the logo (mac/brand/logo.svg)
 
 # An ad-hoc signature gives the bundle a stable identity, so the Accessibility tick survives a rebuild.
-codesign --force --sign - "$APP" 2>/dev/null || echo "note: could not sign; the tick may not survive a rebuild"
+codesign --force --deep --sign - "$APP" 2>/dev/null || echo "note: could not sign; the tick may not survive a rebuild"
 echo "built: $APP"
 echo "log:   ~/Library/Logs/indite-mac.log"
