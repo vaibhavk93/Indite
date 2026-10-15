@@ -352,10 +352,11 @@ the old Desktop path working. All paths in the repo were relative, so nothing el
 
 ## 5b. Where the code and builds live (repo status)
 
-| Place | What's there | State (10 Oct, evening) |
+| Place | What's there | State (15 Oct, night) |
 |---|---|---|
-| **GitHub** `github.com/vaibhavk93/Indite` (PUBLIC, branch `main`) | Source, docs | **Pushed** (10 Oct evening), incl. tags `build-7`…`build-10`. Push again when the founder says "push" |
+| **GitHub** `github.com/vaibhavk93/Indite` (PUBLIC, branch `main`) | Source, docs | **Pushed 15 Oct night** (`aad93dc` and this doc fix), incl. tags `build-7`…`build-10`. Includes the Paytm-commercialisation notes in MAC_PLAN §5 — the founder chose to sync as is. Push again when the founder says so |
 | **Local repo** (this Mac) | Everything, plus git-ignored files: models in `android/app/src/main/assets/models/`, `android/app/libs/sherpa-onnx-1.13.8.aar`, `.tools/` (JDK, whisper.cpp), test audio, old APKs in `phonetest/` and `APK/` (~2.4 GB, OK to delete pending) | HEAD = latest commit; tags `build-7`…`build-10` mark builds installed on the phone |
+| **Mac app builds** | `dist/indite.app` (yours: launcher + its own Python, code runs from this folder) and `dist-share/indite.app` + `indite-mac.zip` (shareable, self-contained). Both git-ignored | Rebuilding resets Accessibility and Screen Recording (ad-hoc signing) |
 | **Founder's phone** (OnePlus CPH2573, USB) | Personal build 0.10 (build 10) + the rounding A/B hook | Notes live only on the phone (no backup). Export via Settings → Storage |
 | **Signing key** `~/.indite/indite-testers.keystore` | Same key for every build (updates install over the old app) | **Only copy is on this Mac: founder to back it up** |
 
