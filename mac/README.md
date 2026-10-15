@@ -38,13 +38,17 @@ The window shows a banner when the permission is missing.
 |---|---|
 | **Dictate anywhere** | Hold Right ⌥ (or Left ⌥ / Right ⌘ / Right ⌃), speak, let go |
 | **Where the words go** | *Smart*: typed into the text box; copied to the clipboard when there is none. Or always type / always copy |
-| **Cancel** | Esc while holding. Nothing is typed. (Esc also reaches the app underneath; macOS will not let indite block it) |
+| **Hands-free** | Double-tap the key and let go; tap once to finish. Red dot in the pill. Stops itself after 15 min |
+| **Paste last** | ⌃⌘V types the last dictation again (password guard applies) |
+| **Sounds** | Tick on start, pop on stop; Settings → Sounds |
+| **Microphone** | Settings → Microphone: Automatic or a named mic; remembered by name, list refreshed on every press |
+| **Cancel** | Esc while holding (or while hands-free). Nothing is typed. (Esc also reaches the app underneath; macOS will not let indite block it) |
 | **Long dictation** | Holds over 20 s are cut at the quietest moments into pieces; no sound is dropped |
 | **Hinglish spelling** | Everyday words written one way (achha, kyunki, maine) from `mac/spelling.tsv` |
 | **Word fixes** | Pencil on any history row: "indite wrote / you meant" (shows how many past dictations hold the word). Or Settings → Word fixes → Edit… for the file: `ptm = Paytm`. Whole words, any capitals |
 | **Password boxes** | Never typed, copied or saved. The pill says "password box" |
 | **Files** | Home → Transcribe a file… (or the menu bar) opens the web app on 127.0.0.1:8000 for audio/video files, long recordings, editing and subtitles |
-| **The pill** | Small Liquid Glass pill above the Dock: voice bars while you hold, "writing…", then "✓ typed in", "✓ copied", "nothing heard", "cancelled" or "didn't work". Never takes focus, never blocks a click |
+| **The pill** | Small clear Liquid Glass pill with a two-tone border, above the Dock: voice bars while you hold, a wave of dots and a moving glint while writing, then "✓ typed in", "✓ copied", "nothing heard", "cancelled" or "didn't work". Never takes focus, never blocks a click |
 | **Microphone fallback** | If the default mic will not open (a Bluetooth headset that is off), tries the last one that worked, the built-in one, then any other |
 | **History** | Home: last 500 dictations by day, search (⌘F), one-click copy. Stats: words, words a minute, average wait |
 | **Privacy** | Keep a history on/off; Clear history (asks first). Recordings are deleted as soon as they are transcribed |
@@ -74,6 +78,7 @@ sized to the audio (without it the engine pads to 30 s and takes 2.2 s).
 
 ```sh
 .venv/bin/python mac/store.py                                   # word fixes
+.venv/bin/python tests/test_mac_handsfree.py                    # hold / tap / double-tap / Esc
 .venv/bin/python -c "import sys; sys.path.insert(0,'tests'); import test_mac_pieces as t; \
   t.test_long_hold_is_cut_in_the_quiet_and_loses_nothing(); t.test_short_hold_is_untouched()"
 ```

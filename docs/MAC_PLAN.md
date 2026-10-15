@@ -82,7 +82,43 @@ app navigation; digitaltrends.com, eesel.ai and spokenly.app reviews.
 
 ---
 
-## 3. The plan (critic-reviewed, 15 Oct)
+## 3. Founder's requirements (15 Oct, evening) — the list that now drives the Mac app
+
+**The founder overruled the earlier "drop" verdicts: every item below is wanted.** Section 4 (the first plan) is kept
+for its technical catches. Status: ✅ done · 🧪 done, founder to check · 🔨 next · 📋 planned · 💬 answered.
+
+| # | Requirement | Status | Notes |
+|---|---|---|---|
+| R1 | Pill more translucent, towards transparent | ✅ | Liquid Glass *Clear* style |
+| R2 | Pill border, so it never merges with a same-coloured background | ✅ | Two-tone rim (dark outside, light inside) |
+| R3 | Animation while it is writing | ✅ | Dots in a wave + an orange glint sweeping under the word |
+| R4 | Drag the window (not in full screen) | 🧪 | Invisible strip along the top; double-click zooms |
+| R5 | Full screen "not working fine" | ❓ | Needs detail: the indite window in full screen, or the pill over another full-screen app? |
+| R6 | Password guard | ✅ | Founder checked it on emergent.com: works |
+| R7 | Hands-free: double-tap to lock | 🧪 | Tap to finish, Esc cancels, 15-min cap, red dot in the pill. 5 logic tests |
+| R8 | Paste-last shortcut | 🧪 | ⌃⌘V types the last dictation again |
+| R9 | Start sound | 🧪 | Tick on start, pop on stop; Settings → Sounds |
+| R10 | Mic picker | 🧪 | Settings → Microphone; remembered by name |
+| R11 | Transcribe files inside the app, not the web page | 🔨 | Possible without torch: decode with PyAV, then the Mac's own `pieces()` + engine |
+| R12 | Notes that are kept, with stars | 🔨 | History becomes notes: kept until deleted, starred ones protected |
+| R13 | Mark things as action items, and a separate section to see them | 🔨 | A "to do" mark on any note or line + a To do page with Done ticks (critic: keep it a mark, not a task manager) |
+| R14 | Meeting recording | 📋 | Mic (you) + system audio (them) as two tracks; text after each pause; needs Screen Recording permission |
+| R15 | Speakers ("who spoke") | 📋 | Two tracks give "me / them" for free; splitting "them" needs the phone's recipe (TitaNet: licence to verify) |
+| R16 | AI like the Android app (notes, action items, summary, rewrite, translate) | 📋 | Through your own `claude` login; launcher must set PATH. ⚠ text leaves the Mac — check Paytm policy |
+| R17 | "Improve my wording", original and improved both kept | 📋 | After the fact, a button per note; live clean-up only if a local model passes a 30-dictation Hinglish test |
+| R18 | Backup with options: starred or all, with or without audio | 📋 | Plus restore |
+| R19 | First-run setup screen | 📋 | Mic → Accessibility → mic test → key → try it (Wispr's order) |
+| R20 | Install on someone else's Mac (e.g. a boss) | 💬 not yet | Needs bundled Python + model, Developer ID ($99/yr), notarization |
+| R21 | Can Paytm commercialise it? | 💬 | Licences allow it; ownership, infosec and DPDP questions are Paytm's to answer |
+| R22 | Personal-assistant direction | 💬 later | Roadmap only, after the current apps are complete |
+| R23 | Finish the Mac and Android apps before new directions | rule | |
+| R24 | Think from first principles; do not just drop things | rule | |
+
+**Build order (phases):** 1 · notes with stars, to-do mark and page, files inside the app → 2 · meeting recording
+(mic + system audio) → 3 · speakers → 4 · AI actions + improve-with-original → 5 · backup/restore + first-run
+setup → 6 · a shareable, signed build.
+
+## 4. The first plan (critic-reviewed, 15 Oct)
 
 **The critic's main point: "all Android features on the Mac" is the wrong goal.** Android is a notes app plus a
 keyboard; the Mac app is a hold-to-talk tool. The web app (`indite serve`, `indite/web.py`) already does files,
