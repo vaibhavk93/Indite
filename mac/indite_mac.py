@@ -29,6 +29,9 @@ import rumps
 import sounddevice as sd
 from pynput import keyboard
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from overlay import Pill   # noqa: E402 - needs the path above
+
 ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
 SERVER = ROOT / ".tools/whisper.cpp/build/bin/whisper-server"
@@ -184,6 +187,7 @@ class Mic:
     def __init__(self) -> None:
         self.q: queue.Queue[np.ndarray] = queue.Queue()
         self.stream: sd.InputStream | None = None
+        self.level = 0.0
 
     def start(self) -> None:
         if self.stream:
@@ -192,6 +196,7 @@ class Mic:
 
         def cb(indata, frames, time_info, status):      # noqa: ANN001 - sounddevice's signature
             self.q.put(indata.copy())
+            self.level = float(np.sqrt(np.mean(indata ** 2)) * 12)   # rough loudness, 0..1 for the pill
 
         self.stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32", callback=cb)
         self.stream.start()
@@ -231,6 +236,10 @@ class InditeApp(rumps.App):
         self.busy = False
         self.started_at = 0.0
         self.last = ""
+        self.pill = Pill()
+        self.done_until = 0.0
+        # 20 times a second, on the main thread: the only place the pill is ever touched.
+        rumps.Timer(self.paint, 0.05).start()
         self.menu = [
             rumps.MenuItem("Hold right-Option and speak" if can_listen()
                            else "⚠ No permission to see the hotkey - click About", callback=None),
@@ -263,6 +272,19 @@ class InditeApp(rumps.App):
         ok = self.engine.start_server()
         self.title = "🎙" if can_listen() else "🎙⚠"
         print("resident engine:" , "ready" if ok else "not available - using the slower per-sentence path")
+
+    def paint(self, _) -> None:                          # noqa: ANN001 - rumps' signature
+        """Shows what is happening, in the place the eye already is: just above the Dock."""
+        if self.started_at:
+            self.pill.show("listening")
+            self.pill.level(self.mic.level)
+        elif self.busy:
+            self.pill.show("writing")
+            self.pill.tick_writing()
+        elif time.time() < self.done_until:
+            self.pill.show("done")
+        else:
+            self.pill.hide()
 
     # ---- the hotkey ----------------------------------------------------------------------------------------
     def listen(self) -> None:
@@ -305,6 +327,7 @@ class InditeApp(rumps.App):
             return
         self.last = text
         self.typer.type(text)
+        self.done_until = time.time() + 1.0
         print(f"{len(audio) / RATE:.1f}s of speech -> {time.time() - t0:.2f}s -> {text}")
 
     # ---- menu ----------------------------------------------------------------------------------------------
