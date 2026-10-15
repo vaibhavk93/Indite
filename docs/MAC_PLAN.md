@@ -32,7 +32,7 @@ wisprflow's features and the user flow and UX flow and improve the app."*
 | # | Item | Status | Who |
 |---|---|---|---|
 | P1 | Your boss tries the zip | Ready to send | You |
-| P2 | Meeting recording with the call's sound, in a real call | Permission granted; untested in a real call | You, then me |
+| P2 | Meeting recording with the call's sound, in a real call | **Permission NOT granted to indite** (log says False) — turn it on, then test | You, then me |
 | P3 | Dropped ends of sentences | **Measured: mostly not real.** 48 of the 58 "dropped" words are one test sentence repeated 6 times (the model stops after "Bhej diya." when timestamps are off); most of the rest are faults in the long test file's timings and audio. A detect-and-retry fix recovers it (0 false triggers in 360 clips) but gains ~1 word and can add junk on broken audio. **Not built** - parked unless real dictations show drops | Me, if it shows up in real use |
 | P4 | Settings / UI: what exactly still feels bad | Width and slider fixed; need your specifics | You |
 | P5 | Real-use check: full screen, drag, hands-free over Terminal, ⌃⌘V | Fixes shipped, unconfirmed | You |
@@ -173,7 +173,7 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R38 | Full screen: top bar unusable; Close/Minimize dead after leaving | ✅ | App menus added; policy switch moved to app-level focus |
 | R39 | Pill glass froze while scrolling; slider not useful | ✅ | Live glass + tint; 10 % steps, −/+, value shown, pill previews |
 | R40 | Insights page like Wispr Flow | ✅ | Sidebar → Insights |
-| R41 | A real run-time demo video with voice-over, made alone | 🔨 | In progress |
+| R41 | A real run-time demo video with voice-over, made alone | ⏳ | Built and run twice: hotkeys, typing, hands-free, AI, file + speakers all worked live. **Blocked:** Screen & System Audio Recording is not granted to indite |
 | R32 | Keep saving progress | rule | Commit after each feature; docs in the same session |
 | R23 | Finish the Mac and Android apps before new directions | rule | |
 | R24 | Think from first principles; do not just drop things | rule | |

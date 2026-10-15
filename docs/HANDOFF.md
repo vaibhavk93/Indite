@@ -208,6 +208,15 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
 - **Fading the pill's glass froze its view of the background.** The glass stays at full strength; transparency is a
   tint drawn under the text (`pill_clear`, 0–100 % in 10 % steps). Check with `pill:<0-100>` in `snapshot.request`.
 - Who spoke now runs by itself after files (≥20 s) and meetings; Settings → Writing → Find who spoke.
+- **⚠ Screen & System Audio Recording is NOT granted to indite** (log line "screen & system audio recording
+  allowed: False", 15 Oct 20:55). Meetings therefore hear only the mic, and the demo video cannot record. A window
+  snapshot of the desktop looked fine only because wallpaper and own windows need no permission. The founder may
+  have enabled it for `dist-share/indite.app` (a different signature) instead.
+- **Demo video** (`mac/demo.py`, `mac/recorder.py`, `mac/demo_make.py`): runs against a demo profile
+  (`open --env INDITE_DATA=<folder> dist/indite.app`), started by writing `run:<out_dir>` into that folder's
+  `demo.cmd`. Synthetic key presses from the runner work (it inherits Accessibility); screen recording must happen
+  inside indite (`rec:` command) because a child process is refused. `say` can freeze: clips are made first, with
+  timeouts. Hidden apps are restored in `finally` (needs a run-loop spin to take effect).
 - **Insights** page (sidebar): words, this week vs last, speed, time saved vs typing at 40 wpm, 12-week activity,
   14 days, by app, by hour, meetings/files/wait.
 - **The text card was one line + "…"**: it now wraps, grows to ~14 lines and stays 4–15 s by length. Check it with
