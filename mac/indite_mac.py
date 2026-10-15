@@ -42,6 +42,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
 SERVER = ROOT / ".tools/whisper.cpp/build/bin/whisper-server"
 PORT = 8711                   # localhost only; nothing listens outside this Mac
+SNAP_REQUEST = store.DIR / "snapshot.request"   # write a tab name into it; the window saves a picture of itself
 HANDS_FREE_CAP = 15 * 60      # seconds; a forgotten hands-free lock stops itself and writes what it heard
 CTRL = {keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r}
 CMD = {keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r}
@@ -189,7 +190,9 @@ class Engine:
             [str(SERVER), "-m", str(MODEL), "--port", str(PORT), "--host", "127.0.0.1", "-t", "6", "-nt"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
-        for _ in range(60):                     # the model takes a few seconds to load; wait, do not guess
+        # The very first start on a Mac compiles the GPU code for the model: measured 63 s on a fresh copy of the
+        # app, 3 s every time after. So wait up to 2 minutes, and say so (engine_kind) instead of looking broken.
+        for _ in range(240):
             time.sleep(0.5)
             if self.proc.poll() is not None:
                 return False
@@ -533,6 +536,8 @@ class InditeApp(rumps.App):
                 pass
             store.set_pref("asked_screen", True)
         self.title = "🎙…"
+        self.engine_kind = "Starting the engine… the first start on a Mac can take a minute"
+        self.refresh()
         ok = self.engine.start_server()
         self.engine_kind = "Fast engine ready." if ok else "Slower engine \u2014 the model reloads each time."
         self.title = "🎙" if can_listen() else "🎙⚠"
@@ -540,6 +545,9 @@ class InditeApp(rumps.App):
 
     def paint(self, _) -> None:                          # noqa: ANN001 - rumps' signature
         """Shows what is happening, in the place the eye already is: just above the Dock."""
+        self.snap_tick = getattr(self, "snap_tick", 0) + 1
+        if self.snap_tick % 20 == 0 and self.window and SNAP_REQUEST.exists():
+            self.window.snapshot(SNAP_REQUEST)          # a developer's look at the real window (see window.py)
         if self.meeting.running:
             t = int(time.time() - self.meeting.started)
             self.pill.view.label = f"REC {t // 60:02d}:{t % 60:02d}"

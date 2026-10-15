@@ -1,6 +1,7 @@
 <!doctype html>
 <html data-theme="light">
 <meta charset="utf-8">
+<script>window.__err = ""; addEventListener("error", e => { window.__err += (e.message + " @" + e.lineno + "; "); });</script>
 <title>indite</title>
 <style>
   /* White first. The sidebar is the only translucent part (the macOS glass shows through it, like Notes or Mail);
@@ -94,6 +95,9 @@
   h1 { font-size: 22px; font-weight: 650; letter-spacing: -.5px; }
   .hint { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--ink2); font-size: 13px; }
   .scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 32px 32px; }
+  /* Full screen made every row 1,300 px wide, with each switch far from its label. Keep reading width sane. */
+  header > *, .scroll > * { max-width: 980px; }
+  .setwrap { max-width: 900px; }
   .pane[hidden] { display: none; }
 
   .banner {
@@ -455,7 +459,7 @@
             <div class="card">
               <div class="item">
                 <div class="body"><b>Hold-to-talk key</b><p>Hold it anywhere, speak, let go. Changes at once.</p></div>
-                <div class="seg" id="set-hotkey" role="radiogroup" aria-label="Hold-to-talk key"></div>
+                <select class="pick" id="set-hotkey" aria-label="Hold-to-talk key"></select>
               </div>
               <div class="item">
                 <div class="body"><b>Hands-free key</b><p id="hf-why"></p></div>
@@ -488,8 +492,8 @@
                 <button class="sw" id="set-preview" role="switch" aria-label="Show text after dictating"></button>
               </div>
               <div class="item">
-                <div class="body"><b>Pill transparency</b><p>How much frosted glass the pill shows. Its text and
-                  border stay solid.</p></div>
+                <div class="body"><b>Pill transparency</b><p>Slide right to see more of what is behind the pill.
+                  Its text and border stay solid.</p></div>
                 <input type="range" class="slide" id="set-pill_glass" min="0" max="100" step="5" aria-label="Pill glass">
               </div>
               <div class="item">
@@ -775,7 +779,10 @@
       <button class="btn" id="perm">Open settings</button></div>`;
     if (!S.listening) $("#perm").onclick = () => send({ action: "permission" });
 
-    seg("#set-hotkey", S.hotkeys, S.prefs.hotkey, v => send({ action: "pref", key: "hotkey", value: v }));
+    const hk1 = $("#set-hotkey");
+    hk1.innerHTML = Object.entries(S.hotkeys).map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("");
+    hk1.value = S.prefs.hotkey;
+    hk1.onchange = () => send({ action: "pref", key: "hotkey", value: hk1.value });
     seg("#set-output", { smart: "Smart", type: "Type", copy: "Copy" }, S.prefs.output,
         v => send({ action: "pref", key: "output", value: v }));
     $("#out-why").textContent = {
@@ -811,8 +818,8 @@
     seg("#set-hf_taps", { 2: "Twice", 3: "Three times" }, String(n),
         v => send({ action: "pref", key: "hf_taps", value: +v }));
     const gl = $("#set-pill_glass");
-    gl.value = Math.round((S.prefs.pill_glass ?? 0.45) * 100);
-    gl.onchange = () => send({ action: "pref", key: "pill_glass", value: gl.value / 100 });
+    gl.value = 100 - Math.round((S.prefs.pill_glass ?? 0.45) * 100);       // right = more transparent = less glass
+    gl.oninput = gl.onchange = () => send({ action: "pref", key: "pill_glass", value: (100 - gl.value) / 100 });
     const mics = S.mics || [], pickMic = $("#set-mic");
     const chosen = S.prefs.mic || "";
     pickMic.innerHTML = `<option value="">Automatic</option>` + [...new Set([...mics, ...(chosen ? [chosen] : [])])]

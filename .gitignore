@@ -20,3 +20,6 @@ dist/
 
 # The Mac app's own model (a hard link to the phone's file, so no extra disk; 574 MB, never in git)
 mac/models/
+
+# shareable build output (big, never in git)
+dist-share/

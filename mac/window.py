@@ -225,6 +225,34 @@ class DragStrip(NSView):
             self.window().performWindowDragWithEvent_(event)
 
 
+class PageEvents(NSObject):
+    """
+    Watches the page inside the window. A web view whose content process dies shows an empty window and never says
+    why (founder, 15 Oct: "UI bekaar hai" - the window was blank, still at about:blank). Log it, and load it again.
+    """
+
+    def initWithWindow_(self, owner):
+        self = objc.super(PageEvents, self).init()
+        if self is None:
+            return None
+        self.owner = owner
+        return self
+
+    def webView_didFinishNavigation_(self, web, _nav):                          # noqa: N802
+        print("window page loaded:", str(web.URL())[-40:])
+
+    def webView_didFailProvisionalNavigation_withError_(self, web, _nav, err):  # noqa: N802
+        print("window page failed to load:", err)
+        self.owner.load()
+
+    def webView_didFailNavigation_withError_(self, web, _nav, err):             # noqa: N802
+        print("window page failed:", err)
+
+    def webViewWebContentProcessDidTerminate_(self, web):                       # noqa: N802
+        print("window page crashed - loading it again")
+        self.owner.load()
+
+
 class WindowEvents(NSObject):
     """
     Full screen, done properly. A menu-bar-only app ("accessory") cannot own a full-screen Space: macOS zoomed the
@@ -293,8 +321,9 @@ class Window:
         self.web = WKWebView.alloc().initWithFrame_configuration_(NSMakeRect(0, 0, W, H), cfg)
         self.web.setValue_forKey_(False, "drawsBackground")  # so the glass behind actually shows
         self.web.setAutoresizingMask_(18)
-        self.web.loadFileURL_allowingReadAccessToURL_(
-            NSURL.fileURLWithPath_(str(PAGE)), NSURL.fileURLWithPath_(str(PAGE.parent)))
+        self.page_events = PageEvents.alloc().initWithWindow_(self)
+        self.web.setNavigationDelegate_(self.page_events)
+        self.load()
         self.bridge.web = self.web
 
         glass.addSubview_(self.web)
@@ -305,6 +334,38 @@ class Window:
         self.win.setBackgroundColor_(NSColor.clearColor())
         self.theme()
 
+    def load(self) -> None:
+        self.web.loadFileURL_allowingReadAccessToURL_(
+            NSURL.fileURLWithPath_(str(PAGE)), NSURL.fileURLWithPath_(str(PAGE.parent)))
+
+    def snapshot(self, request) -> None:
+        """
+        Saves a picture of this window (only this window) next to the request file, after showing the tab named in
+        it. For checking the real UI, which a browser preview cannot show (glass, fonts, the Mac's own controls).
+        Needs Screen & System Audio Recording permission; does nothing without it.
+        """
+        import Quartz
+        tab = request.read_text().strip() or "home"
+        request.unlink(missing_ok=True)
+        self.show()
+        self.bridge.js(f"go({tab!r}.split(':')[0]); " + (f"sgo({tab.split(':')[1]!r})" if ":" in tab else ""))
+        self.web.evaluateJavaScript_completionHandler_(
+            "JSON.stringify({ready: document.readyState, text: document.body ? document.body.innerText.length : -1, "
+            "err: window.__err || '', size: [innerWidth, innerHeight], url: location.href.slice(-30)})",
+            lambda result, error: print("snapshot page state:", result, error))
+
+        def shoot():
+            img = Quartz.CGWindowListCreateImage(Quartz.CGRectNull, Quartz.kCGWindowListOptionIncludingWindow,
+                                                 self.win.windowNumber(), Quartz.kCGWindowImageBoundsIgnoreFraming)
+            if img is None:
+                return
+            from AppKit import NSBitmapImageRep, NSPNGFileType
+            rep = NSBitmapImageRep.alloc().initWithCGImage_(img)
+            out = request.parent / f"snapshot-{tab.replace(':', '-')}.png"
+            rep.representationUsingType_properties_(NSPNGFileType, None).writeToFile_atomically_(str(out), True)
+        from PyObjCTools import AppHelper
+        AppHelper.callLater(0.8, shoot)
+
     def theme(self) -> None:
         """The sidebar glass follows the same choice as the page, or the two halves disagree."""
         from AppKit import NSAppearance
@@ -312,6 +373,8 @@ class Window:
         self.win.setAppearance_(NSAppearance.appearanceNamed_(name) if name else None)
 
     def show(self) -> None:
+        if str(self.web.URL() or "").startswith("about:") or self.web.URL() is None:
+            self.load()                                     # never show an empty window
         NSApp.setActivationPolicy_(0)                       # a normal app while the window is open (see WindowEvents)
         NSApp.activateIgnoringOtherApps_(True)              # a menu-bar app has to ask for focus
         self.win.makeKeyAndOrderFront_(None)
