@@ -38,7 +38,7 @@ from WebKit import WKUserContentController, WKWebView, WKWebViewConfiguration
 import store
 
 PAGE = Path(__file__).resolve().parent / "ui/app.html"
-W, H = 860.0, 620.0
+W, H = 920.0, 660.0
 
 
 def front_app() -> str:
@@ -70,6 +70,7 @@ class Bridge(NSObject):
             "listening": bool(can_listen()),
             "hotkeys": HOTKEYS,
             "engine": self.app.engine_kind,
+            "fixes": len(store.my_fixes()),
         }
 
     def push(self) -> None:
@@ -91,8 +92,19 @@ class Bridge(NSObject):
             self.app.reload_prefs()
         elif act == "copy":
             self.app.typer.copy(msg.get("text", ""))
+        elif act == "fixes":
+            self.app.edit_fixes(None)
         elif act == "clear":
-            store.clear()
+            from AppKit import NSAlert, NSAlertFirstButtonReturn
+            n = len(store.history())
+            alert = NSAlert.alloc().init()
+            alert.setMessageText_(f"Delete all {n} saved dictation{'s' if n != 1 else ''}?")
+            alert.setInformativeText_("They are removed from this Mac. This cannot be undone.")
+            alert.addButtonWithTitle_("Delete")
+            alert.addButtonWithTitle_("Cancel")
+            alert.buttons()[0].setHasDestructiveAction_(True)
+            if alert.runModal() == NSAlertFirstButtonReturn:
+                store.clear()
         elif act == "permission":
             from indite_mac import ask_to_listen
             ask_to_listen()
@@ -115,7 +127,7 @@ class Window:
         )
         self.win.setTitle_("indite")
         self.win.setTitlebarAppearsTransparent_(True)       # the page draws its own header, under the traffic lights
-        self.win.setMinSize_((620.0, 440.0))
+        self.win.setMinSize_((700.0, 480.0))
         self.win.center()
         self.win.setReleasedWhenClosed_(False)              # closing hides it; the app lives in the menu bar
 

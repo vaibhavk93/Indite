@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 
+import AppKit
 import objc
 
 from AppKit import (
@@ -57,6 +58,7 @@ class PillView(NSView):
         self.phase = 0.0                # for the writing animation
         self.bars = [0.12] * 5
         self.shown = [0.12] * 5      # what is drawn: eased toward `bars`, so the bars breathe rather than flicker
+        self.liquid = False             # True on macOS 26+, where the pill sits in real Liquid Glass
         return self
 
     def drawRect_(self, rect):          # noqa: N802 - AppKit's name
@@ -64,6 +66,9 @@ class PillView(NSView):
         # a hairline edge - without it the blur floats with no boundary and reads as a smudge.
         NSColor.clearColor().set()
         NSBezierPath.fillRect_(rect)
+        if self.liquid:                 # Liquid Glass draws its own light and edge; painting more makes it muddy
+            self._draw_content()
+            return
         # The glass sheen: light falling on the top half, fading out by the middle, the way a curved glass bead
         # catches a window. Then a rim that is brighter on top than below, so the edge reads as glass, not a line.
         shine = NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
@@ -84,7 +89,9 @@ class PillView(NSView):
         NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.12).set()
         edge.stroke()
         NSGraphicsContext.restoreGraphicsState()
+        self._draw_content()
 
+    def _draw_content(self) -> None:
         if self.state == "listening":
             self._draw_bars()
         else:
@@ -115,8 +122,11 @@ class PillView(NSView):
 
     def _draw_word(self, word: str) -> None:
         r, g, b = ACCENT
-        colour = (NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0) if self.state != "writing"
-                  else NSColor.colorWithCalibratedWhite_alpha_(0.92, 1.0))
+        if self.liquid:                 # clear glass can sit on white or black: the system label colour adapts
+            colour = NSColor.labelColor()
+        else:
+            colour = (NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0) if self.state != "writing"
+                      else NSColor.colorWithCalibratedWhite_alpha_(0.92, 1.0))
         attrs = {
             NSFontAttributeName: NSFont.systemFontOfSize_weight_(11.5, NSFontWeightMedium),
             NSForegroundColorAttributeName: colour,
@@ -149,17 +159,27 @@ class Pill:
             | NSWindowCollectionBehaviorFullScreenAuxiliary)
         # Real macOS glass: it blurs what is actually behind the pill, so it sits on a bright document and a dark
         # terminal equally well. A painted panel cannot do that - it looks pasted on one of them.
-        glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
-        glass.setMaterial_(NSVisualEffectMaterialHUDWindow)
-        glass.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow)
-        glass.setState_(NSVisualEffectStateActive)
-        glass.setWantsLayer_(True)
-        glass.layer().setCornerRadius_(H / 2)
-        glass.layer().setMasksToBounds_(True)
         self.view = PillView.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
-        glass.addSubview_(self.view)
+        Liquid = getattr(AppKit, "NSGlassEffectView", None)
+        if Liquid is not None:
+            # macOS 26 Liquid Glass: translucent, bends and lights what is behind it, and turns lighter or darker
+            # with the page underneath - the material Apple uses for its own floating controls.
+            glass = Liquid.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
+            glass.setCornerRadius_(H / 2)
+            glass.setContentView_(self.view)
+            self.view.liquid = True
+            self.panel.setHasShadow_(False)           # the glass brings its own depth
+        else:
+            glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
+            glass.setMaterial_(NSVisualEffectMaterialHUDWindow)
+            glass.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow)
+            glass.setState_(NSVisualEffectStateActive)
+            glass.setWantsLayer_(True)
+            glass.layer().setCornerRadius_(H / 2)
+            glass.layer().setMasksToBounds_(True)
+            glass.addSubview_(self.view)
+            self.panel.setHasShadow_(True)
         self.panel.setContentView_(glass)
-        self.panel.setHasShadow_(True)
         self.panel.setAlphaValue_(0.0)
         self.visible = False
 

@@ -427,3 +427,5 @@ is a git commit.
 | 178 | **Mac app: something wrong, check it** | It stopped responding | 15 Oct | ✅ | A Bluetooth headset that was off crashed the hotkey. Fixed (`9a374e8`), tested by you with the headset off |
 | 179 | **Keep Android and Mac apps separate** | Improve both without one affecting the other | 15 Oct | ✅ | Mac has its own model and spelling list; neither reads the other's folder |
 | 180 | **More Wispr Flow features on the Mac** | — | 15 Oct | 🟡 | **Word fixes and Esc cancel built, you confirmed both. 60 s hold was 75% wrong; fixed to 19%.** Critic-reviewed: test 60 s hold; later snippets, hands-free; drop undo, voice enter, command mode. **Your input:** what do you actually miss from Wispr? |
+| 181 | **Smaller pill with a glass look** | Bulky, hides the desktop | 15 Oct | 🧪 | 116 x 30 (was 168 x 44), macOS 26 Liquid Glass. Your look pending |
+| 182 | **Better Mac UI/UX, white, designer details** | — | 15 Oct | 🧪 | Redesigned and reviewed by a design critic; fixes applied (contrast, no streak, native clear dialog). Your look pending |

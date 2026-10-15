@@ -191,7 +191,10 @@ class Engine:
         return path
 
     def transcribe(self, audio: np.ndarray) -> str:
-        return " ".join(t for t in (self._one(p) for p in pieces(audio)) if t)
+        # The model writes "nan" when it hears no speech (15 Oct: a 1.7 s hold typed "nan" into the user's app).
+        # A piece that says only that is treated as silence, so the pill says "nothing heard" instead.
+        texts = (self._one(p) for p in pieces(audio))
+        return " ".join(t for t in texts if t and t.strip(" .").lower() != "nan")
 
     def _one(self, audio: np.ndarray) -> str:
         seconds = len(audio) / RATE

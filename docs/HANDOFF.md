@@ -226,6 +226,13 @@ the old Desktop path working. All paths in the repo were relative, so nothing el
   Same sentences sent one at a time: 19.0%. With no gaps between sentences: 19.5% (60 s), 22.8% (90 s).
   `pieces()` keeps every sample and cuts in the quietest 0.3 s between 15 and 20 s; no voice detector (torch took
   19 s to import). Test: `tests/test_mac_pieces.py`. **Untested:** real non-stop speech and a quiet speaker.
+- **New window design (15 Oct), design-critic reviewed:** white page, glass sidebar, three stat tiles (words,
+  speed, wait; the streak was removed, as ROADMAP rules out streaks), history with an always-visible copy icon,
+  Settings in Dictation / Writing / Privacy cards with a Word fixes row, Help as three steps plus fixes. Every grey
+  passes WCAG AA on white. "Clear history" used `confirm()`, which a WKWebView ignores, so it never deleted
+  anything; it is now a native NSAlert. The window opens on launch.
+- **Pill:** 116 x 30 and on macOS 26 real Liquid Glass (`NSGlassEffectView`), falling back to the blur before 26.
+- **"nan" was typed into apps:** the model writes "nan" for silence; a piece that says only that is now silence.
 - The app log was empty because Python buffered its prints; the launcher now runs `python -u`.
 - **Next Mac features (critic-reviewed, all unproven):** later snippets and hands-free (long holds now work); drop undo-by-backspace, voice "press enter",
   command mode (no AI route). Waiting on the founder to say what they actually miss from Wispr.

@@ -2,274 +2,423 @@
 <meta charset="utf-8">
 <title>indite</title>
 <style>
+  /* White first. The sidebar is the only translucent part (the macOS glass shows through it, like Notes or Mail);
+     everything you read sits on solid white. Text colours are picked for contrast on white, not for mood:
+     ink 16:1, secondary 6.3:1, tertiary 4.7:1 - every grey passes WCAG AA on white. */
   :root {
-    --orange: #e27619;
-    --ink: #1c1c20; --dim: #6b6b74; --faint: #9a9aa3;
-    --panel: rgba(255,255,255,.78); --edge: rgba(0,0,0,.07); --line: rgba(0,0,0,.05);
-    --hover: rgba(0,0,0,.035); --sunk: rgba(0,0,0,.07); --pick: rgba(226,118,25,.12);
+    --brand: #e27619;                       /* the indite orange: dots, switches, the bars - never small text */
+    --accent: #b85a0c;                      /* orange dark enough for text and white-on-orange (4.6:1) */
+    --accent-soft: #fdf1e6;
+    --paper: #ffffff;
+    --ink: #1d1d1f; --ink2: #5f5f66; --ink3: #737379;
+    --line: #ececef; --line2: #e2e2e6; --well: #f4f4f6; --hover: #f7f7f9;
+    --side-ink: #3a3a3f; --side-pick: rgba(0,0,0,.065);
+    --sw-off: #d6d6db; --toast: #1d1d1f; --copied: #a14e09;
+    --red: #c4372a;
+    --shadow: 0 1px 2px rgba(16,16,20,.04), 0 2px 8px rgba(16,16,20,.04);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ink: #f1f1f4; --dim: #9e9ea8; --faint: #6e6e78;
-      --panel: rgba(255,255,255,.045); --edge: rgba(255,255,255,.08); --line: rgba(255,255,255,.06);
-      --hover: rgba(255,255,255,.05); --sunk: rgba(255,255,255,.06); --pick: rgba(226,118,25,.2);
+      --accent: #f0903f; --accent-soft: rgba(226,118,25,.16);
+      --paper: #1e1e20;
+      --ink: #f2f2f4; --ink2: #a8a8b0; --ink3: #8e8e95;
+      --line: #2c2c30; --line2: #36363b; --well: #2a2a2d; --hover: #252528;
+      --side-ink: #d6d6da; --side-pick: rgba(255,255,255,.08);
+      --sw-off: #48484c; --toast: #3a3a3d; --copied: #f0903f;
+      --red: #ff6b5e;
+      --shadow: none;
     }
   }
   * { box-sizing: border-box; margin: 0; }
   html, body { height: 100%; }
   body {
-    font: 13px/1.5 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font: 13px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
     color: var(--ink); background: transparent; display: flex; overflow: hidden;
-    -webkit-user-select: none; user-select: none;
+    -webkit-user-select: none; user-select: none; -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+  svg { flex: none; }
+  .num { font-variant-numeric: tabular-nums; }
+  kbd {
+    font: 500 11px/1 -apple-system, system-ui, sans-serif; padding: 3px 6px; border-radius: 5px;
+    background: var(--paper); border: 1px solid var(--line2); box-shadow: 0 1px 0 var(--line2); color: var(--ink);
   }
 
-  /* ---- sidebar: glass, because the window material shows straight through it ---- */
-  aside { width: 194px; flex: none; display: flex; flex-direction: column; padding: 44px 10px 12px; }
-  .brand { font-size: 18px; font-weight: 600; letter-spacing: -.3px; padding: 0 10px 14px; }
-  .brand i { font-style: normal; position: relative; }
-  .brand i::after {
-    content: ""; position: absolute; left: 50%; top: -.42em; width: 3.8px; height: 3.8px;
-    margin-left: -1.9px; border-radius: 50%; background: var(--orange);
+  /* ---- sidebar ---------------------------------------------------------------------------------------------- */
+  aside { width: 208px; flex: none; display: flex; flex-direction: column; padding: 52px 12px 14px; }
+  .brand { display: flex; align-items: center; gap: 8px; padding: 0 8px 18px; }
+  .mark {
+    width: 26px; height: 26px; border-radius: 8px; background: var(--brand); display: grid; place-items: center;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 1px 2px rgba(184,90,12,.35);
   }
-  aside button {
-    display: flex; align-items: center; gap: 9px; width: 100%; appearance: none; border: 0; cursor: pointer;
-    background: none; color: var(--dim); font: inherit; font-weight: 500; text-align: left;
-    padding: 7px 10px; border-radius: 8px; margin-bottom: 1px;
+  .word { font-size: 16px; font-weight: 650; letter-spacing: -.3px; color: var(--ink); }
+  nav button {
+    display: flex; align-items: center; gap: 10px; width: 100%; appearance: none; border: 0; cursor: default;
+    background: none; color: var(--side-ink); font-weight: 500; text-align: left;
+    padding: 6px 10px; border-radius: 7px; margin-bottom: 2px;
   }
-  aside button:hover { background: var(--hover); color: var(--ink); }
-  aside button[aria-current="true"] { background: var(--sunk); color: var(--ink); }
-  aside .ic { width: 15px; text-align: center; opacity: .8; font-size: 13px; }
+  nav button svg { color: var(--ink2); }
+  nav button[aria-current="true"] { background: var(--side-pick); color: var(--ink); }
+  nav button[aria-current="true"] svg { color: var(--accent); }
   .grow { flex: 1; }
-  .keyline { padding: 10px 10px 0; border-top: 1px solid var(--line); margin-top: 8px;
-             color: var(--faint); font-size: 11.5px; line-height: 1.6; }
-  .keyline kbd { font: inherit; font-size: 11px; padding: 1px 5px; border-radius: 4px;
-                 background: var(--sunk); border: 1px solid var(--edge); color: var(--dim); }
-
-  /* ---- content ---- */
-  main { flex: 1; min-width: 0; padding: 44px 16px 16px 0; display: flex; gap: 16px; }
-  .col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  h1 { font-size: 21px; font-weight: 600; letter-spacing: -.4px; margin: 0 0 14px 2px; }
-
-  .panel {
-    flex: 1; min-height: 0; overflow-y: auto; background: var(--panel);
-    border: 1px solid var(--edge); border-radius: 14px;
+  .status {
+    display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 9px; font-size: 12px;
+    color: var(--ink2); line-height: 1.35;
   }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #34a853; flex: none;
+         box-shadow: 0 0 0 3px rgba(52,168,83,.15); }
+  .dot.wait { background: var(--brand); box-shadow: 0 0 0 3px rgba(226,118,25,.18); }
+  .dot.off { background: var(--red); box-shadow: 0 0 0 3px rgba(196,55,42,.15); }
+
+  /* ---- main: the white page --------------------------------------------------------------------------------- */
+  main {
+    flex: 1; min-width: 0; background: var(--paper); display: flex; flex-direction: column;
+    border-left: 1px solid var(--line2);
+  }
+  header { padding: 40px 32px 0; }
+  h1 { font-size: 22px; font-weight: 650; letter-spacing: -.5px; }
+  .hint { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--ink2); font-size: 13px; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 32px 32px; }
   .pane[hidden] { display: none; }
 
-  /* ---- banner ---- */
   .banner {
-    display: flex; gap: 10px; padding: 11px 14px; border-radius: 11px; margin-bottom: 12px;
-    background: var(--pick); border: 1px solid rgba(226,118,25,.3);
+    display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; margin-bottom: 18px;
+    background: var(--accent-soft); color: var(--ink);
   }
-  .banner b { display: block; margin-bottom: 2px; }
-  .banner p { color: var(--dim); font-size: 12px; }
+  .banner p { color: var(--ink2); font-size: 12px; margin-top: 2px; }
+  .banner button { margin-left: auto; flex: none; }
+
+  /* ---- stats ---- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 26px; }
+  .stat { background: var(--well); border-radius: 12px; padding: 12px 14px; }
+  .stat .n { font-size: 22px; font-weight: 650; letter-spacing: -.6px; line-height: 1.15; }
+  .stat .n small { font-size: 13px; font-weight: 500; color: var(--ink2); margin-left: 2px; letter-spacing: 0; }
+  .stat .l { font-size: 12px; color: var(--ink2); margin-top: 2px; }
 
   /* ---- history ---- */
-  .daybar {
-    display: flex; align-items: center; gap: 10px; padding: 13px 16px 8px; position: sticky; top: 0;
-    backdrop-filter: blur(18px); background: var(--panel);
-  }
-  .day { font-size: 11px; font-weight: 600; letter-spacing: .07em; color: var(--faint); text-transform: uppercase; }
-  .daybar .sp { flex: 1; }
-  .search {
-    width: 168px; font: inherit; font-size: 12px; color: var(--ink); padding: 4px 9px;
-    border-radius: 7px; border: 1px solid var(--edge); background: var(--sunk);
+  .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .bar h2 { font-size: 15px; font-weight: 600; letter-spacing: -.2px; flex: 1; }
+  .search { position: relative; width: 220px; }
+  .search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--ink3); }
+  .search input {
+    width: 100%; font: inherit; font-size: 13px; color: var(--ink); padding: 6px 28px 6px 29px;
+    border-radius: 8px; border: 1px solid transparent; background: var(--well); outline: none;
     -webkit-user-select: text; user-select: text;
   }
-  .search::placeholder { color: var(--faint); }
-  .search:focus { outline: 2px solid rgba(226,118,25,.45); outline-offset: -1px; }
+  .search input::placeholder { color: var(--ink3); }
+  .search input:focus { background: var(--paper); border-color: var(--brand); box-shadow: 0 0 0 3px rgba(226,118,25,.15); }
+  .search .k { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); font-size: 11px;
+               color: var(--ink3); pointer-events: none; }
 
-  .row { display: flex; gap: 16px; padding: 13px 16px; border-top: 1px solid var(--line); }
-  .row:hover { background: var(--hover); }
-  .row .when { flex: none; width: 70px; color: var(--faint); font-size: 12px; }
-  .row .text { flex: 1; min-width: 0; -webkit-user-select: text; user-select: text; }
-  .row .meta { font-size: 11px; color: var(--faint); margin-top: 3px; }
-  .row .copy {
-    flex: none; opacity: 0; appearance: none; border: 1px solid var(--edge); background: var(--panel);
-    color: var(--dim); font: inherit; font-size: 11px; padding: 3px 9px; border-radius: 7px; cursor: pointer;
-    align-self: flex-start;
+  .daybar {
+    position: sticky; top: -20px; z-index: 1; background: var(--paper);
+    padding: 16px 0 6px; font-size: 12px; font-weight: 600; color: var(--ink2);
+    display: flex; gap: 8px; align-items: baseline;
   }
-  .row:hover .copy { opacity: 1; }
-  .row .copy:hover { color: var(--orange); border-color: rgba(226,118,25,.5); }
-  .row .copy.done { color: var(--orange); opacity: 1; }
+  .daybar span { font-weight: 400; color: var(--ink3); }
+  .row {
+    display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: start;
+    padding: 12px 10px; margin: 0 -10px; border-radius: 10px;
+  }
+  .row { position: relative; }
+  .row + .row::before { content: ""; position: absolute; top: 0; left: 88px; right: 10px; height: 1px; background: var(--line); }
+  .row:hover { background: var(--hover); }
+  .row:hover::before, .row:hover + .row::before { opacity: 0; }
+  .when { color: var(--ink2); font-size: 12px; padding-top: 1px; }
+  .text { font-size: 14px; line-height: 1.5; color: var(--ink); -webkit-user-select: text; user-select: text;
+          overflow-wrap: anywhere; }
+  .meta { display: flex; gap: 8px; align-items: center; margin-top: 5px; font-size: 12px; color: var(--ink2); }
+  .tag { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 20px; background: var(--well);
+         color: var(--ink2); }
+  .tag.copied { background: var(--accent-soft); color: var(--copied); }
+  .copy {
+    appearance: none; border: 0; background: none; border-radius: 7px; cursor: default;
+    display: grid; place-items: center; width: 28px; height: 28px; color: var(--ink2);
+  }
+  .copy:hover { background: var(--well); color: var(--ink); }
+  .copy.done { color: var(--copied); background: var(--accent-soft); }
 
-  .empty { text-align: center; padding: 60px 24px; color: var(--dim); }
-  .empty .big { font-size: 15px; color: var(--ink); font-weight: 500; margin-bottom: 6px; }
-  .empty .steps { display: inline-block; text-align: left; margin-top: 18px; font-size: 12px; line-height: 2.1; }
-  .empty kbd { font: inherit; font-size: 11px; padding: 1px 5px; border-radius: 4px;
-               background: var(--sunk); border: 1px solid var(--edge); }
-
-  /* ---- stats rail ---- */
-  .rail { width: 196px; flex: none; }
-  .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 14px; padding: 16px; }
-  .card + .card { margin-top: 12px; }
-  .big { display: flex; align-items: baseline; gap: 7px; }
-  .big + .big { margin-top: 12px; }
-  .big .n { font-size: 25px; font-weight: 600; letter-spacing: -.8px; line-height: 1; }
-  .big .l { font-size: 12px; color: var(--dim); }
-  .note { font-size: 11.5px; color: var(--dim); line-height: 1.6; }
-  .note b { display: block; color: var(--ink); font-size: 12.5px; margin-bottom: 4px; }
+  .empty { text-align: center; padding: 56px 24px; color: var(--ink2); }
+  .empty .art { width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 18px; background: var(--accent-soft);
+                display: grid; place-items: center; color: var(--accent); }
+  .empty h3 { font-size: 15px; color: var(--ink); font-weight: 600; margin-bottom: 4px; }
+  .steps { display: inline-grid; gap: 10px; text-align: left; margin-top: 20px; }
+  .step { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--ink); }
+  .step b { width: 20px; height: 20px; border-radius: 50%; background: var(--well); display: grid; place-items: center;
+            font-size: 11px; color: var(--ink2); flex: none; }
 
   /* ---- settings ---- */
-  .group { border-bottom: 1px solid var(--line); }
-  .item { display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-top: 1px solid var(--line); }
-  .item:first-child { border-top: 0; }
-  .item .body { flex: 1; }
-  .item .body b { font-weight: 500; }
-  .item .body p { font-size: 11.5px; color: var(--dim); margin-top: 2px; }
-  .seg { display: flex; gap: 2px; background: var(--sunk); padding: 2px; border-radius: 8px; flex: none; }
+  .section { margin-bottom: 26px; }
+  .section h2 { font-size: 12px; font-weight: 600; color: var(--ink2); margin: 0 0 8px; }
+  .card { border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); background: var(--paper); }
+  .item { display: flex; gap: 16px; align-items: center; padding: 14px 16px; }
+  .item + .item { border-top: 1px solid var(--line); }
+  .item .body { flex: 1; min-width: 0; }
+  .item b { font-weight: 550; font-size: 13px; }
+  .item p { font-size: 12px; color: var(--ink2); margin-top: 2px; line-height: 1.45; }
+  .seg { display: flex; background: var(--well); padding: 2px; border-radius: 8px; flex: none; }
   .seg button {
-    appearance: none; border: 0; background: none; color: var(--ink); cursor: pointer; font: inherit;
-    font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 6px; white-space: nowrap;
+    appearance: none; border: 0; background: none; color: var(--ink); cursor: default;
+    font-size: 12px; font-weight: 500; padding: 4px 11px; border-radius: 6px; white-space: nowrap;
   }
-  .seg button[aria-pressed="true"] { background: var(--orange); color: #fff; }
+  .seg button[aria-checked="true"] { background: var(--paper); box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.06);
+                                     font-weight: 600; }
   .sw {
-    flex: none; appearance: none; width: 38px; height: 22px; border-radius: 11px; border: 0; cursor: pointer;
-    background: var(--sunk); position: relative; transition: background .15s;
+    flex: none; appearance: none; width: 36px; height: 21px; border-radius: 11px; border: 0; cursor: default;
+    background: var(--sw-off); position: relative; transition: background .18s;
   }
   .sw::after {
-    content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
-    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s;
+    content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .18s;
   }
-  .sw[aria-checked="true"] { background: var(--orange); }
-  .sw[aria-checked="true"]::after { transform: translateX(16px); }
-  .danger {
-    appearance: none; border: 1px solid var(--edge); background: var(--panel); color: #d04a3a; font: inherit;
-    padding: 5px 11px; border-radius: 8px; cursor: pointer; flex: none;
+  .sw[aria-checked="true"] { background: var(--brand); }
+  .sw[aria-checked="true"]::after { transform: translateX(15px); }
+  .btn {
+    appearance: none; border: 1px solid var(--line2); background: var(--paper); border-radius: 7px; cursor: default;
+    padding: 5px 12px; font-size: 12px; font-weight: 500; flex: none; color: var(--ink);
   }
-  .danger:hover { border-color: rgba(208,74,58,.5); }
-  .prose { padding: 16px; font-size: 12.5px; color: var(--dim); line-height: 1.75; }
-  .prose b { color: var(--ink); }
-  .prose p + p { margin-top: 10px; }
+  .btn:hover { border-color: var(--ink3); }
+  .btn.danger { color: var(--red); }
+  
+  /* ---- help ---- */
+  .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 26px; }
+  .how .card { padding: 16px; }
+  .how .n { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+            display: grid; place-items: center; font-size: 12px; font-weight: 650; margin-bottom: 10px; }
+  .how b { display: block; font-weight: 600; margin-bottom: 3px; }
+  .how p { font-size: 12px; color: var(--ink2); }
+  .faq .item { align-items: flex-start; }
+  .faq .ic { width: 28px; height: 28px; border-radius: 8px; background: var(--well); display: grid; place-items: center;
+             color: var(--ink2); flex: none; }
+  .path { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--well); padding: 1px 5px;
+          border-radius: 4px; -webkit-user-select: text; user-select: text; }
+  .fine { font-size: 12px; color: var(--ink3); text-align: center; margin-top: 8px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+    background: var(--toast); border: 1px solid var(--line2); color: #fff; font-size: 12px; font-weight: 500; padding: 7px 14px; border-radius: 20px;
+    transition: opacity .16s, transform .16s; box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 760px) {
+    .stats { grid-template-columns: repeat(3, 1fr); }
+    .how { grid-template-columns: 1fr; }
+    .search { width: 170px; }
+  }
 </style>
 
+<!-- one icon set, drawn in-page: no network, and they follow the text colour -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-home" viewBox="0 0 16 16"><path d="M2.5 7 8 2.5 13.5 7v6a.5.5 0 0 1-.5.5H10V10H6v3.5H3a.5.5 0 0 1-.5-.5V7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1M12.4 12.4l-1.1-1.1M4.7 4.7 3.6 3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+  <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1v.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.4" r=".8" fill="currentColor"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 16 16"><rect x="5.5" y="1.8" width="5" height="8" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3.3 7.6a4.7 4.7 0 0 0 9.4 0M8 12.3v2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m10.4 10.4 3.3 3.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5" y="5" width="8.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+  <symbol id="i-key" viewBox="0 0 16 16"><rect x="1.8" y="4" width="12.4" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 7h1M7.5 7h1M10.5 7h1M5 9.5h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 16 16"><rect x="3.5" y="2.8" width="9" height="11.2" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.8h4v1.6H6z" fill="currentColor"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 16 16"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5v-7Z" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+</svg>
+
 <aside>
-  <div class="brand">ind<i>i</i>te</div>
-  <button data-tab="home" aria-current="true"><span class="ic">◧</span>Home</button>
-  <button data-tab="settings"><span class="ic">⚙</span>Settings</button>
-  <button data-tab="help"><span class="ic">?</span>Help</button>
+  <div class="brand">
+    <div class="mark"><svg width="15" height="15" style="color:#fff"><use href="#i-mic"/></svg></div>
+    <span class="word">indite</span>
+  </div>
+  <nav>
+    <button data-tab="home" aria-current="true"><svg width="16" height="16"><use href="#i-home"/></svg>Home</button>
+    <button data-tab="settings"><svg width="16" height="16"><use href="#i-gear"/></svg>Settings</button>
+    <button data-tab="help"><svg width="16" height="16"><use href="#i-help"/></svg>Help</button>
+  </nav>
   <div class="grow"></div>
-  <div class="keyline">Hold <kbd id="hk">Right ⌥</kbd><br>speak, then let go.<br><span id="engine"></span></div>
+  <div class="status"><span class="dot" id="dot"></span><span id="engine">Starting…</span></div>
 </aside>
 
 <main>
-  <div class="col">
-    <h1 id="title">Welcome back</h1>
+  <header>
+    <h1 id="title">Home</h1>
+    <div class="hint" id="hint"></div>
+  </header>
+
+  <div class="scroll" id="scroll">
     <div id="warn"></div>
 
-    <section class="pane panel" id="pane-home">
-      <div class="daybar">
-        <span class="day" id="daylabel">Recent</span><span class="sp"></span>
-        <input class="search" id="q" placeholder="Search" spellcheck="false">
+    <section class="pane" id="pane-home">
+      <div class="stats" id="stats"></div>
+      <div class="bar">
+        <h2>History</h2>
+        <label class="search"><svg width="13" height="13"><use href="#i-search"/></svg>
+          <input id="q" placeholder="Search" spellcheck="false" aria-label="Search history"><span class="k">⌘F</span></label>
       </div>
       <div id="list"></div>
     </section>
 
-    <section class="pane panel" id="pane-settings" hidden>
-      <div class="group">
-        <div class="item">
-          <div class="body"><b>Hold-to-talk key</b>
-            <p>Takes effect at once. Pick a key you do not otherwise use.</p></div>
-          <div class="seg" id="set-hotkey"></div>
-        </div>
-        <div class="item">
-          <div class="body"><b>Where the text goes</b><p id="out-why"></p></div>
-          <div class="seg" id="set-output"></div>
-        </div>
-      </div>
-      <div class="group">
-        <div class="item">
-          <div class="body"><b>Hinglish spelling</b>
-            <p>Writes achha, kyunki, maine the same way the phone does.</p></div>
-          <button class="sw" id="set-spelling" role="switch"></button>
-        </div>
-        <div class="item">
-          <div class="body"><b>Keep a history</b>
-            <p>The last 500 dictations, in a plain file on this Mac. Off means nothing is written down.</p></div>
-          <button class="sw" id="set-keep_history" role="switch"></button>
-        </div>
-        <div class="item">
-          <div class="body"><b>Forget everything</b><p id="count-line"></p></div>
-          <button class="danger" id="clear">Clear history</button>
+    <section class="pane" id="pane-settings" hidden>
+      <div class="section"><h2>Dictation</h2>
+        <div class="card">
+          <div class="item">
+            <div class="body"><b>Hold-to-talk key</b><p>Hold it anywhere, speak, let go. Changes at once.</p></div>
+            <div class="seg" id="set-hotkey" role="radiogroup" aria-label="Hold-to-talk key"></div>
+          </div>
+          <div class="item">
+            <div class="body"><b>Where the words go</b><p id="out-why"></p></div>
+            <div class="seg" id="set-output" role="radiogroup" aria-label="Where the words go"></div>
+          </div>
         </div>
       </div>
-      <div class="prose">
-        Every switch here does something. Nothing on this screen is decoration.
+      <div class="section"><h2>Writing</h2>
+        <div class="card">
+          <div class="item">
+            <div class="body"><b>Hinglish spelling</b><p>Writes everyday words one way: achha, kyunki, maine.</p></div>
+            <button class="sw" id="set-spelling" role="switch" aria-label="Hinglish spelling"></button>
+          </div>
+          <div class="item">
+            <div class="body"><b>Word fixes</b><p id="fixes-line"></p></div>
+            <button class="btn" id="edit-fixes">Edit…</button>
+          </div>
+        </div>
+      </div>
+      <div class="section"><h2>Privacy</h2>
+        <div class="card">
+          <div class="item">
+            <div class="body"><b>Keep a history</b>
+              <p>Your last 500 dictations, in a plain file on this Mac. Off means nothing is written down.</p></div>
+            <button class="sw" id="set-keep_history" role="switch" aria-label="Keep a history"></button>
+          </div>
+          <div class="item">
+            <div class="body"><b>Clear history</b><p id="count-line"></p></div>
+            <button class="btn danger" id="clear">Clear…</button>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="pane panel" id="pane-help" hidden>
-      <div class="prose">
-        <p><b>How it works.</b> Click into any text box — a note, a browser, a chat. Hold the hold-to-talk key,
-        say a sentence, let go. A pill appears above the Dock while you speak and tells you where the words went.</p>
-        <p><b>If nothing happens when you hold the key</b>, macOS has not allowed indite to notice key presses.
-        Open System Settings → Privacy &amp; Security → Accessibility and switch indite on, then quit and start it
-        again.</p>
-        <p><b>If there is no text box</b> to type into, the words go to the clipboard instead of vanishing. The pill
-        says “✓ copied”. Paste with ⌘V.</p>
-        <p><b>Privacy.</b> Everything happens on this Mac. The recording is written to a temporary file, transcribed,
-        and deleted straight after. Nothing is sent anywhere — there is no account and no server.</p>
-        <p><b>Where your history lives.</b> ~/Library/Application Support/indite — a plain text file you can read or
-        delete yourself.</p>
-        <p>indite for Mac 0.1 · the same Hinglish model the phone uses.</p>
+    <section class="pane" id="pane-help" hidden>
+      <div class="how">
+        <div class="card"><div class="n">1</div><b>Click a text box</b><p>Any app: a note, a browser, a chat.</p></div>
+        <div class="card"><div class="n">2</div><b>Hold <span class="hk-name"></span> and speak</b><p>A small pill above the Dock shows it is listening.</p></div>
+        <div class="card"><div class="n">3</div><b>Let go</b><p>The words appear where your cursor is, in about a second.</p></div>
       </div>
+      <div class="section"><h2>If something is off</h2>
+        <div class="card faq">
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-key"/></svg></div>
+            <div class="body"><b>Holding the key does nothing</b>
+              <p>macOS has not let indite notice key presses. System Settings → Privacy &amp; Security →
+              Accessibility → switch on indite, then quit and reopen it.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-clip"/></svg></div>
+            <div class="body"><b>The pill says “copied”</b>
+              <p>There was no text box to type into, so the words went to the clipboard. Paste with ⌘V.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-mic"/></svg></div>
+            <div class="body"><b>It cannot hear you</b>
+              <p>Usually a Bluetooth headset that is off. indite tries every microphone, and says so if none work.</p></div></div>
+        </div>
+      </div>
+      <div class="section"><h2>Privacy</h2>
+        <div class="card faq">
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-lock"/></svg></div>
+            <div class="body"><b>Nothing leaves this Mac</b>
+              <p>The recording is transcribed here and deleted straight after. No account, no server.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-folder"/></svg></div>
+            <div class="body"><b>Your files</b>
+              <p>History and word fixes live in <span class="path">~/Library/Application Support/indite</span></p></div></div>
+        </div>
+      </div>
+      <p class="fine">indite for Mac 0.1</p>
     </section>
   </div>
-
-  <div class="rail" id="rail"></div>
 </main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
   const send = m => window.webkit.messageHandlers.indite.postMessage(JSON.stringify(m));
   const $ = s => document.querySelector(s);
-  let S = { prefs: {}, history: [], hotkeys: {}, listening: true, engine: "" };
+  let S = { prefs: {}, history: [], hotkeys: {}, listening: true, engine: "", fixes: 0 };
+  let tab = "home";
 
   window.push = raw => { S = JSON.parse(raw); draw(); };
 
-  document.querySelectorAll("aside button").forEach(b => b.onclick = () => {
-    document.querySelectorAll("aside button").forEach(o => o.setAttribute("aria-current", o === b));
-    for (const t of ["home", "settings", "help"]) $("#pane-" + t).hidden = b.dataset.tab !== t;
-    $("#title").textContent = { home: "Welcome back", settings: "Settings", help: "Help" }[b.dataset.tab];
-    $("#rail").style.display = b.dataset.tab === "home" ? "" : "none";
-  });
-  $("#q").oninput = drawList;
-  $("#clear").onclick = () => { if (confirm("Delete every saved dictation?")) send({ action: "clear" }); };
+  const TITLES = { home: "Home", settings: "Settings", help: "How indite works" };
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
+  function go(t) {
+    tab = t;
+    document.querySelectorAll("nav button").forEach(o => o.setAttribute("aria-current", o.dataset.tab === t));
+    for (const p of ["home", "settings", "help"]) $("#pane-" + p).hidden = p !== t;
+    $("#scroll").scrollTop = 0;
+    header();
+  }
 
-  const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  $("#q").oninput = drawList;
+  $("#q").onkeydown = e => { if (e.key === "Escape") { $("#q").value = ""; drawList(); $("#q").blur(); } };
+  document.addEventListener("keydown", e => {
+    if (e.metaKey && e.key === "f") { e.preventDefault(); go("home"); $("#q").focus(); }
+    if (e.metaKey && e.key === ",") { e.preventDefault(); go("settings"); }
+  });
+  $("#edit-fixes").onclick = () => send({ action: "fixes" });
+
+  // A web view cannot show confirm() unless the app draws it - the old "Clear history" silently did nothing.
+  // The app asks with a real macOS dialog instead (window.py), as the "…" on the button promises.
+  $("#clear").onclick = () => { if (S.history.length) send({ action: "clear" }); };
+
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const day = t => new Date(t * 1000).toDateString();
+  const hk = () => S.hotkeys[S.prefs.hotkey] || "Right ⌥";
 
   function dayLabel(t) {
-    const d = day(t), now = new Date(), y = new Date(Date.now() - 86400e3);
-    if (d === now.toDateString()) return "Today";
+    const d = day(t), y = new Date(Date.now() - 86400e3);
+    if (d === new Date().toDateString()) return "Today";
     if (d === y.toDateString()) return "Yesterday";
     return new Date(t * 1000).toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
   }
-  const clock = t => new Date(t * 1000)
-      .toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase();
+  const clock = t => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase();
+
+  function toast(msg) {
+    const el = $("#toast"); el.textContent = msg; el.classList.add("on");
+    clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 1400);
+  }
+
+  function header() {
+    $("#title").textContent = TITLES[tab];
+    $("#hint").innerHTML = tab === "home"
+      ? `Hold <kbd>${esc(hk())}</kbd> in any app, speak, and let go.` : "";
+  }
 
   function draw() {
-    $("#hk").textContent = S.hotkeys[S.prefs.hotkey] || "Right ⌥";
-    $("#engine").textContent = S.engine;
-    $("#warn").innerHTML = S.listening ? "" : `<div class="banner"><div>
-      <b>The hotkey cannot be seen yet</b>
-      <p>macOS has not allowed indite to notice key presses, so holding the key does nothing. Open
-      System Settings → Privacy &amp; Security → Accessibility and switch indite on.</p></div></div>`;
+    header();
+    document.querySelectorAll(".hk-name").forEach(e => e.textContent = hk());
+    const ready = /ready/i.test(S.engine);
+    $("#dot").className = "dot " + (!S.listening ? "off" : ready ? "" : "wait");
+    $("#engine").textContent = !S.listening ? "No key access" : ready ? "Ready · works offline" : (S.engine || "Starting…");
+    $("#warn").innerHTML = S.listening ? "" : `<div class="banner">
+      <svg width="18" height="18" style="color:var(--accent);margin-top:1px"><use href="#i-key"/></svg>
+      <div><b>indite can’t see the hotkey yet</b>
+      <p>Allow it in System Settings → Privacy &amp; Security → Accessibility, then reopen indite.</p></div>
+      <button class="btn" id="perm">Open settings</button></div>`;
+    if (!S.listening) $("#perm").onclick = () => send({ action: "permission" });
 
     seg("#set-hotkey", S.hotkeys, S.prefs.hotkey, v => send({ action: "pref", key: "hotkey", value: v }));
-    seg("#set-output", { smart: "Smart", type: "Always type", copy: "Always copy" }, S.prefs.output,
+    seg("#set-output", { smart: "Smart", type: "Type", copy: "Copy" }, S.prefs.output,
         v => send({ action: "pref", key: "output", value: v }));
     $("#out-why").textContent = {
-      smart: "Typed into the text box you are in; copied to the clipboard when there is none.",
-      type: "Always typed, character by character. If nothing is focused the words are lost.",
-      copy: "Always copied. Paste with ⌘V wherever you want it.",
-    }[S.prefs.output];
+      smart: "Typed where your cursor is. Copied to the clipboard when there is no text box.",
+      type: "Always typed. If no text box is selected, the words are lost.",
+      copy: "Always copied to the clipboard. Paste with ⌘V.",
+    }[S.prefs.output] || "";
     sw("#set-spelling", "spelling");
     sw("#set-keep_history", "keep_history");
+    $("#fixes-line").textContent = S.fixes
+      ? `${S.fixes} fix${S.fixes > 1 ? "es" : ""}, like “ptm = Paytm”. Saved edits apply to the next dictation.`
+      : "Teach indite words it gets wrong, like “ptm = Paytm”.";
     $("#count-line").textContent = S.history.length
-      ? `${S.history.length} dictation${S.history.length > 1 ? "s" : ""} saved. Deleting cannot be undone.`
+      ? `${S.history.length} dictation${S.history.length > 1 ? "s" : ""} saved. This cannot be undone.`
       : "Nothing is saved right now.";
+    $("#clear").disabled = !S.history.length;
 
-    rail();
+    stats();
     drawList();
   }
 
@@ -279,7 +428,8 @@
     for (const [v, label] of Object.entries(options)) {
       const b = document.createElement("button");
       b.textContent = label;
-      b.setAttribute("aria-pressed", v === current);
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", v === current);
       b.onclick = () => pick(v);
       el.appendChild(b);
     }
@@ -293,71 +443,63 @@
 
   const words = r => r.text.trim().split(/\s+/).filter(Boolean).length;
 
-  function streak() {
-    // Days in a row with at least one dictation, counting back from today or yesterday.
-    const days = new Set(S.history.map(r => day(r.at)));
-    let n = 0, d = new Date();
-    if (!days.has(d.toDateString())) d = new Date(Date.now() - 86400e3);
-    while (days.has(d.toDateString())) { n++; d = new Date(d - 86400e3); }
-    return n;
-  }
-
-  function rail() {
+  function stats() {
     const h = S.history;
     const w = h.reduce((n, r) => n + words(r), 0);
     const spoke = h.reduce((n, r) => n + (r.seconds || 0), 0);
     const wpm = spoke > 5 ? Math.round(w / spoke * 60) : 0;
-    const wait = h.length ? (h.reduce((n, r) => n + (r.took || 0), 0) / h.length) : 0;
-    const n = x => x >= 1000 ? (x / 1000).toFixed(1).replace(/\.0$/, "") + "K" : String(x);
-    const s = streak();
-    $("#rail").innerHTML = `<div class="card">
-        <div class="big"><span class="n">${n(w)}</span><span class="l">total words</span></div>
-        <div class="big"><span class="n">${wpm || "—"}</span><span class="l">words a minute</span></div>
-        <div class="big"><span class="n">${s}</span><span class="l">day${s === 1 ? "" : "s"} in a row</span></div>
-      </div>
-      <div class="card"><div class="note"><b>${wait ? wait.toFixed(2) + "s to write" : "Nothing timed yet"}</b>
-        ${wait ? "Average wait between letting go of the key and the words appearing." :
-                 "Say something and the speed will show up here."}</div></div>
-      <div class="card"><div class="note"><b>All of this stays here</b>
-        Recordings are deleted as soon as the words are written. Nothing is sent anywhere.</div></div>`;
+    const wait = h.length ? h.reduce((n, r) => n + (r.took || 0), 0) / h.length : 0;
+    const k = x => x >= 1000 ? (x / 1000).toFixed(1).replace(/\.0$/, "") + "K" : String(x);
+    const tile = (n, unit, label) => `<div class="stat"><div class="n num">${n}${unit ? `<small>${unit}</small>` : ""}</div>
+      <div class="l">${label}</div></div>`;
+    $("#stats").innerHTML =
+      tile(k(w), "", "words dictated") +
+      tile(wpm || "–", wpm ? "wpm" : "", "speaking speed") +
+      tile(wait ? wait.toFixed(1) : "–", wait ? "s" : "", "average wait");
   }
 
   function drawList() {
     const q = $("#q").value.trim().toLowerCase();
     const rows = S.history.filter(r => !q || r.text.toLowerCase().includes(q));
-    $("#daylabel").textContent = rows.length ? dayLabel(rows[0].at) : "Recent";
 
     if (!S.history.length) {
       $("#list").innerHTML = `<div class="empty">
-        <div class="big">Nothing here yet</div>
-        You have not dictated anything on this Mac.
+        <div class="art"><svg width="28" height="28"><use href="#i-mic"/></svg></div>
+        <h3>${S.prefs.keep_history === false ? "History is off" : "Nothing dictated yet"}</h3>
+        ${S.prefs.keep_history === false ? "Turn it on in Settings to see what you say here." : "Your words will show up here."}
         <div class="steps">
-          1. Click into any text box — a note, a browser, a chat.<br>
-          2. Hold <kbd>${S.hotkeys[S.prefs.hotkey] || "Right ⌥"}</kbd> and say a sentence.<br>
-          3. Let go. The words are typed where your cursor is.
+          <div class="step"><b>1</b>Click into any text box</div>
+          <div class="step"><b>2</b>Hold <kbd>${esc(hk())}</kbd> and say a sentence</div>
+          <div class="step"><b>3</b>Let go. The words appear where your cursor is</div>
         </div></div>`;
       return;
     }
-    if (!rows.length) { $("#list").innerHTML = `<div class="empty">Nothing matches “${esc(q)}”.</div>`; return; }
+    if (!rows.length) { $("#list").innerHTML = `<div class="empty"><h3>No matches</h3>Nothing you said contains “${esc(q)}”.</div>`; return; }
 
-    let html = "", seen = dayLabel(rows[0].at);
+    let html = "", seen = "";
+    const count = {};
+    rows.forEach(r => { const l = dayLabel(r.at); count[l] = (count[l] || 0) + 1; });
     rows.forEach((r, i) => {
       const label = dayLabel(r.at);
-      if (label !== seen) { seen = label; html += `<div class="daybar"><span class="day">${label}</span></div>`; }
+      if (label !== seen) { seen = label; html += `<div class="daybar">${label}<span>${count[label]}</span></div>`; }
+      const copied = r.where === "copied";
       html += `<div class="row">
-        <div class="when">${clock(r.at)}</div>
-        <div class="text">${esc(r.text)}
-          <div class="meta">${r.where === "copied" ? "copied" : "typed"}${r.app ? " · " + esc(r.app) : ""}
-            · ${r.seconds}s spoken · ${r.took}s wait</div></div>
-        <button class="copy" data-i="${i}">Copy</button></div>`;
+        <div class="when num">${clock(r.at)}</div>
+        <div><div class="text">${esc(r.text)}</div>
+          <div class="meta">${copied ? `<span class="tag copied">Copied</span>` : ""}
+            ${r.app ? `<span>${esc(r.app)}</span>·` : ""}<span class="num">${words(r)} words</span></div></div>
+        <button class="copy" data-i="${i}" aria-label="Copy this dictation">
+          <svg width="14" height="14"><use href="#i-copy"/></svg></button></div>`;
     });
     $("#list").innerHTML = html;
     $("#list").querySelectorAll(".copy").forEach(b => b.onclick = () => {
       send({ action: "copy", text: rows[+b.dataset.i].text });
-      b.textContent = "Copied"; b.classList.add("done");
-      setTimeout(() => { b.textContent = "Copy"; b.classList.remove("done"); }, 1200);
+      b.innerHTML = `<svg width="14" height="14"><use href="#i-check"/></svg>`; b.classList.add("done");
+      toast("Copied");
+      setTimeout(() => { b.innerHTML = `<svg width="14" height="14"><use href="#i-copy"/></svg>`; b.classList.remove("done"); }, 1400);
     });
   }
 
+  header();
   send({ action: "ready" });
 </script>
