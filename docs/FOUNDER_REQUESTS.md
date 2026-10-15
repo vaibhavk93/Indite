@@ -426,4 +426,4 @@ is a git commit.
 | 177 | **Keep the handoff updated as we go** | So work can continue from another account if tokens run out | 10 Oct | ✅ | docs/HANDOFF.md section 5 updated after every build/test; WORKLOG + this file too |
 | 178 | **Mac app: something wrong, check it** | It stopped responding | 15 Oct | ✅ | A Bluetooth headset that was off crashed the hotkey. Fixed (`9a374e8`), tested by you with the headset off |
 | 179 | **Keep Android and Mac apps separate** | Improve both without one affecting the other | 15 Oct | ✅ | Mac has its own model and spelling list; neither reads the other's folder |
-| 180 | **More Wispr Flow features on the Mac** | — | 15 Oct | 🔬 | Critic-reviewed: build word fixes + Esc cancel; test 60 s hold; later snippets, hands-free; drop undo, voice enter, command mode. **Your input:** what do you actually miss from Wispr? |
+| 180 | **More Wispr Flow features on the Mac** | — | 15 Oct | 🧪 | **Word fixes and Esc cancel built** (your test pending). Critic-reviewed: test 60 s hold; later snippets, hands-free; drop undo, voice enter, command mode. **Your input:** what do you actually miss from Wispr? |

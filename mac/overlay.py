@@ -76,6 +76,7 @@ class PillView(NSView):
                 "copied": "✓ copied",
                 "nothing": "nothing heard",
                 "failed": "didn't work",
+                "cancelled": "cancelled",
             }.get(self.state, "✓ copied"))
 
     def _draw_bars(self) -> None:

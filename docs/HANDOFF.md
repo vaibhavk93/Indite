@@ -211,7 +211,11 @@ the old Desktop path working. All paths in the repo were relative, so nothing el
 - **Leftover engines.** A killed or crashed app left `whisper-server` running (three found, 574 MB each). The app now
   clears any old engine on port 8711 at startup. Checked with `kill -9`, then relaunch: one engine.
 - `build_app.sh` uses the real folder (`pwd -P`); run from the Desktop symlink, it baked in a path macOS blocks.
-- **Next Mac features (critic-reviewed, all unproven):** build personal word fixes and Esc-to-cancel; test a 60 s hold
+- **Built (untested by the founder):** your own word fixes — menu → "Edit my word fixes…" opens
+  `~/Library/Application Support/indite/my_fixes.txt` (`heard = wanted`, whole words, multi-word OK, read on every
+  dictation; check: `.venv/bin/python mac/store.py`). **Esc while holding cancels** (pill: "cancelled"); Esc also
+  reaches the app underneath, pynput cannot block it.
+- **Next Mac features (critic-reviewed, all unproven):** test a 60 s hold
   first (the window caps at ~25 s); later snippets and hands-free; drop undo-by-backspace, voice "press enter",
   command mode (no AI route). Waiting on the founder to say what they actually miss from Wispr.
 

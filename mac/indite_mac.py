@@ -362,6 +362,7 @@ class InditeApp(rumps.App):
             None,
             rumps.MenuItem("Open indite", callback=self.open_window, key="o"),
             rumps.MenuItem("Copy last text", callback=self.copy_last),
+            rumps.MenuItem("Edit my word fixes\u2026", callback=self.edit_fixes),
             None,
             rumps.MenuItem("Quit", callback=self.quit_all),
         ]
@@ -413,6 +414,13 @@ class InditeApp(rumps.App):
         return KEYS.get(self.prefs["hotkey"], keyboard.Key.alt_r)
 
     def on_press(self, key) -> None:                     # noqa: ANN001 - pynput's signature
+        if key == keyboard.Key.esc and self.started_at:   # cancel: nothing is written, the audio is dropped
+            # ponytail: pynput cannot swallow the key on macOS, so Esc also reaches the app underneath
+            self.started_at = 0.0
+            self.mic.stop()
+            self.title = "🎙"
+            self.done_state, self.done_until = "cancelled", time.time() + 1.2
+            return
         if key == self.hotkey() and not self.busy and self.started_at == 0.0:
             try:
                 self.mic.start()
@@ -469,6 +477,7 @@ class InditeApp(rumps.App):
             text = self.engine.transcribe(audio)
             if self.prefs["spelling"]:
                 text = apply_fixes(text, self.table)
+            text = store.apply_my_fixes(text, store.my_fixes())     # yours apply even with Hinglish spelling off
         except Exception as e:                            # noqa: BLE001 - whatever went wrong, say so and carry on
             self.title = "🎙"
             self.busy = False
@@ -508,6 +517,9 @@ class InditeApp(rumps.App):
         if self.window is None:                          # built on first use: AppKit, so main thread only
             self.window = Window(self)
         self.window.show()
+
+    def edit_fixes(self, _) -> None:                     # noqa: ANN001
+        subprocess.run(["open", "-e", str(store.fixes_file())], check=False)
 
     def copy_last(self, _) -> None:                      # noqa: ANN001
         if self.last:

@@ -10,12 +10,14 @@ History is capped, because an unbounded log of everything a user has ever said i
 from __future__ import annotations
 
 import json
+import re
 import time
 from pathlib import Path
 
 DIR = Path.home() / "Library/Application Support/indite"
 HISTORY = DIR / "history.jsonl"
 PREFS = DIR / "prefs.json"
+MY_FIXES = DIR / "my_fixes.txt"
 CAP = 500                       # roughly a month of heavy use; older lines are dropped on write
 
 # Every one of these does something. Four times in this project a switch was shipped that silently did nothing,
@@ -74,3 +76,56 @@ def history() -> list[dict]:
 
 def clear() -> None:
     HISTORY.unlink(missing_ok=True)
+
+
+# ---- your own word fixes ---------------------------------------------------------------------------------------
+# One per line, "what it writes = what you want". Read on every dictation, so a saved edit works on the next one.
+# "=" and not a tab, because the person editing this is in TextEdit, where a tab and spaces look the same.
+FIXES_HEADER = """# indite: your word fixes. One per line:   what indite writes = what you want
+# Matches whole words, any capitals. Save the file; the next dictation uses it. Lines starting with # are ignored.
+# Examples (delete the # to use one):
+# ptm = Paytm
+# pay tm = Paytm
+# addr1 = 12 MG Road, Bengaluru 560001
+"""
+
+
+def fixes_file() -> Path:
+    if not MY_FIXES.exists():
+        DIR.mkdir(parents=True, exist_ok=True)
+        MY_FIXES.write_text(FIXES_HEADER, encoding="utf-8")
+    return MY_FIXES
+
+
+def parse_fixes(raw: str) -> list[tuple[str, str]]:
+    out = []
+    for line in raw.splitlines():
+        heard, sep, want = line.partition("=")
+        heard, want = " ".join(heard.split()), want.strip()
+        if sep and heard and want and not heard.startswith("#"):
+            out.append((heard, want))
+    return sorted(out, key=lambda p: -len(p[0]))     # "pay tm" before "pay", so the longer fix wins
+
+
+def apply_my_fixes(text: str, pairs: list[tuple[str, str]]) -> str:
+    for heard, want in pairs:
+        words = r"\s+".join(re.escape(w) for w in heard.split())
+        text = re.sub(rf"(?<!\w){words}(?!\w)", lambda _m, w=want: w, text, flags=re.IGNORECASE)
+    return text
+
+
+def my_fixes() -> list[tuple[str, str]]:
+    try:
+        return parse_fixes(MY_FIXES.read_text(encoding="utf-8"))
+    except Exception:           # noqa: BLE001 - no file, or half-saved: no fixes, never a failed dictation
+        return []
+
+
+if __name__ == "__main__":     # the one check: uv run python mac/store.py
+    pairs = parse_fixes(FIXES_HEADER + "ptm = Paytm\npay tm = Paytm\n  c++  = C++\nbroken line\n= nothing\n")
+    assert pairs == [("pay tm", "Paytm"), ("ptm", "Paytm"), ("c++", "C++")], pairs
+    assert apply_my_fixes("PTM se pay  tm karo", pairs) == "Paytm se Paytm karo"
+    assert apply_my_fixes("aptm wala", pairs) == "aptm wala"          # inside a word: left alone
+    assert apply_my_fixes("c++ seekho", pairs) == "C++ seekho"
+    assert apply_my_fixes("addr1", [("addr1", r"12 \1 Road")]) == r"12 \1 Road"   # replacement taken literally
+    print("ok")

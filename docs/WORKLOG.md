@@ -12,6 +12,7 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 - Android and Mac apps separated: Mac has its own model link and spelling list.
 - Leftover `whisper-server` processes (3 × 574 MB) after crashes; the app now clears them at startup.
 - Critic review of Wispr-like Mac features (see HANDOFF "Mac fixes").
+- Built: your own word fixes (`my_fixes.txt`, menu item) and Esc-to-cancel. Self-check passes; founder test pending.
 
 ## 2026-10-13/14 · Claude Code (Opus 5) · builds 16-29
 

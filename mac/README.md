@@ -55,6 +55,8 @@ Two things make that number, and both are easy to lose:
 
 - **Home** — everything you have dictated, newest first, grouped by day. Search it, hover a line to copy it.
   Beside it: total words, how fast you speak, and how many days in a row you have used it.
+- **Word fixes** — menu bar → Edit my word fixes…: one per line, `ptm = Paytm`. Saved edits work on the next dictation.
+- **Cancel** — press Esc while holding the key; nothing is typed.
 - **Settings** — which key to hold, whether the text is typed or copied, Hinglish spelling, and whether a history
   is kept at all. Every switch does something; none of them are decoration.
 - **Help** — what to do when the hotkey does nothing, and where the history file lives.
