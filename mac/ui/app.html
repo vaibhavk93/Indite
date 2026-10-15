@@ -77,6 +77,8 @@
     border-left: 1px solid var(--line2);
   }
   header { padding: 40px 32px 0; }
+  .fs aside { padding-top: 22px; }                /* full screen: no traffic lights, so no gap above */
+  .fs header { padding-top: 22px; }
   h1 { font-size: 22px; font-weight: 650; letter-spacing: -.5px; }
   .hint { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--ink2); font-size: 13px; }
   .scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 32px 32px; }
@@ -190,6 +192,7 @@
   }
   .btn:hover { border-color: var(--ink3); }
   .btn.danger { color: var(--red); }
+  .slide { width: 160px; accent-color: var(--brand); flex: none; }
   .pick { font: inherit; font-size: 12px; color: var(--ink); padding: 4px 8px; border-radius: 7px; max-width: 220px;
           border: 1px solid var(--line2); background: var(--paper); }
   
@@ -283,12 +286,22 @@
             <div class="seg" id="set-output" role="radiogroup" aria-label="Where the words go"></div>
           </div>
           <div class="item">
-            <div class="body"><b>Hands-free</b><p>Double-tap the key and let go: indite keeps listening. Tap once to
-              finish, Esc to cancel. Stops by itself after 15 minutes.</p></div>
+            <div class="body"><b>Hands-free key</b><p id="hf-why"></p></div>
+            <select class="pick" id="set-hf_key" aria-label="Hands-free key"></select>
+          </div>
+          <div class="item">
+            <div class="body"><b>Taps to start hands-free</b><p>Then tap once to finish, or Esc to cancel. Stops by
+              itself after 15 minutes.</p></div>
+            <div class="seg" id="set-hf_taps" role="radiogroup" aria-label="Taps to start hands-free"></div>
           </div>
           <div class="item">
             <div class="body"><b>Microphone</b><p id="mic-why"></p></div>
             <select class="pick" id="set-mic" aria-label="Microphone"></select>
+          </div>
+          <div class="item">
+            <div class="body"><b>Pill transparency</b><p>How much frosted glass the pill shows. The text and border
+              stay solid.</p></div>
+            <input type="range" class="slide" id="set-pill_glass" min="0" max="100" step="5" aria-label="Pill glass">
           </div>
           <div class="item">
             <div class="body"><b>Sounds</b><p>A soft tick when listening starts, a pop when it stops.</p></div>
@@ -448,6 +461,18 @@
     }[S.prefs.output] || "";
     sw("#set-spelling", "spelling");
     sw("#set-sounds", "sounds");
+    const hk2 = $("#set-hf_key");
+    hk2.innerHTML = `<option value="">Same as the talk key</option>` + Object.entries(S.hotkeys)
+      .map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("");
+    hk2.value = S.prefs.hf_key || "";
+    hk2.onchange = () => send({ action: "pref", key: "hf_key", value: hk2.value });
+    const n = S.prefs.hf_taps || 2, k2 = S.hotkeys[S.prefs.hf_key] || hk();
+    $("#hf-why").textContent = `Tap ${k2} ${n === 3 ? "three times" : "twice"} quickly and let go: indite keeps listening.`;
+    seg("#set-hf_taps", { 2: "Twice", 3: "Three times" }, String(n),
+        v => send({ action: "pref", key: "hf_taps", value: +v }));
+    const gl = $("#set-pill_glass");
+    gl.value = Math.round((S.prefs.pill_glass ?? 0.45) * 100);
+    gl.onchange = () => send({ action: "pref", key: "pill_glass", value: gl.value / 100 });
     const mics = S.mics || [], pickMic = $("#set-mic");
     const chosen = S.prefs.mic || "";
     pickMic.innerHTML = `<option value="">Automatic</option>` + [...new Set([...mics, ...(chosen ? [chosen] : [])])]

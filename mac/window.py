@@ -76,6 +76,11 @@ class Bridge(NSObject):
             "using": self.app.mic.using,
         }
 
+    @objc.python_method
+    def js(self, code: str) -> None:
+        if self.web is not None:
+            self.web.evaluateJavaScript_completionHandler_(code, None)
+
     def push(self) -> None:
         if self.web is None:
             return
@@ -135,6 +140,30 @@ class DragStrip(NSView):
             self.window().performWindowDragWithEvent_(event)
 
 
+class WindowEvents(NSObject):
+    """
+    Full screen, done properly. A menu-bar-only app ("accessory") cannot own a full-screen Space: macOS zoomed the
+    window over whatever app was in front and left the menu bar and Dock gaps (founder, 15 Oct). So while the window
+    is open indite becomes a normal app with a Dock icon, and goes back to living in the menu bar when it closes.
+    """
+
+    def initWithBridge_(self, bridge):
+        self = objc.super(WindowEvents, self).init()
+        if self is None:
+            return None
+        self.bridge = bridge
+        return self
+
+    def windowWillClose_(self, _note):              # noqa: N802
+        NSApp.setActivationPolicy_(1)                 # accessory: menu bar only, no Dock icon
+
+    def windowDidEnterFullScreen_(self, _note):     # noqa: N802
+        self.bridge.js("document.body.classList.add('fs')")    # no traffic lights to clear: drop the top gap
+
+    def windowDidExitFullScreen_(self, _note):      # noqa: N802
+        self.bridge.js("document.body.classList.remove('fs')")
+
+
 class Window:
     """Made once, on the main thread, the first time the user opens it."""
 
@@ -151,6 +180,9 @@ class Window:
         self.win.setMinSize_((700.0, 480.0))
         self.win.center()
         self.win.setReleasedWhenClosed_(False)              # closing hides it; the app lives in the menu bar
+        self.win.setCollectionBehavior_(1 << 7)             # FullScreenPrimary: the green button gives it its own Space
+        self.events = WindowEvents.alloc().initWithBridge_(self.bridge)
+        self.win.setDelegate_(self.events)
 
         glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
         glass.setMaterial_(NSVisualEffectMaterialUnderWindowBackground)
@@ -177,6 +209,7 @@ class Window:
         self.win.setBackgroundColor_(NSColor.clearColor())
 
     def show(self) -> None:
+        NSApp.setActivationPolicy_(0)                       # a normal app while the window is open (see WindowEvents)
         NSApp.activateIgnoringOtherApps_(True)              # a menu-bar app has to ask for focus
         self.win.makeKeyAndOrderFront_(None)
         self.bridge.push()                                  # fresh history every time it opens

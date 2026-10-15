@@ -29,6 +29,9 @@ DEFAULTS = {
     "keep_history": True,       # off means nothing is written, and the list below empties
     "sounds": True,             # a soft tick when listening starts, a pop when it stops
     "mic": "",                  # a microphone's name; "" = automatic (default, then built-in, then any)
+    "hf_key": "",               # hands-free key; "" = the same key you hold to talk
+    "hf_taps": 2,               # taps of that key that lock hands-free: 2 or 3
+    "pill_glass": 0.45,         # how much frosted glass the pill shows: 0 = clear, 1 = Apple's default
 }
 
 

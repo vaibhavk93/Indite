@@ -43,6 +43,7 @@ from AppKit import (
     NSWindowStyleMaskNonactivatingPanel,
 )
 
+GLASS = 0.45                    # how much of the frosted glass shows: 1 = Apple's default, 0 = none
 W, H = 116.0, 30.0              # small on purpose: it sits over whatever you are reading (was 168 x 44)
 ACCENT = (0.886, 0.463, 0.106)      # the indite orange, the same one the phone uses
 
@@ -219,16 +220,20 @@ class Pill:
         self.view = PillView.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
         Liquid = getattr(AppKit, "NSGlassEffectView", None)
         if Liquid is not None:
-            # macOS 26 Liquid Glass: translucent, bends and lights what is behind it, and turns lighter or darker
-            # with the page underneath - the material Apple uses for its own floating controls.
+            # macOS 26 Liquid Glass, Clear style, and then faded further (founder, twice: "more transparent").
+            # The glass and the drawing are siblings, not parent and child, so fading the glass leaves the text and
+            # bars at full strength - only the frosted body becomes see-through.
+            holder = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
             glass = Liquid.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
             glass.setCornerRadius_(H / 2)
-            # Clear, not Regular: the founder wanted it closer to transparent (15 Oct). Clear is the see-through
-            # variant Apple uses over media; the text gets a soft shadow below so it still reads on busy pages.
             glass.setStyle_(getattr(AppKit, "NSGlassEffectViewStyleClear", 1))
-            glass.setContentView_(self.view)
+            glass.setAlphaValue_(GLASS)
+            holder.addSubview_(glass)
+            holder.addSubview_(self.view)
+            self.glass = glass
             self.view.liquid = True
             self.panel.setHasShadow_(False)           # the glass brings its own depth
+            glass = holder
         else:
             glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
             glass.setMaterial_(NSVisualEffectMaterialHUDWindow)
@@ -240,8 +245,15 @@ class Pill:
             glass.addSubview_(self.view)
             self.panel.setHasShadow_(True)
         self.panel.setContentView_(glass)
+        if not hasattr(self, "glass"):
+            self.glass = None
         self.panel.setAlphaValue_(0.0)
         self.visible = False
+
+    def set_glass(self, amount: float) -> None:
+        """Settings → Pill transparency. Only the frosted body fades; the text and border stay solid."""
+        if self.glass is not None:
+            self.glass.setAlphaValue_(max(0.0, min(1.0, amount)))
 
     def show(self, state: str) -> None:
         if state != self.view.state:

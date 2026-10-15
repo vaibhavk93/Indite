@@ -438,10 +438,13 @@ class InditeApp(rumps.App):
         self.started_at = 0.0
         self.locked = False              # hands-free: double-tap the key, then tap once to stop
         self.last_tap = 0.0
+        self.taps = 0                    # taps in a row, each within 0.6 s of the last
+        self.hf_down = 0.0               # when the hands-free key went down, if it is a different key
         self.held_keys: set = set()
         self.last = ""
         self.web_proc: subprocess.Popen | None = None
         self.pill = Pill()
+        self.pill.set_glass(self.prefs["pill_glass"])
         self.done_until = 0.0
         self.done_state = "done"
         # 20 times a second, on the main thread: the only place the pill is ever touched.
@@ -547,6 +550,32 @@ class InditeApp(rumps.App):
         """Read on every press, so changing it in the window works at once and not after a restart."""
         return KEYS.get(self.prefs["hotkey"], keyboard.Key.alt_r)
 
+    def hf_key(self):
+        return KEYS.get(self.prefs.get("hf_key") or self.prefs["hotkey"], self.hotkey())
+
+    def count_tap(self) -> bool:
+        """One more quick tap. True when the run reaches the hands-free count (2 or 3, from Settings)."""
+        now = time.time()
+        self.taps = self.taps + 1 if now - self.last_tap < 0.6 else 1
+        self.last_tap = now
+        if self.taps >= int(self.prefs.get("hf_taps", 2)):
+            self.taps = 0
+            self.last_tap = 0.0
+            return True
+        return False
+
+    def start_listening(self) -> bool:
+        try:
+            self.mic.start()
+        except Exception as e:                           # noqa: BLE001 - never let this kill the listener
+            self.started_at = 0.0
+            self.title = "🎙"
+            self.mic_trouble(e)
+            return False
+        self.started_at = time.time()
+        self.title = "🔴"
+        return True
+
     def on_press(self, key) -> None:                     # noqa: ANN001 - pynput's signature
         if key == keyboard.Key.esc and self.started_at:   # cancel: nothing is written, the audio is dropped
             # ponytail: pynput cannot swallow the key on macOS, so Esc also reaches the app underneath
@@ -556,40 +585,39 @@ class InditeApp(rumps.App):
             self.title = "🎙"
             self.done_state, self.done_until = "cancelled", time.time() + 1.2
             return
-        if key == self.hotkey() and self.locked:          # hands-free: one tap stops it
+        if self.locked and key in (self.hotkey(), self.hf_key()):   # hands-free: one tap of either key stops it
             self.finish()
             return
+        if key == self.hf_key() and key != self.hotkey():
+            self.hf_down = time.time()                   # a separate hands-free key: counted on release
+            return
         if key == self.hotkey() and not self.busy and self.started_at == 0.0:
-            try:
-                self.mic.start()
-            except Exception as e:                       # noqa: BLE001 - never let this kill the listener
-                self.started_at = 0.0
-                self.title = "🎙"
-                self.mic_trouble(e)
-                return
-            self.started_at = time.time()
-            self.title = "🔴"
-            if self.prefs["sounds"] and time.time() - self.last_tap > 0.6:   # not again on the second tap
-                chime("Tink")
+            if self.start_listening() and self.prefs["sounds"] and time.time() - self.last_tap > 0.6:
+                chime("Tink")                            # not again on the second tap of a double-tap
 
     def on_release(self, key) -> None:                   # noqa: ANN001
-        if key != self.hotkey() or self.started_at == 0.0:
+        if key == self.hf_key() and key != self.hotkey():
+            quick = self.hf_down and time.time() - self.hf_down < 0.4
+            self.hf_down = 0.0
+            if quick and not self.locked and not self.busy and not self.started_at and self.count_tap():
+                if self.start_listening():
+                    self.locked = True
+                    if self.prefs["sounds"]:
+                        chime("Tink")
             return
-        if self.locked:
+        if key != self.hotkey() or self.started_at == 0.0 or self.locked:
             return
-        now = time.time()
-        if now - self.started_at < 0.4:                   # a tap, not a sentence
-            if now - self.last_tap < 0.6:                 # the second tap of a double-tap: keep listening, hands free
-                self.locked = True
-                self.last_tap = 0.0
+        if time.time() - self.started_at < 0.4:          # a tap, not a sentence
+            if self.hf_key() == self.hotkey() and self.count_tap():
+                self.locked = True                       # the last tap of the run: keep listening, hands free
                 if self.prefs["sounds"]:
                     chime("Tink")
                 return
-            self.last_tap = now
             self.started_at = 0.0
             self.mic.stop()
             self.title = "🎙"
             return
+        self.taps = 0
         self.finish()
 
     def finish(self) -> None:
@@ -679,6 +707,7 @@ class InditeApp(rumps.App):
         """Called by the window after a setting changes. The prefs are not cached anywhere else."""
         self.prefs = store.prefs()
         self.mic.chosen = self.prefs["mic"]
+        self.pill.set_glass(self.prefs["pill_glass"])
 
     def open_window(self, _) -> None:                    # noqa: ANN001
         if self.window is None:                          # built on first use: AppKit, so main thread only
