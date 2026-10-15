@@ -4,6 +4,18 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-15 (night) · Claude Code (Opus 5.5) · Mac: UX restructure, AI providers, shareable build
+
+**Next step:** founder sends `dist-share/indite-mac.zip` to his boss; says what still feels bad in Settings; tries a
+real call with the meeting recorder. Me: the dropped-sentence-end test (running), then P6 (local clean-up test).
+
+- UX review → one job per page, Settings in six sections with a finder, "…" menu per note, Light/Dark/Like the Mac.
+- AI: off for new users; Claude login (account shown, Sign in opens Claude's login) or API key in the Keychain.
+- Pill over full-screen Terminal fixed (Dock-app panels cannot enter another app's full screen).
+- Blank window found via a real-window snapshot; page watcher reloads it. Slider ran backwards; full-screen width capped.
+- `mac/build_share.sh`: self-contained 624 MB zip; engine library path from this Mac removed; first start 63 s → app waits.
+- Roadmap with done / pending / future: `docs/MAC_PLAN.md` §0.
+
 ## 2026-10-15 (afternoon) · Claude Code (Opus 5.5) · Mac fixes
 
 **Next step:** founder names what they miss from Wispr; then build personal word fixes + Esc cancel, and test a 60 s hold.

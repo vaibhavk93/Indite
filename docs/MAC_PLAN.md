@@ -8,6 +8,53 @@ wisprflow's features and the user flow and UX flow and improve the app."*
 
 ---
 
+## 0. Roadmap at a glance (15 Oct, 19:00) — the founder's three tables
+
+### Done (built, committed, running)
+
+| Area | What works |
+|---|---|
+| Dictation | Hold a key anywhere; hands-free (pick the key, 2 or 3 taps); Esc cancels; ⌃⌘V types the last one again; password boxes never typed into; long holds cut at quiet points; mic fallback + picker |
+| Accuracy | Hinglish spelling (punctuation bug fixed), numbers → digits, junk from short taps dropped, Dictionary (word fixes). Clean set 19.9% → 14.4% words wrong |
+| Pill | Liquid Glass, transparency slider (now in the right direction), two-tone border, writing animation, REC timer, shows over full-screen apps |
+| Window | Dictations · Meetings · Files · To do · Dictionary · Settings (6 sections + finder) · Help; “…” menu on every note; Light / Dark / Like the Mac; drag strip; real full screen; never blank (reloads itself) |
+| Notes | Stars, To do page (add, done), delete with Undo, filters |
+| Files | Transcribed inside the app; Text and Subtitles export |
+| Meetings | Mic (You) + the call's sound (Others), text at each pause, saved as it goes |
+| Speakers | Who spoke: 59/60 turns on clear voices, 56/60 similar; rename |
+| AI | 9 actions incl. Improve (original kept); from your Claude login or an API key (Anthropic / OpenAI / OpenRouter, in the Keychain); off by default for new users |
+| Backup | All / starred / starred + to-do, with or without audio; restore adds only what is missing |
+| Setup | First-run screen; Screen Recording asked once |
+| Sharing | `mac/build_share.sh` → self-contained `indite-mac.zip` (624 MB), tested in a bare environment |
+
+### Pending (needs doing or checking before it is "done")
+
+| # | Item | Status | Who |
+|---|---|---|---|
+| P1 | Your boss tries the zip | Ready to send | You |
+| P2 | Meeting recording with the call's sound, in a real call | Permission granted; untested in a real call | You, then me |
+| P3 | Dropped ends of sentences (8% of wrong words, silent loss) | Being measured now | Me |
+| P4 | Settings / UI: what exactly still feels bad | Width and slider fixed; need your specifics | You |
+| P5 | Real-use check: full screen, drag, hands-free over Terminal, ⌃⌘V | Fixes shipped, unconfirmed | You |
+| P6 | Live clean-up while dictating (local model) | Needs a 30-dictation Hinglish test | Me |
+| P7 | Signed + notarised build (no "right-click → Open") | Needs a $99/yr Apple Developer ID | You decide |
+| P8 | Paytm: ownership, infosec review, AI data policy (your Claude login is a Paytm account) | Not started | You (HR/Legal) |
+| P9 | Android: nothing from today's Mac work is on the phone yet | Not started | Later |
+| P10 | Intel Macs | The build is Apple Silicon only | Later |
+
+### Future (after this app is finished)
+
+| Idea | What it would be | Must be true first |
+|---|---|---|
+| Personal assistant | Search your own notes, "what did I promise X", a daily brief, act on what you say ("Slack par Vaibhav ko message daalna", sent only after you confirm) | Fewer wrong words; notes kept long-term (done); speaker names (done); an approved AI route |
+| Live AI clean-up | Wispr-style backtrack and filler removal while you dictate, original kept | P6 passes |
+| Snippets and styles | Spoken shortcuts, tone per app | Asked for by real users |
+| Phone ↔ Mac | The same notes on both | A sync design that keeps "nothing leaves your devices" |
+| Windows | The same app on Windows | Mac stable; a Windows PC to test on |
+| Other Indian languages | Beyond Hinglish | Tester demand |
+
+---
+
 ## 1. Android → Mac, capability by capability (verified in code, 15 Oct)
 
 ★ = founder's personal build only. "Python" = reusable code already in the `indite/` package (the web/CLI app,

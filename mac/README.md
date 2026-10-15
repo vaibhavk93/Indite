@@ -55,6 +55,7 @@ The window shows a banner when the permission is missing.
 | **Accuracy passes** | Hinglish spelling (now also on words with punctuation), number words → digits next to baje/percent/rupaye, junk from sub-second taps dropped |
 | **Backup** | Settings → Backup: all / starred / starred + to-do, with or without audio; restore adds only what is missing |
 | **Setup** | First-run screen: Accessibility, microphone, key, try it. Help → Run setup again |
+| **Window** | Dictations · Meetings · Files · To do · Dictionary · Settings (General, Look & sounds, Writing, AI, Privacy, Backup, with a finder) · Help. Every note: Copy and a “…” menu (or right-click). Appearance: Light / Dark / Like the Mac |
 | **The pill** | Small clear Liquid Glass pill with a two-tone border, above the Dock: voice bars while you hold, a wave of dots and a moving glint while writing, then "✓ typed in", "✓ copied", "nothing heard", "cancelled" or "didn't work". Never takes focus, never blocks a click |
 | **Microphone fallback** | If the default mic will not open (a Bluetooth headset that is off), tries the last one that worked, the built-in one, then any other |
 | **History** | Home: last 500 dictations by day, search (⌘F), one-click copy. Stats: words, words a minute, average wait |

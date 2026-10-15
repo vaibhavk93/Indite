@@ -174,6 +174,29 @@ Use push + install always. Three failed installs and ~90 minutes were lost befor
 - Delete asks what to delete: audio, text, or the whole note.
 - 22 unit tests (was 14), `docs/PRD.md`, and the audit register (37 findings).
 
+### The Mac app now (15 Oct, 19:00) — read this before the older Mac notes below
+
+**Start here: `docs/MAC_PLAN.md` §0** (done / pending / future) and **`mac/README.md`** (what it does, how to run it).
+
+| | |
+|---|---|
+| Run (your Mac) | `./mac/build_app.sh && open dist/indite.app` (a launcher for this folder) |
+| Share | `./mac/build_share.sh` → `dist-share/indite-mac.zip`, 624 MB, Apple Silicon, unsigned (right-click → Open once). Own Python, libraries, models; no personal data, no logins |
+| Window | Dictations · Meetings · Files · To do · Dictionary · Settings (General, Look & sounds, Writing, AI, Privacy, Backup) · Help |
+| Code | `indite_mac.py` (keys, mic, engine, files, AI calls, who-spoke), `meeting.py`, `system_audio.py`, `speakers.py`, `ai.py`, `digits.py`, `store.py`, `window.py`, `overlay.py`, `ui/app.html` |
+| Checks | `tests/test_mac_handsfree.py`, `tests/test_mac_pieces.py`, and `python mac/<store,ai,digits,meeting,speakers>.py` |
+| See the real window | write a tab (`settings:ai`, `home`…) into `~/Library/Application Support/indite/snapshot.request`; a PNG appears beside it (needs Screen Recording) |
+
+**⚠ Lessons from today, each cost time:**
+- **A normal (Dock) app's panels cannot appear over another app's full screen.** indite is a normal app only while its window is in front, else menu-bar only.
+- **The first engine start on a new Mac takes ~63 s** (GPU code compiled once), 3 s after. The app waits 2 min and says so.
+- **The engine had a library path from this Mac baked in** (with a space in it). `build_share.sh` strips it and refuses to finish if one remains.
+- **`sherpa-onnx` needs `sherpa-onnx-core`** or its runtime library is missing.
+- **Python's stdlib has a `numbers` module**: the digits pass is `mac/digits.py`, never `numbers.py`.
+- **WKWebView ignores `confirm()` and `prompt()`**: use native dialogs or inline forms.
+- **A Finder-launched app has a bare PATH**: `ai.py` adds `~/.local/bin` so `claude` is found.
+- **The founder's Claude login is a Paytm account**: Settings → AI shows the account; AI is off by default for new users.
+
 ### The Mac app (15 Oct)
 
 `mac/indite_mac.py` plus `overlay.py`, `window.py`, `store.py`. Hold a key anywhere, speak, let go, and the text is
