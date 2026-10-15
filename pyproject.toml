@@ -16,6 +16,7 @@ dependencies = [
     "pynput>=1.8.2",
     "rumps>=0.4.0",
     "pyobjc-framework-avfoundation>=12.2.2",
+    "pyobjc-framework-screencapturekit>=12.2.2",
 ]
 
 [project.optional-dependencies]

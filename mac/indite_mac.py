@@ -32,6 +32,7 @@ from pynput import keyboard
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ai                 # noqa: E402
+from meeting import Meeting  # noqa: E402
 import digits as numbers  # noqa: E402 - mac/digits.py ("numbers" is a stdlib module name)
 import store              # noqa: E402
 from overlay import Pill, Preview   # noqa: E402 - needs the path above
@@ -468,6 +469,8 @@ class InditeApp(rumps.App):
         self.held_keys: set = set()
         self.last = ""
         self.web_proc: subprocess.Popen | None = None
+        self.meeting = Meeting(self)
+        self.meeting_item = rumps.MenuItem("Record a meeting", callback=self.toggle_meeting)
         self.ai_busy: dict = {}          # note id -> what the AI is doing for it
         self.ai_error = ""
         self.notice = ""                 # one line for the window: backup done, restore result
@@ -488,6 +491,7 @@ class InditeApp(rumps.App):
             rumps.MenuItem("Copy last text", callback=self.copy_last),
             rumps.MenuItem("Edit my word fixes\u2026", callback=self.edit_fixes),
             rumps.MenuItem("Transcribe a file\u2026", callback=self.open_files),
+            self.meeting_item,
             None,
             rumps.MenuItem("Quit", callback=self.quit_all),
         ]
@@ -526,6 +530,12 @@ class InditeApp(rumps.App):
 
     def paint(self, _) -> None:                          # noqa: ANN001 - rumps' signature
         """Shows what is happening, in the place the eye already is: just above the Dock."""
+        if self.meeting.running:
+            t = int(time.time() - self.meeting.started)
+            self.pill.view.label = f"REC {t // 60:02d}:{t % 60:02d}"
+            self.pill.show("meeting")
+            self.pill.tick_writing()
+            return
         if self.started_at:
             if self.locked and time.time() - self.started_at > HANDS_FREE_CAP:
                 self.finish()                            # a forgotten lock must not leave the mic on all day
@@ -608,6 +618,8 @@ class InditeApp(rumps.App):
         return True
 
     def on_press(self, key) -> None:                     # noqa: ANN001 - pynput's signature
+        if self.meeting.running:                          # the mic belongs to the meeting until it stops
+            return
         if key == keyboard.Key.esc and self.started_at:   # cancel: nothing is written, the audio is dropped
             # ponytail: pynput cannot swallow the key on macOS, so Esc also reaches the app underneath
             self.started_at = 0.0
@@ -896,6 +908,22 @@ class InditeApp(rumps.App):
         if self.prefs["digits"]:
             text = numbers.digits(text)
         return store.apply_my_fixes(text, store.my_fixes())   # yours last, and even with the others off
+
+    def toggle_meeting(self, _=None) -> None:            # noqa: ANN001
+        """Start or stop a meeting recording (main thread)."""
+        if self.meeting.running:
+            threading.Thread(target=self.meeting.stop, daemon=True).start()
+            self.meeting_item.title = "Record a meeting"
+            return
+        if self.started_at or self.busy:
+            return
+        try:
+            self.meeting.start()
+        except Exception as e:                           # noqa: BLE001 - usually no microphone
+            self.mic_trouble(e)
+            return
+        self.meeting_item.title = "Stop the meeting recording"
+        self.refresh()
 
     def refresh(self) -> None:
         """Tell the window something changed. WKWebView must be touched on the main thread only."""

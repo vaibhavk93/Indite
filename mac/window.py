@@ -75,6 +75,8 @@ class Bridge(NSObject):
             "mics": __import__("indite_mac").mic_names(),
             "using": self.app.mic.using,
             "job": self.app.job,
+            "meeting": {"running": self.app.meeting.running, "started": self.app.meeting.started,
+                        "problem": self.app.meeting.problem, "note": self.app.meeting.note},
             "mic_ok": __import__("indite_mac").mic_allowed(),
             "ai_busy": self.app.ai_busy,
             "notice": self.app.notice,
@@ -135,6 +137,15 @@ class Bridge(NSObject):
             subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"])
         elif act == "status":
             pass                                         # the page polls while setup is open; push() below answers
+        elif act == "meeting":
+            self.app.toggle_meeting()
+        elif act == "rename":                            # a speaker's name in one note: {"Others": "Rohit"}
+            row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+            old, new = str(msg.get("who", "")), " ".join(str(msg.get("name", "")).split())[:40]
+            if row and old and new:
+                names = dict(row.get("names") or {})
+                names[old] = new
+                store.update(row["id"], names=names)
         elif act == "backup":
             self.app.backup()
         elif act == "restore":

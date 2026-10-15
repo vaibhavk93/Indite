@@ -60,7 +60,8 @@ class PillView(NSView):
         self.phase = 0.0                # for the writing animation
         self.bars = [0.12] * 5
         self.shown = [0.12] * 5      # what is drawn: eased toward `bars`, so the bars breathe rather than flicker
-        self.since = 0.0                # when the current state began, for the fade-in
+        self.since = 0.0
+        self.label = ""                 # free text for the meeting state                # when the current state began, for the fade-in
         self.locked = False             # hands-free: a small dot on the left says "you can let go"
         self.liquid = False             # True on macOS 26+, where the pill sits in real Liquid Glass
         return self
@@ -114,6 +115,10 @@ class PillView(NSView):
             self._draw_bars()
         elif self.state == "writing":
             self._draw_writing()
+        elif self.state == "meeting":                             # a red dot that breathes, and the time so far
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.86, 0.2, 0.15, 0.55 + 0.45 * abs(math.sin(self.phase))).set()
+            NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(16, H / 2 - 3.5, 7, 7)).fill()
+            self._draw_word(self.label)
         else:
             self._draw_word({
                 "writing": "writing…",

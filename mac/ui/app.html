@@ -197,6 +197,15 @@
   .working i { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); animation: pulse 1s infinite ease-in-out; }
   @keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
   .twin { display: flex; gap: 4px; margin-bottom: 6px; }
+  #meet.rec { background: #c4372a; border-color: #c4372a; color: #fff; }
+  .lines { display: grid; gap: 6px; }
+  .line { display: grid; grid-template-columns: 74px 1fr; gap: 10px; font-size: 13.5px; line-height: 1.5; }
+  .who { appearance: none; border: 0; background: none; padding: 0; text-align: left; font: inherit; font-size: 12px;
+         font-weight: 600; cursor: default; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .who.you { color: var(--accent); } .who.them { color: #2f6fb3; }
+  .who:hover { text-decoration: underline; }
+  .live { font-size: 11px; font-weight: 700; color: #fff; background: #c4372a; border-radius: 4px; padding: 0 5px; }
+  .line.hide { display: none; }
   .fixer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; padding: 10px;
            background: var(--well); border-radius: 10px; font-size: 12px; color: var(--ink2); }
   .fixer input { font: inherit; font-size: 13px; color: var(--ink); width: 150px; padding: 5px 8px; border-radius: 7px;
@@ -334,6 +343,7 @@
       <div class="bar">
         <h2>History</h2>
         <div class="chips" id="chips"></div>
+        <button class="btn" id="meet" title="Your microphone and the call's sound, as text with who said it">Record a meeting</button>
         <button class="btn" id="files" title="Any audio or video file: a call, a voice note, a lecture">Transcribe a file…</button>
         <label class="search"><svg width="13" height="13"><use href="#i-search"/></svg>
           <input id="q" placeholder="Search" spellcheck="false" aria-label="Search history"><span class="k">⌘F</span></label>
@@ -547,6 +557,14 @@
   });
   $("#edit-fixes").onclick = () => send({ action: "fixes" });
   $("#files").onclick = () => send({ action: "files" });
+  $("#meet").onclick = () => send({ action: "meeting" });
+  setInterval(() => { if (S.meeting && S.meeting.running) meetButton(); }, 1000);
+  function meetButton() {
+    const m = S.meeting || {}, b = $("#meet");
+    b.classList.toggle("rec", !!m.running);
+    const t = m.running ? Math.floor(Date.now() / 1000 - m.started) : 0;
+    b.textContent = m.running ? `Stop · ${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}` : "Record a meeting";
+  }
   $("#backup").onclick = () => send({ action: "backup" });
   $("#go-ax").onclick = () => send({ action: "ax_open" });
   $("#go-mic").onclick = () => send({ action: "mic_ask" });
@@ -677,7 +695,10 @@
         <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>`
       : S.file_error ? `<div class="banner"><div><b>That file didn’t work</b><p>${esc(S.file_error)}</p></div>
         <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>` : "";
-    $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["file", "Files"]].map(([v, l]) =>
+    meetButton();
+    if (S.meeting && S.meeting.problem && S.meeting.running) $("#job").innerHTML += `<div class="banner"><div><b>Only your side is being recorded</b>
+      <p>${esc(S.meeting.problem)}</p></div></div>`;
+    $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["file", "Files"], ["meeting", "Meetings"]].map(([v, l]) =>
       `<button class="chip" aria-pressed="${filter === v}" data-f="${v}">${l}</button>`).join("");
     $("#chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); });
     drawTodo();
@@ -725,7 +746,7 @@
   function drawList() {
     const q = $("#q").value.trim().toLowerCase();
     const rows = S.history.filter(r => (!q || r.text.toLowerCase().includes(q) || (r.title || "").toLowerCase().includes(q))
-      && (filter === "all" || (filter === "star" && r.star) || (filter === "file" && r.kind === "file")));
+      && (filter === "all" || (filter === "star" && r.star) || (filter === r.kind)));
 
     if (!S.history.length) {
       $("#list").innerHTML = `<div class="empty">
@@ -760,17 +781,18 @@
   const mins = s => s >= 60 ? `${Math.floor(s / 60)} min ${Math.round(s % 60)} s` : `${Math.round(s)} s`;
 
   function rowHtml(r, todoView) {
-    const copied = r.where === "copied", file = r.kind === "file", id = esc(r.id);
+    const copied = r.where === "copied", meet = r.kind === "meeting", file = r.kind === "file" || meet, id = esc(r.id);
     const done = r.todo === "done";
     const ic = (cls, icon, label, on) => `<button class="copy ${cls}${on ? " on" : ""}" data-id="${id}" aria-label="${label}" title="${label}">
         <svg width="14" height="14"><use href="#${icon}"/></svg></button>`;
     return `<div class="row${done && todoView ? " done-row" : ""}">
       <div class="when num">${todoView ? `<button class="copy tick" data-id="${id}" aria-label="${done ? "Mark not done" : "Mark done"}" title="${done ? "Not done" : "Done"}" style="${done ? "color:var(--accent)" : ""}">
         <svg width="16" height="16"><use href="#${done ? "i-done" : "i-todo"}"/></svg></button>` : clock(r.at)}</div>
-      <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#i-file"/></svg>${esc(r.title || "File")}</div>` : ""}
-        <div class="text${file ? " clamp" : ""}">${esc(r.text)}</div>
+      <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${esc(r.title || "File")}
+          ${r.live ? `<span class="live">LIVE</span>` : ""}</div>` : ""}
+        ${meet ? meetingLines(r) : `<div class="text${file ? " clamp" : ""}">${esc(r.text)}</div>`}
         ${aiParts(r)}
-        ${file && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
+        ${file && !meet && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
         <div class="meta">${copied ? `<span class="tag copied">Copied</span>` : ""}
           ${todoView ? `<span>${dayLabel(r.at)} · ${clock(r.at)}</span>·` : ""}
           ${file ? `<span>${mins(r.seconds || 0)} of audio</span>·
@@ -785,6 +807,15 @@
         ${ic("cp", "i-copy", "Copy")}
         ${ic("del", "i-trash", "Delete")}
       </div></div>`;
+  }
+
+  function meetingLines(r) {
+    const names = r.names || {}, segs = r.segments || [];
+    if (!segs.length) return `<div class="text" style="color:var(--ink2)">${r.live ? "Listening… text appears after each pause." : esc(r.text)}</div>`;
+    const lines = segs.map((s, i) => `<div class="line${i >= 6 && !r._open ? " hide" : ""}">
+      <button class="who ${s.speaker === "You" ? "you" : "them"}" data-id="${esc(r.id)}" data-who="${esc(s.speaker)}"
+        title="Rename">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${esc(s.text)}</div></div>`).join("");
+    return `<div class="lines">${lines}</div>` + (segs.length > 6 ? `<button class="more mshow" data-id="${esc(r.id)}">Show all ${segs.length} lines</button>` : "");
   }
 
   function aiParts(r) {
@@ -842,6 +873,16 @@
     on(".tick", r => send({ action: "note", id: r.id, set: { todo: r.todo === "done" ? "open" : "done" } }));
     on(".fix", (r, b) => openFixer(b, r));
     on(".aib", (r, b) => aiMenu(b, r));
+    root.querySelectorAll(".mshow").forEach(b => b.onclick = () => {
+      b.parentElement.querySelectorAll(".line.hide").forEach(l => l.classList.remove("hide")); b.remove(); });
+    on(".who", (r, b) => {
+      const who = b.dataset.who, input = document.createElement("input");
+      input.className = "pick"; input.value = (r.names || {})[who] || who; input.style.width = "70px";
+      b.replaceWith(input); input.focus(); input.select();
+      const done = ok => { if (ok && input.value.trim()) send({ action: "rename", id: r.id, who, name: input.value }); else draw(); };
+      input.onkeydown = e => { if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); };
+      input.onblur = () => done(true);
+    });
     on(".aicopy", (r, b) => { const k = b.dataset.k;
       send({ action: "copy", text: k === "improved" ? r.improved : (r.ai || []).find(a => a.label === k).text }); toast("Copied"); });
     on(".aidel", (r, b) => send({ action: "ai_clear", id: r.id, label: b.dataset.k }));
