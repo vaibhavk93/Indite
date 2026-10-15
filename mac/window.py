@@ -66,10 +66,54 @@ class Activation(NSObject):
         self.app = app
         return self
 
+    def resigned_(self, _note):                          # noqa: N802
+        """Another app is in front: back to menu-bar-only, so the pill may enter that app's full screen."""
+        w = self.app.window
+        if w is None or not (w.win.styleMask() & (1 << 14)):      # unless indite itself is full screen
+            NSApp.setActivationPolicy_(1)
+
+    def quitIndite_(self, _sender):                      # noqa: N802
+        self.app.quit_all(None)
+
     def fire_(self, _note):                              # noqa: N802
         w = self.app.window
         if w is None or not w.win.isVisible():
             self.app.open_window(None)
+
+
+def main_menu(app) -> None:
+    """
+    The menus a Mac app is expected to have. indite had none, so in full screen the top bar was empty (no Close or
+    Minimize), and ⌘C / ⌘V / ⌘A did nothing in the window's text boxes - a web view takes those from the Edit menu.
+    """
+    from AppKit import NSMenu, NSMenuItem
+    bar = NSMenu.alloc().init()
+
+    def menu(title: str, items: list) -> None:
+        m = NSMenu.alloc().initWithTitle_(title)
+        for it in items:
+            if it is None:
+                m.addItem_(NSMenuItem.separatorItem())
+                continue
+            label, action, key, *mods = it
+            item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(label, action, key)
+            if mods:
+                item.setKeyEquivalentModifierMask_(mods[0])
+            m.addItem_(item)
+        top = NSMenuItem.alloc().init()
+        top.setSubmenu_(m)
+        bar.addItem_(top)
+
+    menu("indite", [("About indite", "orderFrontStandardAboutPanel:", ""), None,
+                    ("Hide indite", "hide:", "h"), None, ("Quit indite", "quitIndite:", "q")])
+    quit_item = bar.itemAtIndex_(0).submenu().itemWithTitle_("Quit indite")
+    quit_item.setTarget_(app._activation)               # through indite's own quit, so the engine stops too
+    menu("Edit", [("Undo", "undo:", "z"), ("Redo", "redo:", "Z"), None, ("Cut", "cut:", "x"),
+                  ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")])
+    menu("Window", [("Minimize", "performMiniaturize:", "m"), ("Zoom", "performZoom:", ""),
+                    ("Enter Full Screen", "toggleFullScreen:", "f", 1 << 18 | 1 << 20), None,
+                    ("Close", "performClose:", "w")])
+    NSApp.setMainMenu_(bar)
 
 
 class Bridge(NSObject):
@@ -293,13 +337,8 @@ class WindowEvents(NSObject):
     def windowDidBecomeKey_(self, _note):           # noqa: N802
         NSApp.setActivationPolicy_(0)                 # in front: a normal app, so the green button gives a Space
 
-    def windowDidResignKey_(self, note):            # noqa: N802
-        # Back to menu-bar-only as soon as another app is in front, unless indite itself is full screen. A normal
-        # app's floating panels cannot enter another app's full-screen Space, so staying "normal" hid the pill
-        # over a full-screen Terminal (founder, 15 Oct).
-        win = note.object()
-        if not (win.styleMask() & (1 << 14)):          # NSWindowStyleMaskFullScreen
-            NSApp.setActivationPolicy_(1)
+    # (Going back to menu-bar-only when another app comes to the front is in Activation.resigned_. Doing it here, on
+    # "window lost focus", fired in the middle of leaving full screen and left the window with grey, dead buttons.)
 
     def windowDidEnterFullScreen_(self, _note):     # noqa: N802
         self.bridge.js("document.body.classList.add('fs')")    # no traffic lights to clear: drop the top gap
@@ -353,6 +392,7 @@ class Window:
         self.win.setContentView_(glass)
         self.win.setBackgroundColor_(NSColor.clearColor())
         self.theme()
+        main_menu(app)
 
     def load(self) -> None:
         self.web.loadFileURL_allowingReadAccessToURL_(
@@ -368,7 +408,12 @@ class Window:
         tab = request.read_text().strip() or "home"
         request.unlink(missing_ok=True)
         self.show()
-        self.bridge.js(f"go({tab!r}.split(':')[0]); " + (f"sgo({tab.split(':')[1]!r})" if ":" in tab else ""))
+        wait = 0.8
+        if tab == "cmd:fs":                                 # switch full screen, then picture it
+            self.win.toggleFullScreen_(None)
+            wait = 2.5
+        if not tab.startswith("cmd:"):
+            self.bridge.js(f"go({tab!r}.split(':')[0]); " + (f"sgo({tab.split(':')[1]!r})" if ":" in tab else ""))
         self.web.evaluateJavaScript_completionHandler_(
             "JSON.stringify({ready: document.readyState, text: document.body ? document.body.innerText.length : -1, "
             "err: window.__err || '', size: [innerWidth, innerHeight], url: location.href.slice(-30)})",
@@ -384,7 +429,7 @@ class Window:
             out = request.parent / f"snapshot-{tab.replace(':', '-')}.png"
             rep.representationUsingType_properties_(NSPNGFileType, None).writeToFile_atomically_(str(out), True)
         from PyObjCTools import AppHelper
-        AppHelper.callLater(0.8, shoot)
+        AppHelper.callLater(wait, shoot)
 
     def theme(self) -> None:
         """The sidebar glass follows the same choice as the page, or the two halves disagree."""

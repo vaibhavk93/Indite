@@ -530,6 +530,8 @@ class InditeApp(rumps.App):
         from AppKit import NSNotificationCenter
         NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(
             self._activation, "fire:", "NSApplicationDidBecomeActiveNotification", None)
+        NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(
+            self._activation, "resigned:", "NSApplicationDidResignActiveNotification", None)
 
     def warm_up(self) -> None:
         """Load the model now, not when the user is waiting with their finger on the key."""
