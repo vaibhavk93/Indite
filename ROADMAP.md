@@ -158,7 +158,7 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a �
 3. **A new OpenRouter key.** No AI feature has ever produced an answer on the phone. Until one does, Translate,
    Rewrite to send, meeting notes and the keyboard chips are untested promises. Pick `apodex/apodex-1.1-mini:free`
    (measured: 15/15 answers, 25 s median, keeps Roman Hinglish).
-4. **The ₹15k phone.** Still the biggest unknown, and everything in the tester plan sits behind it.
+4. **The ₹15k phone** — moved to the last stage (founder, 15 Oct): test it just before testers, on the final build.
 5. **The install size.** 681 MB takes 34 minutes over a cable; on mobile data it is where most testers stop. The gate
    for a smaller model is set: it must match 25.0% on the 15-min file and 13.0% on clean synthetic.
 
@@ -169,7 +169,7 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a �
    notarised, so no second person can install it. All three beat every feature on the Wispr list — see
    `docs/MAC_PLAN.md` section 6.
 
-7. **AI review of a dictation (new, 15 Oct; detail: `docs/ROADMAP_DETAIL.md` C1-C7).** Step 1 offline: flag
+7. **⚑ Top priority (founder, 15 Oct): AI review of a dictation, steps 1 and 2 (detail: `docs/ROADMAP_DETAIL.md` C1-C7).** Step 1 offline: flag
    near-misses of Dictionary words ("in diet" -> "indite"), works in every build. Step 2 with the user's AI: per-item
    suggestions, nothing changes without a tap, original kept; gate >=70% right on the real set. Accepted fixes feed
    the Dictionary; Insights gains most-fixed words and fixes per 100 words. Regional personalisation (number formats,

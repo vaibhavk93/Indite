@@ -25,15 +25,16 @@ User types: **D** = daily dictation user · **M** = meeting user · **S** = stud
 | Record ~50 fresh real dictations with audio saving on, then score them (plus ~20 real phone notes) | Yes | Every other accuracy decision depends on it; also the test set for AI review | D | ~1 day. The old 53 can't be scored: audio saving is off by default, only 2 audio files exist. Needs a hand-typed "what I really said" per clip |
 | Test a real call with the meeting recorder | No (founder task) | Screen & System Audio Recording is granted (15 Oct night); one real call left (B22) | M | — |
 | Founder's hand check of build 29 + Mac 🧪 items | No (founder task) | ~25 built features never used by a human | All | Keep. Unverified features outnumber gaps |
-| ₹15k phone test | No (founder task) | Biggest unknown; tester plan sits behind it | L | Keep at top. If dictation > ~15 s, speed work comes first |
 | Mac W1–W3: snippet example row, "Teach this word" in one click, "fixes made" on Insights | Improve existing | Cheapest proven accuracy path is word fixes | D | ~2 h. Already critic-reviewed (MAC_PLAN §6) |
 | **AI review of a dictation, step 1: offline "near-miss" check** | Yes (gated) | Catches "in diet" when "indite" is in your Dictionary, with no AI and no internet | D, M, S | Works on Android public build too. Only suggests. Gate: ≤1 false alarm per 100 words on the real set |
 
 ### Next (after the checks above pass)
 
+**Founder priority (15 Oct): AI review steps 1 and 2 come first, right after the scored real-speech set.**
+
 | Feature | Build? | Why | Impact on users | Notes / risks |
 |---|---|---|---|---|
-| **AI review, step 2: "Review with AI" on a note (Mac + Android personal)** | Yes | Finds context errors a word list can't (names, numbers, mixed words) | D, M, S | Gate: on the scored real set, ≥70% of suggestions are right. Text leaves the device |
+| **⚑ AI review, step 2: "Review with AI" on a note (Mac + Android personal)** | Yes | Finds context errors a word list can't (names, numbers, mixed words) | D, M, S | Gate: on the scored real set, ≥70% of suggestions are right. Text leaves the device |
 | Accepted review fix → "Always fix?" → Dictionary | Improve existing | Android `Settings.addFix()` and Mac `store.add_fix` already exist; just wire them | D | Ask per fix; never auto-add |
 | Review insights: most-fixed words, fixes per 100 words, fillers, wpm | Improve existing | Mac Insights page exists; wpm is there. The fix log behind the other numbers is new work | D, S | "Accuracy trend" is only a proxy (see C3). Wanting it is unproven. Android Insights: later |
 | Mac W5: offline filler strip (umm, matlab, basically), raw kept | Yes (gated) | Free "light clean-up" with no AI | D | Gate: 30 real dictations, 0 real words removed |
@@ -48,6 +49,7 @@ User types: **D** = daily dictation user · **M** = meeting user · **S** = stud
 
 | Feature | Build? | Why | Impact on users | Notes / risks |
 |---|---|---|---|---|
+| ₹15k phone test | No (founder task) | Founder moved it to the last stage (15 Oct): test the final build before testers | L | If dictation > ~15 s there, speed work comes first |
 | Regional name and place packs (offline word lists) | Yes, small (gated) | Names of Indian cities, common surnames, local brands | R | A pack has no "heard" side, so it only works through the step-1 near-miss check. Thousands of names = more false alarms. Gate on step 1's false-alarm rate |
 | Whisper test (10 whispered clips) | Optional | Wispr claims it; nobody asked us | D | Needs fresh recordings. Unproven either way |
 | Native-script output (Devanagari) as a switch | Improve existing | Already in "Later"; Mac AI can already translate to Hindi (Devanagari) | R | Offline needs a transliteration step; unproven quality |

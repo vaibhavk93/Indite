@@ -37,12 +37,14 @@ DEFAULTS = {
     "pill_clear": 60,           # pill transparency in %, steps of 10: 100 = clear glass only, 0 = a solid tint
     "ai": False,                # AI on notes; off until the person turns it on and picks where answers come from (answers come from your own Claude login)
     "ai_ok": False,
+    "ai_ok_meetings": False,    # "Don't ask again" on the meeting/file → AI warning
     "ai_provider": "claude",    # claude · anthropic · openai · openrouter (keys live in the Keychain, not here)
     "ai_model": "",             # "" = the provider's default             # you said yes to text leaving the Mac for AI answers (asked once)
     "keep_audio": False,        # also keep each dictation's recording (about 0.3 MB for 10 s), for backups
     "backup_scope": "all",      # all · star · keep (starred + to-do)
     "backup_audio": False,      # include recordings and transcribed files in a backup
     "auto_speakers": True,      # find who spoke in every file and meeting, without a click
+    "mask_swears": False,       # common swear words written as b**** (founder asked; off by default)
     "digits": True,             # number words as digits: "chaar baje" -> "4 baje"
     "setup_done": False,
     "asked_screen": False,      # the Screen & System Audio Recording prompt was shown once        # the first-run setup was finished (Help → Run setup again)
@@ -275,7 +277,23 @@ def my_fixes() -> list[tuple[str, str]]:
         return []
 
 
+# Clear-cut swear words only, in their common Roman spellings. Words with an everyday meaning ("saala" =
+# brother-in-law, "kamina", "hell") are left out on purpose: masking them would damage normal sentences.
+# ponytail: a fixed list misses new spellings; let people add their own if they ask.
+SWEARS = ("fuck fucking fucked fucker motherfucker shit bullshit bitch bastard asshole dick cunt "
+          "chutiya chutiye chutiyapa chut bhenchod behenchod bhenchodd benchod bc madarchod maderchod mc "
+          "bhosdike bhosdi bhosadike gandu gaandu lauda lavda lund randi harami haramkhor bhadwa").split()
+_SWEAR_RE = re.compile(r"\b(" + "|".join(sorted(map(re.escape, SWEARS), key=len, reverse=True)) + r")\b", re.I)
+
+
+def mask_swears(text: str) -> str:
+    """"chutiya" -> "c******": the first letter stays, so the sentence still reads."""
+    return _SWEAR_RE.sub(lambda m: m.group(0)[0] + "*" * (len(m.group(0)) - 1), text)
+
+
 if __name__ == "__main__":     # the one check: uv run python mac/store.py
+    assert mask_swears("Yeh BC kya hai, chutiya mat bana") == "Yeh B* kya hai, c****** mat bana"
+    assert mask_swears("saala hell dickens bcc") == "saala hell dickens bcc"          # everyday words untouched
     pairs = parse_fixes(FIXES_HEADER + "ptm = Paytm\npay tm = Paytm\n  c++  = C++\nbroken line\n= nothing\n")
     assert pairs == [("pay tm", "Paytm"), ("ptm", "Paytm"), ("c++", "C++")], pairs
     assert apply_my_fixes("PTM se pay  tm karo", pairs) == "Paytm se Paytm karo"

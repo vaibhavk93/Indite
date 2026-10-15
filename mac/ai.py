@@ -42,6 +42,14 @@ ACTIONS = {
                 HINGLISH + "Rewrite it as a message to send, in this style: {extra}. Reply with the message only."),
     "translate": ("Translate", "The same thing, in another language", "Change the words",
                   "Translate the text into {extra}. Reply with the translation only."),
+    "prompt": ("Make it a prompt", "A clear request to paste into ChatGPT, Claude or Gemini", "For another AI",
+               "The note is someone thinking out loud about what they want from an AI. Turn it into one well-structured "
+               "prompt, in English even if the note is Hinglish. Use these parts, as headed sections, and leave out a "
+               "part only if the note has nothing for it: Role (who the AI should act as), Context (the facts and "
+               "background from the note), Task (exactly what to do, in clear steps), Constraints (must / must not, "
+               "length, tone, audience), Output format (what the answer should look like). Keep every fact the "
+               "speaker gave; invent nothing; where something needed is missing, write [fill in: ...]. Drop filler "
+               "and repetition. Reply with the prompt only."),
     "cleanup": ("Clean it up", "Punctuation fixed, the umms removed", "Change the words",
                 HINGLISH + "Fix punctuation and remove filler words (umm, matlab, basically, you know) only. Change "
                 "nothing else. Reply with the text only."),

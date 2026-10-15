@@ -996,6 +996,24 @@ class InditeApp(rumps.App):
         row = next((r for r in store.history() if r["id"] == note_id), None)
         if not row or note_id in self.ai_busy:
             return
+        if row.get("kind") in ("meeting", "file") and not self.prefs.get("ai_ok_meetings"):
+            # other people's voices: ask every time, unless the person said not to (founder, 15 Oct)
+            where = ai.PROVIDERS.get(self.prefs["ai_provider"], "Claude")
+            alert = NSAlert.alloc().init()
+            alert.setMessageText_(f"Send a recording of other people to {where}?")
+            alert.setInformativeText_(
+                f"It includes what others said. Check they're OK with it first.\n\n{where} gets the full text. "
+                "Whether it is kept or used to train their AI depends on your account settings with them, not on "
+                "indite.")
+            alert.addButtonWithTitle_("Send")
+            alert.addButtonWithTitle_("Cancel")
+            alert.setShowsSuppressionButton_(True)
+            alert.suppressionButton().setTitle_("Don't ask again for meetings and files")
+            if alert.runModal() != NSAlertFirstButtonReturn:
+                return
+            if alert.suppressionButton().state():
+                store.set_pref("ai_ok_meetings", True)
+                self.reload_prefs()
         self.ai_error = ""                               # one app-wide error: an old one must not sit in a new answer
         self.ai_busy[note_id] = ai.ACTIONS[action][0]
         self.refresh()
@@ -1059,7 +1077,8 @@ class InditeApp(rumps.App):
             text = apply_fixes(text, self.table)
         if self.prefs["digits"]:
             text = numbers.digits(text)
-        return store.apply_my_fixes(text, store.my_fixes())   # yours last, and even with the others off
+        text = store.apply_my_fixes(text, store.my_fixes())   # yours last, and even with the others off
+        return store.mask_swears(text) if self.prefs.get("mask_swears") else text
 
     def toggle_meeting(self, _=None) -> None:            # noqa: ANN001
         """Start or stop a meeting recording (main thread)."""
@@ -1086,6 +1105,24 @@ class InditeApp(rumps.App):
         row = next((r for r in store.history() if r["id"] == note_id), None)
         if not row or note_id in self.ai_busy:
             return
+        if row.get("kind") in ("meeting", "file") and not self.prefs.get("ai_ok_meetings"):
+            # other people's voices: ask every time, unless the person said not to (founder, 15 Oct)
+            where = ai.PROVIDERS.get(self.prefs["ai_provider"], "Claude")
+            alert = NSAlert.alloc().init()
+            alert.setMessageText_(f"Send a recording of other people to {where}?")
+            alert.setInformativeText_(
+                f"It includes what others said. Check they're OK with it first.\n\n{where} gets the full text. "
+                "Whether it is kept or used to train their AI depends on your account settings with them, not on "
+                "indite.")
+            alert.addButtonWithTitle_("Send")
+            alert.addButtonWithTitle_("Cancel")
+            alert.setShowsSuppressionButton_(True)
+            alert.suppressionButton().setTitle_("Don't ask again for meetings and files")
+            if alert.runModal() != NSAlertFirstButtonReturn:
+                return
+            if alert.suppressionButton().state():
+                store.set_pref("ai_ok_meetings", True)
+                self.reload_prefs()
         self.ai_busy[note_id] = "finding who spoke"
         self.refresh()
         threading.Thread(target=self._who, args=(row, k), daemon=True).start()

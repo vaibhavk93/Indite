@@ -10,7 +10,7 @@
   :root {
     --brand: #e27619;                       /* the indite orange: dots, switches, the bars - never small text */
     --accent: #b85a0c;                      /* orange dark enough for text and white-on-orange (4.6:1) */
-    --accent-soft: #fdf1e6;
+    --accent-soft: #fdf1e6; --gold: #a8812a; --gold-soft: rgba(168,129,42,.10);
     --paper: #ffffff;
     --ink: #1d1d1f; --ink2: #5f5f66; --ink3: #737379;
     --line: #ececef; --line2: #e2e2e6; --well: #f4f4f6; --hover: #f7f7f9;
@@ -22,7 +22,7 @@
   /* Appearance (Settings → Look & sounds): light by default - the founder asked for white - or dark, or the Mac's. */
   @media (prefers-color-scheme: dark) {
     :root[data-theme="system"] {
-      --accent: #f0903f; --accent-soft: rgba(226,118,25,.16);
+      --accent: #f0903f; --accent-soft: rgba(226,118,25,.16); --gold: #d4b062; --gold-soft: rgba(212,176,98,.12);
       --paper: #1e1e20;
       --ink: #f2f2f4; --ink2: #a8a8b0; --ink3: #8e8e95;
       --line: #2c2c30; --line2: #36363b; --well: #2a2a2d; --hover: #252528;
@@ -33,7 +33,7 @@
     }
   }
   :root[data-theme="dark"] {
-      --accent: #f0903f; --accent-soft: rgba(226,118,25,.16);
+      --accent: #f0903f; --accent-soft: rgba(226,118,25,.16); --gold: #d4b062; --gold-soft: rgba(212,176,98,.12);
       --paper: #1e1e20;
       --ink: #f2f2f4; --ink2: #a8a8b0; --ink3: #8e8e95;
       --line: #2c2c30; --line2: #36363b; --well: #2a2a2d; --hover: #252528;
@@ -176,6 +176,8 @@
   .aichip { appearance: none; border: 1px solid var(--line2); background: var(--paper); color: var(--ink2); border-radius: 20px;
             font-size: 12px; font-weight: 600; padding: 3px 10px; margin-top: 8px; display: inline-flex; gap: 5px; align-items: center; cursor: default; }
   .aichip:hover { color: var(--ink); border-color: var(--ink3); }
+  /* a note with AI work: a quiet gold edge and icon, so it's findable at a glance (founder) - no fill, no glow */
+  .aichip.has { border-color: var(--gold); } .aichip.has svg { color: var(--gold); } .aichip.has:hover { border-color: var(--gold); background: var(--gold-soft); }
   .drawer[hidden] { display: none; }
   .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 92vw); z-index: 7; background: var(--paper);
             border-left: 1px solid var(--line2); box-shadow: -18px 0 40px rgba(0,0,0,.14); display: flex; flex-direction: column;
@@ -241,6 +243,7 @@
   .dfoot { padding: 12px 22px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink2); }
   .navgap { height: 14px; }
   .navbottom { border-top: 1px solid var(--line2); padding-top: 8px; }
+  .aiuse { margin-bottom: 18px; } .aiuse p { font-size: 13px; color: var(--ink2); margin: 4px 0 6px; } .aiuse b { color: var(--ink); }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
   .kpi { background: var(--well); border-radius: 12px; padding: 14px; }
   .kpi .n { font-size: 24px; font-weight: 650; letter-spacing: -.6px; line-height: 1.1; }
@@ -627,6 +630,11 @@
                 <button class="sw" id="set-digits" role="switch" aria-label="Numbers as digits"></button>
               </div>
               <div class="item">
+                <div class="body"><b>Hide swear words (b****)</b><p>Common Hindi and English swear words are written with
+                  stars, in dictations, meetings and files. The saved note keeps the stars too. Off by default.</p></div>
+                <button class="sw" id="set-mask_swears" role="switch" aria-label="Hide swear words"></button>
+              </div>
+              <div class="item">
                 <div class="body"><b>Find who spoke</b><p>In every meeting and file, automatically. Lines get Person 1,
                   Person 2… which you can rename. One voice only: no labels.</p></div>
                 <button class="sw" id="set-auto_speakers" role="switch" aria-label="Find who spoke"></button>
@@ -818,6 +826,7 @@
   const PANES = Object.keys(TITLES);
   document.querySelectorAll("nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
   function go(t) {
+    if (t !== tab && drawerId) closeDrawer();   // Ask AI belongs to the page it was opened on, not the whole window
     tab = t;
     document.querySelectorAll("nav button").forEach(o => o.setAttribute("aria-current", o.dataset.tab === t));
     for (const p of PANES) $("#pane-" + p).hidden = p !== t;
@@ -945,6 +954,7 @@
     sw("#set-preview", "preview");
     sw("#set-ai", "ai");
     sw("#set-digits", "digits");
+    sw("#set-mask_swears", "mask_swears");
     sw("#set-auto_speakers", "auto_speakers");
     sw("#set-keep_audio", "keep_audio");
     sw("#set-backup_audio", "backup_audio");
@@ -1001,7 +1011,7 @@
         <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>`;
     meetButton();
     $("#meet-perm").textContent = S.meeting && S.meeting.problem ? S.meeting.problem : "";
-    $("#chips").innerHTML = [["all", "All"], ["star", "Starred"]].map(([v, l]) =>
+    $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["ai", "With AI"]].map(([v, l]) =>
       `<button class="chip" aria-pressed="${filter === v}" data-f="${v}">${l}</button>`).join("");
     $("#chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); });
     drawTodo();
@@ -1042,7 +1052,7 @@
   function drawList() {
     const q = $("#q").value.trim().toLowerCase();
     const rows = S.history.filter(r => (r.kind || "dictation") === "dictation"
-      && (!q || r.text.toLowerCase().includes(q)) && (filter === "all" || r.star));
+      && (!q || r.text.toLowerCase().includes(q)) && (filter === "all" || (filter === "ai" ? (r.ai || []).length || r.improved : r.star)));
 
     if (!S.history.some(r => (r.kind || "dictation") === "dictation")) {
       $("#list").innerHTML = `<div class="empty">
@@ -1123,7 +1133,7 @@
     const n = (r.ai || []).length + (r.improved ? 1 : 0), busy = S.ai_busy && S.ai_busy[r.id];
     let h = "";
     if (busy === "finding who spoke") h += `<div class="working"><i></i>Finding who spoke…</div>`;
-    else if (busy || n) h += `<button class="aichip" data-id="${esc(r.id)}">
+    else if (busy || n) h += `<button class="aichip${busy ? "" : " has"}" data-id="${esc(r.id)}" title="${busy ? "" : "Open what AI made for this note"}">
         <svg width="12" height="12"><use href="#i-spark"/></svg>${busy ? "AI is writing…" : `AI · ${n} answer${n > 1 ? "s" : ""}`}</button>`;
     return h;
   }
@@ -1261,6 +1271,7 @@
     h += `<div class="dopts${nAns || busy ? "" : " first"}">
       <h3>Make it better</h3><p class="dgs">Fix the words, keep the meaning. Your original always stays.</p>${list(["improve", "cleanup"])}
       <h3>Turn it into</h3><p class="dgs">Something new to read, made from this note.</p>${list(["summary", "actions", "notes", "lecture", "braindump"])}
+      <h3>For another AI</h3><p class="dgs">Turn what you said into a clear request for ChatGPT, Claude or Gemini.</p>${list(["prompt"])}
       <h3>Rewrite or translate</h3><p class="dgs">Pick one and it starts. The answer appears above.</p>
       <div class="dgroup pad">` + Object.entries(S.ai_style_groups || {}).map(([g, vals]) =>
         `<div class="dline"><span>${esc(g)}</span><div>${chips(vals, "rewrite")}</div></div>`).join("") + `
@@ -1518,8 +1529,18 @@
       kpi(files.length, "", `files · ${Math.round(sum(files, r => r.seconds || 0) / 60)} min of audio`) +
       kpi(wait ? wait.toFixed(1) : "–", wait ? "s" : "", "average wait after you let go") +
       kpi(d.length, "", `dictations · ${d.length ? Math.round(copied / d.length * 100) : 0}% went to the clipboard`) + `</div>`;
+    // AI usage: only what was asked for; computed from the notes, nothing new stored
+    const A2 = S.ai_actions || {}, used = {};
+    all.forEach(r => { if (r.improved) used["Improve the wording"] = (used["Improve the wording"] || 0) + 1;
+      (r.ai || []).forEach(a => { const k = (A2[a.action] || [a.action === "custom" ? "Ask anything" : a.action])[0]; used[k] = (used[k] || 0) + 1; }); });
+    const aiNotes = all.filter(r => (r.ai || []).length || r.improved), aiN = Object.values(used).reduce((a, b) => a + b, 0);
+    const topAI = Object.entries(used).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${esc(k)} (${v})`).join(" · ");
+    h += `<div class="ibox aiuse"><h3>AI<span>only when you asked</span></h3>${aiN
+      ? `<p><b>${aiN}</b> answers on <b>${aiNotes.length}</b> notes. Most used: ${topAI}.</p><button class="lnk" id="ins-ai">See the notes with AI →</button>`
+      : `<p>No AI answers yet. Open any note’s “…” → Ask AI.</p>`}</div>`;
     h += `<p class="fine" style="text-align:left">Counts only what is saved (Settings → Privacy). Time saved assumes typing at 40 words a minute.</p>`;
     $("#ins").innerHTML = h;
+    if ($("#ins-ai")) $("#ins-ai").onclick = () => { filter = "ai"; go("home"); draw(); };
   }
 
   // ---- Dictionary ------------------------------------------------------------------------------------------

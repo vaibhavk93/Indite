@@ -224,6 +224,7 @@ class Pill:
         self.panel.setLevel_(25)                      # above normal windows, below the menu bar
         self.panel.setIgnoresMouseEvents_(True)       # never swallow a click
         self.panel.setHidesOnDeactivate_(False)
+        self.panel.setCanHide_(False)                 # "Hide indite" (⌘H) must not take the pill with it
         self.panel.setCollectionBehavior_(
             NSWindowCollectionBehaviorCanJoinAllSpaces
             | NSWindowCollectionBehaviorStationary
@@ -294,7 +295,9 @@ class Pill:
         if state != self.view.state:
             self.view.since = time.time()
         self.view.state = state
-        if not self.visible:
+        # Ask the window, not our own flag: hiding or minimising indite takes the panel off screen behind our back,
+        # and the flag then said "showing" forever - the pill never came back (founder, 15 Oct)
+        if not self.visible or not self.panel.isVisible():
             self.panel.orderFrontRegardless()         # front, but never focused
             self.visible = True
         if self.panel.alphaValue() < 1.0:             # ~120 ms fade in, called from the 20 Hz timer
@@ -345,6 +348,7 @@ class Preview:
         self.panel.setBackgroundColor_(NSColor.clearColor())
         self.panel.setLevel_(25)
         self.panel.setIgnoresMouseEvents_(True)
+        self.panel.setCanHide_(False)
         self.panel.setCollectionBehavior_(
             NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorStationary
             | NSWindowCollectionBehaviorFullScreenAuxiliary
