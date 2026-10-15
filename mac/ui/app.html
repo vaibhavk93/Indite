@@ -241,6 +241,12 @@
   .aicard { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
   .aicard .h { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ink2); margin-bottom: 6px; }
   .aicard .h .sp { flex: 1; }
+  .aicard.shut .body { display: none; }
+  .aicard.shut { padding: 7px 12px; }
+  .aicard.shut .h { margin-bottom: 0; }
+  .aicard .h .lbl { appearance: none; border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: default; }
+  .aicard .h .lbl::before { content: "▾ "; color: var(--ink3); }
+  .aicard.shut .h .lbl::before { content: "▸ "; }
   .aicard .body { white-space: pre-wrap; font-size: 13px; line-height: 1.55; -webkit-user-select: text; user-select: text; }
   .aicard .more + .more { margin-left: 10px; }
   .working { margin-top: 8px; font-size: 12px; color: var(--accent); display: flex; gap: 6px; align-items: center; }
@@ -946,7 +952,7 @@
       <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${esc(r.title || "File")}
           ${r.live ? `<span class="live">LIVE</span>` : ""}</div>` : ""}
         ${(r.segments || []).some(x => x.speaker) ? meetingLines(r) : `<div class="text${file ? " clamp" : ""}">${esc(r.text)}</div>`}
-        ${aiParts(r)}
+        ${todoView ? "" : aiParts(r)}
         ${file && !(r.segments || []).some(x => x.speaker) && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
         <div class="meta">${r.star ? `<svg width="12" height="12" class="starred"><use href="#i-star-on"/></svg>` : ""}
           ${r.todo === "open" && !todoView ? `<span class="tag">To do</span>` : ""}${copied ? `<span class="tag copied">Copied</span>` : ""}
@@ -972,16 +978,17 @@
     return `<div class="lines">${lines}</div>` + (segs.length > 6 ? `<button class="more mshow" data-id="${esc(r.id)}">Show all ${segs.length} lines</button>` : "");
   }
 
+  const openAi = new Set();          // which AI answers are open: one-line headers by default, so notes stay short
   function aiParts(r) {
     const id = esc(r.id);
     let h = "";
-    if (r.improved) h += `<div class="aicard"><div class="h"><svg width="13" height="13"><use href="#i-spark"/></svg>Improved
+    if (r.improved) h += `<div class="aicard${openAi.has(r.id + "|improved") ? "" : " shut"}" data-k="${id}|improved"><div class="h"><svg width="13" height="13"><use href="#i-spark"/></svg><button class="lbl">Improved</button>
         <span class="sp"></span><button class="more aicopy" data-id="${id}" data-k="improved">Copy</button>
         <button class="more aidel" data-id="${id}" data-k="improved">Remove</button></div>
         <div class="body">${esc(r.improved)}</div></div>`;
     for (const a of r.ai || []) {
       const isTasks = a.action === "actions" && !/^none\b/i.test(a.text.trim());
-      h += `<div class="aicard"><div class="h"><svg width="13" height="13"><use href="#i-spark"/></svg>${esc(a.label)}
+      h += `<div class="aicard${openAi.has(r.id + "|" + a.label) ? "" : " shut"}" data-k="${id}|${esc(a.label)}"><div class="h"><svg width="13" height="13"><use href="#i-spark"/></svg><button class="lbl">${esc(a.label)}</button>
         <span class="sp"></span>${isTasks ? `<button class="more aitasks" data-id="${id}" data-k="${esc(a.label)}">Add all to To do</button>` : ""}
         <button class="more aicopy" data-id="${id}" data-k="${esc(a.label)}">Copy</button>
         <button class="more aidel" data-id="${id}" data-k="${esc(a.label)}">Remove</button></div>
@@ -1094,6 +1101,9 @@
   }
 
   function wireRest(root, on) {
+    root.querySelectorAll(".aicard .lbl").forEach(b => b.onclick = () => {
+      const card = b.closest(".aicard"), k = card.dataset.k;
+      card.classList.toggle("shut"); openAi[card.classList.contains("shut") ? "delete" : "add"](k); });
     root.querySelectorAll(".mshow").forEach(b => b.onclick = () => {
       b.parentElement.querySelectorAll(".line.hide").forEach(l => l.classList.remove("hide")); b.remove(); });
     on(".who", (r, b) => {
