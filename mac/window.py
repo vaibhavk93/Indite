@@ -137,6 +137,8 @@ class Bridge(NSObject):
             subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"])
         elif act == "status":
             pass                                         # the page polls while setup is open; push() below answers
+        elif act == "who":
+            self.app.who_spoke(str(msg.get("id", "")), int(msg.get("k", 0) or 0))
         elif act == "meeting":
             self.app.toggle_meeting()
         elif act == "rename":                            # a speaker's name in one note: {"Others": "Rohit"}

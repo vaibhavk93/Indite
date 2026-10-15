@@ -17,6 +17,8 @@ dependencies = [
     "rumps>=0.4.0",
     "pyobjc-framework-avfoundation>=12.2.2",
     "pyobjc-framework-screencapturekit>=12.2.2",
+    "sherpa-onnx>=1.12",
+    "sherpa-onnx-core>=1.13.8",
 ]
 
 [project.optional-dependencies]

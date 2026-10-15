@@ -925,6 +925,53 @@ class InditeApp(rumps.App):
         self.meeting_item.title = "Stop the meeting recording"
         self.refresh()
 
+    def who_spoke(self, note_id: str, k: int = 0) -> None:
+        """
+        Label a file or meeting by voice (mac/speakers.py). The audio is cut where the speaker changes and each turn
+        is transcribed again on its own, so a line never mixes two people. In a meeting only the "Others" track is
+        split - "You" is already known. Runs on a thread; the note shows that it is working.
+        """
+        row = next((r for r in store.history() if r["id"] == note_id), None)
+        if not row or note_id in self.ai_busy:
+            return
+        self.ai_busy[note_id] = "finding who spoke"
+        self.refresh()
+        threading.Thread(target=self._who, args=(row, k), daemon=True).start()
+
+    def _who(self, row: dict, k: int) -> None:
+        import speakers
+        t0 = time.time()
+        try:
+            sys.path.insert(0, str(ROOT))
+            from indite.core import load_audio
+            meet = row.get("kind") == "meeting"
+            path = store.AUDIO / f"{row['id']}-others.wav" if meet else store.audio_of(row)
+            if not path or not Path(path).exists():
+                raise RuntimeError("the audio for this note is not on this Mac any more")
+            audio, _ = load_audio(path)
+            spans, n = speakers.turns(audio, k)
+            label = (lambda i: f"Person {i + 1}") if meet else (lambda i: f"Speaker {i + 1}")
+            segs = [s for s in row.get("segments", []) if meet and s.get("speaker") == "You"]
+            for a, b, who in spans:
+                at = a
+                for p in pieces(audio[int(a * RATE):int(b * RATE)]):
+                    text = self.tidy(self.engine.transcribe(p)) if float(np.sqrt(np.mean(p ** 2))) > 0.004 else ""
+                    if text:
+                        segs.append({"start": round(at, 2), "end": round(at + len(p) / RATE, 2),
+                                     "speaker": label(who), "text": text})
+                    at += len(p) / RATE
+            segs.sort(key=lambda s: s["start"])
+            names = row.get("names") or {}
+            body = "\n".join(f"{names.get(s['speaker'], s['speaker'])}: {s['text']}" for s in segs)
+            store.update(row["id"], segments=segs, text=body or row["text"], speakers=n, speakers_guessed=k == 0)
+            print(f"speakers: {n} in {time.time() - t0:.0f}s")
+        except Exception as e:                           # noqa: BLE001
+            self.ai_error = f"Could not tell who spoke: {e}"
+            print("speakers failed:", e)
+        finally:
+            self.ai_busy.pop(row["id"], None)
+            self.refresh()
+
     def refresh(self) -> None:
         """Tell the window something changed. WKWebView must be touched on the main thread only."""
         if self.window:

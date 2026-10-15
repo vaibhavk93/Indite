@@ -790,14 +790,16 @@
         <svg width="16" height="16"><use href="#${done ? "i-done" : "i-todo"}"/></svg></button>` : clock(r.at)}</div>
       <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${esc(r.title || "File")}
           ${r.live ? `<span class="live">LIVE</span>` : ""}</div>` : ""}
-        ${meet ? meetingLines(r) : `<div class="text${file ? " clamp" : ""}">${esc(r.text)}</div>`}
+        ${(r.segments || []).some(x => x.speaker) ? meetingLines(r) : `<div class="text${file ? " clamp" : ""}">${esc(r.text)}</div>`}
         ${aiParts(r)}
-        ${file && !meet && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
+        ${file && !(r.segments || []).some(x => x.speaker) && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
         <div class="meta">${copied ? `<span class="tag copied">Copied</span>` : ""}
           ${todoView ? `<span>${dayLabel(r.at)} · ${clock(r.at)}</span>·` : ""}
           ${file ? `<span>${mins(r.seconds || 0)} of audio</span>·
             <button class="more exp" data-id="${id}" data-fmt="txt">Text</button>·
-            <button class="more exp" data-id="${id}" data-fmt="srt">Subtitles</button>·` : r.app ? `<span>${esc(r.app)}</span>·` : ""}
+            <button class="more exp" data-id="${id}" data-fmt="srt">Subtitles</button>·
+            ${r.live ? "" : `<button class="more whob" data-id="${id}">${r.speakers ? `${r.speakers} speaker${r.speakers > 1 ? "s" : ""}${r.speakers_guessed ? " (guessed)" : ""}` : "Who spoke?"}</button>·`}`
+            : r.app ? `<span>${esc(r.app)}</span>·` : ""}
           <span class="num">${words(r)} words</span></div></div>
       <div class="acts">
         ${ic("star", r.star ? "i-star-on" : "i-star", r.star ? "Unstar" : "Star — keep it", r.star)}
@@ -814,7 +816,7 @@
     if (!segs.length) return `<div class="text" style="color:var(--ink2)">${r.live ? "Listening… text appears after each pause." : esc(r.text)}</div>`;
     const lines = segs.map((s, i) => `<div class="line${i >= 6 && !r._open ? " hide" : ""}">
       <button class="who ${s.speaker === "You" ? "you" : "them"}" data-id="${esc(r.id)}" data-who="${esc(s.speaker)}"
-        title="Rename">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${esc(s.text)}</div></div>`).join("");
+        title="Rename" style="${/^(Speaker|Person) [2468]/.test(s.speaker) ? "color:#7a4fb3" : ""}">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${esc(s.text)}</div></div>`).join("");
     return `<div class="lines">${lines}</div>` + (segs.length > 6 ? `<button class="more mshow" data-id="${esc(r.id)}">Show all ${segs.length} lines</button>` : "");
   }
 
@@ -833,7 +835,8 @@
         <button class="more aidel" data-id="${id}" data-k="${esc(a.label)}">Remove</button></div>
         <div class="body">${esc(a.text)}</div></div>`;
     }
-    if (S.ai_busy && S.ai_busy[r.id]) h += `<div class="working"><i></i>Claude is writing: ${esc(S.ai_busy[r.id])}…</div>`;
+    if (S.ai_busy && S.ai_busy[r.id]) h += `<div class="working"><i></i>${S.ai_busy[r.id] === "finding who spoke"
+      ? "Finding who spoke" : "Claude is writing: " + esc(S.ai_busy[r.id])}…</div>`;
     return h;
   }
 
@@ -873,6 +876,20 @@
     on(".tick", r => send({ action: "note", id: r.id, set: { todo: r.todo === "done" ? "open" : "done" } }));
     on(".fix", (r, b) => openFixer(b, r));
     on(".aib", (r, b) => aiMenu(b, r));
+    on(".whob", (r, b) => {
+      document.querySelectorAll(".menu").forEach(m => m.remove());
+      const m = document.createElement("div"); m.className = "menu";
+      m.innerHTML = `<h4>How many people spoke?</h4>` + [[0, "Let indite guess", "2 to 5, from how different the voices sound"],
+        [2, "2 people", ""], [3, "3 people", ""], [4, "4 people", ""], [5, "5 people", ""]].map(([k, l, d]) =>
+        `<button data-k="${k}"><b>${l}</b>${d ? `<span>${d}</span>` : ""}</button>`).join("") +
+        `<p class="fine">Takes about a quarter of the recording’s length. Then click a name to rename it.</p>`;
+      document.body.appendChild(m);
+      const rc = b.getBoundingClientRect();
+      m.style.top = Math.min(rc.bottom + 4, innerHeight - m.offsetHeight - 8) + "px"; m.style.left = Math.max(8, rc.left) + "px";
+      m.querySelectorAll("button").forEach(x => x.onclick = () => { send({ action: "who", id: r.id, k: +x.dataset.k }); m.remove(); });
+      setTimeout(() => document.addEventListener("mousedown", function off(e) {
+        if (!m.contains(e.target)) { m.remove(); document.removeEventListener("mousedown", off); } }), 0);
+    });
     root.querySelectorAll(".mshow").forEach(b => b.onclick = () => {
       b.parentElement.querySelectorAll(".line.hide").forEach(l => l.classList.remove("hide")); b.remove(); });
     on(".who", (r, b) => {
