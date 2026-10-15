@@ -38,6 +38,9 @@ ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
 SERVER = ROOT / ".tools/whisper.cpp/build/bin/whisper-server"
 PORT = 8711                   # localhost only; nothing listens outside this Mac
+HANDS_FREE_CAP = 15 * 60      # seconds; a forgotten hands-free lock stops itself and writes what it heard
+CTRL = {keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r}
+CMD = {keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r}
 WEB_PORT = 8000               # the web app (files, long recordings, editor), also localhost only
 MODEL = ROOT / "mac/models/ggml-apex-q5_k.bin"   # the Mac's own copy: a phone model change cannot reach it
 RATE = 16_000
@@ -247,7 +250,8 @@ class Mic:
         self.q: queue.Queue[np.ndarray] = queue.Queue()
         self.stream: sd.InputStream | None = None
         self.level = 0.0
-        self.preferred: int | None = None      # the device that worked last time
+        self.worked = ""                       # name of the mic that opened last time (names survive reconnects)
+        self.chosen = ""                       # the mic picked in Settings; "" = automatic
         self.using = ""
 
     def start(self) -> None:
@@ -261,6 +265,11 @@ class Mic:
         """
         if self.stream:
             return
+        try:                                            # re-read the device list (3 ms), so a headset connected
+            sd._terminate()                             # after launch shows up - PortAudio reads it only once
+            sd._initialize()
+        except Exception:                               # noqa: BLE001
+            pass
         self.q = queue.Queue()
 
         def cb(indata, frames, time_info, status):      # noqa: ANN001 - sounddevice's signature
@@ -275,19 +284,23 @@ class Mic:
                 stream.start()
                 self.stream = stream
                 self.using = sd.query_devices(device if device is not None else sd.default.device[0])["name"]
+                self.worked = self.using                # remembered by name: positions change after a reconnect
                 return
             except Exception as e:                      # noqa: BLE001 - try the next one, keep the reason
                 last = e
         raise MicProblem(str(last))
 
     def _candidates(self) -> list:
-        """The remembered one first, then the default, then the built-in, then every other input."""
+        """The one picked in Settings, then the one that worked last, the default, the built-in, then any input."""
         out: list = []
-        if self.preferred is not None:
-            out.append(self.preferred)
-        out.append(None)                                 # None = whatever macOS calls the default
         try:
             devices = sd.query_devices()
+            for name in (self.chosen, self.worked):
+                out += [i for i, d in enumerate(devices) if name and d["name"] == name and d["max_input_channels"] > 0]
+        except Exception:                                # noqa: BLE001
+            devices = []
+        out.append(None)                                 # None = whatever macOS calls the default
+        try:
             built_in = [i for i, d in enumerate(devices)
                         if d["max_input_channels"] > 0 and "macbook" in d["name"].lower()]
             others = [i for i, d in enumerate(devices) if d["max_input_channels"] > 0 and i not in built_in]
@@ -311,6 +324,27 @@ class Mic:
         while not self.q.empty():
             chunks.append(self.q.get())
         return np.concatenate(chunks).flatten() if chunks else np.zeros(0, dtype="float32")
+
+
+def mic_names() -> list[str]:
+    """Physical inputs for the Settings picker. Virtual ones (Zoom, BlackHole) are left out: they are never a voice."""
+    try:
+        return [d["name"] for d in sd.query_devices() if d["max_input_channels"] > 0
+                and not any(v in d["name"].lower() for v in ("zoomaudio", "blackhole", "teams", "aggregate"))]
+    except Exception:                                    # noqa: BLE001
+        return []
+
+
+def chime(name: str) -> None:
+    """A short system sound. Off with Settings → Sounds."""
+    try:
+        from AppKit import NSSound
+        s = NSSound.soundNamed_(name)
+        if s:
+            s.setVolume_(0.35)
+            s.play()
+    except Exception:                                    # noqa: BLE001
+        pass
 
 
 def focused_is_text() -> bool:
@@ -397,10 +431,14 @@ class InditeApp(rumps.App):
         self.typer = Typer()
         self.table = fixes()
         self.prefs = store.prefs()
+        self.mic.chosen = self.prefs["mic"]
         self.window: Window | None = None
         self.engine_kind = "Starting the engine\u2026"
         self.busy = False
         self.started_at = 0.0
+        self.locked = False              # hands-free: double-tap the key, then tap once to stop
+        self.last_tap = 0.0
+        self.held_keys: set = set()
         self.last = ""
         self.web_proc: subprocess.Popen | None = None
         self.pill = Pill()
@@ -455,6 +493,10 @@ class InditeApp(rumps.App):
     def paint(self, _) -> None:                          # noqa: ANN001 - rumps' signature
         """Shows what is happening, in the place the eye already is: just above the Dock."""
         if self.started_at:
+            if self.locked and time.time() - self.started_at > HANDS_FREE_CAP:
+                self.finish()                            # a forgotten lock must not leave the mic on all day
+                return
+            self.pill.view.locked = self.locked
             self.pill.show("listening")
             self.pill.level(self.mic.level)
         elif self.busy:
@@ -467,8 +509,39 @@ class InditeApp(rumps.App):
 
     # ---- the hotkey ----------------------------------------------------------------------------------------
     def listen(self) -> None:
-        with keyboard.Listener(on_press=self.on_press, on_release=self.on_release) as listener:
+        with keyboard.Listener(on_press=self._press, on_release=self._release) as listener:
             listener.join()
+
+    def _press(self, key) -> None:                       # noqa: ANN001
+        self.held_keys.add(key)
+        if (key == keyboard.KeyCode.from_char("v") or getattr(key, "char", None) in ("v", "\x16")) \
+                and self.held_keys & CTRL and self.held_keys & CMD:
+            threading.Thread(target=self.paste_last, daemon=True).start()
+        self.on_press(key)
+
+    def _release(self, key) -> None:                     # noqa: ANN001
+        self.held_keys.discard(key)
+        self.on_release(key)
+
+    def paste_last(self) -> None:
+        """
+        ⌃⌘V types the last dictation again, where the cursor is (Wispr Flow uses the same keys). Waits for the
+        modifiers to come up first, or every typed letter would arrive as ⌃⌘-letter. The password guard applies.
+        """
+        if not self.last:
+            return
+        for _ in range(100):                             # up to 2 s
+            if not (self.held_keys & (CTRL | CMD)):
+                break
+            time.sleep(0.02)
+        if focused_is_secret():
+            self.done_state, self.done_until = "secret", time.time() + 2.0
+        elif focused_is_text():
+            self.typer.type(self.last)
+            self.done_state, self.done_until = "done", time.time() + 1.6
+        else:
+            self.typer.copy(self.last)
+            self.done_state, self.done_until = "copied", time.time() + 1.6
 
     def hotkey(self):
         """Read on every press, so changing it in the window works at once and not after a restart."""
@@ -478,9 +551,13 @@ class InditeApp(rumps.App):
         if key == keyboard.Key.esc and self.started_at:   # cancel: nothing is written, the audio is dropped
             # ponytail: pynput cannot swallow the key on macOS, so Esc also reaches the app underneath
             self.started_at = 0.0
+            self.locked = False
             self.mic.stop()
             self.title = "🎙"
             self.done_state, self.done_until = "cancelled", time.time() + 1.2
+            return
+        if key == self.hotkey() and self.locked:          # hands-free: one tap stops it
+            self.finish()
             return
         if key == self.hotkey() and not self.busy and self.started_at == 0.0:
             try:
@@ -492,14 +569,37 @@ class InditeApp(rumps.App):
                 return
             self.started_at = time.time()
             self.title = "🔴"
+            if self.prefs["sounds"] and time.time() - self.last_tap > 0.6:   # not again on the second tap
+                chime("Tink")
 
     def on_release(self, key) -> None:                   # noqa: ANN001
         if key != self.hotkey() or self.started_at == 0.0:
             return
-        held = time.time() - self.started_at
+        if self.locked:
+            return
+        now = time.time()
+        if now - self.started_at < 0.4:                   # a tap, not a sentence
+            if now - self.last_tap < 0.6:                 # the second tap of a double-tap: keep listening, hands free
+                self.locked = True
+                self.last_tap = 0.0
+                if self.prefs["sounds"]:
+                    chime("Tink")
+                return
+            self.last_tap = now
+            self.started_at = 0.0
+            self.mic.stop()
+            self.title = "🎙"
+            return
+        self.finish()
+
+    def finish(self) -> None:
+        """Stop listening and write what was said. Ends a hold, a hands-free tap, and the hands-free time cap."""
         self.started_at = 0.0
+        self.locked = False
         audio = self.mic.stop()
-        if held < 0.4 or len(audio) < RATE // 2:          # a tap, not a sentence
+        if self.prefs["sounds"]:
+            chime("Pop")
+        if len(audio) < RATE // 2:
             self.title = "🎙"
             return
         self.title = "⏳"
@@ -578,6 +678,7 @@ class InditeApp(rumps.App):
     def reload_prefs(self) -> None:
         """Called by the window after a setting changes. The prefs are not cached anywhere else."""
         self.prefs = store.prefs()
+        self.mic.chosen = self.prefs["mic"]
 
     def open_window(self, _) -> None:                    # noqa: ANN001
         if self.window is None:                          # built on first use: AppKit, so main thread only

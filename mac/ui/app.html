@@ -190,6 +190,8 @@
   }
   .btn:hover { border-color: var(--ink3); }
   .btn.danger { color: var(--red); }
+  .pick { font: inherit; font-size: 12px; color: var(--ink); padding: 4px 8px; border-radius: 7px; max-width: 220px;
+          border: 1px solid var(--line2); background: var(--paper); }
   
   /* ---- help ---- */
   .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 26px; }
@@ -279,6 +281,21 @@
           <div class="item">
             <div class="body"><b>Where the words go</b><p id="out-why"></p></div>
             <div class="seg" id="set-output" role="radiogroup" aria-label="Where the words go"></div>
+          </div>
+          <div class="item">
+            <div class="body"><b>Hands-free</b><p>Double-tap the key and let go: indite keeps listening. Tap once to
+              finish, Esc to cancel. Stops by itself after 15 minutes.</p></div>
+          </div>
+          <div class="item">
+            <div class="body"><b>Microphone</b><p id="mic-why"></p></div>
+            <select class="pick" id="set-mic" aria-label="Microphone"></select>
+          </div>
+          <div class="item">
+            <div class="body"><b>Sounds</b><p>A soft tick when listening starts, a pop when it stops.</p></div>
+            <button class="sw" id="set-sounds" role="switch" aria-label="Sounds"></button>
+          </div>
+          <div class="item">
+            <div class="body"><b>Paste the last dictation again</b><p>Press <kbd>⌃⌘V</kbd> anywhere.</p></div>
           </div>
         </div>
       </div>
@@ -430,6 +447,16 @@
       copy: "Always copied to the clipboard. Paste with ⌘V.",
     }[S.prefs.output] || "";
     sw("#set-spelling", "spelling");
+    sw("#set-sounds", "sounds");
+    const mics = S.mics || [], pickMic = $("#set-mic");
+    const chosen = S.prefs.mic || "";
+    pickMic.innerHTML = `<option value="">Automatic</option>` + [...new Set([...mics, ...(chosen ? [chosen] : [])])]
+      .map(m => `<option value="${esc(m)}">${esc(m)}${mics.includes(m) ? "" : " (not connected)"}</option>`).join("");
+    pickMic.value = chosen;
+    pickMic.onchange = () => send({ action: "pref", key: "mic", value: pickMic.value });
+    $("#mic-why").textContent = chosen
+      ? `Uses ${chosen} when it is connected; otherwise the next one that works.`
+      : `The Mac's default, then the built-in one, then any other.${S.using ? " Last used: " + S.using + "." : ""}`;
     sw("#set-keep_history", "keep_history");
     $("#fixes-line").textContent = S.fixes
       ? `${S.fixes} fix${S.fixes > 1 ? "es" : ""}, like “ptm = Paytm”. Saved edits apply to the next dictation.`

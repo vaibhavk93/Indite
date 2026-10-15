@@ -58,6 +58,7 @@ class PillView(NSView):
         self.phase = 0.0                # for the writing animation
         self.bars = [0.12] * 5
         self.shown = [0.12] * 5      # what is drawn: eased toward `bars`, so the bars breathe rather than flicker
+        self.locked = False             # hands-free: a small dot on the left says "you can let go"
         self.liquid = False             # True on macOS 26+, where the pill sits in real Liquid Glass
         return self
 
@@ -66,7 +67,8 @@ class PillView(NSView):
         # a hairline edge - without it the blur floats with no boundary and reads as a smudge.
         NSColor.clearColor().set()
         NSBezierPath.fillRect_(rect)
-        if self.liquid:                 # Liquid Glass draws its own light and edge; painting more makes it muddy
+        if self.liquid:                 # Liquid Glass brings its own light; only the border is added
+            self._draw_border()
             self._draw_content()
             return
         # The glass sheen: light falling on the top half, fading out by the middle, the way a curved glass bead
@@ -89,11 +91,26 @@ class PillView(NSView):
         NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.12).set()
         edge.stroke()
         NSGraphicsContext.restoreGraphicsState()
+        self._draw_border()
         self._draw_content()
+
+    def _draw_border(self) -> None:
+        """
+        A two-tone rim: a dark hairline outside, a light one just inside. Clear glass over a page of the same grey
+        disappeared (founder, 15 Oct); one of the two lines always contrasts, on white, black or anything between.
+        """
+        for inset, white, alpha in ((0.5, 0.0, 0.28), (1.5, 1.0, 0.55)):
+            edge = NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
+                NSMakeRect(inset, inset, W - 2 * inset, H - 2 * inset), H / 2 - inset, H / 2 - inset)
+            edge.setLineWidth_(1.0)
+            NSColor.colorWithCalibratedWhite_alpha_(white, alpha).set()
+            edge.stroke()
 
     def _draw_content(self) -> None:
         if self.state == "listening":
             self._draw_bars()
+        elif self.state == "writing":
+            self._draw_writing()
         else:
             self._draw_word({
                 "writing": "writing…",
@@ -113,6 +130,9 @@ class PillView(NSView):
         bw, gap = 3.0, 4.0
         total = n * bw + (n - 1) * gap
         x = (W - total) / 2
+        if self.locked:
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(0.85, 0.2, 0.15, 0.95).set()
+            NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(12, H / 2 - 3, 6, 6)).fill()
         for i, v in enumerate(self.shown):
             # the newest bar is the brightest, so the eye reads left-to-right as "then … now"
             NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.55 + 0.45 * (i / (n - 1))).set()
@@ -121,10 +141,50 @@ class PillView(NSView):
                 NSMakeRect(x, (H - h) / 2, bw, h), bw / 2, bw / 2).fill()
             x += bw + gap
 
+    def _draw_writing(self) -> None:
+        """
+        "writing" followed by three dots in a travelling wave, and a soft orange glint sweeping under the word, so a
+        slow sentence reads as work in progress and never as a frozen app.
+        """
+        attrs = self._attrs()
+        s = NSString.stringWithString_("writing")
+        size = s.sizeWithAttributes_(attrs)
+        dots_w = 3 * 3.0 + 2 * 3.0
+        x = (W - size.width - 4 - dots_w) / 2
+        y = (H - size.height) / 2
+        s.drawAtPoint_withAttributes_((x, y), attrs)
+        r, g, b = ACCENT
+        for i in range(3):
+            wave = math.sin(self.phase - i * 0.9)                   # each dot a beat behind the one before
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.45 + 0.55 * max(0.0, wave)).set()
+            cx = x + size.width + 4 + i * 6.0
+            cy = H / 2 - 3 + max(0.0, wave) * 2.5
+            NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(cx, cy, 3.0, 3.0)).fill()
+        sweep = (self.phase % (2 * math.pi)) / (2 * math.pi)        # 0..1, left to right under the word
+        gx = x - 6 + sweep * (size.width + dots_w + 16)
+        NSGradient.alloc().initWithColors_([                         # evenly spaced: clear, orange, clear
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.0),
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.85),
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.0),
+        ]).drawInRect_angle_(NSMakeRect(gx - 10, y - 2, 20, 1.5), 0)
+
+    def _attrs(self) -> dict:
+        if self.liquid:
+            colour = NSColor.labelColor()
+        else:
+            colour = NSColor.colorWithCalibratedWhite_alpha_(0.92, 1.0)
+        return {NSFontAttributeName: NSFont.systemFontOfSize_weight_(11.5, NSFontWeightMedium),
+                NSForegroundColorAttributeName: colour}
+
     def _draw_word(self, word: str) -> None:
         r, g, b = ACCENT
         if self.liquid:                 # clear glass can sit on white or black: the system label colour adapts
             colour = NSColor.labelColor()
+            shadow = AppKit.NSShadow.alloc().init()
+            shadow.setShadowBlurRadius_(3.0)
+            shadow.setShadowOffset_((0, -0.5))
+            shadow.setShadowColor_(NSColor.colorWithCalibratedWhite_alpha_(0.5, 0.35))
+            shadow.set()
         else:
             colour = (NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0) if self.state != "writing"
                       else NSColor.colorWithCalibratedWhite_alpha_(0.92, 1.0))
@@ -167,6 +227,9 @@ class Pill:
             # with the page underneath - the material Apple uses for its own floating controls.
             glass = Liquid.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
             glass.setCornerRadius_(H / 2)
+            # Clear, not Regular: the founder wanted it closer to transparent (15 Oct). Clear is the see-through
+            # variant Apple uses over media; the text gets a soft shadow below so it still reads on busy pages.
+            glass.setStyle_(getattr(AppKit, "NSGlassEffectViewStyleClear", 1))
             glass.setContentView_(self.view)
             self.view.liquid = True
             self.panel.setHasShadow_(False)           # the glass brings its own depth
@@ -211,5 +274,5 @@ class Pill:
 
     def tick_writing(self) -> None:
         """A gentle pulse while the engine works, so a slow sentence does not look like a frozen app."""
-        self.view.phase = (self.view.phase + 0.12) % (2 * math.pi)
+        self.view.phase = (self.view.phase + 0.32) % (2 * math.pi)     # ~1 wave a second at 20 Hz
         self.view.setNeedsDisplay_(True)

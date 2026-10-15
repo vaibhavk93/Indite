@@ -27,6 +27,8 @@ DEFAULTS = {
     "output": "smart",          # smart (type when there is a text box, else clipboard) · type · copy
     "spelling": True,           # the shared Hinglish spelling list
     "keep_history": True,       # off means nothing is written, and the list below empties
+    "sounds": True,             # a soft tick when listening starts, a pop when it stops
+    "mic": "",                  # a microphone's name; "" = automatic (default, then built-in, then any)
 }
 
 

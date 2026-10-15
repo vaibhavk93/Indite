@@ -21,6 +21,7 @@ from AppKit import (
     NSBackingStoreBuffered,
     NSColor,
     NSMakeRect,
+    NSView,
     NSVisualEffectBlendingModeBehindWindow,
     NSVisualEffectMaterialUnderWindowBackground,
     NSVisualEffectStateActive,
@@ -71,6 +72,8 @@ class Bridge(NSObject):
             "hotkeys": HOTKEYS,
             "engine": self.app.engine_kind,
             "fixes": len(store.my_fixes()),
+            "mics": __import__("indite_mac").mic_names(),
+            "using": self.app.mic.using,
         }
 
     def push(self) -> None:
@@ -118,6 +121,20 @@ class Bridge(NSObject):
         self.push()
 
 
+class DragStrip(NSView):
+    """
+    The top of the window, where a title bar would be. The page covers the whole window (the title bar is
+    transparent), and a web view never lets the window be dragged - so this invisible strip sits above it and moves
+    the window, and a double-click zooms it, like any Mac title bar.
+    """
+
+    def mouseDown_(self, event):        # noqa: N802 - AppKit's name
+        if event.clickCount() == 2:
+            self.window().performZoom_(None)
+        else:
+            self.window().performWindowDragWithEvent_(event)
+
+
 class Window:
     """Made once, on the main thread, the first time the user opens it."""
 
@@ -153,6 +170,9 @@ class Window:
         self.bridge.web = self.web
 
         glass.addSubview_(self.web)
+        strip = DragStrip.alloc().initWithFrame_(NSMakeRect(0, H - 38, W, 38))
+        strip.setAutoresizingMask_(2 | 8)                   # width sizable | stays pinned to the top
+        glass.addSubview_(strip)
         self.win.setContentView_(glass)
         self.win.setBackgroundColor_(NSColor.clearColor())
 
