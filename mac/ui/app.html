@@ -82,7 +82,7 @@
   }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: #34a853; flex: none;
          box-shadow: 0 0 0 3px rgba(52,168,83,.15); }
-  .dot.wait { background: var(--brand); box-shadow: 0 0 0 3px rgba(226,118,25,.18); }
+  .dot.wait { background: var(--brand); }
   .dot.off { background: var(--red); box-shadow: 0 0 0 3px rgba(196,55,42,.15); }
 
   /* ---- main: the white page --------------------------------------------------------------------------------- */
@@ -120,7 +120,7 @@
     -webkit-user-select: text; user-select: text;
   }
   .search input::placeholder { color: var(--ink3); }
-  .search input:focus { background: var(--paper); border-color: var(--brand); box-shadow: 0 0 0 3px rgba(226,118,25,.15); }
+  .search input:focus { background: var(--paper); border-color: var(--ink3); }
   .search .k { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); font-size: 11px;
                color: var(--ink3); pointer-events: none; }
 
@@ -135,7 +135,7 @@
     padding: 12px 10px; margin: 0 -10px; border-radius: 10px;
   }
   .row { position: relative; }
-  .row.sel { background: var(--accent-soft); border-radius: 10px; box-shadow: inset 3px 0 0 var(--brand); }
+  .row.sel { background: var(--well); border-radius: 10px; box-shadow: 0 0 0 1px var(--line2); }
   /* Ask AI sits beside the list when there's room (critic: at the default 920px window that leaves a 240px list,
      so smaller windows keep it on top, but without dimming the list, which stays clickable) */
   @media (min-width: 1180px) { body.ai-open main { margin-right: min(460px, 92vw); } }
@@ -164,7 +164,7 @@
   .chip[aria-pressed="true"] { background: var(--well); color: var(--ink); }
   .title { font-weight: 600; font-size: 14px; display: flex; gap: 6px; align-items: center; margin-bottom: 2px; }
   .clamp { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
-  .more { appearance: none; border: 0; background: none; color: var(--accent); font-size: 12px; padding: 0; cursor: default; }
+  .more { appearance: none; border: 0; background: none; color: var(--ink2); font-size: 12px; padding: 0; cursor: default; }
   .jobcard { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--well);
              margin-bottom: 18px; }
   .jobcard .bar2 { flex: 1; height: 4px; border-radius: 2px; background: var(--line2); overflow: hidden; }
@@ -173,59 +173,71 @@
   .group-h { font-size: 12px; font-weight: 600; color: var(--ink2); margin: 18px 0 4px; }
   .toast button { appearance: none; border: 0; background: none; color: #ffb066; font-weight: 600; margin-left: 10px; cursor: default; }
   .toast.act { pointer-events: auto; }
-  .aichip { appearance: none; border: 1px solid var(--line2); background: var(--paper); color: var(--accent); border-radius: 20px;
+  .aichip { appearance: none; border: 1px solid var(--line2); background: var(--paper); color: var(--ink2); border-radius: 20px;
             font-size: 12px; font-weight: 600; padding: 3px 10px; margin-top: 8px; display: inline-flex; gap: 5px; align-items: center; cursor: default; }
-  .aichip:hover { background: var(--accent-soft); border-color: transparent; }
+  .aichip:hover { color: var(--ink); border-color: var(--ink3); }
   .drawer[hidden] { display: none; }
   .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 92vw); z-index: 7; background: var(--paper);
             border-left: 1px solid var(--line2); box-shadow: -18px 0 40px rgba(0,0,0,.14); display: flex; flex-direction: column;
             outline: none; animation: slidein .18s ease-out; }
   @keyframes slidein { from { transform: translateX(24px); opacity: 0; } }
-  .dhead { display: flex; gap: 12px; align-items: flex-start; padding: 40px 22px 14px; border-bottom: 1px solid var(--line); }
+  .dhead { display: flex; gap: 12px; align-items: flex-start; padding: 34px 22px 14px; border-bottom: 1px solid var(--line); }
   .dhead > div { flex: 1; min-width: 0; }
-  .dhead h2 { font-size: 17px; font-weight: 650; display: flex; gap: 8px; align-items: center; color: var(--ink); }
-  .dhead h2 svg { color: var(--accent); }
+  .dhead h2 { font-size: 16px; font-weight: 650; display: flex; gap: 8px; align-items: center; color: var(--ink); }
+  .dhead h2 svg { color: var(--ink2); }
   .dnote { font-size: 12.5px; color: var(--ink2); margin-top: 6px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3;
            -webkit-box-orient: vertical; overflow: hidden; }
-  .dbody { flex: 1; overflow-y: auto; padding: 6px 22px 18px; }
-  .dsec { margin-top: 16px; }
-  .dnew { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); } .dnew h3 { color: var(--ink); text-transform: none; font-size: 13.5px; letter-spacing: 0; margin: 0; }
-  .dsec h3 { font-size: 11.5px; font-weight: 600; color: var(--ink2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
-  .dchips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .dchip { appearance: none; text-align: left; border: 1px solid var(--line2); background: var(--paper); border-radius: 10px; padding: 9px 11px;
-           cursor: default; display: flex; flex-direction: column; gap: 2px; }
-  .dchip b { font-size: 13px; font-weight: 600; color: var(--ink); } .dchip span { font-size: 11.5px; color: var(--ink2); line-height: 1.35; }
-  .dchip:hover:not(:disabled) { border-color: var(--brand); background: var(--accent-soft); }
-  .dchip.primary { grid-column: 1 / -1; border-color: var(--brand); }
-  .dchip:disabled, .drawer .btn:disabled { opacity: .45; }
-  .drow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .drow > span { width: 86px; font-size: 12.5px; color: var(--ink2); flex: none; }
-  .drow .pick { flex: 1; max-width: none; }
-  .dans { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
-  .dans .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; } .dans .h b { font-size: 13px; }
-  .dans .sp { flex: 1; } .dans .when2 { font-size: 11.5px; color: var(--ink3); }
-  .dans .body { white-space: pre-wrap; font-size: 13px; line-height: 1.6; -webkit-user-select: text; user-select: text; color: var(--ink); }
-  .acts2 { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
-  .seg.mini button { font-size: 11.5px; padding: 2px 9px; }
-  .working.big { font-size: 13px; padding: 12px 14px; background: var(--accent-soft); border-radius: 10px; margin-bottom: 10px; }
-  .dempty { padding: 30px 0; } .dempty p { color: var(--ink2); margin: 6px 0 14px; }
-  .dans .body.md { white-space: normal; }
-  .dans .body.clamp { max-height: 12.8em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); }
-  .dmore { appearance: none; border: 0; background: none; color: var(--accent); font-size: 12px; font-weight: 600; padding: 4px 0 0; cursor: default; }
-  .dx { appearance: none; flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line2); background: var(--well);
-        color: var(--ink); display: grid; place-items: center; cursor: default; margin-top: -4px; }
-  .dx:hover { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
-  .dans .h b { flex: 1; min-width: 0; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .dans .h { align-items: flex-start; } .dans .h .when2 { flex: none; padding-top: 1px; } .dans .h .sp { display: none; }
-  .dask textarea { resize: none; line-height: 1.45; min-height: 30px; max-height: 9.5em; overflow-y: auto; padding: 6px 9px; }
-  .dask .drow { align-items: flex-end; }
-  .dask { padding: 12px 22px 0; border-top: 1px solid var(--line); } .dask .drow { margin-bottom: 0; } .dask + .dfoot { border-top: 0; padding-top: 8px; } .md .mh { font-weight: 650; margin: 10px 0 2px; } .md .mh:first-child { margin-top: 0; }
+  .dbody { flex: 1; overflow-y: auto; }
+  .dhd { padding: 16px 22px 4px; font-size: 12px; font-weight: 600; color: var(--ink2); }
+  .dhd { display: flex; align-items: baseline; gap: 4px; } .dhd .lnk { margin-left: auto; }
+  .dhd span { color: var(--ink3); font-weight: 500; margin-left: 4px; }
+  .doc { padding: 12px 22px 14px; border-bottom: 1px solid var(--line); }
+  .doc .dh { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 6px; }
+  .doc h4 { flex: 1; min-width: 0; font-size: 13px; font-weight: 650; color: var(--ink); line-height: 1.4;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .doc .dt { flex: none; font-size: 11.5px; color: var(--ink3); padding-top: 1px; }
+  .doc .md { font-size: 13px; line-height: 1.6; color: var(--ink); -webkit-user-select: text; user-select: text; }
+  .doc .md.clamp { max-height: 12.8em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); }
+  .doc .df { display: flex; gap: 14px; margin-top: 8px; }
+  .lnk { appearance: none; border: 0; background: none; padding: 2px 0; font: inherit; font-size: 12px; font-weight: 600; color: var(--ink2); cursor: default; }
+  .lnk:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; } .lnk.mute { font-weight: 500; color: var(--ink3); }
+  .md .mh { font-weight: 650; margin: 10px 0 2px; } .md .mh:first-child { margin-top: 0; }
   .md .mli { padding-left: 14px; position: relative; } .md .mli::before { content: "•"; position: absolute; left: 2px; color: var(--ink3); }
   .md .mgap { height: 6px; }
-  .derr { border: 1px solid #e0796b; background: rgba(224,121,107,.1); border-radius: 10px; padding: 10px 12px; margin-top: 14px;
+  .dpend { margin: 6px 22px 10px; padding: 12px 14px; border-radius: 10px; background: var(--well); }
+  .dpend b { font-size: 13px; font-weight: 600; } .dpend p { font-size: 12px; color: var(--ink2); margin-top: 6px; }
+  .dbar { height: 3px; border-radius: 3px; background: var(--line2); overflow: hidden; margin-top: 10px; }
+  .dbar i { display: block; height: 100%; width: 35%; border-radius: 3px; background: var(--ink2); animation: dbar 1.3s ease-in-out infinite; }
+  @keyframes dbar { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+  .dopts { background: var(--well); padding: 6px 22px 22px; min-height: 100%; }
+  .dopts h3 { font-size: 13px; font-weight: 650; color: var(--ink); margin: 18px 0 2px; }
+  .dopts .dgs { font-size: 12px; color: var(--ink2); margin-bottom: 8px; }
+  .dgroup { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .dgroup.pad { padding: 4px 12px; }
+  .ditem { appearance: none; display: block; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--line); background: none;
+           padding: 9px 12px; cursor: default; font: inherit; }
+  .ditem:first-child { border-top: 0; }
+  .ditem b { display: block; font-size: 13px; font-weight: 600; color: var(--ink); } .ditem span { font-size: 12px; color: var(--ink2); }
+  .ditem:hover:not(:disabled) { background: var(--well); } .ditem:disabled, .dpill:disabled { opacity: .45; }
+  .dline { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); align-items: baseline; }
+  .dline:first-child { border-top: 0; } .dline > span { width: 66px; flex: none; font-size: 12px; color: var(--ink2); }
+  .dline > div { display: flex; flex-wrap: wrap; gap: 6px; }
+  .dpill { appearance: none; font: inherit; font-size: 12px; color: var(--ink); background: var(--paper); border: 1px solid var(--line2);
+           border-radius: 6px; padding: 3px 9px; cursor: default; }
+  .dpill:hover:not(:disabled) { border-color: var(--ink2); } .dpill.ghost { border-style: dashed; color: var(--ink2); }
+  .derr { border: 1px solid #e0796b; background: rgba(224,121,107,.1); border-radius: 10px; padding: 10px 12px; margin: 14px 22px 0;
           display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; } .derr div { flex: 1; } .derr p { color: var(--ink2); margin-top: 2px; }
   .aiwhat { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; font-size: 12.5px; line-height: 1.55; }
   .aiwhat b { display: block; margin-bottom: 4px; } .aiwhat ul { margin: 0; padding-left: 16px; color: var(--ink2); }
+  .dx { appearance: none; flex: none; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line2); background: var(--paper);
+        color: var(--ink2); display: grid; place-items: center; cursor: default; margin-top: -4px; }
+  .dx:hover { color: var(--ink); border-color: var(--ink3); }
+  .drow { display: flex; gap: 8px; align-items: center; } .drow .pick { flex: 1; max-width: none; }
+  .seg.mini button { font-size: 11.5px; padding: 2px 9px; }
+  .dempty { padding: 30px 22px; } .dempty p { color: var(--ink2); margin: 6px 0 14px; }
+  .dask textarea { resize: none; line-height: 1.45; min-height: 30px; max-height: 9.5em; overflow-y: auto; padding: 6px 9px; }
+  .dask .drow { align-items: flex-end; margin-bottom: 0; }
+  .dask { padding: 12px 22px 0; border-top: 1px solid var(--line); } .dask + .dfoot { border-top: 0; padding-top: 8px; }
   .dfoot { padding: 12px 22px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink2); }
   .navgap { height: 14px; }
   .navbottom { border-top: 1px solid var(--line2); padding-top: 8px; }
@@ -254,7 +266,7 @@
   .hbar span:last-child { text-align: right; color: var(--ink2); }
   .htop { display: flex; align-items: center; gap: 12px; }
   .chip-now { font-size: 11.5px; font-weight: 600; padding: 2px 10px; border-radius: 20px; background: var(--well); color: var(--ink2); }
-  .chip-now.busy { background: var(--accent-soft); color: var(--accent); }
+  .chip-now.busy { background: var(--well); color: var(--ink2); }
   .chip-now.rec { background: #c4372a; color: #fff; }
   .chip-now:empty { display: none; }
   #pane-home .chips { margin-left: 0; }
@@ -302,7 +314,7 @@
   #try { width: 100%; margin-top: 10px; min-height: 64px; font: inherit; font-size: 14px; padding: 10px; border-radius: 9px;
          border: 1px solid var(--line2); background: var(--paper); color: var(--ink); resize: vertical;
          -webkit-user-select: text; user-select: text; outline: none; }
-  #try:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(226,118,25,.15); }
+  #try:focus { border-color: var(--ink3); }
   .sfoot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
   .menu { position: fixed; z-index: 8; width: 290px; max-height: 70vh; overflow: auto; background: var(--paper);
           border: 1px solid var(--line2); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.16); padding: 6px; }
@@ -325,8 +337,8 @@
   .aicard.shut .h .lbl::before { content: "▸ "; }
   .aicard .body { white-space: pre-wrap; font-size: 13px; line-height: 1.55; -webkit-user-select: text; user-select: text; }
   .aicard .more + .more { margin-left: 10px; }
-  .working { margin-top: 8px; font-size: 12px; color: var(--accent); display: flex; gap: 6px; align-items: center; }
-  .working i { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); animation: pulse 1s infinite ease-in-out; }
+  .working { margin-top: 8px; font-size: 12px; color: var(--ink2); display: flex; gap: 6px; align-items: center; }
+  .working i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink3); animation: pulse 1s infinite ease-in-out; }
   @keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
   .twin { display: flex; gap: 4px; margin-bottom: 6px; }
   #meet.rec { background: #c4372a; border-color: #c4372a; color: #fff; }
@@ -343,14 +355,14 @@
   .fixer input { font: inherit; font-size: 13px; color: var(--ink); width: 150px; padding: 5px 8px; border-radius: 7px;
                  border: 1px solid var(--line2); background: var(--paper); outline: none;
                  -webkit-user-select: text; user-select: text; }
-  .fixer input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(226,118,25,.15); }
+  .fixer input:focus { border-color: var(--ink3); }
   .fixer .why { flex-basis: 100%; }
   .fixer .why.warn { color: var(--red); }
   .btn.go { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 
   .empty { text-align: center; padding: 56px 24px; color: var(--ink2); }
-  .empty .art { width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 18px; background: var(--accent-soft);
-                display: grid; place-items: center; color: var(--accent); }
+  .empty .art { width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 18px; background: var(--well);
+                display: grid; place-items: center; color: var(--ink2); }
   .empty h3 { font-size: 15px; color: var(--ink); font-weight: 600; margin-bottom: 4px; }
   .steps { display: inline-grid; gap: 10px; text-align: left; margin-top: 20px; }
   .step { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--ink); }
@@ -399,7 +411,7 @@
   /* ---- help ---- */
   .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 26px; }
   .how .card { padding: 16px; }
-  .how .n { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+  .how .n { width: 24px; height: 24px; border-radius: 50%; background: var(--well); color: var(--ink);
             display: grid; place-items: center; font-size: 12px; font-weight: 650; margin-bottom: 10px; }
   .how b { display: block; font-weight: 600; margin-bottom: 3px; }
   .how p { font-size: 12px; color: var(--ink2); }
@@ -447,7 +459,7 @@
   <symbol id="i-done" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3" fill="currentColor"/><path d="m5.2 8.2 2 2 3.6-4" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-trash" viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.6a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-file" viewBox="0 0 16 16"><path d="M4 1.8h5.2L12.5 5v8.7a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V2.3a.5.5 0 0 1 .5-.5Z M9 1.8V5.3h3.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
-  <symbol id="i-spark" viewBox="0 0 16 16"><path d="M8 1.8 9.3 6.2 13.7 7.5 9.3 8.8 8 13.2 6.7 8.8 2.3 7.5 6.7 6.2Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M12.8 1.8v2.4M11.6 3h2.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 16 16"><path d="M3 2.5h10a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H8.2L5 13.6V11H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M4.8 5.4h6.4M4.8 7.9h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
   <symbol id="i-chart" viewBox="0 0 16 16"><path d="M2.5 13.5h11M4.5 11V8M8 11V4.5M11.5 11V6.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
   <symbol id="i-folder" viewBox="0 0 16 16"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5v-7Z" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
 </svg>
@@ -884,10 +896,10 @@
   }
   const clock = t => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase();
 
-  function toast(msg, undo) {
+  function toast(msg, undo, label = "Undo") {
     const el = $("#toast"); el.textContent = msg; el.classList.add("on");
     el.classList.toggle("act", !!undo);
-    if (undo) { const b = document.createElement("button"); b.textContent = "Undo"; b.onclick = () => { undo(); el.classList.remove("on"); }; el.appendChild(b); }
+    if (undo) { const b = document.createElement("button"); b.textContent = label; b.onclick = () => { undo(); el.classList.remove("on"); }; el.appendChild(b); }
     clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), undo ? 5000 : 1400);
   }
 
@@ -995,6 +1007,7 @@
     drawTodo();
     drawDict();
     if (tab === "insights") drawInsights();
+    aiWatch();
     drawDrawer();
     drawAI();
     drawList();
@@ -1176,7 +1189,6 @@
     if (e.key === "Escape" && drawerId && !document.querySelector(".menu") && document.activeElement !== $("#q")) closeDrawer();
   });
 
-  const QUICK = [["Make it better", ["improve", "cleanup"]], ["Turn it into", ["summary", "actions", "notes", "lecture", "braindump"]]];
   // The app pushes its state every few seconds and draw() runs on each push. Rebuilding the panel every time threw the
   // scroll back to the top and took the cursor out of the Ask box mid-dictation (15 Oct). So: only rebuild when
   // something shown changed, and then put back the scroll, the typed text, the picked options and the cursor.
@@ -1193,6 +1205,14 @@
     const f2 = keep.focus && document.getElementById(keep.focus);
     if (f2) { f2.focus(); if (keep.caret) try { f2.setSelectionRange(...keep.caret); } catch (_) {} }
     return true;
+  }
+  // AI runs in the background; when a job ends and its note isn't open in the panel, say so - done or failed
+  let aiWas = {};
+  function aiWatch() {
+    const now = S.ai_busy || {};
+    for (const [id, what] of Object.entries(aiWas)) if (!now[id] && id !== drawerId && what !== "finding who spoke")
+      toast(S.ai_error ? `${what} didn’t work` : `${what} is ready`, () => { go("home"); openDrawer(id); }, "View");
+    aiWas = { ...now };
   }
   function drawDrawer() {
     if (!drawerId) return;
@@ -1214,34 +1234,40 @@
     }
     if (S.ai_error) h += `<div class="derr"><div><b>That didn’t work</b><p>${esc(S.ai_error)}</p></div>
         <button class="btn" id="d-err-ok">OK</button></div>`;
-    const nAns = answers.length + (r.improved ? 1 : 0);
-    if (busy || nAns) h += `<div class="dsec"><h3>Answers${nAns ? " · " + nAns : ""}</h3>`;
-    if (busy) h += `<div class="working big"><i></i>${busy === "finding who spoke" ? "Finding who spoke… on this Mac, can take a minute"
-                                                    : esc(busy) + "… usually 10–30 seconds"}</div>`;
+    // Answers: plain documents (no boxes), newest first. Options below, on a sunken surface, so the two never look alike.
+    const nAns = answers.length + (r.improved ? 1 : 0), more = k => drawerView["more:" + r.id + k];
+    if (busy || nAns) h += `<div class="dhd">Answers${nAns ? ` <span>${nAns}</span>` : ""}<button class="lnk" id="d-jump">New request ↓</button></div>`;
+    if (busy) h += `<div class="dpend"><b>${busy === "finding who spoke" ? "Finding who spoke" : "Working on: " + esc(busy)}…</b>
+        <div class="dbar"><i></i></div><p>You can close this and keep working. The answer is saved on the note.</p></div>`;
+    const doc = (key, title, when, body, extra) => `<div class="doc"><div class="dh"><h4>${title}</h4>${when}</div>
+        ${long(body) ? `<div class="md${more(key) ? "" : " clamp"}">${md(body)}</div>
+          <button class="lnk" data-more="${esc(key)}">${more(key) ? "Show less" : "Show more"}</button>` : `<div class="md">${md(body)}</div>`}
+        <div class="df">${extra || ""}<button class="lnk" data-copy="${esc(key)}">Copy</button><button class="lnk mute" data-del="${esc(key)}">Remove</button></div></div>`;
     if (r.improved) {
       const v = drawerView[r.id] || "improved";
-      h += `<div class="dans"><div class="h"><b>Improved wording</b><span class="sp"></span>
-          <div class="seg mini"><button aria-checked="${v === "improved"}" data-v="improved">Improved</button><button aria-checked="${v === "original"}" data-v="original">Original</button></div></div>
-          <div class="body">${esc(v === "improved" ? r.improved : r.text)}</div>
-          <div class="acts2"><button class="btn" data-copy="improved">Copy</button><button class="btn danger" data-del="improved">Remove</button></div></div>`;
+      h += doc("improved", "Improved wording", `<div class="seg mini"><button aria-checked="${v === "improved"}" data-v="improved">Improved</button><button aria-checked="${v === "original"}" data-v="original">Original</button></div>`,
+               v === "improved" ? r.improved : r.text, "");
     }
     for (const a of answers) {
       const tasks = a.action === "actions" && !/^none\b/i.test(a.text.trim());
-      h += `<div class="dans"><div class="h"><b>${esc(a.label)}</b><span class="sp"></span><span class="when2">${a.at ? clock(a.at) : ""}</span></div>
-          ${long(a.text) ? `<div class="body md${drawerView["more:" + r.id + a.label] ? "" : " clamp"}">${md(a.text)}</div>
-            <button class="dmore" data-more="${esc(a.label)}">${drawerView["more:" + r.id + a.label] ? "Show less" : "Show more"}</button>`
-            : `<div class="body md">${md(a.text)}</div>`}
-          <div class="acts2">${tasks ? `<button class="btn go" data-tasks="${esc(a.label)}">Add all to To do</button>` : ""}
-          <button class="btn" data-copy="${esc(a.label)}">Copy</button><button class="btn danger" data-del="${esc(a.label)}">Remove</button></div></div>`;
+      h += doc(a.label, esc(a.label), `<span class="dt">${a.at ? clock(a.at) : ""}</span>`, a.text,
+               tasks ? `<button class="lnk" data-tasks="${esc(a.label)}">Add all to To do</button>` : "");
     }
-    if (busy || nAns) h += `</div>`;
-    for (const [title, keys] of QUICK) h += `<div class="dsec"><h3>${title}</h3><div class="dchips">` + keys.filter(k => A[k]).map(k =>
-      `<button class="dchip${k === "improve" ? " primary" : ""}" data-k="${k}" ${busy ? "disabled" : ""}><b>${esc(A[k][0])}</b><span>${esc(A[k][1])}</span></button>`).join("") + `</div></div>`;
-    h += `<div class="dsec"><h3>Rewrite or translate</h3><div class="dchips">
-        <button class="dchip" data-pick="rewrite" ${busy ? "disabled" : ""}><b>Rewrite as… ▾</b><span>WhatsApp, email, formal, polite…</span></button>
-        <button class="dchip" data-pick="translate" ${busy ? "disabled" : ""}><b>Translate to… ▾</b><span>English, Hindi, Marathi, Tamil…</span></button></div></div>`;
+    const off = busy ? "disabled" : "";
+    const list = keys => `<div class="dgroup">` + keys.filter(k => A[k]).map(k =>
+      `<button class="ditem" data-k="${k}" ${off}><b>${esc(A[k][0])}</b><span>${esc(A[k][1])}</span></button>`).join("") + `</div>`;
+    const chips = (vals, act) => vals.map(v => `<button class="dpill" data-act="${act}" data-v="${esc(v)}" ${off}>${esc(v.replace(" with subject", "").replace(" or Teams", "/Teams"))}</button>`).join("");
+    const langs = S.ai_langs || [], top = langs.slice(0, 3), rest = langs.slice(3), all = drawerView.langs;
+    h += `<div class="dopts${nAns || busy ? "" : " first"}">
+      <h3>Make it better</h3><p class="dgs">Fix the words, keep the meaning. Your original always stays.</p>${list(["improve", "cleanup"])}
+      <h3>Turn it into</h3><p class="dgs">Something new to read, made from this note.</p>${list(["summary", "actions", "notes", "lecture", "braindump"])}
+      <h3>Rewrite or translate</h3><p class="dgs">Pick one and it starts. The answer appears above.</p>
+      <div class="dgroup pad">` + Object.entries(S.ai_style_groups || {}).map(([g, vals]) =>
+        `<div class="dline"><span>${esc(g)}</span><div>${chips(vals, "rewrite")}</div></div>`).join("") + `
+        <div class="dline"><span>Translate</span><div>${chips(all ? langs : top, "translate")}${rest.length ? `<button class="dpill ghost" id="d-langs">${all ? "Fewer" : `${rest.length} more…`}</button>` : ""}</div></div>
+      </div></div>`;
     h += `</div><div class="dask"><div class="drow ask"><textarea class="pick wide" id="d-ask" rows="1" placeholder="Ask anything about this note…" spellcheck="false"></textarea>
-        <button class="btn go" data-k="custom" ${busy ? "disabled" : ""}>Ask</button></div></div>
+        <button class="btn go" data-k="custom" ${off}>Ask</button></div></div>
       <div class="dfoot">Answers come from ${who}. Only this note’s text is sent, and only when you ask.</div>`;
     if (!putDrawer(h)) return;
     $("#dclose").onclick = closeDrawer;
@@ -1259,17 +1285,10 @@
     grow($("#d-ask"));
     $("#d-ask").oninput = e => grow(e.target);
     $("#d-ask").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#drawer").querySelector("[data-k=custom]").click(); } };
-    // indite's own menu instead of the Mac's dropdown: pick a style or language and it runs at once
-    $("#drawer").querySelectorAll("[data-pick]").forEach(b => b.onclick = () => {
-      const k = b.dataset.pick, list = k === "rewrite" ? S.ai_styles || [] : S.ai_langs || [], at = b.getBoundingClientRect();
-      const m = popup(list.map(x => `<button data-v="${esc(x)}"><b>${esc(x)}</b></button>`).join(""), at.left, at.bottom + 4);
-      m.style.width = Math.max(at.width, 220) + "px";
-      m.querySelectorAll("button").forEach(x => x.onclick = () => {
-        m.remove(); send({ action: "ai", id: r.id, act: k, extra: x.dataset.v });
-        $("#drawer .dbody").scrollTop = 0; b.focus(); });
-      m.onkeydown = e => { if (e.key === "Escape") { e.stopPropagation(); m.remove(); b.focus(); } };
-      m.querySelector("button").focus();
-    });
+    $("#drawer").querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
+      send({ action: "ai", id: r.id, act: b.dataset.act, extra: b.dataset.v }); $("#drawer .dbody").scrollTop = 0; });
+    if ($("#d-jump")) $("#d-jump").onclick = () => $(".dopts").scrollIntoView({ behavior: "smooth" });
+    if ($("#d-langs")) $("#d-langs").onclick = () => { drawerView.langs = !drawerView.langs; drawDrawer(); };
     $("#drawer").querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
       const k = "more:" + r.id + b.dataset.more; drawerView[k] = !drawerView[k]; drawDrawer(); });
     $("#drawer").querySelectorAll(".seg.mini button").forEach(b => b.onclick = () => { drawerView[r.id] = b.dataset.v; drawDrawer(); });

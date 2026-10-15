@@ -29,8 +29,9 @@ ACTIONS = {
     "actions": ("Action items", "Every task as task | who | by when", "Turn it into something to read",
                 HINGLISH + "List every task in the text, one per line, exactly as: task | who | by when. Use '-' "
                 "when who or when is not said. No other text. If there are no tasks, reply: none"),
-    "summary": ("Summary", "Five short bullets", "Turn it into something to read",
-                HINGLISH + "Summarise in at most five short bullets."),
+    "summary": ("Summary", "The key points, as many as the note needs", "Turn it into something to read",
+                HINGLISH + "Summarise it as short bullets. Scale to the note: one or two bullets for a short note, "
+                "up to about twelve for a long meeting. Never pad, never repeat a point."),
     "lecture": ("Lecture notes", "Topics, key ideas and revision questions", "Turn it into something to read",
                 HINGLISH + "Write study notes in Markdown: topics, key ideas under each, then five revision "
                 "questions."),
@@ -47,10 +48,15 @@ ACTIONS = {
     "custom": ("Ask anything", "Your own request", "Ask",
                HINGLISH + "Do this with the note, and reply with the result only: {extra}"),
 }
-STYLES = ["Formal English", "Polite request", "WhatsApp Hinglish", "Casual Hinglish", "Email with subject",
-          "Short and crisp", "Firm", "Apology", "Thank you"]
+# Rewrite choices, grouped the way people decide: how it should sound, where it goes, what it's for, what shape.
+STYLE_GROUPS = {
+    "Tone": ["Formal English", "Polite", "Friendly", "Firm", "Casual Hinglish"],
+    "For": ["WhatsApp message", "Email with subject", "Slack or Teams message", "LinkedIn post"],
+    "Purpose": ["Follow-up reminder", "Request", "Apology", "Thank you"],
+}
+STYLES = [x for g in STYLE_GROUPS.values() for x in g]
 LANGUAGES = ["English", "Hindi (Devanagari)", "Hinglish (Roman)", "Marathi", "Gujarati", "Tamil", "Telugu",
-             "Bengali", "Kannada", "Punjabi"]
+             "Bengali", "Kannada", "Punjabi", "Malayalam", "Odia", "Urdu"]
 
 
 def _path() -> None:
@@ -126,7 +132,7 @@ def _http(url: str, body: dict, headers: dict) -> dict:
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json",
                                                                               **headers})
     try:
-        with urllib.request.urlopen(req, timeout=120) as r:
+        with urllib.request.urlopen(req, timeout=300) as r:   # a long meeting can take minutes
             return json.loads(r.read())
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", "replace")[:200]
@@ -144,7 +150,7 @@ def _api(provider: str, model: str, prompt: str, text: str) -> str:
     model = model or DEFAULT_MODEL[provider]
     if provider == "anthropic":
         out = _http("https://api.anthropic.com/v1/messages",
-                    {"model": model, "max_tokens": 2000, "system": SYSTEM, "messages": [{"role": "user", "content": user}]},
+                    {"model": model, "max_tokens": 4000, "system": SYSTEM, "messages": [{"role": "user", "content": user}]},
                     {"x-api-key": key, "anthropic-version": "2023-06-01"})
         return "".join(b.get("text", "") for b in out.get("content", []))
     url = "https://api.openai.com/v1/chat/completions" if provider == "openai" else \

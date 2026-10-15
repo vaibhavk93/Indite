@@ -161,6 +161,7 @@ class Bridge(NSObject):
             "ai_error": self.app.ai_error,
             "ai_actions": {k: v[:3] for k, v in __import__("ai").ACTIONS.items()},
             "ai_styles": __import__("ai").STYLES,
+            "ai_style_groups": __import__("ai").STYLE_GROUPS,
             "ai_langs": __import__("ai").LANGUAGES,
             "file_error": self.app.file_error,
         }
