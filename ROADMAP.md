@@ -175,6 +175,14 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a â
    the Dictionary; Insights gains most-fixed words and fixes per 100 words. Regional personalisation (number formats,
    script choice, name packs, more languages) is Later, each with a trigger. Wispr comparison: same file, section B.
 
+8. **âš  Swear masking breaks R5: it deletes the real word (found 16 Oct, not yet fixed).** `mask_swears` runs inside
+   `tidy()` in `mac/indite_mac.py`, which is before the note is saved - so with the switch on, the stars are what
+   gets stored and the word the founder actually said is gone for good. R5 says nothing is deleted silently.
+   **The fix:** keep the raw text in the note, and mask only where it is shown or typed out (the history row, the
+   note body, the typed/copied output). Small job, one place to change, but it is a product-rule breach rather than
+   polish. Off by default, so nothing has been lost yet. Gate: with the switch on, the stored note still contains
+   the real word and every shown copy is masked.
+
 ## Next build (planned, critic-reviewed)
 
 **Look and feel** (research: colours and font are fine; what feels "AI-made" is no motion and everything looking the same):
