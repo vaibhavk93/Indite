@@ -375,6 +375,11 @@
             <button class="sw" id="set-spelling" role="switch" aria-label="Hinglish spelling"></button>
           </div>
           <div class="item">
+            <div class="body"><b>Numbers as digits</b><p>“chaar baje” is written “4 baje”, “do hazaar rupaye” “₹2000”.
+              Words that are also ordinary words (ek, do, saath) change only next to baje, percent, rupaye…</p></div>
+            <button class="sw" id="set-digits" role="switch" aria-label="Numbers as digits"></button>
+          </div>
+          <div class="item">
             <div class="body"><b>AI on notes</b><p>A ✨ button on each note: improve the wording (your original
               stays), meeting notes, action items, summary, rewrite, translate. Answered by Claude with your own
               login; the note’s text leaves this Mac.</p></div>
@@ -554,6 +559,7 @@
     sw("#set-sounds", "sounds");
     sw("#set-preview", "preview");
     sw("#set-ai", "ai");
+    sw("#set-digits", "digits");
     sw("#set-keep_audio", "keep_audio");
     sw("#set-backup_audio", "backup_audio");
     seg("#set-backup_scope", { all: "All notes", star: "Starred", keep: "Starred + To do" }, S.prefs.backup_scope || "all",

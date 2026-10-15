@@ -1,0 +1,65 @@
+== WER per set (word edits / ref words)
+clean    n= 60
+    raw                                                   25.0%   spelling-adjusted  15.8%
+    app (spelling.tsv + my fixes)                         19.9%   spelling-adjusted  15.8%
+    app, spelling also on words touching punctuation      18.7%   spelling-adjusted  15.8%
+    +16 extra spellings (fit on bench)                    17.2%   spelling-adjusted  15.8%
+    app + numbers->digits                                 15.6%   spelling-adjusted  11.5%
+    punct-spelling + numbers                              14.4%   spelling-adjusted  11.5%
+    all three                                             12.9%   spelling-adjusted  11.5%
+long15   n=180
+    raw                                                   31.3%   spelling-adjusted  22.4%
+    app (spelling.tsv + my fixes)                         26.4%   spelling-adjusted  22.4%
+    app, spelling also on words touching punctuation      25.5%   spelling-adjusted  22.4%
+    +16 extra spellings (fit on bench)                    23.8%   spelling-adjusted  22.3%
+    app + numbers->digits                                 23.4%   spelling-adjusted  19.4%
+    punct-spelling + numbers                              22.5%   spelling-adjusted  19.4%
+    all three                                             20.8%   spelling-adjusted  19.3%
+noisy10  n= 60
+    raw                                                   27.7%   spelling-adjusted  18.5%
+    app (spelling.tsv + my fixes)                         22.6%   spelling-adjusted  18.5%
+    app, spelling also on words touching punctuation      21.4%   spelling-adjusted  18.5%
+    +16 extra spellings (fit on bench)                    19.9%   spelling-adjusted  18.5%
+    app + numbers->digits                                 18.3%   spelling-adjusted  14.2%
+    punct-spelling + numbers                              17.2%   spelling-adjusted  14.2%
+    all three                                             15.6%   spelling-adjusted  14.2%
+noisy5   n= 60
+    raw                                                   32.4%   spelling-adjusted  24.0%
+    app (spelling.tsv + my fixes)                         27.5%   spelling-adjusted  24.0%
+    app, spelling also on words touching punctuation      26.7%   spelling-adjusted  24.0%
+    +16 extra spellings (fit on bench)                    25.1%   spelling-adjusted  24.0%
+    app + numbers->digits                                 23.0%   spelling-adjusted  19.5%
+    punct-spelling + numbers                              22.2%   spelling-adjusted  19.5%
+    all three                                             20.7%   spelling-adjusted  19.5%
+ALL      n=360
+    raw                                                   29.8%   spelling-adjusted  20.9%
+    app (spelling.tsv + my fixes)                         24.9%   spelling-adjusted  20.9%
+    app, spelling also on words touching punctuation      23.9%   spelling-adjusted  20.9%
+    +16 extra spellings (fit on bench)                    22.3%   spelling-adjusted  20.9%
+    app + numbers->digits                                 21.2%   spelling-adjusted  17.2%
+    punct-spelling + numbers                              20.2%   spelling-adjusted  17.2%
+    all three                                             18.6%   spelling-adjusted  17.2%
+
+== categories over app output, all speech sets: 765 word edits
+numbers                                164  21.4%  3 -> tin x9; 4 -> chaar x5; 12 -> baarah x5;  -> rupees x5; 2 -> do x5; 2350 -> do hazaar tin sau pachaas rupe x5
+other misheard word                    158  20.7%  last -> lost x6; pe surge -> par search x6; off -> of x5; par -> pa x5; aaun kya -> aankhya x4; loon -> lo x4
+spelling-only                          109  14.2%  dungi -> doongi x12; liye -> lie x10; dhyan -> dhyaan x9; wahi -> wahin x6; jayega -> jaega x6; rakhna -> rakhana x6
+brand/name                              78  10.2%  zomato -> jaamton x5; sunday -> sandig x5; upi -> up x5; monday -> mandir x4; pvr -> tvr x4; zomato pe -> zoomato par x3
+garbled run (suspect TTS audio, long15 pass 3)    68   8.9%  quarter -> post a minute pae a rilvaam 1 suleva 1 do x1; lunch ke liye -> tahir close thermal pi sahi sinh pashchimi afriki randiniwiy philaad alphas belkaraat lie x1; ko nani ke ghar chalna -> polo krphekite locking michell of muckery com prataaron nathichithi ne i kula ws x1; sach mein bahut pyaara -> main bahut fear cloist thermal pi sahi sinh pashchimi afriki randinavian leone x1; batati -> polacrty kaiit lakking michell of muckury com patharon poshyaachi with ank se phil a phil phil phil phil phir vaaya x1
+end of utterance cut                    58   7.6%  waise jiosaavn pe naya arijit ka gaana sun -> ∅ x6; add kar le -> ∅ x1; the conversion numbers are correct -> ∅ x1; thank you -> ∅ x1
+Hindi word heard as English             38   5.0%  paneer -> pani x3; abhi -> tab hi x2; pe -> pick x1; oye weekend pe kya -> we can fix up x1; tickets -> ticket x1; tak -> taar x1
+split/join (spelling-only)              23   3.0%  bhej na -> bhejna x5; hr -> h r x3; nahi -> na hi x1; app se -> aapse x1; dhyan rakho -> dhyaan rakh ho x1
+English word heard as Hindi/non-word    20   2.6%  cab book kar -> cadbook ka x3; main data dobara -> dip dubaara x1; last quarter -> nahin boss gochar x1; last -> nost x1; last quarter -> mauspter x1; lunch -> naanch x1
+function word swapped (kar->ka, pe->par)    17   2.2%  kar -> ka x11; pe -> par x6
+phrase dropped (mid-utterance)          17   2.2%  ho gaya receipt -> ∅ x1; told you his new album is -> ∅ x1; ji sir swiggy -> ∅ x1; chalo phir kal milte hain -> ∅ x1
+speech lost, model wrote 'nan'          12   1.6%  ok -> nan x1; abhi bhejta hoon -> nan x1; haan kar le main popcorn ka dekh lunga -> nan x1
+content word dropped                     3   0.4%  wali goli -> ∅ x1; wala -> ∅ x1
+
+utterances word-perfect: 114/360; of those differing only in punctuation/case: 48
+
+== no-speech stretches (should be empty):
+  noise_fan      -> 'nan'
+  noise_pink     -> 'nan'
+  noise_silence  -> 'nan'
+  noise_brown    -> 'nan'
+  noise_fan      -> 'nan'

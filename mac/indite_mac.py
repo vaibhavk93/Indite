@@ -16,6 +16,7 @@ from __future__ import annotations
 import math
 import os
 import queue
+import re
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,7 @@ from pynput import keyboard
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ai                 # noqa: E402
+import digits as numbers  # noqa: E402 - mac/digits.py ("numbers" is a stdlib module name)
 import store              # noqa: E402
 from overlay import Pill, Preview   # noqa: E402 - needs the path above
 from window import Window, front_app   # noqa: E402
@@ -68,7 +70,24 @@ def fixes() -> dict[str, str]:
 
 
 def apply_fixes(text: str, table: dict[str, str]) -> str:
-    return " ".join(table.get(w.lower(), w) for w in text.split())
+    """
+    The spelling list, word by word. A comma or full stop stuck to a word is kept aside first: without that,
+    "nahin." never matched "nahin" and the list silently skipped every word at the end of a sentence (measured
+    15 Oct: fixing it took the clean set from 19.9% to 18.7% words wrong).
+    """
+    def one(w: str) -> str:
+        m = re.match(r"^(\W*)(.*?)(\W*)$", w)
+        return m.group(1) + table.get(m.group(2).lower(), m.group(2)) + m.group(3)
+    return " ".join(one(w) for w in text.split())
+
+
+def junk(text: str, seconds: float) -> bool:
+    """
+    A tap under a second that came back as noise: "R.", "KKK", a lone letter (seen in the founder's log, 15 Oct).
+    Real short words - "OK", "No", "Haan" - are kept.
+    """
+    t = text.strip(" .,!?")
+    return seconds < 1.0 and (len(t) <= 1 or bool(re.fullmatch(r"(\w)\1{2,}", t, re.I)))
 
 
 def can_listen() -> bool:
@@ -675,10 +694,9 @@ class InditeApp(rumps.App):
         t0 = time.time()
         where = front_app()              # asked before anything is typed, so the history says which app it went to
         try:
-            text = self.engine.transcribe(audio)
-            if self.prefs["spelling"]:
-                text = apply_fixes(text, self.table)
-            text = store.apply_my_fixes(text, store.my_fixes())     # yours apply even with Hinglish spelling off
+            text = self.tidy(self.engine.transcribe(audio))
+            if junk(text, len(audio) / RATE):
+                text = ""
         except Exception as e:                            # noqa: BLE001 - whatever went wrong, say so and carry on
             self.title = "🎙"
             self.busy = False
@@ -771,9 +789,7 @@ class InditeApp(rumps.App):
             self.job["total"] = len(parts)
             segments, at = [], 0.0
             for p in parts:
-                text = self.engine.transcribe(p)
-                text = apply_fixes(text, self.table) if self.prefs["spelling"] else text
-                text = store.apply_my_fixes(text, store.my_fixes())
+                text = self.tidy(self.engine.transcribe(p))
                 if text:
                     segments.append({"start": round(at, 2), "end": round(at + len(p) / RATE, 2), "text": text})
                 at += len(p) / RATE
@@ -872,6 +888,14 @@ class InditeApp(rumps.App):
             except Exception as e:                       # noqa: BLE001 - not a backup, damaged, or too new
                 self.notice = f"Could not restore: {e}"
             self.refresh()
+
+    def tidy(self, text: str) -> str:
+        """Everything after the engine, in one place for dictation and files alike."""
+        if self.prefs["spelling"]:
+            text = apply_fixes(text, self.table)
+        if self.prefs["digits"]:
+            text = numbers.digits(text)
+        return store.apply_my_fixes(text, store.my_fixes())   # yours last, and even with the others off
 
     def refresh(self) -> None:
         """Tell the window something changed. WKWebView must be touched on the main thread only."""
