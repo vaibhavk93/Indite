@@ -404,6 +404,14 @@ class InditeApp(rumps.App):
             )
         threading.Thread(target=self.listen, daemon=True).start()
         threading.Thread(target=self.warm_up, daemon=True).start()
+        # Opening the app shows its window, like any Mac app; a timer, so it is built on the main thread once the
+        # run loop is going. ponytail: a second `open` while running does nothing; handle reopen if that annoys.
+        self._first = rumps.Timer(self._show_on_launch, 0.5)
+        self._first.start()
+
+    def _show_on_launch(self, timer) -> None:            # noqa: ANN001
+        timer.stop()
+        self.open_window(None)
 
     def warm_up(self) -> None:
         """Load the model now, not when the user is waiting with their finger on the key."""
