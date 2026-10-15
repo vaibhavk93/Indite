@@ -13,7 +13,8 @@ Offline, private Hinglish speech-to-text. Speak Hindi + English, get Roman-scrip
 
 | Part | Where | State |
 |---|---|---|
-| **Android app** (main product) | `android/` | v0.6+, on the founder's OnePlus 12 |
+| **Android app** (main product) | `android/` | build 29 on the founder's OnePlus 12 |
+| **Mac app** (hold a key, speak, it types) | `mac/`, built to `dist/indite.app` | working; 0.8 s per sentence with the engine resident |
 | Mac CLI + web app | `indite/` (Python, `uv`) | working; local + Sarvam engines |
 | Benchmarks | `bench_synth/` (synthetic Hinglish + automated phone test), `indite bench` | working |
 
@@ -172,6 +173,30 @@ Use push + install always. Three failed installs and ~90 minutes were lost befor
   USAGE_NOTIFICATION), and stop on Stop, Done, Snooze, swipe-away or opening the app.
 - Delete asks what to delete: audio, text, or the whole note.
 - 22 unit tests (was 14), `docs/PRD.md`, and the audit register (37 findings).
+
+### The Mac app (15 Oct)
+
+`mac/indite_mac.py` plus `overlay.py`, `window.py`, `store.py`. Hold a key anywhere, speak, let go, and the text is
+typed into whatever app has focus. Same model, same spelling list and the same window rule as the phone.
+
+| | |
+|---|---|
+| **Speed** | **0.75–0.89 s** per 3–8 s sentence, measured 15 Oct. Was 1.2–1.5 s when every sentence reloaded the model |
+| How | `whisper-server` on 127.0.0.1:8711 keeps the 574 MB model in memory; the per-sentence binary is the fallback |
+| Typing | character by character, so **nothing touches the clipboard** (the phone's bubble has to, and that is its one real privacy cost) |
+| Feedback | a floating pill: voice bars while held, "writing…", a tick when it lands |
+| Window | history grouped by day, searchable, one-click copy, words/minute and a day streak; settings for the hotkey, typed-or-copied, Hinglish spelling, and whether history is kept at all |
+| History | capped at 500 lines in Application Support — an unbounded log of everything said is a liability, not a feature |
+| Build | `./mac/build_app.sh` → `dist/indite.app`, ad-hoc signed so the Accessibility tick survives a rebuild |
+
+**⚠ The permission lesson, three times over.** macOS gives no key events to an untrusted process and pynput fails
+silently, so the first build looked healthy and did nothing. The permission attaches to **the app that launched the
+script** — Terminal, or Claude, or iTerm — which is why granting it to a python binary never stuck, and why the
+bundle exists. The app now checks at startup and names what to add.
+
+**⚠ The project moved on 14 Oct** from `~/Desktop/Personal/Cowork/Voice to Text` to `~/Projects/indite`, because a
+new app cannot read `~/Desktop` (macOS protects it) and the bundle could not reach its own Python. A symlink keeps
+the old Desktop path working. All paths in the repo were relative, so nothing else changed.
 
 ### Waiting on the founder
 
