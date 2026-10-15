@@ -15,6 +15,7 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 - Built: your own word fixes (`my_fixes.txt`, menu item) and Esc-to-cancel. Founder says both work.
 - 60 s hold test: 75% words wrong at 62 s. Fixed by cutting long holds at quiet points: 19.0% at 62 s, 19.7% at 93 s.
 - Log was empty (buffered prints); launcher now `python -u`.
+- Android vs Mac and Wispr Flow research → `docs/MAC_PLAN.md`; critic: "all Android features" is the wrong goal. Built password guard, fix-a-word from history, Transcribe a file (web app), Login Items help. `mac/README.md` rewritten (was stale).
 - Window redesigned (white, design-critic reviewed); Clear history fixed (it never worked); Liquid Glass pill; "nan" no longer typed.
 
 ## 2026-10-13/14 · Claude Code (Opus 5) · builds 16-29

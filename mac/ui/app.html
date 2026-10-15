@@ -138,6 +138,16 @@
   }
   .copy:hover { background: var(--well); color: var(--ink); }
   .copy.done { color: var(--copied); background: var(--accent-soft); }
+  .acts { display: flex; gap: 2px; }
+  .fixer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; padding: 10px;
+           background: var(--well); border-radius: 10px; font-size: 12px; color: var(--ink2); }
+  .fixer input { font: inherit; font-size: 13px; color: var(--ink); width: 150px; padding: 5px 8px; border-radius: 7px;
+                 border: 1px solid var(--line2); background: var(--paper); outline: none;
+                 -webkit-user-select: text; user-select: text; }
+  .fixer input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(226,118,25,.15); }
+  .fixer .why { flex-basis: 100%; }
+  .fixer .why.warn { color: var(--red); }
+  .btn.go { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 
   .empty { text-align: center; padding: 56px 24px; color: var(--ink2); }
   .empty .art { width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 18px; background: var(--accent-soft);
@@ -221,6 +231,7 @@
   <symbol id="i-lock" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
   <symbol id="i-key" viewBox="0 0 16 16"><rect x="1.8" y="4" width="12.4" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 7h1M7.5 7h1M10.5 7h1M5 9.5h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
   <symbol id="i-clip" viewBox="0 0 16 16"><rect x="3.5" y="2.8" width="9" height="11.2" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.8h4v1.6H6z" fill="currentColor"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 16 16"><path d="M10.8 2.7a1.6 1.6 0 0 1 2.3 2.3L5.6 12.5l-3 .8.8-3 7.4-7.6Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
   <symbol id="i-folder" viewBox="0 0 16 16"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5v-7Z" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
 </svg>
 
@@ -251,6 +262,7 @@
       <div class="stats" id="stats"></div>
       <div class="bar">
         <h2>History</h2>
+        <button class="btn" id="files" title="Audio or video files, long recordings, subtitles">Transcribe a file…</button>
         <label class="search"><svg width="13" height="13"><use href="#i-search"/></svg>
           <input id="q" placeholder="Search" spellcheck="false" aria-label="Search history"><span class="k">⌘F</span></label>
       </div>
@@ -315,6 +327,14 @@
           <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-mic"/></svg></div>
             <div class="body"><b>It cannot hear you</b>
               <p>Usually a Bluetooth headset that is off. indite tries every microphone, and says so if none work.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-home"/></svg></div>
+            <div class="body"><b>Start indite when you log in</b>
+              <p>System Settings → General → Login Items → + → choose <span class="path">indite.app</span> in the
+              indite folder’s <span class="path">dist</span>. Start it that way, not with a script, or macOS forgets
+              the key permission.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-lock"/></svg></div>
+            <div class="body"><b>The pill says “password box”</b>
+              <p>indite never types, copies or saves what you say into a password field.</p></div></div>
         </div>
       </div>
       <div class="section"><h2>Privacy</h2>
@@ -359,6 +379,7 @@
     if (e.metaKey && e.key === ",") { e.preventDefault(); go("settings"); }
   });
   $("#edit-fixes").onclick = () => send({ action: "fixes" });
+  $("#files").onclick = () => { send({ action: "files" }); toast("Opening the file transcriber in your browser…"); };
 
   // A web view cannot show confirm() unless the app draws it - the old "Clear history" silently did nothing.
   // The app asks with a real macOS dialog instead (window.py), as the "…" on the button promises.
@@ -488,16 +509,62 @@
         <div><div class="text">${esc(r.text)}</div>
           <div class="meta">${copied ? `<span class="tag copied">Copied</span>` : ""}
             ${r.app ? `<span>${esc(r.app)}</span>·` : ""}<span class="num">${words(r)} words</span></div></div>
-        <button class="copy" data-i="${i}" aria-label="Copy this dictation">
-          <svg width="14" height="14"><use href="#i-copy"/></svg></button></div>`;
+        <div class="acts">
+          <button class="copy fix" data-i="${i}" aria-label="Fix a word in this dictation" title="Fix a word">
+            <svg width="14" height="14"><use href="#i-pen"/></svg></button>
+          <button class="copy cp" data-i="${i}" aria-label="Copy this dictation" title="Copy">
+            <svg width="14" height="14"><use href="#i-copy"/></svg></button></div></div>`;
     });
     $("#list").innerHTML = html;
-    $("#list").querySelectorAll(".copy").forEach(b => b.onclick = () => {
+    $("#list").querySelectorAll(".fix").forEach(b => b.onclick = () => openFixer(b, rows[+b.dataset.i]));
+    $("#list").querySelectorAll(".cp").forEach(b => b.onclick = () => {
       send({ action: "copy", text: rows[+b.dataset.i].text });
       b.innerHTML = `<svg width="14" height="14"><use href="#i-check"/></svg>`; b.classList.add("done");
       toast("Copied");
       setTimeout(() => { b.innerHTML = `<svg width="14" height="14"><use href="#i-copy"/></svg>`; b.classList.remove("done"); }, 1400);
     });
+  }
+
+  // Fix a word, from the dictation where it went wrong. The Mac cannot see edits made in other apps (the phone
+  // learns from those), so this is where a fix is taught. The same whole-word, any-capitals rule as store.py, and
+  // it says how many past dictations hold the word - a fix like "main = mein" would touch half of them.
+  const reEsc = w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const fixRe = h => new RegExp("(?<![\\p{L}\\p{N}_])" + h.trim().split(/\s+/).map(reEsc).join("\\s+")
+                                  + "(?![\\p{L}\\p{N}_])", "iu");
+  function openFixer(btn, r) {
+    const host = btn.closest(".row").querySelector(".text").parentElement;
+    const open = host.querySelector(".fixer");
+    if (open) { open.remove(); return; }
+    const sel = String(window.getSelection()).trim();
+    const f = document.createElement("div");
+    f.className = "fixer";
+    f.innerHTML = `indite wrote <input class="h" placeholder="ptm" spellcheck="false" value="${esc(sel)}">
+      you meant <input class="w" placeholder="Paytm" spellcheck="false">
+      <button class="btn go">Add fix</button><button class="btn">Cancel</button><div class="why"></div>`;
+    host.appendChild(f);
+    const h = f.querySelector(".h"), w = f.querySelector(".w"), why = f.querySelector(".why");
+    const check = () => {
+      const heard = h.value.trim();
+      why.classList.remove("warn");
+      if (!heard) { why.textContent = "Select or type the word indite got wrong."; return false; }
+      if (heard.includes("=")) { why.textContent = "A fix cannot contain “=”."; why.classList.add("warn"); return false; }
+      const n = S.history.filter(x => fixRe(heard).test(x.text)).length;
+      why.textContent = `Changes future dictations only. “${heard}” appears in ${n} of your ${S.history.length} past dictations.`;
+      if (n > Math.max(3, S.history.length / 4)) {
+        why.textContent += " That is a lot — is it also a real word you say?"; why.classList.add("warn");
+      }
+      return !!w.value.trim();
+    };
+    h.oninput = w.oninput = check; check();
+    (sel ? w : h).focus();
+    const [go, cancel] = f.querySelectorAll("button");
+    cancel.onclick = () => f.remove();
+    go.onclick = () => {
+      if (!check()) { (h.value.trim() ? w : h).focus(); return; }
+      send({ action: "add_fix", heard: h.value, want: w.value });
+      f.remove(); toast(`Fix added: ${h.value.trim()} → ${w.value.trim()}`);
+    };
+    f.onkeydown = e => { if (e.key === "Enter") go.onclick(); if (e.key === "Escape") f.remove(); };
   }
 
   header();

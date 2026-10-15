@@ -114,6 +114,17 @@ def apply_my_fixes(text: str, pairs: list[tuple[str, str]]) -> str:
     return text
 
 
+def add_fix(heard: str, want: str) -> bool:
+    """Appends one fix from the window. Refuses anything that would not read back as that same fix."""
+    heard, want = " ".join(heard.split()), " ".join(want.split())
+    if not heard or not want or "=" in heard or heard.startswith("#") or heard.lower() == want.lower():
+        return False
+    path = fixes_file()
+    raw = path.read_text(encoding="utf-8")
+    path.write_text(raw + ("" if raw.endswith("\n") else "\n") + f"{heard} = {want}\n", encoding="utf-8")
+    return True
+
+
 def my_fixes() -> list[tuple[str, str]]:
     try:
         return parse_fixes(MY_FIXES.read_text(encoding="utf-8"))
@@ -128,4 +139,5 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert apply_my_fixes("aptm wala", pairs) == "aptm wala"          # inside a word: left alone
     assert apply_my_fixes("c++ seekho", pairs) == "C++ seekho"
     assert apply_my_fixes("addr1", [("addr1", r"12 \1 Road")]) == r"12 \1 Road"   # replacement taken literally
+    assert parse_fixes("a = b\n" + "pay tm = Paytm\n")[0] == ("pay tm", "Paytm")
     print("ok")

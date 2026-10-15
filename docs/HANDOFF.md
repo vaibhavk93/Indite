@@ -233,6 +233,9 @@ the old Desktop path working. All paths in the repo were relative, so nothing el
   anything; it is now a native NSAlert. The window opens on launch.
 - **Pill:** 116 x 30 and on macOS 26 real Liquid Glass (`NSGlassEffectView`), falling back to the blur before 26.
 - **"nan" was typed into apps:** the model writes "nan" for silence; a piece that says only that is now silence.
+- **Android + Wispr comparison and plan: `docs/MAC_PLAN.md`** (critic-reviewed). Built from it: password-box guard
+  (subrole `AXSecureTextField`, every mode), fix a word from a history row, "Transcribe a file…" opening the web app,
+  a Help line for Login Items. Waiting on the founder: hands-free, AI actions (see the PATH catch in the plan).
 - The app log was empty because Python buffered its prints; the launcher now runs `python -u`.
 - **Next Mac features (critic-reviewed, all unproven):** later snippets and hands-free (long holds now work); drop undo-by-backspace, voice "press enter",
   command mode (no AI route). Waiting on the founder to say what they actually miss from Wispr.

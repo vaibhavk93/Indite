@@ -102,6 +102,7 @@ class PillView(NSView):
                 "nothing": "nothing heard",
                 "failed": "didn't work",
                 "cancelled": "cancelled",
+                "secret": "password box",
             }.get(self.state, "✓ copied"))
 
     def _draw_bars(self) -> None:

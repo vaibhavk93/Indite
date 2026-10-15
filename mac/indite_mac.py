@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
 SERVER = ROOT / ".tools/whisper.cpp/build/bin/whisper-server"
 PORT = 8711                   # localhost only; nothing listens outside this Mac
+WEB_PORT = 8000               # the web app (files, long recordings, editor), also localhost only
 MODEL = ROOT / "mac/models/ggml-apex-q5_k.bin"   # the Mac's own copy: a phone model change cannot reach it
 RATE = 16_000
 
@@ -345,6 +346,31 @@ def focused_is_text() -> bool:
         return True
 
 
+def focused_is_secret() -> bool:
+    """
+    Is the cursor in a password box? The phone refuses to type into one (Secret.kt), and so does this.
+
+    A password box reports role AXTextField with subrole AXSecureTextField, so the role check above would happily
+    type into it. Only the subrole is checked: macOS "secure input" is not used as a signal, because other apps leave
+    it on (Terminal's Secure Keyboard Entry, password managers) and it would block every dictation.
+    """
+    try:
+        from ApplicationServices import (
+            AXUIElementCopyAttributeValue,
+            AXUIElementCreateSystemWide,
+            kAXFocusedUIElementAttribute,
+            kAXSubroleAttribute,
+        )
+        err, element = AXUIElementCopyAttributeValue(
+            AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute, None)
+        if err != 0 or element is None:
+            return False
+        err, sub = AXUIElementCopyAttributeValue(element, kAXSubroleAttribute, None)
+        return err == 0 and str(sub) == "AXSecureTextField"
+    except Exception:                         # noqa: BLE001
+        return False
+
+
 class Typer:
     """
     Puts the text where the cursor is. Typed character by character, so nothing touches the clipboard - the phone's
@@ -376,6 +402,7 @@ class InditeApp(rumps.App):
         self.busy = False
         self.started_at = 0.0
         self.last = ""
+        self.web_proc: subprocess.Popen | None = None
         self.pill = Pill()
         self.done_until = 0.0
         self.done_state = "done"
@@ -388,6 +415,7 @@ class InditeApp(rumps.App):
             rumps.MenuItem("Open indite", callback=self.open_window, key="o"),
             rumps.MenuItem("Copy last text", callback=self.copy_last),
             rumps.MenuItem("Edit my word fixes\u2026", callback=self.edit_fixes),
+            rumps.MenuItem("Transcribe a file\u2026", callback=self.open_files),
             None,
             rumps.MenuItem("Quit", callback=self.quit_all),
         ]
@@ -524,6 +552,11 @@ class InditeApp(rumps.App):
             self.done_state = "nothing"
             self.done_until = time.time() + 1.2
             return
+        if focused_is_secret():          # every mode, "always type" included: never typed, copied or saved
+            self.done_state = "secret"
+            self.done_until = time.time() + 2.0
+            print("password box focused - dictation dropped")
+            return
         self.last = text
         # The pill says what happened. A notification was tried here and crashed the thread that had just produced
         # the text (rumps needs a bundle identifier it could not find), so the words landed with nothing said.
@@ -554,12 +587,45 @@ class InditeApp(rumps.App):
     def edit_fixes(self, _) -> None:                     # noqa: ANN001
         subprocess.run(["open", "-e", str(store.fixes_file())], check=False)
 
+    def open_files(self, _) -> None:                     # noqa: ANN001
+        threading.Thread(target=self._files, daemon=True).start()
+
+    def _files(self) -> None:
+        """
+        Files, long recordings, the editor and SRT export already exist in the web app (indite/web.py), so this opens
+        it instead of building them twice. Started on first use, as its own process: it loads torch for its speech
+        detector (about 19 s) and a second model, which the always-on dictation app should never carry.
+        """
+        import urllib.request
+        url = f"http://127.0.0.1:{WEB_PORT}/"
+        def up() -> bool:
+            try:
+                urllib.request.urlopen(url, timeout=1)
+                return True
+            except Exception:                            # noqa: BLE001
+                return False
+        if not up():
+            self.web_proc = subprocess.Popen(
+                [str(ROOT / ".venv/bin/indite"), "serve", "--port", str(WEB_PORT)], cwd=str(ROOT),
+                stdout=open(Path.home() / "Library/Logs/indite-web.log", "a"), stderr=subprocess.STDOUT)
+            for _ in range(60):
+                time.sleep(0.5)
+                if up() or self.web_proc.poll() is not None:
+                    break
+        if up():
+            subprocess.run(["open", url], check=False)
+        else:
+            print("web app did not start - see ~/Library/Logs/indite-web.log")
+            self.done_state, self.done_until = "failed", time.time() + 2.0
+
     def copy_last(self, _) -> None:                      # noqa: ANN001
         if self.last:
             subprocess.run("pbcopy", input=self.last, text=True, check=False)
 
     def quit_all(self, _) -> None:                       # noqa: ANN001
         self.engine.stop_server()
+        if self.web_proc and self.web_proc.poll() is None:   # only the web app this app started
+            self.web_proc.terminate()
         rumps.quit_application()
 
 

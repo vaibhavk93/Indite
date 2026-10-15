@@ -1,71 +1,85 @@
 # indite for Mac
 
-Hold the right-hand **Option** key, speak, let go. The text is typed where your cursor is — in any app.
+Hold a key, speak, let go. The words are typed where your cursor is, in any app, in about a second.
+Everything happens on this Mac: no account, no server, no internet needed.
 
-Everything happens on this Mac. The recording goes to a temporary file, is transcribed by whisper.cpp with the same
-Hinglish model the phone uses, and is deleted. Nothing is sent anywhere.
+This file is the one place that says what the Mac app does today. Keep it true: update it in the same commit as
+any change to `mac/`. Plans and comparisons live in `docs/MAC_PLAN.md`.
+
+---
 
 ## Run it
 
 ```sh
-.venv/bin/python mac/indite_mac.py
+./mac/build_app.sh      # builds dist/indite.app (a small launcher that runs mac/indite_mac.py from this folder)
+open dist/indite.app    # opens the window; a 🎙 sits in the menu bar
 ```
 
-A 🎙 appears in the menu bar. Red while you hold the key, hourglass while it writes.
+Logs: `~/Library/Logs/indite-mac.log` (one line per dictation, with how long it took).
 
-## The two permissions macOS will ask for
+**⚠ The Mac app and the Android app are kept separate.** The Mac never reads `android/`. It has its own model
+(`mac/models/`, a hard link to the phone's file, so no extra disk, never in git) and its own `mac/spelling.tsv`.
+
+## The two permissions
 
 | Permission | Why | Where |
 |---|---|---|
-| **Microphone** | to hear you | asked on first use |
-| **Accessibility** | to type into the app you are in, and to notice the hotkey | System Settings → Privacy & Security → Accessibility |
+| **Accessibility** | to notice the hotkey and type into the app you are in | System Settings → Privacy & Security → Accessibility → indite |
+| **Microphone** | to hear you | asked the first time you hold the key |
 
-For the Accessibility one, add the **Terminal** (or whichever app runs the command) — macOS grants it to the running
-program, not to the script. Nothing is granted silently: you tick it yourself, once.
+macOS sends no key events to an app without Accessibility, and nothing complains: holding the key just does nothing.
+The window shows a banner when the permission is missing.
 
-## Speed, measured
+---
 
-On an M1, 15 Oct, with the model kept loaded:
+## What it does
 
-| Utterance | Time to text |
+| Feature | How |
 |---|---|
-| 3 s | 0.67–0.71 s |
-| 5 s | 0.70–0.71 s |
-| 8 s | 0.77–0.81 s |
+| **Dictate anywhere** | Hold Right ⌥ (or Left ⌥ / Right ⌘ / Right ⌃), speak, let go |
+| **Where the words go** | *Smart*: typed into the text box; copied to the clipboard when there is none. Or always type / always copy |
+| **Cancel** | Esc while holding. Nothing is typed. (Esc also reaches the app underneath; macOS will not let indite block it) |
+| **Long dictation** | Holds over 20 s are cut at the quietest moments into pieces; no sound is dropped |
+| **Hinglish spelling** | Everyday words written one way (achha, kyunki, maine) from `mac/spelling.tsv` |
+| **Word fixes** | Pencil on any history row: "indite wrote / you meant" (shows how many past dictations hold the word). Or Settings → Word fixes → Edit… for the file: `ptm = Paytm`. Whole words, any capitals |
+| **Password boxes** | Never typed, copied or saved. The pill says "password box" |
+| **Files** | Home → Transcribe a file… (or the menu bar) opens the web app on 127.0.0.1:8000 for audio/video files, long recordings, editing and subtitles |
+| **The pill** | Small Liquid Glass pill above the Dock: voice bars while you hold, "writing…", then "✓ typed in", "✓ copied", "nothing heard", "cancelled" or "didn't work". Never takes focus, never blocks a click |
+| **Microphone fallback** | If the default mic will not open (a Bluetooth headset that is off), tries the last one that worked, the built-in one, then any other |
+| **History** | Home: last 500 dictations by day, search (⌘F), one-click copy. Stats: words, words a minute, average wait |
+| **Privacy** | Keep a history on/off; Clear history (asks first). Recordings are deleted as soon as they are transcribed |
 
-**Median 0.71 s.** For comparison: the phone takes 9.6 s for the same work, and Wispr Flow's cloud takes 1–2 s.
+## Speed and accuracy, measured (M1, 15 Oct)
 
-Two things make that number, and both are easy to lose:
+| | |
+|---|---|
+| Time to text, 3–8 s sentence | **0.7–0.9 s** (model kept loaded in `whisper-server` on 127.0.0.1:8711) |
+| Words wrong, clean Hinglish sentences | **19%** one by one |
+| Long holds, cut into pieces | 62 s → 19.0% wrong in 7.3 s · 93 s → 19.7% in 10.7 s (was 75% and 54% before cutting) |
 
-- **The model stays loaded.** Reloading it per sentence cost 0.9 s (1.35 s per sentence instead of 0.71).
-- **The window is sent with every request.** Without it the engine pads every sentence to 30 seconds and takes
-  **2.19 s** - slower than not keeping the model loaded at all.
+Two things make the speed, and both are easy to lose: the model stays loaded, and every request sends a window
+sized to the audio (without it the engine pads to 30 s and takes 2.2 s).
 
-## What it does not do yet
+## Files
 
-- No installer beyond `indite.app` in `dist/`: it still borrows Python and the model from this folder, so it cannot
-  be handed to anyone else yet.
-- The engine takes ~17 s to load at startup. The menu bar shows 🎙… until it is ready.
-- No settings window — the hotkey is fixed to right-Option in the code.
-- No notes, no history: it types the text and forgets it. Use the phone app for anything you want to keep.
+| What | Where |
+|---|---|
+| History | `~/Library/Application Support/indite/history.jsonl` (plain text, capped at 500) |
+| Web app log | `~/Library/Logs/indite-web.log` |
+| Settings | `~/Library/Application Support/indite/prefs.json` |
+| Word fixes | `~/Library/Application Support/indite/my_fixes.txt` |
+| Code | `indite_mac.py` (hotkey, mic, engine, typing) · `overlay.py` (pill) · `window.py` + `ui/app.html` (window) · `store.py` (files) |
 
-## The window
+## Checks
 
-`indite` in the menu bar → **Open indite** (⌘O) opens the app window.
-
-- **Home** — everything you have dictated, newest first, grouped by day. Search it, hover a line to copy it.
-  Beside it: total words, how fast you speak, and how many days in a row you have used it.
-- **Word fixes** — menu bar → Edit my word fixes…: one per line, `ptm = Paytm`. Saved edits work on the next dictation.
-- **Cancel** — press Esc while holding the key; nothing is typed.
-- **Settings** — which key to hold, whether the text is typed or copied, Hinglish spelling, and whether a history
-  is kept at all. Every switch does something; none of them are decoration.
-- **Help** — what to do when the hotkey does nothing, and where the history file lives.
-
-The history is `~/Library/Application Support/indite/history.jsonl` — the last 500 dictations, in plain text you can
-read or delete yourself. Turning *Keep a history* off stops anything being written.
-
-The window is a WKWebView (`mac/ui/app.html`) inside a glass NSWindow, so it needs `pyobjc-framework-WebKit`:
-
+```sh
+.venv/bin/python mac/store.py                                   # word fixes
+.venv/bin/python -c "import sys; sys.path.insert(0,'tests'); import test_mac_pieces as t; \
+  t.test_long_hold_is_cut_in_the_quiet_and_loses_nothing(); t.test_short_hold_is_untouched()"
 ```
-uv pip install pyobjc-framework-WebKit --python .venv/bin/python
-```
+
+## Not yet
+
+- Not shareable: `indite.app` runs Python and the model from this folder, so it works only on this Mac.
+- The engine takes a few seconds to load at startup; the menu bar shows 🎙… until it is ready.
+- Untested on real non-stop speech over 60 s and on a quiet speaker.

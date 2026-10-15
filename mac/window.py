@@ -92,6 +92,10 @@ class Bridge(NSObject):
             self.app.reload_prefs()
         elif act == "copy":
             self.app.typer.copy(msg.get("text", ""))
+        elif act == "add_fix":
+            store.add_fix(msg.get("heard", ""), msg.get("want", ""))
+        elif act == "files":
+            self.app.open_files(None)
         elif act == "fixes":
             self.app.edit_fixes(None)
         elif act == "clear":
