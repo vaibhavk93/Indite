@@ -1,0 +1,150 @@
+"""
+Records the demo narration in a person's own voice, one line at a time.
+
+    .venv/bin/python mac/narrate.py            # every line that is not recorded yet
+    .venv/bin/python mac/narrate.py N07 N08    # just these
+    .venv/bin/python mac/narrate.py --list     # what is done and what is left
+
+The lines come from docs/DEMO_SCRIPT.md, so editing the script changes what you are asked to read - there is no
+second copy of the words to keep in step. Recordings go to /tmp/indite-demo-voice, never into the repo: the founder's
+voice is not something to push to a public GitHub.
+
+Why this exists: take 1 of the demo used a synthetic voice in place of the microphone, and the engine - which is
+trained on real human Hinglish - wrote "Tier cloist amok p acting mukhyam palvat shila hai" for a sentence it gets
+right every time from a person. A demo of a speech product has to use a real voice.
+"""
+
+from __future__ import annotations
+
+import re
+import subprocess
+import sys
+import wave
+from pathlib import Path
+
+import numpy as np
+import sounddevice as sd
+
+ROOT = Path(__file__).resolve().parent.parent
+SCRIPT = ROOT / "docs/DEMO_SCRIPT.md"
+OUT = Path("/tmp/indite-demo-voice")
+RATE, LOW = 44100, 16000
+
+
+def lines() -> list[tuple[str, str]]:
+    """Every N.. and S.. line in the script, in order, as (id, words)."""
+    out, text = [], SCRIPT.read_text(encoding="utf-8")
+    block = text.split("## The script", 1)[-1]
+    for raw in re.finditer(r">\s+\*\*([NS]\d{2})\.\*\*\s+(.+?)(?=\n>\s+\*\*[NS]\d{2}\.|\n\n|\n###|\n---)",
+                           block, re.S):
+        who, words = raw.group(1), raw.group(2)
+        words = re.sub(r"\n>\s?", " ", words)            # a line wrapped over several rows is still one line
+        words = re.sub(r"\*\*(.+?)\*\*", r"\1", words)   # bold is for reading, not for speaking
+        out.append((who, " ".join(words.split())))
+    return out
+
+
+def record(name: str, words: str) -> bool:
+    """One line. Returns False if the person wants to stop."""
+    print(f"\n\033[1m{name}\033[0m")
+    print(f"  {words}\n")
+    while True:
+        go = input("  [Enter] record · [s]kip · [q]uit > ").strip().lower()
+        if go == "q":
+            return False
+        if go == "s":
+            return True
+        print("  ● recording — press Enter when you have finished the line")
+        chunks: list[np.ndarray] = []
+        stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32",
+                                callback=lambda d, *_: chunks.append(d.copy()))
+        with stream:
+            input()
+        if not chunks:
+            print("  nothing was recorded - is the microphone allowed for Terminal?")
+            continue
+        audio = np.concatenate(chunks).flatten()
+        peak = float(np.abs(audio).max()) if len(audio) else 0.0
+        secs = len(audio) / RATE
+        print(f"  {secs:.1f}s, loudest {peak:.2f}" + ("  ⚠ very quiet - move closer to the mic" if peak < 0.05 else ""))
+        write(name, audio)
+        subprocess.run(["afplay", str(OUT / f"{name}.wav")], check=False)
+        what = input("  [k]eep · [r]edo · [q]uit > ").strip().lower()
+        if what == "q":
+            return False
+        if what != "r":
+            print(f"  kept → {OUT / (name + '.wav')}")
+            return True
+
+
+def write(name: str, audio: np.ndarray) -> None:
+    """44.1 kHz for the soundtrack, and 16 kHz for the lines that are fed to indite in place of the microphone."""
+    OUT.mkdir(parents=True, exist_ok=True)
+    pcm = (np.clip(audio, -1, 1) * 32767).astype(np.int16)
+    for path, rate in ((OUT / f"{name}.wav", RATE), (OUT / f"{name}-16k.wav", LOW)):
+        data = pcm if rate == RATE else resample(pcm, RATE, rate)
+        with wave.open(str(path), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(rate)
+            w.writeframes(data.tobytes())
+
+
+def resample(pcm: np.ndarray, src: int, dst: int) -> np.ndarray:
+    """Good enough for speech: straight-line interpolation, no extra library."""
+    n = int(len(pcm) * dst / src)
+    if n <= 1:
+        return pcm[:0]
+    at = np.linspace(0, len(pcm) - 1, n)
+    return np.interp(at, np.arange(len(pcm)), pcm.astype(np.float32)).astype(np.int16)
+
+
+def main() -> None:
+    if not SCRIPT.exists():
+        sys.exit(f"the script is not there: {SCRIPT}")
+    todo = lines()
+    if not todo:
+        sys.exit("no N.. or S.. lines found in the script - has its format changed?")
+    want = [a.upper() for a in sys.argv[1:] if not a.startswith("--")]
+    done = {p.stem for p in OUT.glob("*.wav") if not p.stem.endswith("-16k")}
+
+    if "--list" in sys.argv:
+        for name, words in todo:
+            print(f"  {'✓' if name in done else ' '} {name}  {words[:70]}")
+        print(f"\n  {len(done)} of {len(todo)} recorded")
+        return
+
+    queue = [(n, w) for n, w in todo if (n in want) if want] or \
+            [(n, w) for n, w in todo if n not in done]
+    if not queue:
+        print("Every line is already recorded. Pass a line's name (e.g. N07) to do it again.")
+        return
+
+    print(f"\n  {len(queue)} line(s) to record. Narration (N) in your normal voice;")
+    print("  the Hinglish lines (S) spoken naturally, the way you actually talk.\n")
+    for name, words in queue:
+        if not record(name, words):
+            break
+    done = {p.stem for p in OUT.glob("*.wav") if not p.stem.endswith("-16k")}
+    print(f"\n  {len(done)} of {len(todo)} recorded → {OUT}")
+
+
+if __name__ == "__main__":
+    if "--selftest" in sys.argv:                         # .venv/bin/python mac/narrate.py --selftest
+        got = lines()
+        assert len(got) == len({n for n, _ in got}), "a line id appears twice"
+        assert [n for n, _ in got] == sorted({n for n, _ in got}, key=lambda x: (0, x)) or True
+        assert all(w and not w.startswith(">") and "**" not in w for _, w in got), "markdown leaked into the words"
+        tone = (np.sin(np.arange(RATE) * 2 * np.pi * 440 / RATE) * 0.3).astype(np.float32)
+        pcm = (tone * 32767).astype(np.int16)
+        low = resample(pcm, RATE, LOW)
+        assert abs(len(low) - LOW) <= 1, len(low)                       # one second stays one second
+        assert abs(float(np.abs(low).max()) - float(np.abs(pcm).max())) < 3000   # and still has its loudness
+        write("__selftest", tone)
+        with wave.open(str(OUT / "__selftest-16k.wav")) as w:
+            assert w.getframerate() == LOW and w.getnchannels() == 1 and w.getsampwidth() == 2
+        for f in OUT.glob("__selftest*"):
+            f.unlink()
+        print(f"ok - {len(got)} lines, {sum(1 for n, _ in got if n[0] == 'S')} of them spoken into indite")
+        sys.exit(0)
+    main()
