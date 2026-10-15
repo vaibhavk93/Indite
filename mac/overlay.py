@@ -25,6 +25,9 @@ from AppKit import (
     NSColor,
     NSFont,
     NSFontAttributeName,
+    NSFontWeightMedium,
+    NSGradient,
+    NSGraphicsContext,
     NSForegroundColorAttributeName,
     NSMakeRect,
     NSPanel,
@@ -38,7 +41,7 @@ from AppKit import (
     NSWindowStyleMaskNonactivatingPanel,
 )
 
-W, H = 168.0, 44.0
+W, H = 116.0, 30.0              # small on purpose: it sits over whatever you are reading (was 168 x 44)
 ACCENT = (0.886, 0.463, 0.106)      # the indite orange, the same one the phone uses
 
 
@@ -61,11 +64,26 @@ class PillView(NSView):
         # a hairline edge - without it the blur floats with no boundary and reads as a smudge.
         NSColor.clearColor().set()
         NSBezierPath.fillRect_(rect)
+        # The glass sheen: light falling on the top half, fading out by the middle, the way a curved glass bead
+        # catches a window. Then a rim that is brighter on top than below, so the edge reads as glass, not a line.
+        shine = NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
+            NSMakeRect(1.5, H / 2, W - 3, H / 2 - 1.5), (H - 3) / 2, (H - 3) / 2)
+        NSGradient.alloc().initWithStartingColor_endingColor_(
+            NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.0),
+            NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.22)).drawInBezierPath_angle_(shine, 90)
         edge = NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
             NSMakeRect(0.5, 0.5, W - 1, H - 1), (H - 1) / 2, (H - 1) / 2)
-        NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.16).set()
         edge.setLineWidth_(1.0)
+        NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.35).set()
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath.clipRect_(NSMakeRect(0, H / 2, W, H / 2))     # bright rim on top
         edge.stroke()
+        NSGraphicsContext.restoreGraphicsState()
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath.clipRect_(NSMakeRect(0, 0, W, H / 2))         # faint rim below
+        NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.12).set()
+        edge.stroke()
+        NSGraphicsContext.restoreGraphicsState()
 
         if self.state == "listening":
             self._draw_bars()
@@ -84,13 +102,13 @@ class PillView(NSView):
         self.shown = [a + (b - a) * 0.35 for a, b in zip(self.shown, self.bars)]
         r, g, b = ACCENT
         n = len(self.shown)
-        bw, gap = 5.0, 7.0
+        bw, gap = 3.0, 4.0
         total = n * bw + (n - 1) * gap
         x = (W - total) / 2
         for i, v in enumerate(self.shown):
             # the newest bar is the brightest, so the eye reads left-to-right as "then … now"
             NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.55 + 0.45 * (i / (n - 1))).set()
-            h = max(5.0, min(H - 14, 5 + v * (H - 20)))
+            h = max(3.0, min(H - 10, 3 + v * (H - 12)))
             NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
                 NSMakeRect(x, (H - h) / 2, bw, h), bw / 2, bw / 2).fill()
             x += bw + gap
@@ -98,9 +116,9 @@ class PillView(NSView):
     def _draw_word(self, word: str) -> None:
         r, g, b = ACCENT
         colour = (NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0) if self.state != "writing"
-                  else NSColor.colorWithCalibratedWhite_alpha_(0.85, 1.0))
+                  else NSColor.colorWithCalibratedWhite_alpha_(0.92, 1.0))
         attrs = {
-            NSFontAttributeName: NSFont.systemFontOfSize_(14.0),
+            NSFontAttributeName: NSFont.systemFontOfSize_weight_(11.5, NSFontWeightMedium),
             NSForegroundColorAttributeName: colour,
         }
         s = NSString.stringWithString_(word)
