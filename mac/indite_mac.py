@@ -1008,7 +1008,7 @@ class InditeApp(rumps.App):
             if action == "improve":
                 store.update(row["id"], improved=answer)          # beside the original, never instead of it
             else:
-                label = (f"Asked: {extra[:48]}" if action == "custom" else
+                label = (f"Asked: {extra}" if action == "custom" else
                          ai.ACTIONS[action][0] + (f" · {extra}" if extra else ""))
                 answers = [a for a in row.get("ai", []) if a["label"] != label]
                 store.update(row["id"], ai=answers + [{"action": action, "label": label, "text": answer,

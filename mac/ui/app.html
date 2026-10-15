@@ -135,6 +135,10 @@
     padding: 12px 10px; margin: 0 -10px; border-radius: 10px;
   }
   .row { position: relative; }
+  .row.sel { background: var(--accent-soft); border-radius: 10px; box-shadow: inset 3px 0 0 var(--brand); }
+  /* Ask AI sits beside the list when there's room (critic: at the default 920px window that leaves a 240px list,
+     so smaller windows keep it on top, but without dimming the list, which stays clickable) */
+  @media (min-width: 1180px) { body.ai-open main { margin-right: min(460px, 92vw); } }
   .row + .row::before { content: ""; position: absolute; top: 0; left: 88px; right: 10px; height: 1px; background: var(--line); }
   .row:hover { background: var(--hover); }
   .row:hover::before, .row:hover + .row::before { opacity: 0; }
@@ -172,8 +176,7 @@
   .aichip { appearance: none; border: 1px solid var(--line2); background: var(--paper); color: var(--accent); border-radius: 20px;
             font-size: 12px; font-weight: 600; padding: 3px 10px; margin-top: 8px; display: inline-flex; gap: 5px; align-items: center; cursor: default; }
   .aichip:hover { background: var(--accent-soft); border-color: transparent; }
-  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.18); z-index: 6; }
-  .scrim[hidden], .drawer[hidden] { display: none; }
+  .drawer[hidden] { display: none; }
   .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 92vw); z-index: 7; background: var(--paper);
             border-left: 1px solid var(--line2); box-shadow: -18px 0 40px rgba(0,0,0,.14); display: flex; flex-direction: column;
             outline: none; animation: slidein .18s ease-out; }
@@ -209,6 +212,13 @@
   .dans .body.md { white-space: normal; }
   .dans .body.clamp { max-height: 12.8em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); }
   .dmore { appearance: none; border: 0; background: none; color: var(--accent); font-size: 12px; font-weight: 600; padding: 4px 0 0; cursor: default; }
+  .dx { appearance: none; flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line2); background: var(--well);
+        color: var(--ink); display: grid; place-items: center; cursor: default; margin-top: -4px; }
+  .dx:hover { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .dans .h b { flex: 1; min-width: 0; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .dans .h { align-items: flex-start; } .dans .h .when2 { flex: none; padding-top: 1px; } .dans .h .sp { display: none; }
+  .dask textarea { resize: none; line-height: 1.45; min-height: 30px; max-height: 9.5em; overflow-y: auto; padding: 6px 9px; }
+  .dask .drow { align-items: flex-end; }
   .dask { padding: 12px 22px 0; border-top: 1px solid var(--line); } .dask .drow { margin-bottom: 0; } .dask + .dfoot { border-top: 0; padding-top: 8px; } .md .mh { font-weight: 650; margin: 10px 0 2px; } .md .mh:first-child { margin-top: 0; }
   .md .mli { padding-left: 14px; position: relative; } .md .mli::before { content: "•"; position: absolute; left: 2px; color: var(--ink3); }
   .md .mgap { height: 6px; }
@@ -294,7 +304,7 @@
          -webkit-user-select: text; user-select: text; outline: none; }
   #try:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(226,118,25,.15); }
   .sfoot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-  .menu { position: fixed; z-index: 5; width: 290px; max-height: 70vh; overflow: auto; background: var(--paper);
+  .menu { position: fixed; z-index: 8; width: 290px; max-height: 70vh; overflow: auto; background: var(--paper);
           border: 1px solid var(--line2); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.16); padding: 6px; }
   .menu h4 { font-size: 11px; font-weight: 600; color: var(--ink2); margin: 8px 8px 4px; }
   .menu button { display: block; width: 100%; text-align: left; appearance: none; border: 0; background: none;
@@ -778,8 +788,7 @@
   </div>
 </div>
 
-<div class="scrim" id="scrim" hidden></div>
-<aside class="drawer" id="drawer" hidden tabindex="-1" role="dialog" aria-label="Ask AI"></aside>
+<aside class="drawer" id="drawer" hidden tabindex="-1" role="complementary" aria-label="Ask AI"></aside>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -1064,7 +1073,7 @@
     const done = r.todo === "done";
     const ic = (cls, icon, label, on) => `<button class="copy ${cls}${on ? " on" : ""}" data-id="${id}" aria-label="${label}" title="${label}">
         <svg width="14" height="14"><use href="#${icon}"/></svg></button>`;
-    return `<div class="row${done && todoView ? " done-row" : ""}">
+    return `<div class="row${done && todoView ? " done-row" : ""}${r.id === drawerId ? " sel" : ""}" data-row="${id}">
       <div class="when num">${todoView ? `<button class="copy tick" data-id="${id}" aria-label="${done ? "Mark not done" : "Mark done"}" title="${done ? "Not done" : "Done"}" style="${done ? "color:var(--accent)" : ""}">
         <svg width="16" height="16"><use href="#${done ? "i-done" : "i-todo"}"/></svg></button>` : clock(r.at)}</div>
       <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${esc(r.title || "File")}
@@ -1114,7 +1123,7 @@
     m.style.left = Math.max(8, Math.min(x, innerWidth - m.offsetWidth - 8)) + "px";
     setTimeout(() => document.addEventListener("mousedown", function off(e) {
       if (!m.contains(e.target)) { m.remove(); document.removeEventListener("mousedown", off); } }), 0);
-    m.onkeydown = e => { if (e.key === "Escape") m.remove(); };
+    m.onkeydown = e => { if (e.key === "Escape") { e.stopPropagation(); m.remove(); } };   // Esc shuts the menu only, not the panel
     return m;
   }
 
@@ -1148,15 +1157,24 @@
   }
 
   // ---- Ask AI: a focused panel for one note -----------------------------------------------------------------
-  let drawerId = null, drawerView = {}, drawerHtml = "";
+  var drawerId = null, drawerView = {}, drawerHtml = "", drawerFrom = null;   // var: the list (rowHtml) reads drawerId before this line runs
   function aiMenu(_btn, r) { openDrawer(r.id); }
   function openDrawer(id) {
-    drawerId = id; drawerHtml = ""; $("#drawer").hidden = false; $("#scrim").hidden = false; drawDrawer();
+    drawerFrom = document.activeElement;
+    drawerId = id; drawerHtml = ""; $("#drawer").hidden = false; document.body.classList.add("ai-open"); drawDrawer(); drawList();
+    const row = document.querySelector(`.row[data-row="${CSS.escape(id)}"]`);
+    if (row) row.scrollIntoView({ block: "nearest" });
     setTimeout(() => $("#drawer").focus(), 0);
   }
-  function closeDrawer() { drawerId = null; $("#drawer").hidden = true; $("#scrim").hidden = true; }
-  $("#scrim").onclick = closeDrawer;
-  $("#drawer").onkeydown = e => { if (e.key === "Escape") closeDrawer(); };
+  function closeDrawer() {
+    drawerId = null; $("#drawer").hidden = true; document.body.classList.remove("ai-open"); drawList();
+    if (drawerFrom && document.contains(drawerFrom)) drawerFrom.focus();
+  }
+  // no dim layer any more, so focus is often in the list: Esc closes the panel from anywhere, unless a menu or the
+  // search box took that Esc first
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && drawerId && !document.querySelector(".menu") && document.activeElement !== $("#q")) closeDrawer();
+  });
 
   const QUICK = [["Make it better", ["improve", "cleanup"]], ["Turn it into", ["summary", "actions", "notes", "lecture", "braindump"]]];
   // The app pushes its state every few seconds and draw() runs on each push. Rebuilding the panel every time threw the
@@ -1168,7 +1186,7 @@
     const d = $("#drawer"), body = d.querySelector(".dbody"), f = document.activeElement;
     const keep = { top: body ? body.scrollTop : 0, focus: f && d.contains(f) ? f.id : "",
                    caret: f && f.selectionStart != null ? [f.selectionStart, f.selectionEnd] : null,
-                   vals: [...d.querySelectorAll("input[id], select[id]")].map(x => [x.id, x.value]) };
+                   vals: [...d.querySelectorAll("input[id], select[id], textarea[id]")].map(x => [x.id, x.value]) };
     drawerHtml = h; d.innerHTML = h;
     keep.vals.forEach(([id, v]) => { const x = document.getElementById(id); if (x) x.value = v; });
     const b2 = d.querySelector(".dbody"); if (b2) b2.scrollTop = keep.top;
@@ -1183,11 +1201,10 @@
     const A = S.ai_actions || {}, busy = S.ai_busy && S.ai_busy[r.id];
     const who = S.prefs.ai_provider === "claude" ? `Claude${S.ai_status && S.ai_status.email ? " (" + esc(S.ai_status.email) + ")" : ""}`
       : esc((S.ai_providers || {})[S.prefs.ai_provider] || "your API key");
-    const opt = list => list.map(x => `<option>${esc(x)}</option>`).join("");
     const answers = [...(r.ai || [])].sort((a, b) => (b.at || 0) - (a.at || 0));
     let h = `<div class="dhead"><div><h2><svg width="16" height="16"><use href="#i-spark"/></svg>Ask AI</h2>
         <p class="dnote">${esc(r.title ? r.title + " — " : "")}${esc(r.text.slice(0, 160))}${r.text.length > 160 ? "…" : ""}</p></div>
-        <button class="copy" id="dclose" aria-label="Close">✕</button></div><div class="dbody">`;
+        <button class="dx" id="dclose" aria-label="Close" title="Close (Esc)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div><div class="dbody">`;
     if (!S.prefs.ai) {
       h += `<div class="dempty"><b>AI is off</b><p>Turn it on in Settings → AI. Until then nothing ever leaves this Mac.</p>
         <button class="btn go" id="dgo-set">Open Settings → AI</button></div></div>`;
@@ -1218,14 +1235,12 @@
           <button class="btn" data-copy="${esc(a.label)}">Copy</button><button class="btn danger" data-del="${esc(a.label)}">Remove</button></div></div>`;
     }
     if (busy || nAns) h += `</div>`;
-    h += `<div class="dsec dnew"><h3>${busy || answers.length || r.improved ? "Ask for something else" : "What should AI do with this note?"}</h3></div>`;
     for (const [title, keys] of QUICK) h += `<div class="dsec"><h3>${title}</h3><div class="dchips">` + keys.filter(k => A[k]).map(k =>
       `<button class="dchip${k === "improve" ? " primary" : ""}" data-k="${k}" ${busy ? "disabled" : ""}><b>${esc(A[k][0])}</b><span>${esc(A[k][1])}</span></button>`).join("") + `</div></div>`;
-    h += `<div class="dsec"><h3>Send it</h3>
-        <div class="drow"><span>Rewrite as</span><select class="pick" id="d-style">${opt(S.ai_styles || [])}</select><button class="btn" data-k="rewrite" ${busy ? "disabled" : ""}>Rewrite</button></div>
-        <div class="drow"><span>Translate to</span><select class="pick" id="d-lang">${opt(S.ai_langs || [])}</select><button class="btn" data-k="translate" ${busy ? "disabled" : ""}>Translate</button></div></div>
-`;
-    h += `</div><div class="dask"><div class="drow ask"><input class="pick wide" id="d-ask" placeholder="Ask anything about this note…" spellcheck="false">
+    h += `<div class="dsec"><h3>Rewrite or translate</h3><div class="dchips">
+        <button class="dchip" data-pick="rewrite" ${busy ? "disabled" : ""}><b>Rewrite as… ▾</b><span>WhatsApp, email, formal, polite…</span></button>
+        <button class="dchip" data-pick="translate" ${busy ? "disabled" : ""}><b>Translate to… ▾</b><span>English, Hindi, Marathi, Tamil…</span></button></div></div>`;
+    h += `</div><div class="dask"><div class="drow ask"><textarea class="pick wide" id="d-ask" rows="1" placeholder="Ask anything about this note…" spellcheck="false"></textarea>
         <button class="btn go" data-k="custom" ${busy ? "disabled" : ""}>Ask</button></div></div>
       <div class="dfoot">Answers come from ${who}. Only this note’s text is sent, and only when you ask.</div>`;
     if (!putDrawer(h)) return;
@@ -1233,13 +1248,28 @@
     if ($("#d-err-ok")) $("#d-err-ok").onclick = () => send({ action: "dismiss" });
     $("#drawer").querySelectorAll("[data-k]").forEach(b => b.onclick = () => {
       const k = b.dataset.k;
-      const extra = k === "rewrite" ? $("#d-style").value : k === "translate" ? $("#d-lang").value : k === "custom" ? $("#d-ask").value.trim() : "";
+      const extra = k === "custom" ? $("#d-ask").value.trim() : "";
       if (k === "custom" && !extra) return $("#d-ask").focus();
       send({ action: "ai", id: r.id, act: k, extra });
       $("#drawer .dbody").scrollTop = 0;                  // the answer appears at the top, newest first
-      if (k === "custom") $("#d-ask").value = "";
+      if (k === "custom") { $("#d-ask").value = ""; $("#d-ask").style.height = "auto"; }
     });
-    $("#d-ask").onkeydown = e => { if (e.key === "Enter") $("#drawer").querySelector("[data-k=custom]").click(); };
+    // a long spoken request must stay readable: the box grows with it (to ~6 lines); Enter asks, Shift+Enter is a new line
+    const grow = x => { x.style.height = "auto"; x.style.height = x.scrollHeight + 2 + "px"; };
+    grow($("#d-ask"));
+    $("#d-ask").oninput = e => grow(e.target);
+    $("#d-ask").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#drawer").querySelector("[data-k=custom]").click(); } };
+    // indite's own menu instead of the Mac's dropdown: pick a style or language and it runs at once
+    $("#drawer").querySelectorAll("[data-pick]").forEach(b => b.onclick = () => {
+      const k = b.dataset.pick, list = k === "rewrite" ? S.ai_styles || [] : S.ai_langs || [], at = b.getBoundingClientRect();
+      const m = popup(list.map(x => `<button data-v="${esc(x)}"><b>${esc(x)}</b></button>`).join(""), at.left, at.bottom + 4);
+      m.style.width = Math.max(at.width, 220) + "px";
+      m.querySelectorAll("button").forEach(x => x.onclick = () => {
+        m.remove(); send({ action: "ai", id: r.id, act: k, extra: x.dataset.v });
+        $("#drawer .dbody").scrollTop = 0; b.focus(); });
+      m.onkeydown = e => { if (e.key === "Escape") { e.stopPropagation(); m.remove(); b.focus(); } };
+      m.querySelector("button").focus();
+    });
     $("#drawer").querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
       const k = "more:" + r.id + b.dataset.more; drawerView[k] = !drawerView[k]; drawDrawer(); });
     $("#drawer").querySelectorAll(".seg.mini button").forEach(b => b.onclick = () => { drawerView[r.id] = b.dataset.v; drawDrawer(); });
@@ -1292,7 +1322,7 @@
       input.className = "pick"; input.value = (r.names || {})[who] || who; input.style.width = "70px";
       b.replaceWith(input); input.focus(); input.select();
       const done = ok => { if (ok && input.value.trim()) send({ action: "rename", id: r.id, who, name: input.value }); else draw(); };
-      input.onkeydown = e => { if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); };
+      input.onkeydown = e => { if (e.key === "Enter") done(true); if (e.key === "Escape") { e.stopPropagation(); done(false); } };
       input.onblur = () => done(true);
     });
 
@@ -1360,7 +1390,7 @@
       send({ action: "add_fix", heard: h.value, want: w.value });
       f.remove(); toast(`Fix added: ${h.value.trim()} → ${w.value.trim()}`);
     };
-    f.onkeydown = e => { if (e.key === "Enter") go.onclick(); if (e.key === "Escape") f.remove(); };
+    f.onkeydown = e => { if (e.key === "Enter") go.onclick(); if (e.key === "Escape") { e.stopPropagation(); f.remove(); } };
   }
 
   // ---- Settings: a short list of sections on the left, and a finder that searches every row's words ----------

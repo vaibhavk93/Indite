@@ -19,7 +19,10 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
   formatted (headings, bold, bullets; action-item tables stay as pipes); long answers folded with Show more; Ask box
   pinned at the bottom; errors shown in the panel and cleared on the next ask; dictation into indite's own window is
   no longer saved as a note (process check, not app name). Settings → AI lists what AI unlocks vs what is offline.
-- Still open from the critic: two custom questions with the same first 48 characters overwrite each other.
+- Round 2 (critic-reviewed): Ask AI beside the list when wide, highlighted note, no dim layer, 32 px close, three
+  plain sections, own Rewrite/Translate menus, growing Ask box, full question kept as the title. Caught and fixed my own
+  bug (empty list: the list read a variable before it existed). Full self-test passed (see MAC_TEST_PLAN Part A).
+- Heard twice: "indite" transcribed as "in diet" / "In night" - a word-fix candidate.
 
 ## 2026-10-15 (night) · Claude Code (Opus 5.5) · Mac: UX restructure, AI providers, shareable build
 

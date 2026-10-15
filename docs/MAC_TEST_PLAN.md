@@ -25,6 +25,8 @@ TextEdit is fine.
 | All 12 window pages open with no page errors | real-window snapshots | ✅ |
 | Text card: multi-line, grows with the text | real snapshot | ✅ |
 | Shareable build: own Python, engine, models; transcribes | bare-environment run | ✅ |
+| Ask AI panel (15 Oct night): beside the list at ≥1180 px, note highlighted, Esc closes menu then panel, own Rewrite/Translate menus, long titles wrap clear of the time, no redraw jumps | real window: page tour + measured layout | ✅ |
+| Every page and Settings section opens with no page errors; live AI summary (5 s); file → text in the app (4 s audio, 2 s) | real window + live calls | ✅ |
 | Password guard | you, on a website login page | ✅ |
 
 ---

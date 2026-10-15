@@ -446,3 +446,11 @@ is a git commit.
 | 212 | **Don't touch the GitHub history** | — | 15 Oct | ✅ | Not rewritten; nothing pushed |
 | 214 | **Ask AI still has UX/UI issues** | Fix before the Mac restart and the demo | 15 Oct | 🧪 | Found with real screenshots + critic: the panel redrew itself every few seconds (scroll jumped, the Ask box lost the cursor while dictating); answers showed raw # and **; long answers buried the Ask box; errors hid behind the panel; dictating into the Ask box also saved a new note. All fixed. Your look pending |
 | 215 | **Settings → AI: say clearly what an AI login or key unlocks** | — | 15 Oct | 🧪 | Two lists: with AI (the Ask AI panel actions) vs always offline (dictation, meetings, who spoke, files, dictionary, to do, insights, backup); login and key unlock the same features |
+| 216 | **Ask AI: shift the list instead of covering it; show the note as selected** | Will that be good UX? | 15 Oct | 🧪 | Critic: side by side only when the window is wide (≥1180 px), else the panel stays on top but no longer dims the list; the note is highlighted. Built |
+| 217 | **Ask AI close button too small** | — | 15 Oct | 🧪 | 32 px round button; Esc also closes |
+| 218 | **Ask AI sections look messy (double separators)** | Separate Make it better / Turn it into / Send it | 15 Oct | 🧪 | One divider, three plain sections; critic renamed "Send it" to "Rewrite or translate" (nothing is sent) |
+| 219 | **Our own popup for Rewrite as / Translate to** | — | 15 Oct | 🧪 | indite's menu; picking runs it at once |
+| 220 | **Does "Answers come from Claude (email)" change per user?** | — | 15 Oct | ✅ | Yes: it is whoever is signed in to Claude on that Mac. Kept |
+| 221 | **The box shows only one line of what I said** | — | 15 Oct | 🧪 | The Ask box was one line; now grows to ~6 lines (Enter asks, Shift+Enter new line). The after-dictation card already wraps (checked) |
+| 222 | **Long question: title and time spacing** | — | 15 Oct | 🧪 | Title wraps to 2 lines, stays clear of the time (measured); the full question is kept (two alike no longer overwrite) |
+| 223 | **Test the whole app yourself before the demo** | Front end, back end, runtime | 15 Oct | ✅ | All automated checks pass; every page opens with no errors; live AI and file tests pass. Not testable by me: your voice into the Ask box |
