@@ -418,7 +418,7 @@ class Window:
             self.bridge.js(f"go({tab!r}.split(':')[0]); " + (f"sgo({tab.split(':')[1]!r})" if ":" in tab else ""))
         self.web.evaluateJavaScript_completionHandler_(
             "JSON.stringify({ready: document.readyState, text: document.body ? document.body.innerText.length : -1, "
-            "err: window.__err || '', size: [innerWidth, innerHeight], url: location.href.slice(-30)})",
+            "err: window.__err || '', keys: S.listening, size: [innerWidth, innerHeight], url: location.href.slice(-30)})",
             lambda result, error: print("snapshot page state:", result, error))
 
         def shoot():
