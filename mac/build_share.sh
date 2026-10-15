@@ -76,16 +76,17 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
-cat > "$APP/Contents/MacOS/indite" <<'LAUNCH'
+cat > "$RES/run.sh" <<'LAUNCH'
 #!/bin/bash
 # Everything is inside the app: its Python, its libraries, its models. Logs go where the Mac keeps app logs.
-HERE="$(cd "$(dirname "$0")/../Resources" && pwd)"
+HERE="$(cd "$(dirname "$0")" && pwd)"
 export PYTHONPATH="$HERE/site:$HERE/app"
 export PYTHONNOUSERSITE=1
 mkdir -p "$HOME/Library/Logs"
 exec "$HERE/python/bin/python3" -u "$HERE/app/mac/indite_mac.py" >> "$HOME/Library/Logs/indite-mac.log" 2>&1
 LAUNCH
-chmod +x "$APP/Contents/MacOS/indite"
+chmod +x "$RES/run.sh"
+clang -O2 -mmacosx-version-min=13.0 -o "$APP/Contents/MacOS/indite" "$ROOT/mac/launcher.c"   # stays the parent (launcher.c)
 cp "$ROOT/mac/brand/indite.icns" "$RES/indite.icns"                          # the logo (mac/brand/logo.svg)
 
 # One ad-hoc signature over everything: Apple Silicon refuses to run unsigned code, and a stable identity keeps the

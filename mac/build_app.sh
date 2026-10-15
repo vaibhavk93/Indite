@@ -37,14 +37,16 @@ PLIST
 PY_HOME="$("$ROOT/.venv/bin/python" -c 'import sys; print(sys.base_prefix)')"
 cp -R "$PY_HOME" "$APP/Contents/Resources/python"
 SITE="$("$ROOT/.venv/bin/python" -c 'import site; print(site.getsitepackages()[0])')"
-cat > "$APP/Contents/MacOS/indite" <<LAUNCH
+cat > "$APP/Contents/Resources/run.sh" <<LAUNCH
 #!/bin/bash
 export PYTHONPATH="$SITE:$ROOT"
 export PYTHONNOUSERSITE=1
-HERE="\$(cd "\$(dirname "\$0")/../Resources" && pwd)"
+HERE="\$(cd "\$(dirname "\$0")" && pwd)"
 exec "\$HERE/python/bin/python3" -u "$ROOT/mac/indite_mac.py" >> "\$HOME/Library/Logs/indite-mac.log" 2>&1
 LAUNCH
-chmod +x "$APP/Contents/MacOS/indite"
+chmod +x "$APP/Contents/Resources/run.sh"
+# The app's executable is a tiny program that keeps running as the parent (mac/launcher.c says why).
+clang -O2 -o "$APP/Contents/MacOS/indite" "$ROOT/mac/launcher.c"
 cp "$ROOT/mac/brand/indite.icns" "$APP/Contents/Resources/indite.icns"     # the logo (mac/brand/logo.svg)
 
 # An ad-hoc signature gives the bundle a stable identity, so the Accessibility tick survives a rebuild.
