@@ -169,6 +169,11 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R34 | Opening indite again should show it | ✅ | Window appears on every activation |
 | R35 | Demo video with a voice-over | 💬 | Possible; see answer |
 | R36 | Test cases for the founder, in a doc | ✅ | `docs/MAC_TEST_PLAN.md` |
+| R37 | Who spoke runs by default | ✅ | Files ≥20 s and every meeting; switch in Settings → Writing |
+| R38 | Full screen: top bar unusable; Close/Minimize dead after leaving | ✅ | App menus added; policy switch moved to app-level focus |
+| R39 | Pill glass froze while scrolling; slider not useful | ✅ | Live glass + tint; 10 % steps, −/+, value shown, pill previews |
+| R40 | Insights page like Wispr Flow | ✅ | Sidebar → Insights |
+| R41 | A real run-time demo video with voice-over, made alone | 🔨 | In progress |
 | R32 | Keep saving progress | rule | Commit after each feature; docs in the same session |
 | R23 | Finish the Mac and Android apps before new directions | rule | |
 | R24 | Think from first principles; do not just drop things | rule | |

@@ -46,9 +46,10 @@ TextEdit is fine.
 | B10 | Sounds | Settings → Look & sounds → Sounds on; dictate | A soft tick when listening starts, a pop when it ends | Silent, or the tick is in the text |
 | B11 | Microphone picker | Turn your Bluetooth headset on; Settings → General → Microphone → pick it; dictate. Then turn it off and dictate again | Uses the headset; with it off, falls back to the MacBook mic and still works | An error, or no text |
 | **The pill and the window** | | | | |
-| B12 | Pill transparency | Settings → Look & sounds → slide **right**, then dictate | The pill is more see-through; its border and text stay clear | It gets more frosted |
+| B12 | Pill transparency | Settings → Look & sounds → use − / + (10 % steps); the pill shows each time. Then scroll a page under it | 100 % is clear glass, 0 % a solid tint; the background moves under the glass as you scroll | The background freezes, or no change |
 | B13 | Drag the window | Grab the very top strip of the window (not full screen), drag | The window moves; double-click there zooms it | It does not move |
-| B14 | Full screen | Click the green button | indite gets its own full screen, no gaps at top or bottom, nothing else on top | It sits over another app, or gaps |
+| B14 | Full screen | Click the green button; move the pointer to the top; then leave full screen | Its own Space; the top bar shows indite / Edit / Window; after leaving, the red/yellow/green buttons work | Empty top bar, or grey dead buttons |
+| B14b | Insights | Sidebar → Insights | Your words, speed, time saved, activity, apps, hours | Empty or wrong numbers |
 | B15 | Reopen | Close the window (red button), then open indite from Applications or Spotlight | The window comes back | Nothing appears |
 | B16 | Appearance | Settings → Look & sounds → Light / Dark / Like the Mac | The whole window switches, sidebar included | Half light, half dark |
 | **Notes** | | | | |
@@ -61,7 +62,7 @@ TextEdit is fine.
 | B22 | Meeting, with headphones | Start a Zoom/Meet call with headphones; Meetings → **● Record**; talk 2 minutes; **■ Stop** | Lines marked **You** and the other person (**Person 1**…) appear while you talk; after stopping, the others are split by voice | Only “You” lines (then the Screen Recording permission did not take — quit and reopen indite) |
 | B23 | Meeting, without headphones | Same, on speakers | Their words appear once (as theirs), not twice | Duplicated lines |
 | B24 | Rename a speaker | Click “Person 1” in a meeting, type a name, Return | The name changes on every line | It does not stick |
-| B25 | Who spoke on a file | A file note → “…” → Who spoke? → Let indite guess | Lines labelled Speaker 1, 2… | Error, or one speaker for a clear two-person file |
+| B25 | Who spoke on a file | Transcribe a two-person recording (no click) | Lines labelled Speaker 1, 2… a little after the text appears | No labels on a clear two-person file |
 | **AI** | | | | |
 | B26 | AI on a note | Settings → AI on; on a dictation “…” → AI… → Improve the wording | “Claude is writing” then an **Improved** line under the note (click to open); your original unchanged | Error banner |
 | B27 | Action items → To do | On a meeting: AI… → Action items → “Add all to To do” | Each task appears on the To do page | Nothing added |

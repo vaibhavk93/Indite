@@ -201,6 +201,15 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
   Objective-C refuses the second copy. NSObject subclasses go in `window.py` / `overlay.py`.
 - **Opening a running indite did nothing visible**, so it looked dead: the window now shows whenever the app is
   activated (Finder, Spotlight, Dock).
+- **indite had no app menus**: full screen's top bar was empty and ⌘C/⌘V did nothing in the window. `window.main_menu`
+  adds indite / Edit / Window; Quit goes through `quit_all` so the engine stops too.
+- **Menu-bar-only mode on "window lost focus" stranded the window when leaving full screen** (grey buttons). It now
+  follows the app losing focus (`Activation.resigned_`).
+- **Fading the pill's glass froze its view of the background.** The glass stays at full strength; transparency is a
+  tint drawn under the text (`pill_clear`, 0–100 % in 10 % steps). Check with `pill:<0-100>` in `snapshot.request`.
+- Who spoke now runs by itself after files (≥20 s) and meetings; Settings → Writing → Find who spoke.
+- **Insights** page (sidebar): words, this week vs last, speed, time saved vs typing at 40 wpm, 12-week activity,
+  14 days, by app, by hour, meetings/files/wait.
 - **The text card was one line + "…"**: it now wraps, grows to ~14 lines and stays 4–15 s by length. Check it with
   `preview:<text>` in `snapshot.request` (writes `snapshot-preview.png`).
 
