@@ -238,7 +238,8 @@ the old Desktop path working. All paths in the repo were relative, so nothing el
   a Help line for Login Items. Waiting on the founder: hands-free, AI actions (see the PATH catch in the plan).
 - **Founder's requirement list R1–R24 is in `docs/MAC_PLAN.md` §3 and now drives the Mac app** (he overruled the
   earlier drops). Done: clear glass pill with border and writing animation, drag strip, hands-free, ⌃⌘V paste last,
-  sounds, mic picker. Next phase: notes with stars, to-do mark and page, files transcribed inside the app.
+  sounds, mic picker. Next phase: notes with stars, to-do mark and page, files transcribed inside the app. **Built vs planned is
+  tabled in MAC_PLAN §3 — keep it honest; the founder asked whether things were built or only shown.**
 - The app log was empty because Python buffered its prints; the launcher now runs `python -u`.
 - **Next Mac features (critic-reviewed, all unproven):** later snippets and hands-free (long holds now work); drop undo-by-backspace, voice "press enter",
   command mode (no AI route). Waiting on the founder to say what they actually miss from Wispr.
