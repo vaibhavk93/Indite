@@ -220,6 +220,11 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
 - **Your app now carries its own Python** (`build_app.sh` copies the interpreter into the bundle). Reason: macOS
   checked Screen & System Audio Recording against the interpreter *outside* the app, so the switch for indite
   never applied. After this one change Accessibility and Screen Recording must be granted again, once.
+- **⚠ The app's executable must stay alive as Python's parent** (`mac/launcher.c`, compiled by both build scripts).
+  With a shell script that exec'd Python, Screen Recording was credited to indite but Accessibility was judged
+  against Python itself, so key access stayed False with indite switched on. Every rebuild re-signs ad hoc and
+  resets both permissions: rebuild only when the bundle itself must change (code changes need only a restart).
+  A local signing certificate would stop the resets; it needs the founder's OK (it adds a trusted certificate).
 - **Ask AI is a side panel** (`openDrawer` in `ui/app.html`): answers first, then actions; new "Ask anything" action
   (`custom` in `ai.py`). The note list shows only "AI · n answers".
 - Logo: `mac/brand/logo.svg` (five voice bars, the middle one is the letter i) → `indite.icns` in both builds.
