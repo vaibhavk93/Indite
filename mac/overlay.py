@@ -17,6 +17,10 @@ import objc
 
 from AppKit import (
     NSBackingStoreBuffered,
+    NSVisualEffectBlendingModeBehindWindow,
+    NSVisualEffectMaterialHUDWindow,
+    NSVisualEffectStateActive,
+    NSVisualEffectView,
     NSBezierPath,
     NSColor,
     NSFont,
@@ -48,40 +52,45 @@ class PillView(NSView):
         self.state = "listening"        # listening · writing · done
         self.level = 0.0                # 0..1, the microphone right now
         self.phase = 0.0                # for the writing animation
-        self.bars = [0.15] * 5
+        self.bars = [0.12] * 5
+        self.shown = [0.12] * 5      # what is drawn: eased toward `bars`, so the bars breathe rather than flicker
         return self
 
     def drawRect_(self, rect):          # noqa: N802 - AppKit's name
+        # The background is real glass (NSVisualEffectView behind this view), so nothing is painted here except
+        # a hairline edge - without it the blur floats with no boundary and reads as a smudge.
         NSColor.clearColor().set()
         NSBezierPath.fillRect_(rect)
-
-        body = NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
-            NSMakeRect(0, 0, W, H), H / 2, H / 2)
-        NSColor.colorWithCalibratedRed_green_blue_alpha_(0.09, 0.08, 0.07, 0.92).set()
-        body.fill()
+        edge = NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
+            NSMakeRect(0.5, 0.5, W - 1, H - 1), (H - 1) / 2, (H - 1) / 2)
+        NSColor.colorWithCalibratedWhite_alpha_(1.0, 0.16).set()
+        edge.setLineWidth_(1.0)
+        edge.stroke()
 
         if self.state == "listening":
             self._draw_bars()
         else:
-            self._draw_word("writing…" if self.state == "writing" else "✓ typed in")
+            self._draw_word({"writing": "writing…", "done": "✓ typed in"}.get(self.state, "✓ copied"))
 
     def _draw_bars(self) -> None:
-        """Five bars, the newest on the right, so a quiet moment is visibly quiet."""
+        """Five bars, newest on the right, each eased toward the real level so a quiet moment looks quiet."""
+        self.shown = [a + (b - a) * 0.35 for a, b in zip(self.shown, self.bars)]
         r, g, b = ACCENT
-        NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0).set()
-        n = len(self.bars)
-        bw, gap = 6.0, 8.0
+        n = len(self.shown)
+        bw, gap = 5.0, 7.0
         total = n * bw + (n - 1) * gap
         x = (W - total) / 2
-        for v in self.bars:
-            h = max(6.0, min(H - 16, 6 + v * (H - 22)))
+        for i, v in enumerate(self.shown):
+            # the newest bar is the brightest, so the eye reads left-to-right as "then … now"
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.55 + 0.45 * (i / (n - 1))).set()
+            h = max(5.0, min(H - 14, 5 + v * (H - 20)))
             NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
                 NSMakeRect(x, (H - h) / 2, bw, h), bw / 2, bw / 2).fill()
             x += bw + gap
 
     def _draw_word(self, word: str) -> None:
         r, g, b = ACCENT
-        colour = (NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0) if self.state == "done"
+        colour = (NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0) if self.state != "writing"
                   else NSColor.colorWithCalibratedWhite_alpha_(0.85, 1.0))
         attrs = {
             NSFontAttributeName: NSFont.systemFontOfSize_(14.0),
@@ -113,8 +122,20 @@ class Pill:
             NSWindowCollectionBehaviorCanJoinAllSpaces
             | NSWindowCollectionBehaviorStationary
             | NSWindowCollectionBehaviorFullScreenAuxiliary)
+        # Real macOS glass: it blurs what is actually behind the pill, so it sits on a bright document and a dark
+        # terminal equally well. A painted panel cannot do that - it looks pasted on one of them.
+        glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
+        glass.setMaterial_(NSVisualEffectMaterialHUDWindow)
+        glass.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow)
+        glass.setState_(NSVisualEffectStateActive)
+        glass.setWantsLayer_(True)
+        glass.layer().setCornerRadius_(H / 2)
+        glass.layer().setMasksToBounds_(True)
         self.view = PillView.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
-        self.panel.setContentView_(self.view)
+        glass.addSubview_(self.view)
+        self.panel.setContentView_(glass)
+        self.panel.setHasShadow_(True)
+        self.panel.setAlphaValue_(0.0)
         self.visible = False
 
     def show(self, state: str) -> None:
@@ -122,12 +143,20 @@ class Pill:
         if not self.visible:
             self.panel.orderFrontRegardless()         # front, but never focused
             self.visible = True
+        if self.panel.alphaValue() < 1.0:             # ~120 ms fade in, called from the 20 Hz timer
+            self.panel.setAlphaValue_(min(1.0, self.panel.alphaValue() + 0.18))
         self.view.setNeedsDisplay_(True)
 
     def hide(self) -> None:
-        if self.visible:
+        if not self.visible:
+            return
+        a = self.panel.alphaValue() - 0.12            # ~400 ms fade out, so it leaves rather than blinks off
+        if a <= 0.0:
+            self.panel.setAlphaValue_(0.0)
             self.panel.orderOut_(None)
             self.visible = False
+        else:
+            self.panel.setAlphaValue_(a)
 
     def level(self, value: float) -> None:
         """Push the newest microphone level; the bars scroll left so silence looks like silence."""

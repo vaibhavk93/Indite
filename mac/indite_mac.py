@@ -213,6 +213,39 @@ class Mic:
         return np.concatenate(chunks).flatten() if chunks else np.zeros(0, dtype="float32")
 
 
+def focused_is_text() -> bool:
+    """
+    Is the cursor actually in something that accepts typing?
+
+    macOS can say: it reports the focused element of the front app and its role. If that is a text field, text area,
+    search box or combo box, typing lands where the user is looking. If it is a button, a web page with no caret, or
+    nothing at all, typed characters go nowhere and the dictation is silently lost - so the text goes to the
+    clipboard instead and the pill says so.
+
+    When the question cannot be answered (an app that exposes nothing), the answer is yes: typing is the thing the
+    user asked for, and the clipboard is the fallback, not the default.
+    """
+    try:
+        from ApplicationServices import (
+            AXUIElementCopyAttributeValue,
+            AXUIElementCreateSystemWide,
+            kAXFocusedUIElementAttribute,
+            kAXRoleAttribute,
+        )
+        err, element = AXUIElementCopyAttributeValue(
+            AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute, None)
+        if err != 0 or element is None:
+            return False                      # nothing focused at all: the clipboard is the only sensible place
+        err, role = AXUIElementCopyAttributeValue(element, kAXRoleAttribute, None)
+        if err != 0 or role is None:
+            return True
+        return str(role) in {
+            "AXTextField", "AXTextArea", "AXComboBox", "AXSearchField", "AXWebArea", "AXStaticText",
+        }
+    except Exception:                         # noqa: BLE001 - never block a dictation on a permission or API quirk
+        return True
+
+
 class Typer:
     """
     Puts the text where the cursor is. Typed character by character, so nothing touches the clipboard - the phone's
@@ -224,6 +257,11 @@ class Typer:
 
     def type(self, text: str) -> None:
         self.kb.type(text + " ")
+
+    @staticmethod
+    def copy(text: str) -> None:
+        """No text field to type into, so the words wait on the clipboard instead of disappearing."""
+        subprocess.run("pbcopy", input=text, text=True, check=False)
 
 
 class InditeApp(rumps.App):
@@ -238,6 +276,7 @@ class InditeApp(rumps.App):
         self.last = ""
         self.pill = Pill()
         self.done_until = 0.0
+        self.done_state = "done"
         # 20 times a second, on the main thread: the only place the pill is ever touched.
         rumps.Timer(self.paint, 0.05).start()
         self.menu = [
@@ -282,7 +321,7 @@ class InditeApp(rumps.App):
             self.pill.show("writing")
             self.pill.tick_writing()
         elif time.time() < self.done_until:
-            self.pill.show("done")
+            self.pill.show(self.done_state)
         else:
             self.pill.hide()
 
@@ -326,8 +365,14 @@ class InditeApp(rumps.App):
             rumps.notification("indite", "Nothing heard", "Hold the key while you speak.")
             return
         self.last = text
-        self.typer.type(text)
-        self.done_until = time.time() + 1.0
+        if focused_is_text():
+            self.typer.type(text)
+            self.done_state = "done"
+        else:
+            self.typer.copy(text)
+            self.done_state = "copied"
+            rumps.notification("indite", "Copied", "No text box was focused, so it is on the clipboard.")
+        self.done_until = time.time() + 1.4
         print(f"{len(audio) / RATE:.1f}s of speech -> {time.time() - t0:.2f}s -> {text}")
 
     # ---- menu ----------------------------------------------------------------------------------------------
