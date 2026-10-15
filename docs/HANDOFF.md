@@ -249,6 +249,17 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
 - **⚠ macOS switches off a slow key listener and pynput never turns it back on** — the founder's shortcuts died
   after a settings change. Key handlers only change state; mic work runs on `self.ops` (one worker, in order);
   `listen()` restarts the listener on a "tap disabled" event. Keep anything slow out of `on_press`/`on_release`.
+- **⚠ SOLVED 16 Oct - the app was breaking its own signature every single run.** Python writes `.pyc` files
+  beside the modules it imports, and the interpreter lives inside the bundle, so each run wrote bytecode into
+  `Contents/Resources/python` (249 files found) and broke the seal. macOS judges Accessibility on that signature, so
+  it switched itself off mid-session: the log shows `allowed: True` ... `key listener was switched off by macOS` ...
+  `not trusted` ... `allowed: False`. A reboot only looked like the cause - that is when macOS re-checks.
+  **Fixes:** `PYTHONDONTWRITEBYTECODE=1` in `run.sh` and `build_app.sh`; `build_app.sh` clears stray `.pyc` before
+  signing and refuses to call a build good if the seal does not verify; `signature_broken()` checks at start-up and
+  says so loudly instead of letting the keyboard die quietly. Verified: the signature now survives a full run.
+  **The one trigger left is rebuilding**, because ad-hoc signing derives identity from content. Either rebuild only
+  when the bundle itself must change (code lives outside it, so code changes need only a restart), or create a local
+  signing certificate for a stable identity - the founder's call, it adds a certificate to the keychain.
 - **Ad-hoc signing + rebuilds can drop a privacy permission**: after `build_app.sh`, check the log line
   "screen & system audio recording allowed". If False: remove indite from that list (−), add `dist/indite.app` (+).
 - **Your app now carries its own Python** (`build_app.sh` copies the interpreter into the bundle). Reason: macOS

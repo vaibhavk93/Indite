@@ -119,6 +119,33 @@ def junk(text: str, seconds: float) -> bool:
     return seconds < 1.0 and (len(t) <= 1 or bool(re.fullmatch(r"(\w)\1{2,}", t, re.I)))
 
 
+def signature_broken() -> str:
+    """
+    "" when the app's own signature still holds, otherwise what broke it, in one line.
+
+    macOS judges indite by its signature before trusting it with the keyboard. The app used to break its own
+    signature every time it ran: Python writes .pyc files beside the modules it imports, and its interpreter lives
+    inside the bundle (16 Oct: 249 of them, and Accessibility switched itself off mid-session). That is fixed with
+    PYTHONDONTWRITEBYTECODE, but anything else that writes into the bundle would do the same, silently - so the app
+    checks itself at start-up rather than waiting for the keyboard to go dead.
+    """
+    bundle = Path(sys.executable).resolve()
+    while bundle.parent != bundle and bundle.suffix != ".app":
+        bundle = bundle.parent
+    if bundle.suffix != ".app":
+        return ""                                        # not running from a bundle (a developer run): nothing to check
+    try:
+        r = subprocess.run(["codesign", "--verify", "--strict", str(bundle)],
+                           capture_output=True, text=True, timeout=30)
+        if r.returncode == 0:
+            return ""
+        first = next((l for l in (r.stderr or "").splitlines() if l.strip()), "the signature no longer matches")
+        return first.replace(str(bundle), "the app")[:200]
+    except Exception as e:                               # noqa: BLE001 - a check that fails is not a verdict
+        print("could not check the signature:", e)
+        return ""
+
+
 def can_listen() -> bool:
     """
     macOS will not hand key events to a program that is not trusted for Accessibility - and pynput does not complain
@@ -651,6 +678,17 @@ class InditeApp(rumps.App):
         if problem:
             rumps.alert("indite can't start", problem)
             sys.exit(1)
+        bad_seal = signature_broken()
+        if bad_seal:
+            print("SIGNATURE BROKEN:", bad_seal)
+            rumps.alert(
+                "indite's app file has been changed",
+                "macOS checks indite's signature before it trusts it with the keyboard. That signature is no "
+                "longer valid, so Accessibility will stop working - usually in the middle of a session, with no "
+                "warning.\n\n"
+                f"What changed: {bad_seal}\n\n"
+                "Fix: run ./mac/build_app.sh again, then grant Accessibility and Screen Recording once more.",
+            )
         if not can_listen():
             self.set_title("🎙⚠")
             ask_to_listen()
