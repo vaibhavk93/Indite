@@ -41,6 +41,10 @@ cat > "$APP/Contents/Resources/run.sh" <<LAUNCH
 #!/bin/bash
 export PYTHONPATH="$SITE:$ROOT"
 export PYTHONNOUSERSITE=1
+# Python writes .pyc files next to the .py files it imports. Inside a signed bundle that breaks the signature's
+# seal, and macOS then stops trusting the app - which is how Accessibility kept switching itself off mid-session
+# (16 Oct: "key access allowed: True" ... "This process is not trusted!"). Never write bytecode into the bundle.
+export PYTHONDONTWRITEBYTECODE=1
 HERE="\$(cd "\$(dirname "\$0")" && pwd)"
 exec "\$HERE/python/bin/python3" -u "$ROOT/mac/indite_mac.py" >> "\$HOME/Library/Logs/indite-mac.log" 2>&1
 LAUNCH
@@ -50,6 +54,15 @@ clang -O2 -o "$APP/Contents/MacOS/indite" "$ROOT/mac/launcher.c"
 cp "$ROOT/mac/brand/indite.icns" "$APP/Contents/Resources/indite.icns"     # the logo (mac/brand/logo.svg)
 
 # An ad-hoc signature gives the bundle a stable identity, so the Accessibility tick survives a rebuild.
+# Any stray bytecode from a previous run has to go before signing, or the new signature seals files that will
+# differ the moment the app runs again.
+find "$APP" -name "__pycache__" -type d -prune -exec rm -rf {} + 2>/dev/null || true
+find "$APP" -name "*.pyc" -delete 2>/dev/null || true
 codesign --force --deep --sign - "$APP" 2>/dev/null || echo "note: could not sign; the tick may not survive a rebuild"
+if codesign --verify --deep --strict "$APP" 2>/dev/null; then
+    echo "signature: sealed and valid"
+else
+    echo "⚠ signature did NOT verify - macOS will drop Accessibility again. Do not ship this build."
+fi
 echo "built: $APP"
 echo "log:   ~/Library/Logs/indite-mac.log"

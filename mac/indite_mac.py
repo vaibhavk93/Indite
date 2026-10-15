@@ -652,7 +652,7 @@ class InditeApp(rumps.App):
             rumps.alert("indite can't start", problem)
             sys.exit(1)
         if not can_listen():
-            self.title = "🎙⚠"
+            self.set_title("🎙⚠")
             ask_to_listen()
             rumps.alert(
                 "indite needs permission to see the hotkey",
@@ -696,12 +696,12 @@ class InditeApp(rumps.App):
             except Exception:                            # noqa: BLE001
                 pass
             store.set_pref("asked_screen", True)
-        self.title = "🎙…"
+        self.set_title("🎙…")
         self.engine_kind = "Starting the engine… the first start on a Mac can take a minute"
         self.refresh()
         ok = self.engine.start_server()
         self.engine_kind = "Fast engine ready." if ok else "Slower engine \u2014 the model reloads each time."
-        self.title = "🎙" if can_listen() else "🎙⚠"
+        self.set_title("🎙" if can_listen() else "🎙⚠")
         print("resident engine:", "ready" if ok else "not available - using the slower per-sentence path")
 
     def paint(self, _) -> None:                          # noqa: ANN001 - rumps' signature
@@ -834,7 +834,7 @@ class InditeApp(rumps.App):
     def start_listening(self) -> bool:
         """Listening starts now as far as the keys are concerned; the mic itself opens on the worker."""
         self.started_at = time.time()
-        self.title = "🔴"
+        self.set_title("🔴")
 
         def open_mic() -> None:
             try:
@@ -842,7 +842,7 @@ class InditeApp(rumps.App):
             except Exception as e:                       # noqa: BLE001
                 self.started_at = 0.0
                 self.locked = False
-                self.title = "🎙"
+                self.set_title("🎙")
                 self.mic_trouble(e)
         self.do(open_mic)
         return True
@@ -855,7 +855,7 @@ class InditeApp(rumps.App):
             self.started_at = 0.0
             self.locked = False
             self.do(self.mic.stop)
-            self.title = "🎙"
+            self.set_title("🎙")
             self.done_state, self.done_until = "cancelled", time.time() + 1.2
             return
         if self.locked and key in (self.hotkey(), self.hf_key()):   # hands-free: one tap of either key stops it
@@ -888,7 +888,7 @@ class InditeApp(rumps.App):
                 return
             self.started_at = 0.0
             self.do(self.mic.stop)
-            self.title = "🎙"
+            self.set_title("🎙")
             return
         self.taps = 0
         self.finish()
@@ -905,13 +905,13 @@ class InditeApp(rumps.App):
             if len(audio) < RATE // 2:
                 # Under half a second. Either a very quick press, or the microphone gave us nothing at all - and the
                 # second one used to end in silence, which is indistinguishable from the app being broken.
-                self.title = "🎙"
+                self.set_title("🎙")
                 self.done_state = "nothing" if len(audio) else "failed"
                 self.done_until = time.time() + 1.6
                 if not len(audio):
                     print("mic produced no audio at all - the stream was open but silent")
                 return
-            self.title = "⏳"
+            self.set_title("⏳")
             self.busy = True
             threading.Thread(target=self.write_it, args=(audio,), daemon=True).start()
         self.do(close_and_write)
@@ -949,14 +949,14 @@ class InditeApp(rumps.App):
             if junk(text, len(audio) / RATE):
                 text = ""
         except Exception as e:                            # noqa: BLE001 - whatever went wrong, say so and carry on
-            self.title = "🎙"
+            self.set_title("🎙")
             self.busy = False
             self.done_state = "failed"
             self.done_until = time.time() + 2.0
             print("dictation failed:", e)
             return
         self.busy = False
-        self.title = "🎙"
+        self.set_title("🎙")
         if not text:
             self.done_state = "nothing"
             self.done_until = time.time() + 1.2
@@ -1046,7 +1046,7 @@ class InditeApp(rumps.App):
                     segments.append({"start": round(at, 2), "end": round(at + len(p) / RATE, 2), "text": text})
                 at += len(p) / RATE
                 self.job["done"] += 1
-                self.title = f"📄 {self.job['done']}/{self.job['total']}"
+                self.set_title(f"📄 {self.job['done']}/{self.job['total']}")
                 self.refresh()
             body = "\n\n".join(s["text"] for s in segments)
             if body:
@@ -1062,7 +1062,7 @@ class InditeApp(rumps.App):
             self.file_error = f"{path.name}: {e}"
         finally:
             self.job = None
-            self.title = "🎙"
+            self.set_title("🎙")
             self.done_until = time.time() + 2.0
             self.refresh()
 
@@ -1354,6 +1354,20 @@ class InditeApp(rumps.App):
                                        "heard": text}, indent=1))
         except Exception as e:                            # noqa: BLE001
             out.write_text(json.dumps({"error": f"{type(e).__name__}: {e}"}, indent=1))
+
+    def set_title(self, text: str) -> None:
+        """
+        The menu-bar title, set safely from any thread.
+
+        rumps writes straight into AppKit, and AppKit's layout engine must only be touched on the main thread. Doing
+        it from a worker killed the whole start-up thread once the main thread had drawn anything (16 Oct: warm_up
+        died with NSInternalInconsistencyException, and the app sat there with no engine and a frozen pill).
+        """
+        if threading.current_thread() is threading.main_thread():
+            self.title = text
+            return
+        from PyObjCTools import AppHelper
+        AppHelper.callAfter(lambda: setattr(self, "title", text))
 
     def show_pill(self) -> None:
         """Settings changed the pill's look: show it for a moment so the change can be seen."""
