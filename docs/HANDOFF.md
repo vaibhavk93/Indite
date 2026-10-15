@@ -176,7 +176,8 @@ Use push + install always. Three failed installs and ~90 minutes were lost befor
 
 ### The Mac app now (15 Oct, 19:00) — read this before the older Mac notes below
 
-**Start here: `docs/MAC_PLAN.md` §0** (done / pending / future) and **`mac/README.md`** (what it does, how to run it).
+**Start here: `docs/MAC_PLAN.md` §0** (done / pending / future), **`mac/README.md`** (what it does, how to run it),
+and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1–B32 the founder runs by hand).
 
 | | |
 |---|---|

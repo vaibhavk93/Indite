@@ -15,6 +15,7 @@ real call with the meeting recorder. Me: the dropped-sentence-end test (running)
 - Blank window found via a real-window snapshot; page watcher reloads it. Slider ran backwards; full-screen width capped.
 - `mac/build_share.sh`: self-contained 624 MB zip; engine library path from this Mac removed; first start 63 s → app waits.
 - Roadmap with done / pending / future: `docs/MAC_PLAN.md` §0.
+- Text card multi-line + dynamic height; reopening shows the window; AI answers collapsed; Objective-C double-class crash fixed. `docs/MAC_TEST_PLAN.md`: Part A (tested by Claude) + B1–B32 for the founder.
 - Dropped-ending test: one real case (s38, `no_timestamps` makes the model stop after the first sentence); the rest were test-file faults. Retry fix designed and measured, not built (tiny gain, junk risk). The long_15min reference timings need fixing.
 
 ## 2026-10-15 (afternoon) · Claude Code (Opus 5.5) · Mac fixes
