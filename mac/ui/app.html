@@ -169,6 +169,44 @@
   .group-h { font-size: 12px; font-weight: 600; color: var(--ink2); margin: 18px 0 4px; }
   .toast button { appearance: none; border: 0; background: none; color: #ffb066; font-weight: 600; margin-left: 10px; cursor: default; }
   .toast.act { pointer-events: auto; }
+  .aichip { appearance: none; border: 1px solid var(--line2); background: var(--paper); color: var(--accent); border-radius: 20px;
+            font-size: 12px; font-weight: 600; padding: 3px 10px; margin-top: 8px; display: inline-flex; gap: 5px; align-items: center; cursor: default; }
+  .aichip:hover { background: var(--accent-soft); border-color: transparent; }
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.18); z-index: 6; }
+  .scrim[hidden], .drawer[hidden] { display: none; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 92vw); z-index: 7; background: var(--paper);
+            border-left: 1px solid var(--line2); box-shadow: -18px 0 40px rgba(0,0,0,.14); display: flex; flex-direction: column;
+            outline: none; animation: slidein .18s ease-out; }
+  @keyframes slidein { from { transform: translateX(24px); opacity: 0; } }
+  .dhead { display: flex; gap: 12px; align-items: flex-start; padding: 40px 22px 14px; border-bottom: 1px solid var(--line); }
+  .dhead > div { flex: 1; min-width: 0; }
+  .dhead h2 { font-size: 17px; font-weight: 650; display: flex; gap: 8px; align-items: center; color: var(--ink); }
+  .dhead h2 svg { color: var(--accent); }
+  .dnote { font-size: 12.5px; color: var(--ink2); margin-top: 6px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3;
+           -webkit-box-orient: vertical; overflow: hidden; }
+  .dbody { flex: 1; overflow-y: auto; padding: 6px 22px 18px; }
+  .dsec { margin-top: 16px; }
+  .dnew { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); } .dnew h3 { color: var(--ink); text-transform: none; font-size: 13.5px; letter-spacing: 0; margin: 0; }
+  .dsec h3 { font-size: 11.5px; font-weight: 600; color: var(--ink2); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+  .dchips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dchip { appearance: none; text-align: left; border: 1px solid var(--line2); background: var(--paper); border-radius: 10px; padding: 9px 11px;
+           cursor: default; display: flex; flex-direction: column; gap: 2px; }
+  .dchip b { font-size: 13px; font-weight: 600; color: var(--ink); } .dchip span { font-size: 11.5px; color: var(--ink2); line-height: 1.35; }
+  .dchip:hover:not(:disabled) { border-color: var(--brand); background: var(--accent-soft); }
+  .dchip.primary { grid-column: 1 / -1; border-color: var(--brand); }
+  .dchip:disabled, .drawer .btn:disabled { opacity: .45; }
+  .drow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .drow > span { width: 86px; font-size: 12.5px; color: var(--ink2); flex: none; }
+  .drow .pick { flex: 1; max-width: none; }
+  .dans { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .dans .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; } .dans .h b { font-size: 13px; }
+  .dans .sp { flex: 1; } .dans .when2 { font-size: 11.5px; color: var(--ink3); }
+  .dans .body { white-space: pre-wrap; font-size: 13px; line-height: 1.6; -webkit-user-select: text; user-select: text; color: var(--ink); }
+  .acts2 { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+  .seg.mini button { font-size: 11.5px; padding: 2px 9px; }
+  .working.big { font-size: 13px; padding: 12px 14px; background: var(--accent-soft); border-radius: 10px; margin-bottom: 10px; }
+  .dempty { padding: 30px 0; } .dempty p { color: var(--ink2); margin: 6px 0 14px; }
+  .dfoot { padding: 12px 22px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink2); }
   .navgap { height: 14px; }
   .navbottom { border-top: 1px solid var(--line2); padding-top: 8px; }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
@@ -712,6 +750,9 @@
   </div>
 </div>
 
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden tabindex="-1" role="dialog" aria-label="Ask AI"></aside>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -911,6 +952,7 @@
     drawTodo();
     drawDict();
     if (tab === "insights") drawInsights();
+    drawDrawer();
     drawAI();
     drawList();
     feed($("#meet-list"), S.history.filter(r => r.kind === "meeting"),
@@ -1020,24 +1062,13 @@
     return `<div class="lines">${lines}</div>` + (segs.length > 6 ? `<button class="more mshow" data-id="${esc(r.id)}">Show all ${segs.length} lines</button>` : "");
   }
 
-  const openAi = new Set();          // which AI answers are open: one-line headers by default, so notes stay short
+  // In the list a note only says it has AI answers; the answers live in the Ask AI panel (one note at a time).
   function aiParts(r) {
-    const id = esc(r.id);
+    const n = (r.ai || []).length + (r.improved ? 1 : 0), busy = S.ai_busy && S.ai_busy[r.id];
     let h = "";
-    if (r.improved) h += `<div class="aicard${openAi.has(r.id + "|improved") ? "" : " shut"}" data-k="${id}|improved"><div class="h"><svg width="13" height="13"><use href="#i-spark"/></svg><button class="lbl">Improved</button>
-        <span class="sp"></span><button class="more aicopy" data-id="${id}" data-k="improved">Copy</button>
-        <button class="more aidel" data-id="${id}" data-k="improved">Remove</button></div>
-        <div class="body">${esc(r.improved)}</div></div>`;
-    for (const a of r.ai || []) {
-      const isTasks = a.action === "actions" && !/^none\b/i.test(a.text.trim());
-      h += `<div class="aicard${openAi.has(r.id + "|" + a.label) ? "" : " shut"}" data-k="${id}|${esc(a.label)}"><div class="h"><svg width="13" height="13"><use href="#i-spark"/></svg><button class="lbl">${esc(a.label)}</button>
-        <span class="sp"></span>${isTasks ? `<button class="more aitasks" data-id="${id}" data-k="${esc(a.label)}">Add all to To do</button>` : ""}
-        <button class="more aicopy" data-id="${id}" data-k="${esc(a.label)}">Copy</button>
-        <button class="more aidel" data-id="${id}" data-k="${esc(a.label)}">Remove</button></div>
-        <div class="body">${esc(a.text)}</div></div>`;
-    }
-    if (S.ai_busy && S.ai_busy[r.id]) h += `<div class="working"><i></i>${S.ai_busy[r.id] === "finding who spoke"
-      ? "Finding who spoke" : "Claude is writing: " + esc(S.ai_busy[r.id])}…</div>`;
+    if (busy === "finding who spoke") h += `<div class="working"><i></i>Finding who spoke…</div>`;
+    else if (busy || n) h += `<button class="aichip" data-id="${esc(r.id)}">
+        <svg width="12" height="12"><use href="#i-spark"/></svg>${busy ? "AI is writing…" : `AI · ${n} answer${n > 1 ? "s" : ""}`}</button>`;
     return h;
   }
 
@@ -1058,7 +1089,7 @@
     const items = [
       ["todo", r.todo ? "Remove from To do" : "Add to To do", r.todo ? "" : "Find it again on the To do page"],
       ["star", r.star ? "Unstar" : "Star", r.star ? "" : "Keep it forever, and in starred backups"],
-      ...(S.prefs.ai ? [["ai", "AI…", "Improve, meeting notes, action items, summary, translate"]] :
+      ...(S.prefs.ai ? [["ai", "Ask AI…", "Improve, summarise, action items, rewrite, translate, ask anything"]] :
                        [["aioff", "AI is off", "Turn it on in Settings → AI"]]),
       ...(media ? [["who", "Who spoke?", "Label each line with a speaker"], ["txt", "Save as text…", ""], ["srt", "Save as subtitles…", ""]]
                 : [["fix", "Fix a word…", "Teach indite a word it got wrong"]]),
@@ -1082,32 +1113,82 @@
     m.querySelector("button").focus();
   }
 
-  function aiMenu(btn, r) {
-    document.querySelectorAll(".menu").forEach(m => m.remove());
-    const m = document.createElement("div");
-    m.className = "menu";
-    const groups = {};
-    for (const [k, [label, gets, group]] of Object.entries(S.ai_actions || {})) (groups[group] = groups[group] || []).push([k, label, gets]);
+  // ---- Ask AI: a focused panel for one note -----------------------------------------------------------------
+  let drawerId = null, drawerView = {};
+  function aiMenu(_btn, r) { openDrawer(r.id); }
+  function openDrawer(id) {
+    drawerId = id; $("#drawer").hidden = false; $("#scrim").hidden = false; drawDrawer();
+    setTimeout(() => $("#drawer").focus(), 0);
+  }
+  function closeDrawer() { drawerId = null; $("#drawer").hidden = true; $("#scrim").hidden = true; }
+  $("#scrim").onclick = closeDrawer;
+  $("#drawer").onkeydown = e => { if (e.key === "Escape") closeDrawer(); };
+
+  const QUICK = [["Make it better", ["improve", "cleanup"]], ["Turn it into", ["summary", "actions", "notes", "lecture", "braindump"]]];
+  function drawDrawer() {
+    if (!drawerId) return;
+    const r = byId(drawerId);
+    if (!r) return closeDrawer();
+    const A = S.ai_actions || {}, busy = S.ai_busy && S.ai_busy[r.id];
+    const who = S.prefs.ai_provider === "claude" ? `Claude${S.ai_status && S.ai_status.email ? " (" + esc(S.ai_status.email) + ")" : ""}`
+      : esc((S.ai_providers || {})[S.prefs.ai_provider] || "your API key");
     const opt = list => list.map(x => `<option>${esc(x)}</option>`).join("");
-    m.innerHTML = Object.entries(groups).map(([g, items]) => `<h4>${esc(g)}</h4>` + items.map(([k, label, gets]) =>
-      `<button data-k="${k}"><b>${esc(label)}</b><span>${esc(gets)}</span></button>` +
-      (k === "rewrite" ? `<select class="pick" id="ai-style">${opt(S.ai_styles || [])}</select>` : "") +
-      (k === "translate" ? `<select class="pick" id="ai-lang">${opt(S.ai_langs || [])}</select>` : "")).join("")).join("") +
-      `<p class="fine">Answered by Claude with your own login. The note’s text leaves this Mac.</p>`;
-    document.body.appendChild(m);
-    const b = btn.getBoundingClientRect();
-    m.style.top = Math.min(b.bottom + 4, innerHeight - m.offsetHeight - 8) + "px";
-    m.style.left = Math.max(8, b.right - m.offsetWidth) + "px";
-    m.querySelectorAll("button[data-k]").forEach(x => x.onclick = () => {
-      const k = x.dataset.k;
-      const extra = k === "rewrite" ? $("#ai-style").value : k === "translate" ? $("#ai-lang").value : "";
+    const answers = [...(r.ai || [])].sort((a, b) => (b.at || 0) - (a.at || 0));
+    let h = `<div class="dhead"><div><h2><svg width="16" height="16"><use href="#i-spark"/></svg>Ask AI</h2>
+        <p class="dnote">${esc(r.title ? r.title + " — " : "")}${esc(r.text.slice(0, 160))}${r.text.length > 160 ? "…" : ""}</p></div>
+        <button class="copy" id="dclose" aria-label="Close">✕</button></div><div class="dbody">`;
+    if (!S.prefs.ai) {
+      h += `<div class="dempty"><b>AI is off</b><p>Turn it on in Settings → AI. Until then nothing ever leaves this Mac.</p>
+        <button class="btn go" id="dgo-set">Open Settings → AI</button></div></div>`;
+      $("#drawer").innerHTML = h; $("#dclose").onclick = closeDrawer;
+      $("#dgo-set").onclick = () => { closeDrawer(); go("settings"); sgo("ai"); }; return;
+    }
+    const nAns = answers.length + (r.improved ? 1 : 0);
+    if (busy || nAns) h += `<div class="dsec"><h3>Answers${nAns ? " · " + nAns : ""}</h3>`;
+    if (busy) h += `<div class="working big"><i></i>${esc(busy)}… usually a few seconds</div>`;
+    if (r.improved) {
+      const v = drawerView[r.id] || "improved";
+      h += `<div class="dans"><div class="h"><b>Improved wording</b><span class="sp"></span>
+          <div class="seg mini"><button aria-checked="${v === "improved"}" data-v="improved">Improved</button><button aria-checked="${v === "original"}" data-v="original">Original</button></div></div>
+          <div class="body">${esc(v === "improved" ? r.improved : r.text)}</div>
+          <div class="acts2"><button class="btn" data-copy="improved">Copy</button><button class="btn danger" data-del="improved">Remove</button></div></div>`;
+    }
+    for (const a of answers) {
+      const tasks = a.action === "actions" && !/^none\b/i.test(a.text.trim());
+      h += `<div class="dans"><div class="h"><b>${esc(a.label)}</b><span class="sp"></span><span class="when2">${a.at ? clock(a.at) : ""}</span></div>
+          <div class="body">${esc(a.text)}</div>
+          <div class="acts2">${tasks ? `<button class="btn go" data-tasks="${esc(a.label)}">Add all to To do</button>` : ""}
+          <button class="btn" data-copy="${esc(a.label)}">Copy</button><button class="btn danger" data-del="${esc(a.label)}">Remove</button></div></div>`;
+    }
+    if (busy || nAns) h += `</div>`;
+    h += `<div class="dsec dnew"><h3>${busy || answers.length || r.improved ? "Ask for something else" : "What should AI do with this note?"}</h3></div>`;
+    for (const [title, keys] of QUICK) h += `<div class="dsec"><h3>${title}</h3><div class="dchips">` + keys.filter(k => A[k]).map(k =>
+      `<button class="dchip${k === "improve" ? " primary" : ""}" data-k="${k}" ${busy ? "disabled" : ""}><b>${esc(A[k][0])}</b><span>${esc(A[k][1])}</span></button>`).join("") + `</div></div>`;
+    h += `<div class="dsec"><h3>Send it</h3>
+        <div class="drow"><span>Rewrite as</span><select class="pick" id="d-style">${opt(S.ai_styles || [])}</select><button class="btn" data-k="rewrite" ${busy ? "disabled" : ""}>Rewrite</button></div>
+        <div class="drow"><span>Translate to</span><select class="pick" id="d-lang">${opt(S.ai_langs || [])}</select><button class="btn" data-k="translate" ${busy ? "disabled" : ""}>Translate</button></div></div>
+      <div class="dsec"><h3>Ask anything</h3><div class="drow ask"><input class="pick wide" id="d-ask" placeholder="e.g. turn this into a WhatsApp message for Rohit" spellcheck="false">
+        <button class="btn go" data-k="custom" ${busy ? "disabled" : ""}>Ask</button></div></div>`;
+    h += `</div><div class="dfoot">Answers come from ${who}. Only this note’s text is sent, and only when you click.</div>`;
+    const keep = $("#d-ask") ? $("#d-ask").value : "";
+    $("#drawer").innerHTML = h;
+    if ($("#d-ask")) $("#d-ask").value = keep;
+    $("#dclose").onclick = closeDrawer;
+    $("#drawer").querySelectorAll("[data-k]").forEach(b => b.onclick = () => {
+      const k = b.dataset.k;
+      const extra = k === "rewrite" ? $("#d-style").value : k === "translate" ? $("#d-lang").value : k === "custom" ? $("#d-ask").value.trim() : "";
+      if (k === "custom" && !extra) return $("#d-ask").focus();
       send({ action: "ai", id: r.id, act: k, extra });
-      m.remove();
+      if (k === "custom") $("#d-ask").value = "";
     });
-    setTimeout(() => document.addEventListener("mousedown", function off(e) {
-      if (!m.contains(e.target)) { m.remove(); document.removeEventListener("mousedown", off); } }), 0);
-    m.onkeydown = e => { if (e.key === "Escape") m.remove(); };
-    m.querySelector("button").focus();
+    $("#d-ask").onkeydown = e => { if (e.key === "Enter") $("#drawer").querySelector("[data-k=custom]").click(); };
+    $("#drawer").querySelectorAll(".seg.mini button").forEach(b => b.onclick = () => { drawerView[r.id] = b.dataset.v; drawDrawer(); });
+    $("#drawer").querySelectorAll("[data-copy]").forEach(b => b.onclick = () => {
+      const k = b.dataset.copy;
+      send({ action: "copy", text: k === "improved" ? ((drawerView[r.id] || "improved") === "improved" ? r.improved : r.text) : answers.find(a => a.label === k).text });
+      toast("Copied"); });
+    $("#drawer").querySelectorAll("[data-del]").forEach(b => b.onclick = () => send({ action: "ai_clear", id: r.id, label: b.dataset.del }));
+    $("#drawer").querySelectorAll("[data-tasks]").forEach(b => b.onclick = () => { send({ action: "tasks", id: r.id, label: b.dataset.tasks }); toast("Added to To do"); });
   }
 
   function wire(root) {
@@ -1143,9 +1224,7 @@
   }
 
   function wireRest(root, on) {
-    root.querySelectorAll(".aicard .lbl").forEach(b => b.onclick = () => {
-      const card = b.closest(".aicard"), k = card.dataset.k;
-      card.classList.toggle("shut"); openAi[card.classList.contains("shut") ? "delete" : "add"](k); });
+    root.querySelectorAll(".aichip").forEach(b => b.onclick = () => openDrawer(b.dataset.id));
     root.querySelectorAll(".mshow").forEach(b => b.onclick = () => {
       b.parentElement.querySelectorAll(".line.hide").forEach(l => l.classList.remove("hide")); b.remove(); });
     on(".who", (r, b) => {
@@ -1156,10 +1235,7 @@
       input.onkeydown = e => { if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); };
       input.onblur = () => done(true);
     });
-    on(".aicopy", (r, b) => { const k = b.dataset.k;
-      send({ action: "copy", text: k === "improved" ? r.improved : (r.ai || []).find(a => a.label === k).text }); toast("Copied"); });
-    on(".aidel", (r, b) => send({ action: "ai_clear", id: r.id, label: b.dataset.k }));
-    on(".aitasks", (r, b) => { send({ action: "tasks", id: r.id, label: b.dataset.k }); toast("Added to To do"); });
+
     on(".del", r => { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); });
     on(".exp", (r, b) => send({ action: "export", id: r.id, fmt: b.dataset.fmt }));
     root.querySelectorAll(".more:not(.exp)").forEach(b => b.onclick = () => {

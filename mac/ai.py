@@ -44,6 +44,8 @@ ACTIONS = {
     "cleanup": ("Clean it up", "Punctuation fixed, the umms removed", "Change the words",
                 HINGLISH + "Fix punctuation and remove filler words (umm, matlab, basically, you know) only. Change "
                 "nothing else. Reply with the text only."),
+    "custom": ("Ask anything", "Your own request", "Ask",
+               HINGLISH + "Do this with the note, and reply with the result only: {extra}"),
 }
 STYLES = ["Formal English", "Polite request", "WhatsApp Hinglish", "Casual Hinglish", "Email with subject",
           "Short and crisp", "Firm", "Apology", "Thank you"]
