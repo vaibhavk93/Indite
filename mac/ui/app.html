@@ -158,6 +158,25 @@
   .group-h { font-size: 12px; font-weight: 600; color: var(--ink2); margin: 18px 0 4px; }
   .toast button { appearance: none; border: 0; background: none; color: #ffb066; font-weight: 600; margin-left: 10px; cursor: default; }
   .toast.act { pointer-events: auto; }
+  .menu { position: fixed; z-index: 5; width: 290px; max-height: 70vh; overflow: auto; background: var(--paper);
+          border: 1px solid var(--line2); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.16); padding: 6px; }
+  .menu h4 { font-size: 11px; font-weight: 600; color: var(--ink2); margin: 8px 8px 4px; }
+  .menu button { display: block; width: 100%; text-align: left; appearance: none; border: 0; background: none;
+                 padding: 7px 8px; border-radius: 7px; cursor: default; }
+  .menu button:hover, .menu button:focus-visible { background: var(--well); }
+  .menu button b { display: block; font-weight: 550; font-size: 13px; }
+  .menu button span { font-size: 12px; color: var(--ink2); }
+  .menu select { margin: 2px 8px 6px; width: calc(100% - 16px); }
+  .menu .fine { text-align: left; margin: 6px 8px 2px; }
+  .aicard { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .aicard .h { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ink2); margin-bottom: 6px; }
+  .aicard .h .sp { flex: 1; }
+  .aicard .body { white-space: pre-wrap; font-size: 13px; line-height: 1.55; -webkit-user-select: text; user-select: text; }
+  .aicard .more + .more { margin-left: 10px; }
+  .working { margin-top: 8px; font-size: 12px; color: var(--accent); display: flex; gap: 6px; align-items: center; }
+  .working i { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); animation: pulse 1s infinite ease-in-out; }
+  @keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
+  .twin { display: flex; gap: 4px; margin-bottom: 6px; }
   .fixer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; padding: 10px;
            background: var(--well); border-radius: 10px; font-size: 12px; color: var(--ink2); }
   .fixer input { font: inherit; font-size: 13px; color: var(--ink); width: 150px; padding: 5px 8px; border-radius: 7px;
@@ -261,6 +280,7 @@
   <symbol id="i-done" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3" fill="currentColor"/><path d="m5.2 8.2 2 2 3.6-4" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-trash" viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.6a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-file" viewBox="0 0 16 16"><path d="M4 1.8h5.2L12.5 5v8.7a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V2.3a.5.5 0 0 1 .5-.5Z M9 1.8V5.3h3.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 16 16"><path d="M8 1.8 9.3 6.2 13.7 7.5 9.3 8.8 8 13.2 6.7 8.8 2.3 7.5 6.7 6.2Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M12.8 1.8v2.4M11.6 3h2.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></symbol>
   <symbol id="i-folder" viewBox="0 0 16 16"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5v-7Z" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
 </svg>
 
@@ -353,6 +373,12 @@
           <div class="item">
             <div class="body"><b>Hinglish spelling</b><p>Writes everyday words one way: achha, kyunki, maine.</p></div>
             <button class="sw" id="set-spelling" role="switch" aria-label="Hinglish spelling"></button>
+          </div>
+          <div class="item">
+            <div class="body"><b>AI on notes</b><p>A ✨ button on each note: improve the wording (your original
+              stays), meeting notes, action items, summary, rewrite, translate. Answered by Claude with your own
+              login; the note’s text leaves this Mac.</p></div>
+            <button class="sw" id="set-ai" role="switch" aria-label="AI on notes"></button>
           </div>
           <div class="item">
             <div class="body"><b>Word fixes</b><p id="fixes-line"></p></div>
@@ -502,6 +528,7 @@
     sw("#set-spelling", "spelling");
     sw("#set-sounds", "sounds");
     sw("#set-preview", "preview");
+    sw("#set-ai", "ai");
     const hk2 = $("#set-hf_key");
     hk2.innerHTML = `<option value="">Same as the talk key</option>` + Object.entries(S.hotkeys)
       .map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("");
@@ -539,6 +566,8 @@
       <div style="flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>${esc(j.name)}</b></div>
       <div class="bar2"><i style="width:${j.total ? Math.round(100 * j.done / j.total) : 3}%"></i></div>
       <span class="num" style="color:var(--ink2);font-size:12px">${j.total ? `${j.done} of ${j.total}` : "reading…"}</span></div>`
+      : S.ai_error ? `<div class="banner"><div><b>Claude couldn’t answer</b><p>${esc(S.ai_error)}</p></div>
+        <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>`
       : S.file_error ? `<div class="banner"><div><b>That file didn’t work</b><p>${esc(S.file_error)}</p></div>
         <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>` : "";
     $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["file", "Files"]].map(([v, l]) =>
@@ -633,6 +662,7 @@
         <svg width="16" height="16"><use href="#${done ? "i-done" : "i-todo"}"/></svg></button>` : clock(r.at)}</div>
       <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#i-file"/></svg>${esc(r.title || "File")}</div>` : ""}
         <div class="text${file ? " clamp" : ""}">${esc(r.text)}</div>
+        ${aiParts(r)}
         ${file && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
         <div class="meta">${copied ? `<span class="tag copied">Copied</span>` : ""}
           ${todoView ? `<span>${dayLabel(r.at)} · ${clock(r.at)}</span>·` : ""}
@@ -643,10 +673,58 @@
       <div class="acts">
         ${ic("star", r.star ? "i-star-on" : "i-star", r.star ? "Unstar" : "Star — keep it", r.star)}
         ${todoView ? "" : ic("todo", r.todo === "open" ? "i-todo-on" : "i-todo", r.todo ? "Remove from To do" : "Add to To do", !!r.todo)}
+        ${S.prefs.ai !== false ? ic("aib", "i-spark", "AI: improve, notes, action items…") : ""}
         ${file ? "" : ic("fix", "i-pen", "Fix a word")}
         ${ic("cp", "i-copy", "Copy")}
         ${ic("del", "i-trash", "Delete")}
       </div></div>`;
+  }
+
+  function aiParts(r) {
+    const id = esc(r.id);
+    let h = "";
+    if (r.improved) h += `<div class="aicard"><div class="h"><svg width="13" height="13"><use href="#i-spark"/></svg>Improved
+        <span class="sp"></span><button class="more aicopy" data-id="${id}" data-k="improved">Copy</button>
+        <button class="more aidel" data-id="${id}" data-k="improved">Remove</button></div>
+        <div class="body">${esc(r.improved)}</div></div>`;
+    for (const a of r.ai || []) {
+      const isTasks = a.action === "actions" && !/^none\b/i.test(a.text.trim());
+      h += `<div class="aicard"><div class="h"><svg width="13" height="13"><use href="#i-spark"/></svg>${esc(a.label)}
+        <span class="sp"></span>${isTasks ? `<button class="more aitasks" data-id="${id}" data-k="${esc(a.label)}">Add all to To do</button>` : ""}
+        <button class="more aicopy" data-id="${id}" data-k="${esc(a.label)}">Copy</button>
+        <button class="more aidel" data-id="${id}" data-k="${esc(a.label)}">Remove</button></div>
+        <div class="body">${esc(a.text)}</div></div>`;
+    }
+    if (S.ai_busy && S.ai_busy[r.id]) h += `<div class="working"><i></i>Claude is writing: ${esc(S.ai_busy[r.id])}…</div>`;
+    return h;
+  }
+
+  function aiMenu(btn, r) {
+    document.querySelectorAll(".menu").forEach(m => m.remove());
+    const m = document.createElement("div");
+    m.className = "menu";
+    const groups = {};
+    for (const [k, [label, gets, group]] of Object.entries(S.ai_actions || {})) (groups[group] = groups[group] || []).push([k, label, gets]);
+    const opt = list => list.map(x => `<option>${esc(x)}</option>`).join("");
+    m.innerHTML = Object.entries(groups).map(([g, items]) => `<h4>${esc(g)}</h4>` + items.map(([k, label, gets]) =>
+      `<button data-k="${k}"><b>${esc(label)}</b><span>${esc(gets)}</span></button>` +
+      (k === "rewrite" ? `<select class="pick" id="ai-style">${opt(S.ai_styles || [])}</select>` : "") +
+      (k === "translate" ? `<select class="pick" id="ai-lang">${opt(S.ai_langs || [])}</select>` : "")).join("")).join("") +
+      `<p class="fine">Answered by Claude with your own login. The note’s text leaves this Mac.</p>`;
+    document.body.appendChild(m);
+    const b = btn.getBoundingClientRect();
+    m.style.top = Math.min(b.bottom + 4, innerHeight - m.offsetHeight - 8) + "px";
+    m.style.left = Math.max(8, b.right - m.offsetWidth) + "px";
+    m.querySelectorAll("button[data-k]").forEach(x => x.onclick = () => {
+      const k = x.dataset.k;
+      const extra = k === "rewrite" ? $("#ai-style").value : k === "translate" ? $("#ai-lang").value : "";
+      send({ action: "ai", id: r.id, act: k, extra });
+      m.remove();
+    });
+    setTimeout(() => document.addEventListener("mousedown", function off(e) {
+      if (!m.contains(e.target)) { m.remove(); document.removeEventListener("mousedown", off); } }), 0);
+    m.onkeydown = e => { if (e.key === "Escape") m.remove(); };
+    m.querySelector("button").focus();
   }
 
   function wire(root) {
@@ -656,6 +734,11 @@
                         if (!r.todo) toast("Added to To do"); });
     on(".tick", r => send({ action: "note", id: r.id, set: { todo: r.todo === "done" ? "open" : "done" } }));
     on(".fix", (r, b) => openFixer(b, r));
+    on(".aib", (r, b) => aiMenu(b, r));
+    on(".aicopy", (r, b) => { const k = b.dataset.k;
+      send({ action: "copy", text: k === "improved" ? r.improved : (r.ai || []).find(a => a.label === k).text }); toast("Copied"); });
+    on(".aidel", (r, b) => send({ action: "ai_clear", id: r.id, label: b.dataset.k }));
+    on(".aitasks", (r, b) => { send({ action: "tasks", id: r.id, label: b.dataset.k }); toast("Added to To do"); });
     on(".del", r => { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); });
     on(".exp", (r, b) => send({ action: "export", id: r.id, fmt: b.dataset.fmt }));
     root.querySelectorAll(".more:not(.exp)").forEach(b => b.onclick = () => {

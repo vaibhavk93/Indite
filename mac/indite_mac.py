@@ -30,6 +30,7 @@ import sounddevice as sd
 from pynput import keyboard
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ai                 # noqa: E402
 import store              # noqa: E402
 from overlay import Pill, Preview   # noqa: E402 - needs the path above
 from window import Window, front_app   # noqa: E402
@@ -448,6 +449,8 @@ class InditeApp(rumps.App):
         self.held_keys: set = set()
         self.last = ""
         self.web_proc: subprocess.Popen | None = None
+        self.ai_busy: dict = {}          # note id -> what the AI is doing for it
+        self.ai_error = ""
         self.job: dict | None = None     # a file being transcribed: name, parts done, parts in all
         self.file_error = ""
         self.pill = Pill()
@@ -784,6 +787,59 @@ class InditeApp(rumps.App):
             self.title = "🎙"
             self.done_until = time.time() + 2.0
             self.refresh()
+
+    def ask_ai(self, note_id: str, action: str, extra: str = "") -> None:
+        """
+        Main thread. The first time, a dialog says plainly that this text leaves the Mac for Claude, through the
+        user's own login - the one exception to "nothing leaves this Mac". Then the answer is fetched on a thread.
+        """
+        from AppKit import NSAlert, NSAlertFirstButtonReturn
+        if not self.prefs.get("ai_ok"):
+            alert = NSAlert.alloc().init()
+            alert.setMessageText_("Send this note to Claude?")
+            alert.setInformativeText_(
+                "AI answers come from Claude, using your own Claude login on this Mac. The note's text leaves this "
+                "Mac to get the answer; nothing else does. If the note is about work, check your company's rules "
+                "first.\n\nYou will not be asked again; turn AI off in Settings at any time.")
+            alert.addButtonWithTitle_("Send")
+            alert.addButtonWithTitle_("Cancel")
+            if alert.runModal() != NSAlertFirstButtonReturn:
+                return
+            store.set_pref("ai_ok", True)
+            self.reload_prefs()
+        row = next((r for r in store.history() if r["id"] == note_id), None)
+        if not row or note_id in self.ai_busy:
+            return
+        self.ai_busy[note_id] = ai.ACTIONS[action][0]
+        self.refresh()
+        threading.Thread(target=self._ai, args=(row, action, extra), daemon=True).start()
+
+    def _ai(self, row: dict, action: str, extra: str) -> None:
+        t0 = time.time()
+        try:
+            answer = ai.run(action, row["text"], extra)
+            if action == "improve":
+                store.update(row["id"], improved=answer)          # beside the original, never instead of it
+            else:
+                label = ai.ACTIONS[action][0] + (f" · {extra}" if extra else "")
+                answers = [a for a in row.get("ai", []) if a["label"] != label]
+                store.update(row["id"], ai=answers + [{"action": action, "label": label, "text": answer,
+                                                       "at": time.time()}])
+            print(f"ai {action}: {time.time() - t0:.1f}s")
+        except Exception as e:                           # noqa: BLE001 - not logged in, out of quota, offline...
+            self.ai_error = str(e)
+            print("ai failed:", e)
+        finally:
+            self.ai_busy.pop(row["id"], None)
+            self.refresh()
+
+    def add_tasks(self, note_id: str, answer_label: str) -> None:
+        """Every line of an Action items answer becomes its own To do, linked back to the note it came from."""
+        row = next((r for r in store.history() if r["id"] == note_id), None)
+        found = next((a for a in (row or {}).get("ai", []) if a["label"] == answer_label), None)
+        for t in ai.tasks(found["text"]) if found else []:
+            store.add(t, 0, 0, "task", "", kind="task", todo="open", source=note_id)
+        self.refresh()
 
     def refresh(self) -> None:
         """Tell the window something changed. WKWebView must be touched on the main thread only."""

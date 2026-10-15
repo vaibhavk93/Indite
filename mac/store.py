@@ -32,6 +32,8 @@ DEFAULTS = {
     "hf_key": "",               # hands-free key; "" = the same key you hold to talk
     "hf_taps": 2,               # taps of that key that lock hands-free: 2 or 3
     "pill_glass": 0.45,         # how much frosted glass the pill shows: 0 = clear, 1 = Apple's default
+    "ai": True,                 # show the AI button on notes (answers come from your own Claude login)
+    "ai_ok": False,             # you said yes to text leaving the Mac for AI answers (asked once)
     "preview": False,           # show what was written in a small card above the pill for a few seconds
 }
 

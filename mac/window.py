@@ -75,6 +75,11 @@ class Bridge(NSObject):
             "mics": __import__("indite_mac").mic_names(),
             "using": self.app.mic.using,
             "job": self.app.job,
+            "ai_busy": self.app.ai_busy,
+            "ai_error": self.app.ai_error,
+            "ai_actions": {k: v[:3] for k, v in __import__("ai").ACTIONS.items()},
+            "ai_styles": __import__("ai").STYLES,
+            "ai_langs": __import__("ai").LANGUAGES,
             "file_error": self.app.file_error,
         }
 
@@ -115,6 +120,17 @@ class Bridge(NSObject):
             self.app.export(str(msg.get("id", "")), str(msg.get("fmt", "txt")))
         elif act == "dismiss":
             self.app.file_error = ""
+            self.app.ai_error = ""
+        elif act == "ai":
+            self.app.ask_ai(str(msg.get("id", "")), str(msg.get("act", "")), str(msg.get("extra", "")))
+        elif act == "tasks":
+            self.app.add_tasks(str(msg.get("id", "")), str(msg.get("label", "")))
+        elif act == "ai_clear":                           # remove one AI answer, or the improved version
+            row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+            if row and msg.get("label") == "improved":
+                store.update(row["id"], improved=None)
+            elif row:
+                store.update(row["id"], ai=[a for a in row.get("ai", []) if a["label"] != msg.get("label")] or None)
         elif act == "add_fix":
             store.add_fix(msg.get("heard", ""), msg.get("want", ""))
         elif act == "files":
