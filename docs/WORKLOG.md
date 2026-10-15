@@ -15,6 +15,11 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
   stack in the log (faulthandler).
 - A frozen indite copy can't be killed (probably the company security agent); window opened via `demo.cmd` meanwhile.
 - launcher.c: no endless wait loop on errors (applies at the next rebuild).
+- Ask AI panel (critic-reviewed): no redraw unless something changed (scroll, cursor, choices kept); answers
+  formatted (headings, bold, bullets; action-item tables stay as pipes); long answers folded with Show more; Ask box
+  pinned at the bottom; errors shown in the panel and cleared on the next ask; dictation into indite's own window is
+  no longer saved as a note (process check, not app name). Settings → AI lists what AI unlocks vs what is offline.
+- Still open from the critic: two custom questions with the same first 48 characters overwrite each other.
 
 ## 2026-10-15 (night) · Claude Code (Opus 5.5) · Mac: UX restructure, AI providers, shareable build
 

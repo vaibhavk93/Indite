@@ -42,6 +42,16 @@ PAGE = Path(__file__).resolve().parent / "ui/app.html"
 W, H = 920.0, 660.0
 
 
+def front_pid() -> int:
+    """The process of the app in front; indite's own window is this very process."""
+    try:
+        from AppKit import NSWorkspace
+        a = NSWorkspace.sharedWorkspace().frontmostApplication()
+        return int(a.processIdentifier()) if a else 0
+    except Exception:       # noqa: BLE001
+        return 0
+
+
 def front_app() -> str:
     """Which app the words went into, so the history reads like a memory instead of a log."""
     try:

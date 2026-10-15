@@ -206,6 +206,16 @@
   .seg.mini button { font-size: 11.5px; padding: 2px 9px; }
   .working.big { font-size: 13px; padding: 12px 14px; background: var(--accent-soft); border-radius: 10px; margin-bottom: 10px; }
   .dempty { padding: 30px 0; } .dempty p { color: var(--ink2); margin: 6px 0 14px; }
+  .dans .body.md { white-space: normal; }
+  .dans .body.clamp { max-height: 12.8em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); }
+  .dmore { appearance: none; border: 0; background: none; color: var(--accent); font-size: 12px; font-weight: 600; padding: 4px 0 0; cursor: default; }
+  .dask { padding: 12px 22px 0; border-top: 1px solid var(--line); } .dask .drow { margin-bottom: 0; } .dask + .dfoot { border-top: 0; padding-top: 8px; } .md .mh { font-weight: 650; margin: 10px 0 2px; } .md .mh:first-child { margin-top: 0; }
+  .md .mli { padding-left: 14px; position: relative; } .md .mli::before { content: "•"; position: absolute; left: 2px; color: var(--ink3); }
+  .md .mgap { height: 6px; }
+  .derr { border: 1px solid #e0796b; background: rgba(224,121,107,.1); border-radius: 10px; padding: 10px 12px; margin-top: 14px;
+          display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; } .derr div { flex: 1; } .derr p { color: var(--ink2); margin-top: 2px; }
+  .aiwhat { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; font-size: 12.5px; line-height: 1.55; }
+  .aiwhat b { display: block; margin-bottom: 4px; } .aiwhat ul { margin: 0; padding-left: 16px; color: var(--ink2); }
   .dfoot { padding: 12px 22px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink2); }
   .navgap { height: 14px; }
   .navbottom { border-top: 1px solid var(--line2); padding-top: 8px; }
@@ -608,11 +618,29 @@
           <div class="sgroup" data-g="ai"><h2>AI</h2>
             <div class="card">
               <div class="item">
-                <div class="body"><b>AI on notes</b><p>Adds “AI” to every note’s “…” menu: improve the wording (your
-                  original stays), meeting notes, action items, summary, rewrite, translate. Off: nothing ever leaves
-                  this Mac.</p></div>
+                <div class="body"><b>AI on notes</b><p>On: the Ask AI panel below works on any note. Off: nothing ever leaves this Mac.</p></div>
                 <button class="sw" id="set-ai" role="switch" aria-label="AI on notes"></button>
               </div>
+              <div class="item">
+                <div class="aiwhat">
+                  <div><b>✦ With an AI login or key</b><ul>
+                    <li>The <b style="display:inline">Ask AI</b> panel on any note (“…” → Ask AI)</li>
+                    <li>Improve the wording · Clean it up</li>
+                    <li>Summary · Action items (one click adds them to To do)</li>
+                    <li>Meeting notes · Lecture notes · Brain dump</li>
+                    <li>Rewrite to send (WhatsApp, email, formal…) · Translate</li>
+                    <li>Ask anything about a note</li></ul></div>
+                  <div><b>Always, with no AI and no internet</b><ul>
+                    <li>Dictation into any app, hands-free, Esc to cancel</li>
+                    <li>Meetings: recording and who spoke</li>
+                    <li>Files: audio and video to text</li>
+                    <li>Dictionary and word fixes · To do · Insights</li>
+                    <li>Backup and restore</li></ul></div>
+                </div>
+              </div>
+              <div class="item"><div class="body"><p><b style="display:inline">Login or key: the same features.</b>
+                A Claude login uses your Claude plan. An API key is charged by that company per use. Either way only
+                the note you ask about is sent, and only when you ask.</p></div></div>
               <div class="item aiopt">
                 <div class="body"><b>Answers come from</b><p>The note’s text is sent there, and only when you ask.</p></div>
                 <select class="pick" id="set-ai_provider" aria-label="AI provider"></select>
@@ -830,6 +858,12 @@
   $("#clear").onclick = () => send({ action: "clear" });
 
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // AI answers come as Markdown; show headings, bold and bullets instead of # and ** (escaped first, so it stays safe)
+  const md = t => esc(t).split("\n").map(l => {
+    l = l.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    const h = l.match(/^#{1,4}\s+(.*)/), li = l.match(/^\s*[-*•]\s+(.*)/);
+    return h ? `<div class="mh">${h[1]}</div>` : li ? `<div class="mli">${li[1]}</div>` : l.trim() ? `<div>${l}</div>` : `<div class="mgap"></div>`;
+  }).join("");
   const day = t => new Date(t * 1000).toDateString();
   const hk = () => S.hotkeys[S.prefs.hotkey] || "Right ⌥";
 
@@ -1114,10 +1148,10 @@
   }
 
   // ---- Ask AI: a focused panel for one note -----------------------------------------------------------------
-  let drawerId = null, drawerView = {};
+  let drawerId = null, drawerView = {}, drawerHtml = "";
   function aiMenu(_btn, r) { openDrawer(r.id); }
   function openDrawer(id) {
-    drawerId = id; $("#drawer").hidden = false; $("#scrim").hidden = false; drawDrawer();
+    drawerId = id; drawerHtml = ""; $("#drawer").hidden = false; $("#scrim").hidden = false; drawDrawer();
     setTimeout(() => $("#drawer").focus(), 0);
   }
   function closeDrawer() { drawerId = null; $("#drawer").hidden = true; $("#scrim").hidden = true; }
@@ -1125,6 +1159,23 @@
   $("#drawer").onkeydown = e => { if (e.key === "Escape") closeDrawer(); };
 
   const QUICK = [["Make it better", ["improve", "cleanup"]], ["Turn it into", ["summary", "actions", "notes", "lecture", "braindump"]]];
+  // The app pushes its state every few seconds and draw() runs on each push. Rebuilding the panel every time threw the
+  // scroll back to the top and took the cursor out of the Ask box mid-dictation (15 Oct). So: only rebuild when
+  // something shown changed, and then put back the scroll, the typed text, the picked options and the cursor.
+  const long = t => t.split("\n").length > 9 || t.length > 600;
+  function putDrawer(h) {
+    if (h === drawerHtml) return false;
+    const d = $("#drawer"), body = d.querySelector(".dbody"), f = document.activeElement;
+    const keep = { top: body ? body.scrollTop : 0, focus: f && d.contains(f) ? f.id : "",
+                   caret: f && f.selectionStart != null ? [f.selectionStart, f.selectionEnd] : null,
+                   vals: [...d.querySelectorAll("input[id], select[id]")].map(x => [x.id, x.value]) };
+    drawerHtml = h; d.innerHTML = h;
+    keep.vals.forEach(([id, v]) => { const x = document.getElementById(id); if (x) x.value = v; });
+    const b2 = d.querySelector(".dbody"); if (b2) b2.scrollTop = keep.top;
+    const f2 = keep.focus && document.getElementById(keep.focus);
+    if (f2) { f2.focus(); if (keep.caret) try { f2.setSelectionRange(...keep.caret); } catch (_) {} }
+    return true;
+  }
   function drawDrawer() {
     if (!drawerId) return;
     const r = byId(drawerId);
@@ -1140,12 +1191,16 @@
     if (!S.prefs.ai) {
       h += `<div class="dempty"><b>AI is off</b><p>Turn it on in Settings → AI. Until then nothing ever leaves this Mac.</p>
         <button class="btn go" id="dgo-set">Open Settings → AI</button></div></div>`;
-      $("#drawer").innerHTML = h; $("#dclose").onclick = closeDrawer;
+      if (!putDrawer(h)) return;
+      $("#dclose").onclick = closeDrawer;
       $("#dgo-set").onclick = () => { closeDrawer(); go("settings"); sgo("ai"); }; return;
     }
+    if (S.ai_error) h += `<div class="derr"><div><b>That didn’t work</b><p>${esc(S.ai_error)}</p></div>
+        <button class="btn" id="d-err-ok">OK</button></div>`;
     const nAns = answers.length + (r.improved ? 1 : 0);
     if (busy || nAns) h += `<div class="dsec"><h3>Answers${nAns ? " · " + nAns : ""}</h3>`;
-    if (busy) h += `<div class="working big"><i></i>${esc(busy)}… usually a few seconds</div>`;
+    if (busy) h += `<div class="working big"><i></i>${busy === "finding who spoke" ? "Finding who spoke… on this Mac, can take a minute"
+                                                    : esc(busy) + "… usually 10–30 seconds"}</div>`;
     if (r.improved) {
       const v = drawerView[r.id] || "improved";
       h += `<div class="dans"><div class="h"><b>Improved wording</b><span class="sp"></span>
@@ -1156,7 +1211,9 @@
     for (const a of answers) {
       const tasks = a.action === "actions" && !/^none\b/i.test(a.text.trim());
       h += `<div class="dans"><div class="h"><b>${esc(a.label)}</b><span class="sp"></span><span class="when2">${a.at ? clock(a.at) : ""}</span></div>
-          <div class="body">${esc(a.text)}</div>
+          ${long(a.text) ? `<div class="body md${drawerView["more:" + r.id + a.label] ? "" : " clamp"}">${md(a.text)}</div>
+            <button class="dmore" data-more="${esc(a.label)}">${drawerView["more:" + r.id + a.label] ? "Show less" : "Show more"}</button>`
+            : `<div class="body md">${md(a.text)}</div>`}
           <div class="acts2">${tasks ? `<button class="btn go" data-tasks="${esc(a.label)}">Add all to To do</button>` : ""}
           <button class="btn" data-copy="${esc(a.label)}">Copy</button><button class="btn danger" data-del="${esc(a.label)}">Remove</button></div></div>`;
     }
@@ -1167,21 +1224,24 @@
     h += `<div class="dsec"><h3>Send it</h3>
         <div class="drow"><span>Rewrite as</span><select class="pick" id="d-style">${opt(S.ai_styles || [])}</select><button class="btn" data-k="rewrite" ${busy ? "disabled" : ""}>Rewrite</button></div>
         <div class="drow"><span>Translate to</span><select class="pick" id="d-lang">${opt(S.ai_langs || [])}</select><button class="btn" data-k="translate" ${busy ? "disabled" : ""}>Translate</button></div></div>
-      <div class="dsec"><h3>Ask anything</h3><div class="drow ask"><input class="pick wide" id="d-ask" placeholder="e.g. turn this into a WhatsApp message for Rohit" spellcheck="false">
-        <button class="btn go" data-k="custom" ${busy ? "disabled" : ""}>Ask</button></div></div>`;
-    h += `</div><div class="dfoot">Answers come from ${who}. Only this note’s text is sent, and only when you click.</div>`;
-    const keep = $("#d-ask") ? $("#d-ask").value : "";
-    $("#drawer").innerHTML = h;
-    if ($("#d-ask")) $("#d-ask").value = keep;
+`;
+    h += `</div><div class="dask"><div class="drow ask"><input class="pick wide" id="d-ask" placeholder="Ask anything about this note…" spellcheck="false">
+        <button class="btn go" data-k="custom" ${busy ? "disabled" : ""}>Ask</button></div></div>
+      <div class="dfoot">Answers come from ${who}. Only this note’s text is sent, and only when you ask.</div>`;
+    if (!putDrawer(h)) return;
     $("#dclose").onclick = closeDrawer;
+    if ($("#d-err-ok")) $("#d-err-ok").onclick = () => send({ action: "dismiss" });
     $("#drawer").querySelectorAll("[data-k]").forEach(b => b.onclick = () => {
       const k = b.dataset.k;
       const extra = k === "rewrite" ? $("#d-style").value : k === "translate" ? $("#d-lang").value : k === "custom" ? $("#d-ask").value.trim() : "";
       if (k === "custom" && !extra) return $("#d-ask").focus();
       send({ action: "ai", id: r.id, act: k, extra });
+      $("#drawer .dbody").scrollTop = 0;                  // the answer appears at the top, newest first
       if (k === "custom") $("#d-ask").value = "";
     });
     $("#d-ask").onkeydown = e => { if (e.key === "Enter") $("#drawer").querySelector("[data-k=custom]").click(); };
+    $("#drawer").querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
+      const k = "more:" + r.id + b.dataset.more; drawerView[k] = !drawerView[k]; drawDrawer(); });
     $("#drawer").querySelectorAll(".seg.mini button").forEach(b => b.onclick = () => { drawerView[r.id] = b.dataset.v; drawDrawer(); });
     $("#drawer").querySelectorAll("[data-copy]").forEach(b => b.onclick = () => {
       const k = b.dataset.copy;

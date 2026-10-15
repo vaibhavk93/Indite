@@ -61,7 +61,7 @@ from meeting import Meeting  # noqa: E402
 import digits as numbers  # noqa: E402 - mac/digits.py ("numbers" is a stdlib module name)
 import store              # noqa: E402
 from overlay import Pill, Preview   # noqa: E402 - needs the path above
-from window import Activation, Window, front_app   # noqa: E402
+from window import Activation, Window, front_app, front_pid   # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
@@ -850,7 +850,7 @@ class InditeApp(rumps.App):
     # ---- the work ------------------------------------------------------------------------------------------
     def write_it(self, audio: np.ndarray) -> None:
         t0 = time.time()
-        where = front_app()              # asked before anything is typed, so the history says which app it went to
+        where, where_pid = front_app(), front_pid()              # asked before anything is typed, so the history says which app it went to
         try:
             text = self.tidy(self.engine.transcribe(audio))
             if junk(text, len(audio) / RATE):
@@ -885,7 +885,8 @@ class InditeApp(rumps.App):
             self.done_state = "copied"
         self.done_until = time.time() + 1.6
         took = time.time() - t0
-        note = store.add(text, len(audio) / RATE, took, self.done_state, where)
+        # Spoken into indite's own window (the Ask AI box, search, a rename): that's input to indite, not a note.
+        note = None if where_pid == os.getpid() else store.add(text, len(audio) / RATE, took, self.done_state, where)
         if note and self.prefs["keep_audio"]:            # off by default: a recording of everything said is a lot
             store.AUDIO.mkdir(parents=True, exist_ok=True)
             with wave.open(str(store.AUDIO / f"{note}.wav"), "wb") as w:
@@ -995,6 +996,7 @@ class InditeApp(rumps.App):
         row = next((r for r in store.history() if r["id"] == note_id), None)
         if not row or note_id in self.ai_busy:
             return
+        self.ai_error = ""                               # one app-wide error: an old one must not sit in a new answer
         self.ai_busy[note_id] = ai.ACTIONS[action][0]
         self.refresh()
         threading.Thread(target=self._ai, args=(row, action, extra), daemon=True).start()

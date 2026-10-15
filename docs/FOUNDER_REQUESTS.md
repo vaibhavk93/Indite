@@ -444,3 +444,5 @@ is a git commit.
 | 211 | **I can't see the app window** | — | 15 Oct | 🟡 | A frozen old copy takes your Dock clicks. Opened the live window for you; **restart the Mac** to clear it for good |
 | 213 | **Still see "indite can't hear the hotkey, open Settings"** | — | 15 Oct | ✅ | False alarm: the warning checked Input Monitoring. It now checks Accessibility, which the hotkey really uses |
 | 212 | **Don't touch the GitHub history** | — | 15 Oct | ✅ | Not rewritten; nothing pushed |
+| 214 | **Ask AI still has UX/UI issues** | Fix before the Mac restart and the demo | 15 Oct | 🧪 | Found with real screenshots + critic: the panel redrew itself every few seconds (scroll jumped, the Ask box lost the cursor while dictating); answers showed raw # and **; long answers buried the Ask box; errors hid behind the panel; dictating into the Ask box also saved a new note. All fixed. Your look pending |
+| 215 | **Settings → AI: say clearly what an AI login or key unlocks** | — | 15 Oct | 🧪 | Two lists: with AI (the Ask AI panel actions) vs always offline (dictation, meetings, who spoke, files, dictionary, to do, insights, backup); login and key unlock the same features |
