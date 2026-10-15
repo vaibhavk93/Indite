@@ -4,6 +4,15 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-15 (afternoon) · Claude Code (Opus 5.5) · Mac fixes
+
+**Next step:** founder names what they miss from Wispr; then build personal word fixes + Esc cancel, and test a 60 s hold.
+
+- Mac hotkey died when the default mic (a Bluetooth headset, off) failed to open. Fixed with a mic fallback; founder tested.
+- Android and Mac apps separated: Mac has its own model link and spelling list.
+- Leftover `whisper-server` processes (3 × 574 MB) after crashes; the app now clears them at startup.
+- Critic review of Wispr-like Mac features (see HANDOFF "Mac fixes").
+
 ## 2026-10-13/14 · Claude Code (Opus 5) · builds 16-29
 
 **Next step:** founder's hand check of everything since build 15; back up the signing key; a new OpenRouter key so

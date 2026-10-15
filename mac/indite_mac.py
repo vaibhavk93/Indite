@@ -38,7 +38,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
 SERVER = ROOT / ".tools/whisper.cpp/build/bin/whisper-server"
 PORT = 8711                   # localhost only; nothing listens outside this Mac
-MODEL = ROOT / "android/app/src/main/assets/models/ggml-apex-q5_k.bin"
+MODEL = ROOT / "mac/models/ggml-apex-q5_k.bin"   # the Mac's own copy: a phone model change cannot reach it
 RATE = 16_000
 
 # Hold one of these to talk. The right-hand Option key is the default: close to the hand, used by almost nothing
@@ -47,12 +47,12 @@ HOTKEYS = {"alt_r": "Right \u2325", "alt_l": "Left \u2325", "cmd_r": "Right \u23
 KEYS = {"alt_r": keyboard.Key.alt_r, "alt_l": keyboard.Key.alt_l,
         "cmd_r": keyboard.Key.cmd_r, "ctrl_r": keyboard.Key.ctrl_r}
 
-# Spelling the phone applies too, so Mac and phone write the same words. Loaded from the shared list.
-SPELLING = ROOT / "android/app/src/main/res/raw/spelling.tsv"
+# The Mac's own spelling list. Started as a copy of the phone's; the two now change independently.
+SPELLING = ROOT / "mac/spelling.tsv"
 
 
 def fixes() -> dict[str, str]:
-    """Everyday Hinglish spellings (achha, kyunki, maine…), shared with the phone."""
+    """Everyday Hinglish spellings (achha, kyunki, maine…)."""
     out: dict[str, str] = {}
     if SPELLING.exists():
         for line in SPELLING.read_text(encoding="utf-8").splitlines():
@@ -137,6 +137,10 @@ class Engine:
         """Starts the resident engine and waits for the model to load. False means we fall back to the binary."""
         if not SERVER.exists():
             return False
+        # An app that was killed or crashed never ran stop_server, so its engine is still holding 574 MB and the port
+        # (15 Oct: three were found). Clear them first, or the new one cannot listen and the old one answers instead.
+        subprocess.run(["pkill", "-f", f"whisper-server.*--port {PORT}"], check=False)
+        time.sleep(0.3)
         self.proc = subprocess.Popen(
             [str(SERVER), "-m", str(MODEL), "--port", str(PORT), "--host", "127.0.0.1", "-t", "6", "-nt"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

@@ -17,3 +17,6 @@ research_notes/
 
 # the built Mac app bundle: rebuilt by mac/build_app.sh, not source
 dist/
+
+# The Mac app's own model (a hard link to the phone's file, so no extra disk; 574 MB, never in git)
+mac/models/

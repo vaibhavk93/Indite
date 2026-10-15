@@ -177,7 +177,12 @@ Use push + install always. Three failed installs and ~90 minutes were lost befor
 ### The Mac app (15 Oct)
 
 `mac/indite_mac.py` plus `overlay.py`, `window.py`, `store.py`. Hold a key anywhere, speak, let go, and the text is
-typed into whatever app has focus. Same model, same spelling list and the same window rule as the phone.
+typed into whatever app has focus. Same window rule as the phone.
+
+**⚠ The Mac and Android apps are kept separate (founder, 15 Oct).** Neither reads the other's folder. The Mac has its
+own model (`mac/models/`, a hard link to the phone's file, so no extra disk; git-ignored) and its own `mac/spelling.tsv`
+(started as a copy of the phone's). A change to one app's model or spelling cannot change the other. Only the
+whisper.cpp tools in `.tools/` are shared, and Android builds its own copy from source.
 
 | | |
 |---|---|
@@ -197,6 +202,18 @@ bundle exists. The app now checks at startup and names what to add.
 **⚠ The project moved on 14 Oct** from `~/Desktop/Personal/Cowork/Voice to Text` to `~/Projects/indite`, because a
 new app cannot read `~/Desktop` (macOS protects it) and the bundle could not reach its own Python. A symlink keeps
 the old Desktop path working. All paths in the repo were relative, so nothing else changed.
+
+### Mac fixes (15 Oct, afternoon)
+
+- **A mic that will not open no longer kills the hotkey.** The default input was a Bluetooth headset that was off
+  (PortAudio -9986); the error killed the key listener. Now it tries the last mic that worked, the default, the
+  built-in, then any input; if none opens, the pill and a popup say why. **Founder tested with the headset off: works.**
+- **Leftover engines.** A killed or crashed app left `whisper-server` running (three found, 574 MB each). The app now
+  clears any old engine on port 8711 at startup. Checked with `kill -9`, then relaunch: one engine.
+- `build_app.sh` uses the real folder (`pwd -P`); run from the Desktop symlink, it baked in a path macOS blocks.
+- **Next Mac features (critic-reviewed, all unproven):** build personal word fixes and Esc-to-cancel; test a 60 s hold
+  first (the window caps at ~25 s); later snippets and hands-free; drop undo-by-backspace, voice "press enter",
+  command mode (no AI route). Waiting on the founder to say what they actually miss from Wispr.
 
 ### Waiting on the founder
 
