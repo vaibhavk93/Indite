@@ -1,0 +1,32 @@
+Long dictation arrived slowly and in bursts in a text input field (founder, 16 Oct).
+
+CAUSE  pynput sends two key events per character (.venv/.../pynput/keyboard/_darwin.py:225). A paragraph is
+       hundreds of events at once; Chromium-based apps drain that queue a frame at a time, so the words crawl in.
+
+FIX    One macOS key event can carry up to 20 UTF-16 units of text, so the same paragraph is ~40x fewer events.
+       mac/indite_mac.py: Typer.type + utf16_chunks. pynput stays as the fallback if the fast path ever throws.
+       The clipboard is NOT used - the "typing never touches the clipboard" promise is unchanged.
+
+AFTER  Measured through indite itself (it has the Accessibility permission; a terminal process does not).
+       Times include the readback poll (~0.4 s per AppleScript round trip), so they are upper bounds.
+
+       TextEdit (native)            chars   first seen   all there   exact
+                                      197       0.23 s      0.23 s   yes
+                                      788       0.29 s      0.29 s   yes
+                                     1576       0.61 s      0.61 s   yes
+
+       Chrome, a <textarea> (the reported case)
+                                      197       0.41 s      0.48 s   yes
+                                      788       0.47 s      0.85 s   yes
+                                     1576       0.54 s      0.60 s   yes
+
+       Every character correct, in order, at every length. Nothing arrives in visible bursts any more.
+
+NOT TESTED  Slack and VS Code: driving them unattended risks sending a real message or editing a real file.
+            Both are Chromium, like Chrome, so the same path is expected to hold - but that is expectation, not
+            measurement. Check by hand before relying on it in front of an audience.
+
+NOT DONE    The clipboard route (save -> paste -> restore) was rejected: it would adopt the exact mechanism
+            MAC_PLAN.md:124 names as Wispr's weakness, and the critic found two critical failures - a restore
+            racing a slow app can paste the PREVIOUS clipboard (a password manager entry) into a chat box, and a
+            missed secure-field check would leave a spoken secret sitting on the system clipboard.

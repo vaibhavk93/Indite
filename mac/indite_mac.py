@@ -491,17 +491,56 @@ def focused_is_secret() -> bool:
         return False
 
 
+def utf16_chunks(text: str, most: int) -> list[str]:
+    """
+    `text` in pieces of at most `most` UTF-16 units - the limit one macOS key event can carry.
+
+    Counted in UTF-16, not characters, because that is what the system counts: an emoji is two units, so a naive
+    split by characters would cut one in half and type a broken character.
+    """
+    out, piece, used = [], [], 0
+    for ch in text:
+        size = len(ch.encode("utf-16-le")) // 2
+        if used + size > most and piece:
+            out.append("".join(piece))
+            piece, used = [], 0
+        piece.append(ch)
+        used += size
+    if piece:
+        out.append("".join(piece))
+    return out
+
+
 class Typer:
     """
-    Puts the text where the cursor is. Typed character by character, so nothing touches the clipboard - the phone's
-    floating mic has to use the clipboard and that is its one real privacy cost.
+    Puts the text where the cursor is, without ever touching the clipboard - the phone's floating mic has to use the
+    clipboard and that is its one real privacy cost.
+
+    pynput sends two key events per character (`_darwin.py:225`). A long dictation into a text field was therefore
+    hundreds of events pushed at once, and Chromium-based apps (Slack, Chrome, VS Code) drain that queue a frame at
+    a time, so the words crawled in visibly in bursts (founder, 16 Oct). macOS lets one key event carry up to 20
+    UTF-16 units of text instead, so the same paragraph is ~40x fewer events. If that path fails for any reason the
+    old one still runs, because typing nothing at all is the worst outcome.
     """
+
+    MAX = 20                                             # UTF-16 units one key event may carry (macOS limit)
 
     def __init__(self) -> None:
         self.kb = keyboard.Controller()
 
     def type(self, text: str) -> None:
-        self.kb.type(text + " ")
+        text += " "
+        try:
+            import Quartz
+            for chunk in utf16_chunks(text, self.MAX):
+                for down in (True, False):
+                    e = Quartz.CGEventCreateKeyboardEvent(None, 0, down)
+                    Quartz.CGEventKeyboardSetUnicodeString(e, len(chunk.encode("utf-16-le")) // 2, chunk)
+                    Quartz.CGEventPost(Quartz.kCGHIDEventTap, e)
+                time.sleep(0.002)                        # a breath between events; without it apps reorder them
+        except Exception as e:                           # noqa: BLE001 - never lose the words over a fast path
+            print("fast typing failed, falling back:", e)
+            self.kb.type(text)
 
     @staticmethod
     def copy(text: str) -> None:
@@ -1209,6 +1248,8 @@ class InditeApp(rumps.App):
                     self.ai_busy[row["id"]] = ai.ACTIONS[arg][0]
                     self.refresh()
                     threading.Thread(target=self._ai, args=(row, arg, ""), daemon=True).start()
+            elif verb == "type":                          # developer check: type into whatever is in front
+                self.typer.type(arg)
             elif verb == "pill":
                 self.pill.set_clear(int(arg))
                 self.done_state, self.done_until = "done", time.time() + 2.0
@@ -1272,4 +1313,18 @@ class InditeApp(rumps.App):
 
 
 if __name__ == "__main__":
+    if "--selftest" in sys.argv:                         # uv run python mac/indite_mac.py --selftest
+        assert utf16_chunks("", 20) == []
+        assert utf16_chunks("hello", 20) == ["hello"]
+        assert utf16_chunks("abcdef", 2) == ["ab", "cd", "ef"]
+        long = "Kal ki meeting chaar baje hai, please sab ko reminder bhej dena. " * 8
+        assert "".join(utf16_chunks(long, 20)) == long           # nothing added, nothing lost
+        assert all(len(c.encode("utf-16-le")) // 2 <= 20 for c in utf16_chunks(long, 20))
+        emoji = "a\U0001F600b"                                   # one emoji is 2 UTF-16 units
+        for n in (1, 2, 3, 4):
+            parts = utf16_chunks(emoji, n)
+            assert "".join(parts) == emoji
+            assert all(len(p.encode("utf-16-le")) // 2 <= max(n, 2) for p in parts), (n, parts)
+        print("ok")
+        sys.exit(0)
     InditeApp().run()
