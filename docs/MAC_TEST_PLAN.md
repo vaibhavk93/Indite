@@ -31,6 +31,9 @@ TextEdit is fine.
 
 ## Part B — needs you
 
+**Founder's results so far (15 Oct):** B4/B5 ✅ · B14 ✅ · B14b ✅ · B22 open (later) · B12 → found the shortcuts dying after a
+settings change, fixed (key listener restarted, mic work off the key handler).
+
 | # | Test | What to do | What you should see | It failed if… |
 |---|---|---|---|---|
 | **Dictation** | | | | |
