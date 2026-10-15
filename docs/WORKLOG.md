@@ -23,6 +23,10 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
   plain sections, own Rewrite/Translate menus, growing Ask box, full question kept as the title. Caught and fixed my own
   bug (empty list: the list read a variable before it existed). Full self-test passed (see MAC_TEST_PLAN Part A).
 - Heard twice: "indite" transcribed as "in diet" / "In night" - a word-fix candidate.
+- Round 3 (founder: "maybe worse"): Ask AI rebuilt after a critic (answers as documents, options on a sunken surface,
+  one-click Rewrite/Translate chips, loading + ready/failed message, calm styling app-wide). Summary scales with the
+  note; API limits raised (300 s, 4000 tokens; long meetings untested).
+- Roadmap research (web + MAC_PLAN §6) critic-reviewed -> `docs/ROADMAP_DETAIL.md`; ROADMAP "Now" 6-7 updated.
 
 ## 2026-10-15 (night) · Claude Code (Opus 5.5) · Mac: UX restructure, AI providers, shareable build
 

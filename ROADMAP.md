@@ -163,10 +163,17 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a â
    for a smaller model is set: it must match 25.0% on the 15-min file and 13.0% on clean synthetic.
 
 6. **Mac: two shipped features are dead and one number is missing** (15 Oct, after the Wispr screenshot review).
-   Screen & System Audio Recording is not granted, so meeting recording and the demo video do not work. The 53 real
-   dictations have never been scored, so every accuracy number comes from synthetic clips. Nothing is signed or
+   ~~Screen & System Audio Recording is not granted~~ (granted 15 Oct night; one real call left). The 53 real
+   dictations can't be scored (their audio wasn't saved): **record ~50 fresh ones with audio on, then score them** -
+   this set also gates AI review and every accuracy claim. Nothing is signed or
    notarised, so no second person can install it. All three beat every feature on the Wispr list â€” see
    `docs/MAC_PLAN.md` section 6.
+
+7. **AI review of a dictation (new, 15 Oct; detail: `docs/ROADMAP_DETAIL.md` C1-C7).** Step 1 offline: flag
+   near-misses of Dictionary words ("in diet" -> "indite"), works in every build. Step 2 with the user's AI: per-item
+   suggestions, nothing changes without a tap, original kept; gate >=70% right on the real set. Accepted fixes feed
+   the Dictionary; Insights gains most-fixed words and fixes per 100 words. Regional personalisation (number formats,
+   script choice, name packs, more languages) is Later, each with a trigger. Wispr comparison: same file, section B.
 
 ## Next build (planned, critic-reviewed)
 
