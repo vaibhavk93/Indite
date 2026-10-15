@@ -20,6 +20,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key><string>0.1</string>
   <key>CFBundleExecutable</key><string>indite</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleIconFile</key><string>indite</string>
   <key>LSUIElement</key><true/>
   <key>NSMicrophoneUsageDescription</key>
   <string>indite turns what you say into text. The recording stays on this Mac and is deleted straight after.</string>
@@ -35,6 +36,7 @@ cat > "$APP/Contents/MacOS/indite" <<LAUNCH
 exec "$ROOT/.venv/bin/python" -u "$ROOT/mac/indite_mac.py" >> "\$HOME/Library/Logs/indite-mac.log" 2>&1
 LAUNCH
 chmod +x "$APP/Contents/MacOS/indite"
+cp "$ROOT/mac/brand/indite.icns" "$APP/Contents/Resources/indite.icns"     # the logo (mac/brand/logo.svg)
 
 # An ad-hoc signature gives the bundle a stable identity, so the Accessibility tick survives a rebuild.
 codesign --force --sign - "$APP" 2>/dev/null || echo "note: could not sign; the tick may not survive a rebuild"

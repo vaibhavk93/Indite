@@ -506,6 +506,9 @@ class InditeApp(rumps.App):
         self.web_proc: subprocess.Popen | None = None
         self.meeting = Meeting(self)
         self.meeting_item = rumps.MenuItem("Record a meeting", callback=self.toggle_meeting)
+        self.ops: queue.Queue = queue.Queue()
+        threading.Thread(target=self._worker, daemon=True).start()
+        self.relisten = False
         self.ai_busy: dict = {}
         self.ai_who: dict = {}
         self.ai_keys: dict = {}          # note id -> what the AI is doing for it
@@ -570,6 +573,7 @@ class InditeApp(rumps.App):
         try:                                             # say plainly in the log whether meetings can hear calls
             import Quartz
             print("screen & system audio recording allowed:", bool(Quartz.CGPreflightScreenCaptureAccess()))
+            print("key access (Accessibility) allowed:", can_listen())
         except Exception:                                # noqa: BLE001
             pass
         if not self.prefs.get("asked_screen"):           # once: lets the meeting recorder hear the other people
@@ -626,8 +630,26 @@ class InditeApp(rumps.App):
 
     # ---- the hotkey ----------------------------------------------------------------------------------------
     def listen(self) -> None:
-        with keyboard.Listener(on_press=self._press, on_release=self._release) as listener:
-            listener.join()
+        """
+        The key listener, restarted whenever macOS switches it off (a slow moment anywhere can do that, and pynput
+        never switches it back on). Watching costs nothing: macOS sends a "tap disabled" event first.
+        """
+        while True:
+            self.relisten = False
+            with keyboard.Listener(on_press=self._press, on_release=self._release,
+                                   darwin_intercept=self._tap_event) as listener:
+                self.listener = listener
+                listener.join()
+            if not self.relisten:
+                return
+            print("key listener was switched off by macOS - started again")
+            time.sleep(0.2)
+
+    def _tap_event(self, event_type, event):            # noqa: ANN001
+        if event_type in (0xFFFFFFFE, 0xFFFFFFFF):       # kCGEventTapDisabledByTimeout / ByUserInput
+            self.relisten = True
+            threading.Thread(target=self.listener.stop, daemon=True).start()
+        return event
 
     def _press(self, key) -> None:                       # noqa: ANN001
         self.held_keys.add(key)
@@ -678,16 +700,39 @@ class InditeApp(rumps.App):
             return True
         return False
 
+    def do(self, fn) -> None:                            # noqa: ANN001
+        """
+        Microphone work, off the key handler. macOS silently switches off a key listener whose callback is slow, and
+        opening a Bluetooth mic can take a while: after that no hotkey worked until a restart (founder, 15 Oct). So
+        key handlers only change state; opening and closing the mic happens here, in order, on one worker thread.
+        """
+        if self.ops is None:                             # tests: run at once
+            fn()
+        else:
+            self.ops.put(fn)
+
+    def _worker(self) -> None:
+        while True:
+            fn = self.ops.get()
+            try:
+                fn()
+            except Exception as e:                       # noqa: BLE001 - one failed step must not stop the worker
+                print("mic step failed:", e)
+
     def start_listening(self) -> bool:
-        try:
-            self.mic.start()
-        except Exception as e:                           # noqa: BLE001 - never let this kill the listener
-            self.started_at = 0.0
-            self.title = "🎙"
-            self.mic_trouble(e)
-            return False
+        """Listening starts now as far as the keys are concerned; the mic itself opens on the worker."""
         self.started_at = time.time()
         self.title = "🔴"
+
+        def open_mic() -> None:
+            try:
+                self.mic.start()
+            except Exception as e:                       # noqa: BLE001
+                self.started_at = 0.0
+                self.locked = False
+                self.title = "🎙"
+                self.mic_trouble(e)
+        self.do(open_mic)
         return True
 
     def on_press(self, key) -> None:                     # noqa: ANN001 - pynput's signature
@@ -697,7 +742,7 @@ class InditeApp(rumps.App):
             # ponytail: pynput cannot swallow the key on macOS, so Esc also reaches the app underneath
             self.started_at = 0.0
             self.locked = False
-            self.mic.stop()
+            self.do(self.mic.stop)
             self.title = "🎙"
             self.done_state, self.done_until = "cancelled", time.time() + 1.2
             return
@@ -730,7 +775,7 @@ class InditeApp(rumps.App):
                     chime("Tink")
                 return
             self.started_at = 0.0
-            self.mic.stop()
+            self.do(self.mic.stop)
             self.title = "🎙"
             return
         self.taps = 0
@@ -740,15 +785,18 @@ class InditeApp(rumps.App):
         """Stop listening and write what was said. Ends a hold, a hands-free tap, and the hands-free time cap."""
         self.started_at = 0.0
         self.locked = False
-        audio = self.mic.stop()
         if self.prefs["sounds"]:
             chime("Pop")
-        if len(audio) < RATE // 2:
-            self.title = "🎙"
-            return
-        self.title = "⏳"
-        self.busy = True
-        threading.Thread(target=self.write_it, args=(audio,), daemon=True).start()
+
+        def close_and_write() -> None:
+            audio = self.mic.stop()
+            if len(audio) < RATE // 2:
+                self.title = "🎙"
+                return
+            self.title = "⏳"
+            self.busy = True
+            threading.Thread(target=self.write_it, args=(audio,), daemon=True).start()
+        self.do(close_and_write)
 
     def mic_trouble(self, err: Exception) -> None:
         """

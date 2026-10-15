@@ -65,6 +65,7 @@
     width: 26px; height: 26px; border-radius: 8px; background: var(--brand); display: grid; place-items: center;
     box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 1px 2px rgba(184,90,12,.35);
   }
+  .logo { flex: none; border-radius: 7px; box-shadow: 0 1px 2px rgba(184,90,12,.3); }
   .word { font-size: 16px; font-weight: 650; letter-spacing: -.3px; color: var(--ink); }
   nav button {
     display: flex; align-items: center; gap: 10px; width: 100%; appearance: none; border: 0; cursor: default;
@@ -169,6 +170,7 @@
   .toast button { appearance: none; border: 0; background: none; color: #ffb066; font-weight: 600; margin-left: 10px; cursor: default; }
   .toast.act { pointer-events: auto; }
   .navgap { height: 14px; }
+  .navbottom { border-top: 1px solid var(--line2); padding-top: 8px; }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
   .kpi { background: var(--well); border-radius: 12px; padding: 14px; }
   .kpi .n { font-size: 24px; font-weight: 650; letter-spacing: -.6px; line-height: 1.1; }
@@ -365,6 +367,10 @@
 
 <!-- one icon set, drawn in-page: no network, and they follow the text colour -->
 <svg width="0" height="0" style="position:absolute">
+  <symbol id="brandmark" viewBox="100 100 824 824"><rect x="100" y="100" width="824" height="824" rx="185" fill="#E5761D"/>
+    <g fill="#fff"><rect x="262" y="452" width="64" height="200" rx="32" opacity=".72"/><rect x="370" y="392" width="64" height="320" rx="32" opacity=".86"/>
+    <rect x="480" y="440" width="64" height="372" rx="32"/><circle cx="512" cy="340" r="46"/>
+    <rect x="590" y="392" width="64" height="320" rx="32" opacity=".86"/><rect x="698" y="452" width="64" height="200" rx="32" opacity=".72"/></g></symbol>
   <symbol id="i-home" viewBox="0 0 16 16"><path d="M2.5 7 8 2.5 13.5 7v6a.5.5 0 0 1-.5.5H10V10H6v3.5H3a.5.5 0 0 1-.5-.5V7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
   <symbol id="i-gear" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1M12.4 12.4l-1.1-1.1M4.7 4.7 3.6 3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
   <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1v.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.4" r=".8" fill="currentColor"/></symbol>
@@ -390,7 +396,14 @@
 
 <aside>
   <div class="brand">
-    <div class="mark"><svg width="15" height="15" style="color:#fff"><use href="#i-mic"/></svg></div>
+    <svg class="logo" width="30" height="30" viewBox="100 100 824 824" aria-label="indite logo">
+      <!-- mac/brand/logo.svg: five voice bars, the middle one is the letter i -->
+      <defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F28A2E"/><stop offset="1" stop-color="#D9640F"/></linearGradient></defs>
+      <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#lg)"/>
+      <g fill="#fff"><rect x="262" y="452" width="64" height="200" rx="32" opacity=".72"/><rect x="370" y="392" width="64" height="320" rx="32" opacity=".86"/>
+        <rect x="480" y="440" width="64" height="372" rx="32"/><circle cx="512" cy="340" r="46"/>
+        <rect x="590" y="392" width="64" height="320" rx="32" opacity=".86"/><rect x="698" y="452" width="64" height="200" rx="32" opacity=".72"/></g>
+    </svg>
     <span class="word">indite</span>
   </div>
   <nav>
@@ -400,12 +413,12 @@
     <button data-tab="todo"><svg width="16" height="16"><use href="#i-todo-on"/></svg>To do<span class="badge" id="todo-count"></span></button>
     <button data-tab="dict"><svg width="16" height="16"><use href="#i-pen"/></svg>Dictionary</button>
     <button data-tab="insights"><svg width="16" height="16"><use href="#i-chart"/></svg>Insights</button>
-    <div class="navgap"></div>
+  </nav>
+  <div class="grow"></div>
+  <nav class="navbottom">
     <button data-tab="settings"><svg width="16" height="16"><use href="#i-gear"/></svg>Settings</button>
     <button data-tab="help"><svg width="16" height="16"><use href="#i-help"/></svg>Help</button>
   </nav>
-  <div class="grow"></div>
-  <div class="status"><span class="dot" id="dot"></span><span id="engine">Starting…</span></div>
 </aside>
 
 <main>
@@ -678,7 +691,7 @@
 
 <div class="setup" id="setup" hidden>
   <div class="sbox">
-    <div class="mark big"><svg width="26" height="26" style="color:#fff"><use href="#i-mic"/></svg></div>
+    <svg width="56" height="56" viewBox="100 100 824 824" style="margin-bottom:16px"><use href="#brandmark"/></svg>
     <h1>Set up indite</h1>
     <p class="lead">Four steps, about a minute. Everything stays on this Mac.</p>
     <ol class="ssteps">
@@ -705,7 +718,7 @@
   const send = m => window.webkit.messageHandlers.indite.postMessage(JSON.stringify(m));
   const $ = s => document.querySelector(s);
   let S = { prefs: {}, history: [], hotkeys: {}, listening: true, engine: "", fixes: 0 };
-  let tab = "home";
+  let tab = "home", engineReady = true;
 
   window.push = raw => { S = JSON.parse(raw); draw(); };
 
@@ -742,7 +755,9 @@
     const now = $("#now");
     now.className = "chip-now" + (m.running ? " rec" : S.job || Object.keys(S.ai_busy || {}).length ? " busy" : "");
     now.textContent = m.running ? `Recording ${clockT}` : S.job ? `Transcribing ${S.job.done} of ${S.job.total || "…"}`
-      : Object.keys(S.ai_busy || {}).length ? "Working…" : "";
+      : Object.keys(S.ai_busy || {}).length ? "Working…"
+      : !engineReady && S.engine ? (/first/.test(S.engine) ? "Starting… the first start can take a minute" : "Starting…") : "";
+    if (!engineReady && S.engine && !m.running && !S.job) now.className = "chip-now busy";
   }
   $("#backup").onclick = () => send({ action: "backup" });
   $("#go-ax").onclick = () => send({ action: "ax_open" });
@@ -807,9 +822,7 @@
   function draw() {
     header();
     document.querySelectorAll(".hk-name").forEach(e => e.textContent = hk());
-    const ready = /ready/i.test(S.engine);
-    $("#dot").className = "dot " + (!S.listening ? "off" : ready ? "" : "wait");
-    $("#engine").textContent = !S.listening ? "No key access" : ready ? "Ready · works offline" : (S.engine || "Starting…");
+    engineReady = /ready/i.test(S.engine);
     $("#warn").innerHTML = S.listening ? "" : `<div class="banner">
       <svg width="18" height="18" style="color:var(--accent);margin-top:1px"><use href="#i-key"/></svg>
       <div><b>indite can’t see the hotkey yet</b>

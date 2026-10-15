@@ -66,6 +66,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleExecutable</key><string>indite</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleIconFile</key><string>indite</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
   <key>NSMicrophoneUsageDescription</key>
@@ -85,6 +86,7 @@ mkdir -p "$HOME/Library/Logs"
 exec "$HERE/python/bin/python3" -u "$HERE/app/mac/indite_mac.py" >> "$HOME/Library/Logs/indite-mac.log" 2>&1
 LAUNCH
 chmod +x "$APP/Contents/MacOS/indite"
+cp "$ROOT/mac/brand/indite.icns" "$RES/indite.icns"                          # the logo (mac/brand/logo.svg)
 
 # One ad-hoc signature over everything: Apple Silicon refuses to run unsigned code, and a stable identity keeps the
 # Accessibility tick across launches. Not a Developer ID: Gatekeeper still asks once ("right-click -> Open").
