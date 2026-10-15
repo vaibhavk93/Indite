@@ -75,6 +75,7 @@ class Bridge(NSObject):
             "mics": __import__("indite_mac").mic_names(),
             "using": self.app.mic.using,
             "job": self.app.job,
+            "mic_ok": __import__("indite_mac").mic_allowed(),
             "ai_busy": self.app.ai_busy,
             "notice": self.app.notice,
             "ai_error": self.app.ai_error,
@@ -122,6 +123,18 @@ class Bridge(NSObject):
         elif act == "dismiss":
             self.app.file_error = ""
             self.app.ai_error = ""
+        elif act == "mic_ask":
+            from indite_mac import ask_mic, mic_allowed
+            if mic_allowed() is False:                   # refused before: only System Settings can change it
+                import subprocess
+                subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"])
+            else:
+                ask_mic()
+        elif act == "ax_open":
+            import subprocess
+            subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"])
+        elif act == "status":
+            pass                                         # the page polls while setup is open; push() below answers
         elif act == "backup":
             self.app.backup()
         elif act == "restore":

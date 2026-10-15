@@ -158,6 +158,26 @@
   .group-h { font-size: 12px; font-weight: 600; color: var(--ink2); margin: 18px 0 4px; }
   .toast button { appearance: none; border: 0; background: none; color: #ffb066; font-weight: 600; margin-left: 10px; cursor: default; }
   .toast.act { pointer-events: auto; }
+  .setup { position: fixed; inset: 0; z-index: 9; background: var(--paper); display: grid; place-items: center; overflow: auto; }
+  .setup[hidden] { display: none; }
+  .sbox { width: min(620px, 92vw); padding: 40px 0; }
+  .mark.big { width: 48px; height: 48px; border-radius: 14px; margin-bottom: 18px; }
+  .sbox h1 { font-size: 26px; }
+  .lead { color: var(--ink2); margin: 4px 0 22px; }
+  .ssteps { list-style: none; padding: 0; display: grid; gap: 10px; }
+  .ssteps li { display: flex; gap: 14px; align-items: flex-start; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .ssteps li > div { flex: 1; }
+  .ssteps p { font-size: 12px; color: var(--ink2); margin-top: 2px; }
+  .sn { width: 22px; height: 22px; border-radius: 50%; background: var(--well); display: grid; place-items: center;
+        font-size: 12px; font-weight: 650; color: var(--ink2); flex: none; margin-top: 1px; }
+  .ssteps li.good .sn { background: #34a853; color: #fff; }
+  .ssteps li.good .btn { display: none; }
+  .ok { font-size: 12px; font-weight: 600; color: #2e8b47; white-space: nowrap; margin-top: 2px; }
+  #try { width: 100%; margin-top: 10px; min-height: 64px; font: inherit; font-size: 14px; padding: 10px; border-radius: 9px;
+         border: 1px solid var(--line2); background: var(--paper); color: var(--ink); resize: vertical;
+         -webkit-user-select: text; user-select: text; outline: none; }
+  #try:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(226,118,25,.15); }
+  .sfoot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
   .menu { position: fixed; z-index: 5; width: 290px; max-height: 70vh; overflow: auto; background: var(--paper);
           border: 1px solid var(--line2); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.16); padding: 6px; }
   .menu h4 { font-size: 11px; font-weight: 600; color: var(--ink2); margin: 8px 8px 4px; }
@@ -456,6 +476,9 @@
           <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-lock"/></svg></div>
             <div class="body"><b>The pill says “password box”</b>
               <p>indite never types, copies or saves what you say into a password field.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-gear"/></svg></div>
+            <div class="body"><b>Set up again</b>
+              <p>Permissions, the key, and a test. <button class="more" id="rerun-setup">Run setup again</button></p></div></div>
         </div>
       </div>
       <div class="section"><h2>Privacy</h2>
@@ -472,6 +495,29 @@
     </section>
   </div>
 </main>
+
+<div class="setup" id="setup" hidden>
+  <div class="sbox">
+    <div class="mark big"><svg width="26" height="26" style="color:#fff"><use href="#i-mic"/></svg></div>
+    <h1>Set up indite</h1>
+    <p class="lead">Four steps, about a minute. Everything stays on this Mac.</p>
+    <ol class="ssteps">
+      <li id="st-ax"><span class="sn">1</span><div><b>Let indite notice the key and type for you</b>
+        <p>System Settings → Privacy &amp; Security → Accessibility → switch on <b>indite</b>. Then quit and reopen
+        indite from the menu bar.</p></div><span class="ok"></span><button class="btn" id="go-ax">Open settings</button></li>
+      <li id="st-mic"><span class="sn">2</span><div><b>Let indite hear you</b>
+        <p>macOS asks once. If you said no before, turn indite on under Privacy &amp; Security → Microphone.</p></div>
+        <span class="ok"></span><button class="btn" id="go-mic">Allow microphone</button></li>
+      <li><span class="sn">3</span><div><b>Pick the key you hold to talk</b>
+        <p>One you do not use for anything else.</p></div><div class="seg" id="setup-key"></div></li>
+      <li id="st-try"><span class="sn">4</span><div><b>Try it</b>
+        <p>Click in the box, hold <kbd class="hk-name"></kbd>, say “Hello indite, yeh mera pehla test hai”, and let go.</p>
+        <textarea id="try" placeholder="Your words appear here" spellcheck="false"></textarea></div><span class="ok"></span></li>
+    </ol>
+    <div class="sfoot"><button class="btn" id="setup-skip">Skip for now</button>
+      <button class="btn go" id="setup-done">Done</button></div>
+  </div>
+</div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -502,6 +548,27 @@
   $("#edit-fixes").onclick = () => send({ action: "fixes" });
   $("#files").onclick = () => send({ action: "files" });
   $("#backup").onclick = () => send({ action: "backup" });
+  $("#go-ax").onclick = () => send({ action: "ax_open" });
+  $("#go-mic").onclick = () => send({ action: "mic_ask" });
+  $("#try").oninput = () => drawSetup();
+  const finishSetup = () => { send({ action: "pref", key: "setup_done", value: true }); $("#setup").hidden = true; clearInterval(poll); };
+  $("#setup-done").onclick = finishSetup;
+  $("#setup-skip").onclick = finishSetup;
+  $("#rerun-setup").onclick = () => openSetup();
+  let poll = null, setupShown = false;
+  function openSetup() {
+    $("#setup").hidden = false;
+    clearInterval(poll);
+    poll = setInterval(() => send({ action: "status" }), 1500);   // permissions change in System Settings
+    drawSetup();
+  }
+  function drawSetup() {
+    const mark = (id, good, text) => { $(id).classList.toggle("good", !!good); $(id + " .ok").textContent = good ? text : ""; };
+    mark("#st-ax", S.listening, "✓ On");
+    mark("#st-mic", S.mic_ok === true, "✓ Allowed");
+    mark("#st-try", $("#try").value.trim().length > 2, "✓ It works");
+    seg("#setup-key", S.hotkeys, S.prefs.hotkey, v => send({ action: "pref", key: "hotkey", value: v }));
+  }
   $("#restore").onclick = () => send({ action: "restore" });
   let filter = "all";
 
@@ -566,6 +633,8 @@
         v => send({ action: "pref", key: "backup_scope", value: v }));
     const nb = S.history.filter(r => ({ all: true, star: !!r.star, keep: !!(r.star || r.todo) })[S.prefs.backup_scope || "all"]).length;
     $("#bk-why").textContent = `${nb} note${nb === 1 ? "" : "s"} right now.`;
+    if (!setupShown && S.prefs && S.prefs.setup_done === false) { setupShown = true; openSetup(); }
+    if (!$("#setup").hidden) drawSetup();
     if (S.notice) { toast(S.notice); send({ action: "notice_seen" }); }
     const hk2 = $("#set-hf_key");
     hk2.innerHTML = `<option value="">Same as the talk key</option>` + Object.entries(S.hotkeys)

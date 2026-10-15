@@ -38,6 +38,7 @@ DEFAULTS = {
     "backup_scope": "all",      # all · star · keep (starred + to-do)
     "backup_audio": False,      # include recordings and transcribed files in a backup
     "digits": True,             # number words as digits: "chaar baje" -> "4 baje"
+    "setup_done": False,        # the first-run setup was finished (Help → Run setup again)
     "preview": False,           # show what was written in a small card above the pill for a few seconds
 }
 
