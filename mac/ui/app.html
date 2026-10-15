@@ -1,4 +1,5 @@
 <!doctype html>
+<html data-theme="light">
 <meta charset="utf-8">
 <title>indite</title>
 <style>
@@ -17,8 +18,9 @@
     --red: #c4372a;
     --shadow: 0 1px 2px rgba(16,16,20,.04), 0 2px 8px rgba(16,16,20,.04);
   }
+  /* Appearance (Settings → Look & sounds): light by default - the founder asked for white - or dark, or the Mac's. */
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root[data-theme="system"] {
       --accent: #f0903f; --accent-soft: rgba(226,118,25,.16);
       --paper: #1e1e20;
       --ink: #f2f2f4; --ink2: #a8a8b0; --ink3: #8e8e95;
@@ -28,6 +30,16 @@
       --red: #ff6b5e;
       --shadow: none;
     }
+  }
+  :root[data-theme="dark"] {
+      --accent: #f0903f; --accent-soft: rgba(226,118,25,.16);
+      --paper: #1e1e20;
+      --ink: #f2f2f4; --ink2: #a8a8b0; --ink3: #8e8e95;
+      --line: #2c2c30; --line2: #36363b; --well: #2a2a2d; --hover: #252528;
+      --side-ink: #d6d6da; --side-pick: rgba(255,255,255,.08);
+      --sw-off: #48484c; --toast: #3a3a3d; --copied: #f0903f;
+      --red: #ff6b5e;
+      --shadow: none;
   }
   * { box-sizing: border-box; margin: 0; }
   html, body { height: 100%; }
@@ -158,6 +170,40 @@
   .group-h { font-size: 12px; font-weight: 600; color: var(--ink2); margin: 18px 0 4px; }
   .toast button { appearance: none; border: 0; background: none; color: #ffb066; font-weight: 600; margin-left: 10px; cursor: default; }
   .toast.act { pointer-events: auto; }
+  .navgap { height: 14px; }
+  .htop { display: flex; align-items: center; gap: 12px; }
+  .chip-now { font-size: 11.5px; font-weight: 600; padding: 2px 10px; border-radius: 20px; background: var(--well); color: var(--ink2); }
+  .chip-now.busy { background: var(--accent-soft); color: var(--accent); }
+  .chip-now.rec { background: #c4372a; color: #fff; }
+  .chip-now:empty { display: none; }
+  .statline { font-size: 12.5px; color: var(--ink2); margin-right: auto; }
+  .statline b { color: var(--ink); font-weight: 600; }
+  .hero { display: flex; gap: 16px; align-items: center; padding: 18px; border-radius: 14px; background: var(--well); margin-bottom: 22px; }
+  .hero-ic { width: 44px; height: 44px; border-radius: 12px; background: var(--paper); display: grid; place-items: center; color: var(--accent); flex: none; }
+  .hero-t { flex: 1; } .hero-t b { font-size: 15px; } .hero-t p { font-size: 12.5px; color: var(--ink2); margin-top: 2px; }
+  .hero-t .perm { color: var(--accent); }
+  .btn.big { padding: 8px 18px; font-size: 13px; font-weight: 600; background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .btn.big.rec { background: #c4372a; border-color: #c4372a; }
+  .addrow { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+  .pick.wide { flex: 1; max-width: none; width: 100%; }
+  .addrow .arrow { color: var(--ink2); }
+  .lead2 { color: var(--ink2); font-size: 13px; margin-bottom: 14px; max-width: 620px; }
+  .setwrap { display: grid; grid-template-columns: 170px 1fr; gap: 24px; align-items: start; }
+  .snav { position: sticky; top: 0; display: flex; flex-direction: column; gap: 2px; }
+  .snav button { appearance: none; border: 0; background: none; text-align: left; padding: 6px 10px; border-radius: 7px;
+                 font-weight: 500; color: var(--ink2); cursor: default; }
+  .snav button[aria-current="true"] { background: var(--well); color: var(--ink); }
+  .sfind { width: 100%; margin-bottom: 8px; }
+  .sgroup { margin-bottom: 26px; }
+  .sgroup h2 { font-size: 15px; font-weight: 600; margin: 0 0 10px; }
+  .keys .item span { font-size: 12.5px; color: var(--ink2); }
+  .dict-row { display: grid; grid-template-columns: 1fr 24px 1fr auto; gap: 10px; align-items: center; padding: 10px 16px; }
+  .dict-row + .dict-row { border-top: 1px solid var(--line); }
+  .dict-row .h { color: var(--ink2); } .dict-row .w { font-weight: 550; }
+  .row .acts .copy { opacity: .55; } .row:hover .acts .copy { opacity: 1; }
+  .starred { color: var(--brand); }
+  .menu .sep { height: 1px; background: var(--line); margin: 5px 4px; }
+  .menu button.danger b { color: var(--red); }
   .setup { position: fixed; inset: 0; z-index: 9; background: var(--paper); display: grid; place-items: center; overflow: auto; }
   .setup[hidden] { display: none; }
   .sbox { width: min(620px, 92vw); padding: 40px 0; }
@@ -319,8 +365,12 @@
     <span class="word">indite</span>
   </div>
   <nav>
-    <button data-tab="home" aria-current="true"><svg width="16" height="16"><use href="#i-home"/></svg>Home</button>
+    <button data-tab="home" aria-current="true"><svg width="16" height="16"><use href="#i-home"/></svg>Dictations</button>
+    <button data-tab="meetings"><svg width="16" height="16"><use href="#i-mic"/></svg>Meetings</button>
+    <button data-tab="files"><svg width="16" height="16"><use href="#i-file"/></svg>Files</button>
     <button data-tab="todo"><svg width="16" height="16"><use href="#i-todo-on"/></svg>To do<span class="badge" id="todo-count"></span></button>
+    <button data-tab="dict"><svg width="16" height="16"><use href="#i-pen"/></svg>Dictionary</button>
+    <div class="navgap"></div>
     <button data-tab="settings"><svg width="16" height="16"><use href="#i-gear"/></svg>Settings</button>
     <button data-tab="help"><svg width="16" height="16"><use href="#i-help"/></svg>Help</button>
   </nav>
@@ -330,7 +380,7 @@
 
 <main>
   <header>
-    <h1 id="title">Home</h1>
+    <div class="htop"><h1 id="title">Dictations</h1><span class="chip-now" id="now"></span></div>
     <div class="hint" id="hint"></div>
   </header>
 
@@ -338,124 +388,198 @@
     <div id="warn"></div>
 
     <section class="pane" id="pane-home">
-      <div class="stats" id="stats"></div>
-      <div id="job"></div>
       <div class="bar">
-        <h2>History</h2>
+        <div class="statline num" id="stats"></div>
         <div class="chips" id="chips"></div>
-        <button class="btn" id="meet" title="Your microphone and the call's sound, as text with who said it">Record a meeting</button>
-        <button class="btn" id="files" title="Any audio or video file: a call, a voice note, a lecture">Transcribe a file…</button>
         <label class="search"><svg width="13" height="13"><use href="#i-search"/></svg>
-          <input id="q" placeholder="Search" spellcheck="false" aria-label="Search history"><span class="k">⌘F</span></label>
+          <input id="q" placeholder="Search" spellcheck="false" aria-label="Search dictations"><span class="k">⌘F</span></label>
       </div>
       <div id="list"></div>
     </section>
 
+    <section class="pane" id="pane-meetings" hidden>
+      <div class="hero">
+        <div class="hero-ic"><svg width="22" height="22"><use href="#i-mic"/></svg></div>
+        <div class="hero-t"><b>Record a meeting</b>
+          <p>Your microphone and the call’s sound, written down as people talk — with who said what.</p>
+          <p class="perm" id="meet-perm"></p></div>
+        <button class="btn big" id="meet">● Record</button>
+      </div>
+      <div id="meet-list"></div>
+    </section>
+
+    <section class="pane" id="pane-files" hidden>
+      <div class="hero">
+        <div class="hero-ic"><svg width="22" height="22"><use href="#i-file"/></svg></div>
+        <div class="hero-t"><b>Transcribe a file</b>
+          <p>Any audio or video: a call recording, a WhatsApp voice note, a lecture. Stays on this Mac.</p></div>
+        <button class="btn big" id="files">Choose a file…</button>
+      </div>
+      <div id="job"></div>
+      <div id="file-list"></div>
+    </section>
+
     <section class="pane" id="pane-todo" hidden>
+      <div class="addrow"><input class="pick wide" id="todo-add" placeholder="Add a to-do and press Return" spellcheck="false"></div>
       <div id="todo-list"></div>
     </section>
 
+    <section class="pane" id="pane-dict" hidden>
+      <p class="lead2">When indite keeps writing a word wrong, teach it once. Whole words, any capitals, several words
+        allowed. Used on every dictation, file and meeting.</p>
+      <div class="addrow">
+        <input class="pick" id="dh" placeholder="indite writes… e.g. ptm" spellcheck="false">
+        <span class="arrow">→</span>
+        <input class="pick" id="dw" placeholder="you meant… e.g. Paytm" spellcheck="false">
+        <button class="btn go" id="dadd">Add</button>
+      </div>
+      <div class="card" id="dict-list"></div>
+      <p class="fine" style="text-align:left">Tip: you can also fix a word straight from a dictation — “…” → Fix a word.
+        <button class="more" id="edit-fixes">Open the list as a file</button></p>
+    </section>
+
     <section class="pane" id="pane-settings" hidden>
-      <div class="section"><h2>Dictation</h2>
-        <div class="card">
-          <div class="item">
-            <div class="body"><b>Hold-to-talk key</b><p>Hold it anywhere, speak, let go. Changes at once.</p></div>
-            <div class="seg" id="set-hotkey" role="radiogroup" aria-label="Hold-to-talk key"></div>
-          </div>
-          <div class="item">
-            <div class="body"><b>Where the words go</b><p id="out-why"></p></div>
-            <div class="seg" id="set-output" role="radiogroup" aria-label="Where the words go"></div>
-          </div>
-          <div class="item">
-            <div class="body"><b>Hands-free key</b><p id="hf-why"></p></div>
-            <select class="pick" id="set-hf_key" aria-label="Hands-free key"></select>
-          </div>
-          <div class="item">
-            <div class="body"><b>Taps to start hands-free</b><p>Then tap once to finish, or Esc to cancel. Stops by
-              itself after 15 minutes.</p></div>
-            <div class="seg" id="set-hf_taps" role="radiogroup" aria-label="Taps to start hands-free"></div>
-          </div>
-          <div class="item">
-            <div class="body"><b>Microphone</b><p id="mic-why"></p></div>
-            <select class="pick" id="set-mic" aria-label="Microphone"></select>
-          </div>
-          <div class="item">
-            <div class="body"><b>Pill transparency</b><p>How much frosted glass the pill shows. The text and border
-              stay solid.</p></div>
-            <input type="range" class="slide" id="set-pill_glass" min="0" max="100" step="5" aria-label="Pill glass">
-          </div>
-          <div class="item">
-            <div class="body"><b>Show the words</b><p>After each dictation, show what was written in a small card
-              above the pill for 4 seconds.</p></div>
-            <button class="sw" id="set-preview" role="switch" aria-label="Show the words"></button>
-          </div>
-          <div class="item">
-            <div class="body"><b>Sounds</b><p>A soft tick when listening starts, a pop when it stops.</p></div>
-            <button class="sw" id="set-sounds" role="switch" aria-label="Sounds"></button>
-          </div>
-          <div class="item">
-            <div class="body"><b>Paste the last dictation again</b><p>Press <kbd>⌃⌘V</kbd> anywhere.</p></div>
-          </div>
+      <div class="setwrap">
+        <div class="snav">
+          <label class="search sfind"><svg width="13" height="13"><use href="#i-search"/></svg>
+            <input id="sq" placeholder="Find a setting" spellcheck="false" aria-label="Find a setting"></label>
+          <button data-g="general" aria-current="true">General</button>
+          <button data-g="pill">Look &amp; sounds</button>
+          <button data-g="writing">Writing</button>
+          <button data-g="ai">AI</button>
+          <button data-g="privacy">Privacy</button>
+          <button data-g="backup">Backup</button>
         </div>
-      </div>
-      <div class="section"><h2>Writing</h2>
-        <div class="card">
-          <div class="item">
-            <div class="body"><b>Hinglish spelling</b><p>Writes everyday words one way: achha, kyunki, maine.</p></div>
-            <button class="sw" id="set-spelling" role="switch" aria-label="Hinglish spelling"></button>
+        <div class="sbody">
+          <div class="sgroup" data-g="general"><h2>General</h2>
+            <div class="card">
+              <div class="item">
+                <div class="body"><b>Hold-to-talk key</b><p>Hold it anywhere, speak, let go. Changes at once.</p></div>
+                <div class="seg" id="set-hotkey" role="radiogroup" aria-label="Hold-to-talk key"></div>
+              </div>
+              <div class="item">
+                <div class="body"><b>Hands-free key</b><p id="hf-why"></p></div>
+                <select class="pick" id="set-hf_key" aria-label="Hands-free key"></select>
+              </div>
+              <div class="item">
+                <div class="body"><b>Taps to start hands-free</b><p>Then tap once to finish, or Esc to cancel. Stops by
+                  itself after 15 minutes.</p></div>
+                <div class="seg" id="set-hf_taps" role="radiogroup" aria-label="Taps to start hands-free"></div>
+              </div>
+              <div class="item">
+                <div class="body"><b>Where the words go</b><p id="out-why"></p></div>
+                <div class="seg" id="set-output" role="radiogroup" aria-label="Where the words go"></div>
+              </div>
+              <div class="item">
+                <div class="body"><b>Microphone</b><p id="mic-why"></p></div>
+                <select class="pick" id="set-mic" aria-label="Microphone"></select>
+              </div>
+            </div>
           </div>
-          <div class="item">
-            <div class="body"><b>Numbers as digits</b><p>“chaar baje” is written “4 baje”, “do hazaar rupaye” “₹2000”.
-              Words that are also ordinary words (ek, do, saath) change only next to baje, percent, rupaye…</p></div>
-            <button class="sw" id="set-digits" role="switch" aria-label="Numbers as digits"></button>
+          <div class="sgroup" data-g="pill"><h2>Look &amp; sounds</h2>
+            <div class="card">
+              <div class="item">
+                <div class="body"><b>Appearance</b><p>Light is white all day. “Like the Mac” follows dark mode in the evening.</p></div>
+                <div class="seg" id="set-theme" role="radiogroup" aria-label="Appearance"></div>
+              </div>
+              <div class="item">
+                <div class="body"><b>Show text after dictating</b><p>A small card above the pill shows what was
+                  written, for 4 seconds. Handy when the words went to the clipboard.</p></div>
+                <button class="sw" id="set-preview" role="switch" aria-label="Show text after dictating"></button>
+              </div>
+              <div class="item">
+                <div class="body"><b>Pill transparency</b><p>How much frosted glass the pill shows. Its text and
+                  border stay solid.</p></div>
+                <input type="range" class="slide" id="set-pill_glass" min="0" max="100" step="5" aria-label="Pill glass">
+              </div>
+              <div class="item">
+                <div class="body"><b>Sounds</b><p>A soft tick when listening starts, a pop when it stops.</p></div>
+                <button class="sw" id="set-sounds" role="switch" aria-label="Sounds"></button>
+              </div>
+            </div>
           </div>
-          <div class="item">
-            <div class="body"><b>AI on notes</b><p>A ✨ button on each note: improve the wording (your original
-              stays), meeting notes, action items, summary, rewrite, translate. Answered by Claude with your own
-              login; the note’s text leaves this Mac.</p></div>
-            <button class="sw" id="set-ai" role="switch" aria-label="AI on notes"></button>
+          <div class="sgroup" data-g="writing"><h2>Writing</h2>
+            <div class="card">
+              <div class="item">
+                <div class="body"><b>Hinglish spelling</b><p>Writes everyday words one way: achha, kyunki, maine.</p></div>
+                <button class="sw" id="set-spelling" role="switch" aria-label="Hinglish spelling"></button>
+              </div>
+              <div class="item">
+                <div class="body"><b>Numbers as digits</b><p>“chaar baje” becomes “4 baje”, “do hazaar rupaye” “₹2000”.
+                  Words that are also ordinary words (ek, do, saath) change only next to baje, percent, rupaye…</p></div>
+                <button class="sw" id="set-digits" role="switch" aria-label="Numbers as digits"></button>
+              </div>
+              <div class="item">
+                <div class="body"><b>Dictionary</b><p id="fixes-line"></p></div>
+                <button class="btn" id="goto-dict">Open Dictionary</button>
+              </div>
+            </div>
           </div>
-          <div class="item">
-            <div class="body"><b>Word fixes</b><p id="fixes-line"></p></div>
-            <button class="btn" id="edit-fixes">Edit…</button>
+          <div class="sgroup" data-g="ai"><h2>AI</h2>
+            <div class="card">
+              <div class="item">
+                <div class="body"><b>AI on notes</b><p>Adds “AI” to every note’s “…” menu: improve the wording (your
+                  original stays), meeting notes, action items, summary, rewrite, translate. Off: nothing ever leaves
+                  this Mac.</p></div>
+                <button class="sw" id="set-ai" role="switch" aria-label="AI on notes"></button>
+              </div>
+              <div class="item aiopt">
+                <div class="body"><b>Answers come from</b><p>The note’s text is sent there, and only when you ask.</p></div>
+                <select class="pick" id="set-ai_provider" aria-label="AI provider"></select>
+              </div>
+              <div class="item aiopt" id="ai-claude-row">
+                <div class="body"><b>Claude login</b><p id="ai-claude"></p></div>
+                <button class="btn" id="ai-login">Sign in…</button>
+              </div>
+              <div class="item aiopt" id="ai-key-row">
+                <div class="body"><b>API key</b><p id="ai-key-why"></p>
+                  <input class="pick wide" id="ai-key" type="password" placeholder="Paste the key" spellcheck="false" style="margin-top:8px"></div>
+                <button class="btn" id="ai-key-clear">Remove</button><button class="btn go" id="ai-key-save">Save</button>
+              </div>
+              <div class="item aiopt" id="ai-model-row">
+                <div class="body"><b>Model</b><p id="ai-model-why"></p></div>
+                <input class="pick" id="set-ai_model" spellcheck="false" aria-label="Model">
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      <div class="section"><h2>Privacy</h2>
-        <div class="card">
-          <div class="item">
-            <div class="body"><b>Keep a history</b>
-              <p>In a plain file on this Mac. Starred notes, to-dos and transcribed files are kept until you delete
-              them; other dictations, the last 500. Off means new dictations are not written down.</p></div>
-            <button class="sw" id="set-keep_history" role="switch" aria-label="Keep a history"></button>
+          <div class="sgroup" data-g="privacy"><h2>Privacy</h2>
+            <div class="card">
+              <div class="item">
+                <div class="body"><b>Save my dictations</b>
+                  <p>In a plain file on this Mac. Starred notes, to-dos, files and meetings are kept until you delete
+                  them; other dictations, the last 500. Off: new dictations are not written down.</p></div>
+                <button class="sw" id="set-keep_history" role="switch" aria-label="Save my dictations"></button>
+              </div>
+              <div class="item">
+                <div class="body"><b>Keep the audio of each dictation</b><p>So a backup can carry it. About 0.3 MB for
+                  10 seconds. Off: only the words are kept.</p></div>
+                <button class="sw" id="set-keep_audio" role="switch" aria-label="Keep audio"></button>
+              </div>
+              <div class="item">
+                <div class="body"><b>Clear dictations</b><p id="count-line"></p></div>
+                <button class="btn danger" id="clear">Clear…</button>
+              </div>
+            </div>
           </div>
-          <div class="item">
-            <div class="body"><b>Keep the audio of each dictation</b><p>So a backup can carry it. About 0.3 MB for
-              10 seconds. Off: only the words are kept.</p></div>
-            <button class="sw" id="set-keep_audio" role="switch" aria-label="Keep audio"></button>
+          <div class="sgroup" data-g="backup"><h2>Backup</h2>
+            <div class="card">
+              <div class="item">
+                <div class="body"><b>What to back up</b><p id="bk-why"></p></div>
+                <div class="seg" id="set-backup_scope" role="radiogroup" aria-label="What to back up"></div>
+              </div>
+              <div class="item">
+                <div class="body"><b>Include audio</b><p>Kept recordings, meetings and the files you transcribed.
+                  Makes the backup much bigger.</p></div>
+                <button class="sw" id="set-backup_audio" role="switch" aria-label="Include audio"></button>
+              </div>
+              <div class="item">
+                <div class="body"><b>Back up or restore</b><p>One .zip you can keep anywhere. Restoring adds the notes
+                  that are missing and never changes one that is already here.</p></div>
+                <button class="btn" id="restore">Restore…</button><button class="btn go" id="backup">Back up…</button>
+              </div>
+            </div>
           </div>
-          <div class="item">
-            <div class="body"><b>Clear history</b><p id="count-line"></p></div>
-            <button class="btn danger" id="clear">Clear…</button>
-          </div>
-        </div>
-      </div>
-      <div class="section"><h2>Backup</h2>
-        <div class="card">
-          <div class="item">
-            <div class="body"><b>What to back up</b><p id="bk-why"></p></div>
-            <div class="seg" id="set-backup_scope" role="radiogroup" aria-label="What to back up"></div>
-          </div>
-          <div class="item">
-            <div class="body"><b>Include audio</b><p>Kept recordings and the files you transcribed. Makes the
-              backup much bigger.</p></div>
-            <button class="sw" id="set-backup_audio" role="switch" aria-label="Include audio"></button>
-          </div>
-          <div class="item">
-            <div class="body"><b>Back up or restore</b><p>A single .zip you can keep anywhere. Restoring adds the notes
-              that are missing and never changes one that is already here.</p></div>
-            <button class="btn" id="restore">Restore…</button><button class="btn go" id="backup">Back up…</button>
-          </div>
+          <p class="fine" id="snone" hidden>No setting matches.</p>
         </div>
       </div>
     </section>
@@ -465,6 +589,15 @@
         <div class="card"><div class="n">1</div><b>Click a text box</b><p>Any app: a note, a browser, a chat.</p></div>
         <div class="card"><div class="n">2</div><b>Hold <span class="hk-name"></span> and speak</b><p>A small pill above the Dock shows it is listening.</p></div>
         <div class="card"><div class="n">3</div><b>Let go</b><p>The words appear where your cursor is, in about a second.</p></div>
+      </div>
+      <div class="section"><h2>Shortcuts</h2>
+        <div class="card keys">
+          <div class="item"><div class="body"><b>Dictate</b></div><span>hold <kbd class="hk-name"></kbd></span></div>
+          <div class="item"><div class="body"><b>Hands-free</b></div><span id="hf-keys"></span></div>
+          <div class="item"><div class="body"><b>Cancel</b></div><span><kbd>Esc</kbd> while listening</span></div>
+          <div class="item"><div class="body"><b>Type the last dictation again</b></div><span><kbd>⌃⌘V</kbd></span></div>
+          <div class="item"><div class="body"><b>Search dictations / Settings</b></div><span><kbd>⌘F</kbd> · <kbd>⌘,</kbd></span></div>
+        </div>
       </div>
       <div class="section"><h2>If something is off</h2>
         <div class="card faq">
@@ -478,14 +611,12 @@
           <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-mic"/></svg></div>
             <div class="body"><b>It cannot hear you</b>
               <p>Usually a Bluetooth headset that is off. indite tries every microphone, and says so if none work.</p></div></div>
-          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-home"/></svg></div>
-            <div class="body"><b>Start indite when you log in</b>
-              <p>System Settings → General → Login Items → + → choose <span class="path">indite.app</span> in the
-              indite folder’s <span class="path">dist</span>. Start it that way, not with a script, or macOS forgets
-              the key permission.</p></div></div>
           <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-lock"/></svg></div>
             <div class="body"><b>The pill says “password box”</b>
               <p>indite never types, copies or saves what you say into a password field.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-home"/></svg></div>
+            <div class="body"><b>Start indite when you log in</b>
+              <p>System Settings → General → Login Items → + → choose <span class="path">indite.app</span>.</p></div></div>
           <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-gear"/></svg></div>
             <div class="body"><b>Set up again</b>
               <p>Permissions, the key, and a test. <button class="more" id="rerun-setup">Run setup again</button></p></div></div>
@@ -494,14 +625,14 @@
       <div class="section"><h2>Privacy</h2>
         <div class="card faq">
           <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-lock"/></svg></div>
-            <div class="body"><b>Nothing leaves this Mac</b>
-              <p>The recording is transcribed here and deleted straight after. No account, no server.</p></div></div>
+            <div class="body"><b>Everything is transcribed on this Mac</b>
+              <p>No account, no server. Only “AI” on a note sends that note’s text out, and only if you turn AI on.</p></div></div>
           <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-folder"/></svg></div>
             <div class="body"><b>Your files</b>
-              <p>History and word fixes live in <span class="path">~/Library/Application Support/indite</span></p></div></div>
+              <p>Notes, dictionary and audio live in <span class="path">~/Library/Application Support/indite</span></p></div></div>
         </div>
       </div>
-      <p class="fine">indite for Mac 0.1</p>
+      <p class="fine">indite for Mac 0.2 · speaker model TitaNet © NVIDIA (CC BY 4.0) · whisper.cpp (MIT) · Hinglish model by Oriserve (Apache 2.0)</p>
     </section>
   </div>
 </main>
@@ -539,12 +670,14 @@
 
   window.push = raw => { S = JSON.parse(raw); draw(); };
 
-  const TITLES = { home: "Home", todo: "To do", settings: "Settings", help: "How indite works" };
+  const TITLES = { home: "Dictations", meetings: "Meetings", files: "Files", todo: "To do", dict: "Dictionary",
+                   settings: "Settings", help: "How indite works" };
+  const PANES = Object.keys(TITLES);
   document.querySelectorAll("nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
   function go(t) {
     tab = t;
     document.querySelectorAll("nav button").forEach(o => o.setAttribute("aria-current", o.dataset.tab === t));
-    for (const p of ["home", "todo", "settings", "help"]) $("#pane-" + p).hidden = p !== t;
+    for (const p of PANES) $("#pane-" + p).hidden = p !== t;
     $("#scroll").scrollTop = 0;
     header();
   }
@@ -553,7 +686,7 @@
   $("#q").onkeydown = e => { if (e.key === "Escape") { $("#q").value = ""; drawList(); $("#q").blur(); } };
   document.addEventListener("keydown", e => {
     if (e.metaKey && e.key === "f") { e.preventDefault(); go("home"); $("#q").focus(); }
-    if (e.metaKey && e.key === ",") { e.preventDefault(); go("settings"); }
+    if (e.metaKey && e.key === ",") { e.preventDefault(); go("settings"); $("#sq").focus(); }
   });
   $("#edit-fixes").onclick = () => send({ action: "fixes" });
   $("#files").onclick = () => send({ action: "files" });
@@ -563,7 +696,12 @@
     const m = S.meeting || {}, b = $("#meet");
     b.classList.toggle("rec", !!m.running);
     const t = m.running ? Math.floor(Date.now() / 1000 - m.started) : 0;
-    b.textContent = m.running ? `Stop · ${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}` : "Record a meeting";
+    const clockT = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+    b.textContent = m.running ? `■ Stop · ${clockT}` : "● Record";
+    const now = $("#now");
+    now.className = "chip-now" + (m.running ? " rec" : S.job || Object.keys(S.ai_busy || {}).length ? " busy" : "");
+    now.textContent = m.running ? `Recording ${clockT}` : S.job ? `Transcribing ${S.job.done} of ${S.job.total || "…"}`
+      : Object.keys(S.ai_busy || {}).length ? "Working…" : "";
   }
   $("#backup").onclick = () => send({ action: "backup" });
   $("#go-ax").onclick = () => send({ action: "ax_open" });
@@ -615,8 +753,13 @@
 
   function header() {
     $("#title").textContent = TITLES[tab];
-    $("#hint").innerHTML = tab === "home"
-      ? `Hold <kbd>${esc(hk())}</kbd> in any app, speak, and let go.` : "";
+    $("#hint").innerHTML = {
+      home: `Hold <kbd>${esc(hk())}</kbd> in any app, speak, and let go. Everything you dictate is listed here.`,
+      meetings: "Calls and conversations, written down as people talk.",
+      files: "Recordings you already have, turned into text.",
+      todo: "Things to come back to. Add one here, or from any note’s “…” menu.",
+      dict: "Words indite should always write your way.",
+    }[tab] || "";
   }
 
   function draw() {
@@ -642,6 +785,9 @@
     }[S.prefs.output] || "";
     sw("#set-spelling", "spelling");
     sw("#set-sounds", "sounds");
+    document.documentElement.dataset.theme = S.prefs.theme || "light";
+    seg("#set-theme", { light: "Light", dark: "Dark", system: "Like the Mac" }, S.prefs.theme || "light",
+        v => send({ action: "pref", key: "theme", value: v }));
     sw("#set-preview", "preview");
     sw("#set-ai", "ai");
     sw("#set-digits", "digits");
@@ -661,6 +807,7 @@
     hk2.onchange = () => send({ action: "pref", key: "hf_key", value: hk2.value });
     const n = S.prefs.hf_taps || 2, k2 = S.hotkeys[S.prefs.hf_key] || hk();
     $("#hf-why").textContent = `Tap ${k2} ${n === 3 ? "three times" : "twice"} quickly and let go: indite keeps listening.`;
+    $("#hf-keys").innerHTML = `tap <kbd>${esc(k2)}</kbd> ${n === 3 ? "three times" : "twice"}, then once to finish`;
     seg("#set-hf_taps", { 2: "Twice", 3: "Three times" }, String(n),
         v => send({ action: "pref", key: "hf_taps", value: +v }));
     const gl = $("#set-pill_glass");
@@ -676,12 +823,9 @@
       ? `Uses ${chosen} when it is connected; otherwise the next one that works.`
       : `The Mac's default, then the built-in one, then any other.${S.using ? " Last used: " + S.using + "." : ""}`;
     sw("#set-keep_history", "keep_history");
-    $("#fixes-line").textContent = S.fixes
-      ? `${S.fixes} fix${S.fixes > 1 ? "es" : ""}, like “ptm = Paytm”. Saved edits apply to the next dictation.`
-      : "Teach indite words it gets wrong, like “ptm = Paytm”.";
-    $("#count-line").textContent = S.history.length
-      ? `${S.history.length} dictation${S.history.length > 1 ? "s" : ""} saved. This cannot be undone.`
-      : "Nothing is saved right now.";
+    const plainN = S.history.filter(r => !(r.star || r.todo || (r.kind || "dictation") !== "dictation")).length;
+    $("#count-line").textContent = plainN ? `${plainN} plain dictation${plainN > 1 ? "s" : ""}. Starred, to-do, files and meetings are kept.`
+      : "Nothing to clear.";
     const plain = S.history.filter(r => !(r.star || r.todo || (r.kind || "dictation") !== "dictation")).length;
     $("#clear").disabled = !plain;
     const open = S.history.filter(r => r.todo === "open").length;
@@ -691,20 +835,24 @@
       <div style="flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>${esc(j.name)}</b></div>
       <div class="bar2"><i style="width:${j.total ? Math.round(100 * j.done / j.total) : 3}%"></i></div>
       <span class="num" style="color:var(--ink2);font-size:12px">${j.total ? `${j.done} of ${j.total}` : "reading…"}</span></div>`
-      : S.ai_error ? `<div class="banner"><div><b>Claude couldn’t answer</b><p>${esc(S.ai_error)}</p></div>
-        <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>`
-      : S.file_error ? `<div class="banner"><div><b>That file didn’t work</b><p>${esc(S.file_error)}</p></div>
-        <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>` : "";
+      : "";
+    const err = S.ai_error ? ["The AI couldn’t answer", S.ai_error] : S.file_error ? ["That file didn’t work", S.file_error] : null;
+    if (err) $("#warn").innerHTML += `<div class="banner"><div><b>${err[0]}</b><p>${esc(err[1])}</p></div>
+        <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>`;
     meetButton();
-    if (S.meeting && S.meeting.problem && S.meeting.running) $("#job").innerHTML += `<div class="banner"><div><b>Only your side is being recorded</b>
-      <p>${esc(S.meeting.problem)}</p></div></div>`;
-    $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["file", "Files"], ["meeting", "Meetings"]].map(([v, l]) =>
+    $("#meet-perm").textContent = S.meeting && S.meeting.problem ? S.meeting.problem : "";
+    $("#chips").innerHTML = [["all", "All"], ["star", "Starred"]].map(([v, l]) =>
       `<button class="chip" aria-pressed="${filter === v}" data-f="${v}">${l}</button>`).join("");
     $("#chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); });
     drawTodo();
-
+    drawDict();
+    drawAI();
     stats();
     drawList();
+    feed($("#meet-list"), S.history.filter(r => r.kind === "meeting"),
+      `<div class="empty"><h3>No meetings yet</h3>Press Record when a call or conversation starts. Text appears after each pause.</div>`);
+    feed($("#file-list"), S.history.filter(r => r.kind === "file"),
+      `<div class="empty"><h3>No files yet</h3>Choose an audio or video file. It is written down here, on this Mac.</div>`);
   }
 
   function seg(sel, options, current, pick) {
@@ -735,20 +883,15 @@
     const wpm = spoke > 5 ? Math.round(w / spoke * 60) : 0;
     const wait = h.length ? h.reduce((n, r) => n + (r.took || 0), 0) / h.length : 0;
     const k = x => x >= 1000 ? (x / 1000).toFixed(1).replace(/\.0$/, "") + "K" : String(x);
-    const tile = (n, unit, label) => `<div class="stat"><div class="n num">${n}${unit ? `<small>${unit}</small>` : ""}</div>
-      <div class="l">${label}</div></div>`;
-    $("#stats").innerHTML =
-      tile(k(w), "", "words dictated") +
-      tile(wpm || "–", wpm ? "wpm" : "", "speaking speed") +
-      tile(wait ? wait.toFixed(1) : "–", wait ? "s" : "", "average wait");
+    $("#stats").innerHTML = h.length ? `<b>${k(w)}</b> words · <b>${wpm || "–"}</b> words a minute · <b>${wait ? wait.toFixed(1) + " s" : "–"}</b> average wait` : "";
   }
 
   function drawList() {
     const q = $("#q").value.trim().toLowerCase();
-    const rows = S.history.filter(r => (!q || r.text.toLowerCase().includes(q) || (r.title || "").toLowerCase().includes(q))
-      && (filter === "all" || (filter === "star" && r.star) || (filter === r.kind)));
+    const rows = S.history.filter(r => (r.kind || "dictation") === "dictation"
+      && (!q || r.text.toLowerCase().includes(q)) && (filter === "all" || r.star));
 
-    if (!S.history.length) {
+    if (!S.history.some(r => (r.kind || "dictation") === "dictation")) {
       $("#list").innerHTML = `<div class="empty">
         <div class="art"><svg width="28" height="28"><use href="#i-mic"/></svg></div>
         <h3>${S.prefs.keep_history === false ? "History is off" : "Nothing dictated yet"}</h3>
@@ -762,9 +905,14 @@
     }
     if (!rows.length) {
       $("#list").innerHTML = `<div class="empty"><h3>Nothing here</h3>${q ? `Nothing you said contains “${esc(q)}”.`
-        : filter === "star" ? "Star a note to keep it here, and in every backup." : "Transcribe a file and it appears here."}</div>`;
+        : "Star a dictation (“…” → Star) to keep it here, and in every backup."}</div>`;
       return;
     }
+    feed($("#list"), rows);
+  }
+
+  function feed(el, rows, empty) {
+    if (!rows.length) { el.innerHTML = empty || ""; return; }
     let html = "", seen = "";
     const count = {};
     rows.forEach(r => { const l = dayLabel(r.at); count[l] = (count[l] || 0) + 1; });
@@ -773,8 +921,8 @@
       if (label !== seen) { seen = label; html += `<div class="daybar">${label}<span>${count[label]}</span></div>`; }
       html += rowHtml(r);
     });
-    $("#list").innerHTML = html;
-    wire($("#list"));
+    el.innerHTML = html;
+    wire(el);
   }
 
   const byId = id => S.history.find(r => r.id === id);
@@ -793,7 +941,8 @@
         ${(r.segments || []).some(x => x.speaker) ? meetingLines(r) : `<div class="text${file ? " clamp" : ""}">${esc(r.text)}</div>`}
         ${aiParts(r)}
         ${file && !(r.segments || []).some(x => x.speaker) && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
-        <div class="meta">${copied ? `<span class="tag copied">Copied</span>` : ""}
+        <div class="meta">${r.star ? `<svg width="12" height="12" class="starred"><use href="#i-star-on"/></svg>` : ""}
+          ${r.todo === "open" && !todoView ? `<span class="tag">To do</span>` : ""}${copied ? `<span class="tag copied">Copied</span>` : ""}
           ${todoView ? `<span>${dayLabel(r.at)} · ${clock(r.at)}</span>·` : ""}
           ${file ? `<span>${mins(r.seconds || 0)} of audio</span>·
             <button class="more exp" data-id="${id}" data-fmt="txt">Text</button>·
@@ -802,12 +951,8 @@
             : r.app ? `<span>${esc(r.app)}</span>·` : ""}
           <span class="num">${words(r)} words</span></div></div>
       <div class="acts">
-        ${ic("star", r.star ? "i-star-on" : "i-star", r.star ? "Unstar" : "Star — keep it", r.star)}
-        ${todoView ? "" : ic("todo", r.todo === "open" ? "i-todo-on" : "i-todo", r.todo ? "Remove from To do" : "Add to To do", !!r.todo)}
-        ${S.prefs.ai !== false ? ic("aib", "i-spark", "AI: improve, notes, action items…") : ""}
-        ${file ? "" : ic("fix", "i-pen", "Fix a word")}
         ${ic("cp", "i-copy", "Copy")}
-        ${ic("del", "i-trash", "Delete")}
+        <button class="copy moreb" data-id="${id}" aria-label="More actions" title="More: to do, AI, fix a word, star, delete">•••</button>
       </div></div>`;
   }
 
@@ -838,6 +983,47 @@
     if (S.ai_busy && S.ai_busy[r.id]) h += `<div class="working"><i></i>${S.ai_busy[r.id] === "finding who spoke"
       ? "Finding who spoke" : "Claude is writing: " + esc(S.ai_busy[r.id])}…</div>`;
     return h;
+  }
+
+  function popup(html, x, y) {
+    document.querySelectorAll(".menu").forEach(m => m.remove());
+    const m = document.createElement("div"); m.className = "menu"; m.innerHTML = html;
+    document.body.appendChild(m);
+    m.style.top = Math.max(8, Math.min(y, innerHeight - m.offsetHeight - 8)) + "px";
+    m.style.left = Math.max(8, Math.min(x, innerWidth - m.offsetWidth - 8)) + "px";
+    setTimeout(() => document.addEventListener("mousedown", function off(e) {
+      if (!m.contains(e.target)) { m.remove(); document.removeEventListener("mousedown", off); } }), 0);
+    m.onkeydown = e => { if (e.key === "Escape") m.remove(); };
+    return m;
+  }
+
+  function rowMenu(btn, r, x, y) {
+    const media = r.kind === "file" || r.kind === "meeting";
+    const items = [
+      ["todo", r.todo ? "Remove from To do" : "Add to To do", r.todo ? "" : "Find it again on the To do page"],
+      ["star", r.star ? "Unstar" : "Star", r.star ? "" : "Keep it forever, and in starred backups"],
+      ...(S.prefs.ai ? [["ai", "AI…", "Improve, meeting notes, action items, summary, translate"]] :
+                       [["aioff", "AI is off", "Turn it on in Settings → AI"]]),
+      ...(media ? [["who", "Who spoke?", "Label each line with a speaker"], ["txt", "Save as text…", ""], ["srt", "Save as subtitles…", ""]]
+                : [["fix", "Fix a word…", "Teach indite a word it got wrong"]]),
+      ["sep"], ["del", "Delete", ""],
+    ];
+    const b = btn.getBoundingClientRect();
+    const m = popup(items.map(([k, l, d]) => k === "sep" ? `<div class="sep"></div>` :
+      `<button data-k="${k}" class="${k === "del" ? "danger" : ""}"><b>${l}</b>${d ? `<span>${d}</span>` : ""}</button>`).join(""),
+      x ?? b.right - 290, y ?? b.bottom + 4);
+    m.querySelectorAll("button").forEach(x2 => x2.onclick = () => {
+      const k = x2.dataset.k; m.remove();
+      if (k === "todo") { send({ action: "note", id: r.id, set: { todo: r.todo ? null : "open" } }); if (!r.todo) toast("Added to To do"); }
+      if (k === "star") send({ action: "note", id: r.id, set: { star: !r.star } });
+      if (k === "ai") aiMenu(btn, r);
+      if (k === "aioff") { go("settings"); sgo("ai"); }
+      if (k === "who") whoMenu(btn, r);
+      if (k === "txt" || k === "srt") send({ action: "export", id: r.id, fmt: k });
+      if (k === "fix") openFixer(btn, r);
+      if (k === "del") { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); }
+    });
+    m.querySelector("button").focus();
   }
 
   function aiMenu(btn, r) {
@@ -875,8 +1061,16 @@
                         if (!r.todo) toast("Added to To do"); });
     on(".tick", r => send({ action: "note", id: r.id, set: { todo: r.todo === "done" ? "open" : "done" } }));
     on(".fix", (r, b) => openFixer(b, r));
-    on(".aib", (r, b) => aiMenu(b, r));
-    on(".whob", (r, b) => {
+    on(".moreb", (r, b) => rowMenu(b, r));
+    root.querySelectorAll(".row").forEach(row => row.oncontextmenu = e => {
+      const b = row.querySelector(".moreb"); if (!b) return;
+      e.preventDefault(); rowMenu(b, byId(b.dataset.id), e.clientX, e.clientY); });
+    on(".whob", (r, b) => whoMenu(b, r));
+    wireRest(root, on);
+  }
+
+  function whoMenu(b, r) {
+    {
       document.querySelectorAll(".menu").forEach(m => m.remove());
       const m = document.createElement("div"); m.className = "menu";
       m.innerHTML = `<h4>How many people spoke?</h4>` + [[0, "Let indite guess", "2 to 5, from how different the voices sound"],
@@ -889,7 +1083,10 @@
       m.querySelectorAll("button").forEach(x => x.onclick = () => { send({ action: "who", id: r.id, k: +x.dataset.k }); m.remove(); });
       setTimeout(() => document.addEventListener("mousedown", function off(e) {
         if (!m.contains(e.target)) { m.remove(); document.removeEventListener("mousedown", off); } }), 0);
-    });
+    }
+  }
+
+  function wireRest(root, on) {
     root.querySelectorAll(".mshow").forEach(b => b.onclick = () => {
       b.parentElement.querySelectorAll(".line.hide").forEach(l => l.classList.remove("hide")); b.remove(); });
     on(".who", (r, b) => {
@@ -970,6 +1167,78 @@
     };
     f.onkeydown = e => { if (e.key === "Enter") go.onclick(); if (e.key === "Escape") f.remove(); };
   }
+
+  // ---- Settings: a short list of sections on the left, and a finder that searches every row's words ----------
+  function sgo(g) {
+    $("#sq").value = "";
+    document.querySelectorAll(".snav button").forEach(b => b.setAttribute("aria-current", b.dataset.g === g));
+    document.querySelectorAll(".sgroup").forEach(x => { x.hidden = x.dataset.g !== g; x.querySelectorAll(".item").forEach(i => i.hidden = false); });
+    $("#snone").hidden = true;
+    drawAI();
+  }
+  document.querySelectorAll(".snav button").forEach(b => b.onclick = () => sgo(b.dataset.g));
+  $("#sq").oninput = () => {
+    const q = $("#sq").value.trim().toLowerCase();
+    if (!q) return sgo(document.querySelector(".snav button[aria-current=true]")?.dataset.g || "general");
+    let any = false;
+    document.querySelectorAll(".sgroup").forEach(g => {
+      let hit = false;
+      g.querySelectorAll(".item").forEach(i => { const on = i.textContent.toLowerCase().includes(q); i.hidden = !on; hit = hit || on; });
+      g.hidden = !hit; any = any || hit;
+    });
+    $("#snone").hidden = any;
+  };
+  sgo("general");
+
+  // ---- AI settings ----------------------------------------------------------------------------------------
+  $("#set-ai_provider").onchange = e => send({ action: "pref", key: "ai_provider", value: e.target.value });
+  $("#set-ai_model").onchange = e => send({ action: "pref", key: "ai_model", value: e.target.value.trim() });
+  $("#ai-login").onclick = () => { send({ action: "ai_login" }); toast("Sign in in the Terminal window, then come back"); };
+  $("#ai-key-save").onclick = () => { const k = $("#ai-key").value.trim(); if (!k) return;
+    send({ action: "ai_key", provider: S.prefs.ai_provider, key: k }); $("#ai-key").value = ""; toast("Key saved in your Keychain"); };
+  $("#ai-key-clear").onclick = () => { send({ action: "ai_key", provider: S.prefs.ai_provider, key: "" }); toast("Key removed"); };
+  function drawAI() {
+    if (!S.prefs) return;
+    const on = !!S.prefs.ai, prov = S.prefs.ai_provider || "claude", st = S.ai_status || {};
+    document.querySelectorAll(".aiopt").forEach(x => x.style.display = on ? "" : "none");
+    const sel = $("#set-ai_provider");
+    sel.innerHTML = Object.entries(S.ai_providers || {}).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("");
+    sel.value = prov;
+    $("#ai-claude-row").style.display = on && prov === "claude" ? "" : "none";
+    $("#ai-key-row").style.display = on && prov !== "claude" ? "" : "none";
+    $("#ai-model-row").style.display = on && prov !== "claude" ? "" : "none";
+    $("#ai-claude").innerHTML = !st.installed ? "Claude Code is not installed on this Mac. Install it from claude.ai/code, or use an API key instead."
+      : st.loggedIn ? `Signed in as <b>${esc(st.email || "your Claude account")}</b>. Answers use that account’s plan.`
+      : "Not signed in. Sign in once and indite uses that account.";
+    $("#ai-login").textContent = st.loggedIn ? "Switch account…" : "Sign in…";
+    $("#ai-login").style.display = st.installed ? "" : "none";
+    const has = (S.ai_keys || {})[prov];
+    $("#ai-key-why").textContent = has ? "A key is saved in your Mac’s Keychain. Paste a new one to replace it."
+      : "Paste your key. It is kept in your Mac’s Keychain, never in a file.";
+    $("#set-ai_model").value = S.prefs.ai_model || "";
+    $("#set-ai_model").placeholder = (S.ai_models || {})[prov] || "";
+    $("#ai-model-why").textContent = "Leave empty for the default shown.";
+  }
+
+  // ---- Dictionary ------------------------------------------------------------------------------------------
+  $("#dadd").onclick = () => { const h = $("#dh").value.trim(), w = $("#dw").value.trim(); if (!h || !w) return;
+    send({ action: "add_fix", heard: h, want: w }); $("#dh").value = $("#dw").value = ""; $("#dh").focus(); toast(`Added: ${h} → ${w}`); };
+  $("#dw").onkeydown = e => { if (e.key === "Enter") $("#dadd").onclick(); };
+  $("#goto-dict").onclick = () => go("dict");
+  function drawDict() {
+    const list = S.fixes_list || [];
+    $("#dict-list").innerHTML = list.length ? list.map(([h, w]) => `<div class="dict-row"><span class="h">${esc(h)}</span>
+      <span class="arrow">→</span><span class="w">${esc(w)}</span>
+      <button class="copy fixdel" data-h="${esc(h)}" aria-label="Remove" title="Remove"><svg width="14" height="14"><use href="#i-trash"/></svg></button></div>`).join("")
+      : `<div class="empty" style="padding:30px"><h3>No words yet</h3>Add the first one above.</div>`;
+    $("#dict-list").querySelectorAll(".fixdel").forEach(b => b.onclick = () => send({ action: "fix_del", heard: b.dataset.h }));
+    $("#fixes-line").textContent = list.length ? `${list.length} word${list.length > 1 ? "s" : ""} indite always writes your way.`
+      : "Teach indite words it gets wrong, like “ptm → Paytm”.";
+  }
+
+  // ---- To do: add one directly --------------------------------------------------------------------------
+  $("#todo-add").onkeydown = e => { const t = e.target.value.trim();
+    if (e.key === "Enter" && t) { send({ action: "todo_add", text: t }); e.target.value = ""; } };
 
   header();
   send({ action: "ready" });

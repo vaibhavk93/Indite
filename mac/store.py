@@ -32,14 +32,17 @@ DEFAULTS = {
     "hf_key": "",               # hands-free key; "" = the same key you hold to talk
     "hf_taps": 2,               # taps of that key that lock hands-free: 2 or 3
     "pill_glass": 0.45,         # how much frosted glass the pill shows: 0 = clear, 1 = Apple's default
-    "ai": True,                 # show the AI button on notes (answers come from your own Claude login)
-    "ai_ok": False,             # you said yes to text leaving the Mac for AI answers (asked once)
+    "ai": False,                # AI on notes; off until the person turns it on and picks where answers come from (answers come from your own Claude login)
+    "ai_ok": False,
+    "ai_provider": "claude",    # claude · anthropic · openai · openrouter (keys live in the Keychain, not here)
+    "ai_model": "",             # "" = the provider's default             # you said yes to text leaving the Mac for AI answers (asked once)
     "keep_audio": False,        # also keep each dictation's recording (about 0.3 MB for 10 s), for backups
     "backup_scope": "all",      # all · star · keep (starred + to-do)
     "backup_audio": False,      # include recordings and transcribed files in a backup
     "digits": True,             # number words as digits: "chaar baje" -> "4 baje"
     "setup_done": False,
     "asked_screen": False,      # the Screen & System Audio Recording prompt was shown once        # the first-run setup was finished (Help → Run setup again)
+    "theme": "light",           # light · dark · system - the window's colours
     "preview": False,           # show what was written in a small card above the pill for a few seconds
 }
 
@@ -248,6 +251,14 @@ def add_fix(heard: str, want: str) -> bool:
     raw = path.read_text(encoding="utf-8")
     path.write_text(raw + ("" if raw.endswith("\n") else "\n") + f"{heard} = {want}\n", encoding="utf-8")
     return True
+
+
+def remove_fix(heard: str) -> None:
+    """Drops every line that fixes this word; comments and other fixes stay exactly as they were."""
+    path = fixes_file()
+    keep = [l for l in path.read_text(encoding="utf-8").splitlines()
+            if not (l.partition("=")[1] and " ".join(l.partition("=")[0].split()).lower() == heard.lower())]
+    path.write_text("\n".join(keep) + "\n", encoding="utf-8")
 
 
 def my_fixes() -> list[tuple[str, str]]:

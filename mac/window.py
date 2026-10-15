@@ -71,7 +71,11 @@ class Bridge(NSObject):
             "listening": bool(can_listen()),
             "hotkeys": HOTKEYS,
             "engine": self.app.engine_kind,
-            "fixes": len(store.my_fixes()),
+            "fixes_list": [list(f) for f in sorted(store.my_fixes(), key=lambda f: f[0].lower())],
+            "ai_providers": __import__("ai").PROVIDERS,
+            "ai_models": __import__("ai").DEFAULT_MODEL,
+            "ai_status": self.app.ai_who,
+            "ai_keys": self.app.ai_keys,
             "mics": __import__("indite_mac").mic_names(),
             "using": self.app.mic.using,
             "job": self.app.job,
@@ -105,10 +109,12 @@ class Bridge(NSObject):
             return
         act = msg.get("action")
         if act == "ready":
-            pass
+            self.app.check_ai()
         elif act == "pref":
             store.set_pref(msg.get("key", ""), msg.get("value"))
             self.app.reload_prefs()
+            if msg.get("key") == "theme" and self.app.window:
+                self.app.window.theme()
         elif act == "copy":
             self.app.typer.copy(msg.get("text", ""))
         elif act == "note":                              # star / to-do / title: only these fields may change
@@ -137,6 +143,20 @@ class Bridge(NSObject):
             subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"])
         elif act == "status":
             pass                                         # the page polls while setup is open; push() below answers
+        elif act == "fix_del":
+            store.remove_fix(str(msg.get("heard", "")))
+        elif act == "todo_add":
+            t = " ".join(str(msg.get("text", "")).split())
+            if t:
+                store.add(t, 0, 0, "task", "", kind="task", todo="open")
+        elif act == "ai_key":
+            import ai
+            ai.key_set(str(msg.get("provider", "")), str(msg.get("key", "")).strip())
+            self.app.check_ai()
+        elif act == "ai_login":
+            import ai
+            ai.claude_login()
+            self.app.check_ai(later=True)
         elif act == "who":
             self.app.who_spoke(str(msg.get("id", "")), int(msg.get("k", 0) or 0))
         elif act == "meeting":
@@ -283,6 +303,13 @@ class Window:
         glass.addSubview_(strip)
         self.win.setContentView_(glass)
         self.win.setBackgroundColor_(NSColor.clearColor())
+        self.theme()
+
+    def theme(self) -> None:
+        """The sidebar glass follows the same choice as the page, or the two halves disagree."""
+        from AppKit import NSAppearance
+        name = {"light": "NSAppearanceNameAqua", "dark": "NSAppearanceNameDarkAqua"}.get(store.prefs()["theme"])
+        self.win.setAppearance_(NSAppearance.appearanceNamed_(name) if name else None)
 
     def show(self) -> None:
         NSApp.setActivationPolicy_(0)                       # a normal app while the window is open (see WindowEvents)

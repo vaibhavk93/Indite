@@ -26,6 +26,7 @@ def app():
     a = m.InditeApp.__new__(m.InditeApp)                    # no menu bar, no engine: just the key logic
     a.mic, a.busy, a.started_at, a.locked, a.last_tap = FakeMic(), False, 0.0, False, 0.0
     a.taps, a.hf_down = 0, 0.0
+    a.meeting = type("M", (), {"running": False})()
     a.prefs = {"hotkey": "alt_r", "sounds": False, "hf_key": "", "hf_taps": 2}
     a.written = []
     a.write_it = a.written.append

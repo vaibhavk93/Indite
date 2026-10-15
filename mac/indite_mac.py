@@ -471,7 +471,9 @@ class InditeApp(rumps.App):
         self.web_proc: subprocess.Popen | None = None
         self.meeting = Meeting(self)
         self.meeting_item = rumps.MenuItem("Record a meeting", callback=self.toggle_meeting)
-        self.ai_busy: dict = {}          # note id -> what the AI is doing for it
+        self.ai_busy: dict = {}
+        self.ai_who: dict = {}
+        self.ai_keys: dict = {}          # note id -> what the AI is doing for it
         self.ai_error = ""
         self.notice = ""                 # one line for the window: backup done, restore result
         self.job: dict | None = None     # a file being transcribed: name, parts done, parts in all
@@ -484,7 +486,7 @@ class InditeApp(rumps.App):
         # 20 times a second, on the main thread: the only place the pill is ever touched.
         rumps.Timer(self.paint, 0.05).start()
         self.menu = [
-            rumps.MenuItem("Hold right-Option and speak" if can_listen()
+            rumps.MenuItem(f"Hold {HOTKEYS.get(self.prefs['hotkey'], 'Right ⌥')} and speak" if can_listen()
                            else "⚠ No permission to see the hotkey - click About", callback=None),
             None,
             rumps.MenuItem("Open indite", callback=self.open_window, key="o"),
@@ -840,11 +842,12 @@ class InditeApp(rumps.App):
         from AppKit import NSAlert, NSAlertFirstButtonReturn
         if not self.prefs.get("ai_ok"):
             alert = NSAlert.alloc().init()
-            alert.setMessageText_("Send this note to Claude?")
+            alert.setMessageText_("Send this note to an AI?")
+            where = ai.PROVIDERS.get(self.prefs["ai_provider"], "Claude")
             alert.setInformativeText_(
-                "AI answers come from Claude, using your own Claude login on this Mac. The note's text leaves this "
-                "Mac to get the answer; nothing else does. If the note is about work, check your company's rules "
-                "first.\n\nYou will not be asked again; turn AI off in Settings at any time.")
+                f"AI answers come from: {where}. The note's text leaves this Mac to get the answer; nothing else "
+                "does. If the note is about work, check your company's rules first.\n\nYou will not be asked "
+                "again; change or turn off AI in Settings → AI.")
             alert.addButtonWithTitle_("Send")
             alert.addButtonWithTitle_("Cancel")
             if alert.runModal() != NSAlertFirstButtonReturn:
@@ -861,7 +864,7 @@ class InditeApp(rumps.App):
     def _ai(self, row: dict, action: str, extra: str) -> None:
         t0 = time.time()
         try:
-            answer = ai.run(action, row["text"], extra)
+            answer = ai.run(action, row["text"], extra, self.prefs["ai_provider"], self.prefs["ai_model"])
             if action == "improve":
                 store.update(row["id"], improved=answer)          # beside the original, never instead of it
             else:
@@ -981,6 +984,19 @@ class InditeApp(rumps.App):
         finally:
             self.ai_busy.pop(row["id"], None)
             self.refresh()
+
+    def check_ai(self, later: bool = False) -> None:
+        """Who is signed in to Claude, and which API keys are saved - slow calls, so on a thread, then shown."""
+        def go() -> None:
+            for _ in range(20 if later else 1):          # after "Sign in…", watch for the login to finish
+                if later:
+                    time.sleep(3)
+                self.ai_who = ai.claude_status()
+                self.ai_keys = {p: bool(ai.key_get(p)) for p in ai.PROVIDERS if p != "claude"}
+                self.refresh()
+                if later and self.ai_who.get("loggedIn"):
+                    break
+        threading.Thread(target=go, daemon=True).start()
 
     def refresh(self) -> None:
         """Tell the window something changed. WKWebView must be touched on the main thread only."""
