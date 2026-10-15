@@ -286,7 +286,7 @@ class Mic:
         Opens the first microphone that actually opens.
 
         The default input is whatever macOS last picked, and that is often a Bluetooth headset that is off, or an
-        iPhone that is not nearby (15 Oct: default was "Rockerz 255 Pro+" and every press died with PortAudio -9986,
+        iPhone that is not nearby (15 Oct: the default was a Bluetooth headset and every press died with PortAudio -9986,
         taking the key handler with it). So: try the default, then the built-in microphone, then anything else, and
         remember what worked. Raises MicProblem with something a person can act on if none of them open.
         """

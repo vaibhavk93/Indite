@@ -38,7 +38,7 @@ wisprflow's features and the user flow and UX flow and improve the app."*
 | P5 | Real-use check: full screen, drag, hands-free over Terminal, ⌃⌘V | Fixes shipped, unconfirmed | You |
 | P6 | Live clean-up while dictating (local model) | Needs a 30-dictation Hinglish test | Me |
 | P7 | Signed + notarised build (no "right-click → Open") | Needs a $99/yr Apple Developer ID | You decide |
-| P8 | Paytm: ownership, infosec review, AI data policy (your Claude login is a Paytm account) | Not started | You (HR/Legal) |
+| P8 | Commercial use: ownership, security review, privacy law | Not started | You |
 | P9 | Android: nothing from today's Mac work is on the phone yet | Not started | Later |
 | P10 | Intel Macs | The build is Apple Silicon only | Later |
 
@@ -46,7 +46,7 @@ wisprflow's features and the user flow and UX flow and improve the app."*
 
 | Idea | What it would be | Must be true first |
 |---|---|---|
-| Personal assistant | Search your own notes, "what did I promise X", a daily brief, act on what you say ("Slack par Vaibhav ko message daalna", sent only after you confirm) | Fewer wrong words; notes kept long-term (done); speaker names (done); an approved AI route |
+| Personal assistant | Search your own notes, "what did I promise X", a daily brief, act on what you say ("message a colleague on Slack", sent only after you confirm) | Fewer wrong words; notes kept long-term (done); speaker names (done); an approved AI route |
 | Live AI clean-up | Wispr-style backtrack and filler removal while you dictate, original kept | P6 passes |
 | Snippets and styles | Spoken shortcuts, tone per app | Asked for by real users |
 | Phone ↔ Mac | The same notes on both | A sync design that keeps "nothing leaves your devices" |
@@ -141,7 +141,7 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R3 | Animation while it is writing | ✅ | Dots in a wave + an orange glint sweeping under the word |
 | R4 | Drag the window (not in full screen) | 🧪 | Invisible strip along the top; double-click zooms |
 | R5 | Full screen | 🧪 | Fixed: its own Space, no gaps (indite becomes a normal Dock app while the window is open) |
-| R6 | Password guard | ✅ | Founder checked it on emergent.com: works |
+| R6 | Password guard | ✅ | Founder checked it on a website's login page: works |
 | R7 | Hands-free: double-tap to lock | 🧪 | Tap to finish, Esc cancels, 15-min cap, red dot in the pill. 5 logic tests |
 | R8 | Paste-last shortcut | 🧪 | ⌃⌘V types the last dictation again |
 | R9 | Start sound | 🧪 | Tick on start, pop on stop; Settings → Sounds |
@@ -156,7 +156,7 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R18 | Backup with options: starred or all, with or without audio | ✅ | Settings → Backup; restore adds only what is missing; optional per-dictation audio |
 | R19 | First-run setup screen | ✅ | Accessibility, mic, key, try it; Help → Run setup again |
 | R20 | Install on someone else's Mac (e.g. a boss) | 💬 not yet | Needs bundled Python + model, Developer ID ($99/yr), notarization |
-| R21 | Can Paytm commercialise it? | 💬 | Licences allow it; ownership, infosec and DPDP questions are Paytm's to answer |
+| R21 | Can it be commercialised? | 💬 | The licences allow it; ownership and the rest are for the founder's own advisers |
 | R22 | Personal-assistant direction | 💬 later | Roadmap only, after the current apps are complete |
 | R25 | Check the pill animation ("typing / typed in / writing" looked off) | ✅ | The orange line under "writing" crossed the g and jumped; the shadow blurred "✓ typed in"; states cut in abruptly. Now: dots on the baseline, orange tick, no shadow, each word fades in and settles (0.2 s). Checked frame by frame on light and dark |
 | R26 | Is it capturing properly? | ✅ checked | Log of 15 Oct: 76 s → full text in 8.4 s, 58 s in 5.9 s, short ones ~1 s; password guard dropped 3. Misheard: "vishvash flow" (Wispr Flow), "Pace last" (paste last), "holder" (folder), "diary / Diairization" (diarization) — word fixes can take these |
@@ -239,7 +239,7 @@ other people come out of the headphones, not into the mic, so a mic-only recordi
 | **★ Mic + system audio** (ScreenCaptureKit, or a Core Audio tap on macOS 14.2+) | Hears everyone; two tracks give "me / them" for free | Screen Recording permission; macOS 15 asks again monthly; without headphones, others are heard twice |
 | BlackHole driver | Works on older macOS | Install a driver, volume keys stop working; GPL, cannot be bundled |
 
-⚠ Tell people they are being recorded; check Paytm's rules on recording calls.
+⚠ Tell people they are being recorded, and follow the local rules on recording calls.
 
 ### To-do / action items section
 Build it small: a "to do" mark on any note or line, a **To do** page listing them with a Done tick. No due dates or
@@ -251,27 +251,22 @@ A button per note, after the fact: one AI call, the improved version saved besid
 overwritten. Not live: the only AI route (your own `claude` login) takes seconds and uses plan quota. Wispr removed
 its strongest clean-up after users said it rewrote their meaning; with ~19% words wrong, a polished version can hide
 the errors, which is why the original stays. Live clean-up with a small model on the Mac (~1 s) is **unproven for
-Roman Hinglish**: test on 30 real dictations first. ⚠ AI sends the text off the Mac — check Paytm policy if the
-login or the content is Paytm's.
+Roman Hinglish**: test on 30 real dictations first. ⚠ AI sends the note's text off the Mac, to the AI the person chose.
 
 ### Personal assistant (later, roadmap only)
-Concretely: search your own notes, "what did I promise X?", a daily brief, and acting on what you say — e.g. "Slack
-par Vaibhav ko message daalna ki woh ho gaya kya" (founder's example, 15 Oct: draft the message, improve it, send it
-after you confirm). First must be true: fewer wrong words (a brief on 19% errors cannot be trusted), notes kept
+Concretely: search your own notes, "what did I promise X?", a daily brief, and acting on what you say — e.g. "message a
+colleague on Slack to ask if it is done" (draft the message, improve it, send it after you confirm). First must be true: fewer wrong words (a brief on 19% errors cannot be trusted), notes kept
 long-term (phase 1), speaker names (phase 3), an approved AI route. Cheapest first step: offline search across notes.
 Cost to weigh: it means keeping everything you say.
 
 ### Can someone else (a boss) install it? Not yet
 It runs Python and the model from this folder. Needed: Python bundled into the app (py2app or PyInstaller), the
 574 MB model inside or downloaded on first run, an Apple Developer ID ($99/yr), every library signed and the app
-notarized. Without it macOS blocks the app. ⚠ A Paytm-managed Mac may block an app with keyboard, mic and screen
+notarized. Without it macOS blocks the app. ⚠ A company-managed Mac may block an app with keyboard, mic and screen
 permissions (it looks like a keylogger): expect an infosec review.
 
-### Can Paytm commercialise it? (not legal advice)
-Licences allow it: the Hinglish model (Apache 2.0), whisper.cpp (MIT), most libraries MIT/BSD; pynput is LGPL (fine
-unmodified, ship its licence); **TitaNet (speakers) has no licence noted in the repo — verify** (NVIDIA models are
-usually CC-BY-4.0, credit needed). The bigger questions are Paytm's: who owns a side project built by an employee
-(contracts often give the employer work related to its business or made on its equipment/accounts); the public repo
-with no LICENSE; DPDP notice and consent if AI features send personal data out; an infosec review. Ask Paytm
-HR/Legal first.
-
+### Can it be commercialised? (not legal advice)
+The licences allow it: the Hinglish model (Apache 2.0), whisper.cpp (MIT), most libraries MIT/BSD; pynput is LGPL
+(fine unmodified, ship its licence); **TitaNet (speakers) has no licence noted in the repo — verify** (NVIDIA models
+are usually CC-BY-4.0, credit needed). The repo itself has no LICENSE yet. Ownership, privacy law (consent and
+notice if AI features send personal data out) and any security review are questions for the founder's own advisers.

@@ -25,7 +25,7 @@ TextEdit is fine.
 | All 12 window pages open with no page errors | real-window snapshots | ✅ |
 | Text card: multi-line, grows with the text | real snapshot | ✅ |
 | Shareable build: own Python, engine, models; transcribes | bare-environment run | ✅ |
-| Password guard | you, on emergent.com | ✅ |
+| Password guard | you, on a website login page | ✅ |
 
 ---
 

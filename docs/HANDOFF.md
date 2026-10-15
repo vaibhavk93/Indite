@@ -196,7 +196,8 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
 - **Python's stdlib has a `numbers` module**: the digits pass is `mac/digits.py`, never `numbers.py`.
 - **WKWebView ignores `confirm()` and `prompt()`**: use native dialogs or inline forms.
 - **A Finder-launched app has a bare PATH**: `ai.py` adds `~/.local/bin` so `claude` is found.
-- **The founder's Claude login is a Paytm account**: Settings → AI shows the account; AI is off by default for new users.
+- **AI uses the founder's personal Claude account**, signed in on this Mac. Settings → AI shows which account is
+  signed in, so it is never a surprise; AI is off by default for new users.
 - **A class defined in `indite_mac.py` is defined twice** (it runs as the program and `window.py` imports it again):
   Objective-C refuses the second copy. NSObject subclasses go in `window.py` / `overlay.py`.
 - **Opening a running indite did nothing visible**, so it looked dead: the window now shows whenever the app is
@@ -354,7 +355,7 @@ the old Desktop path working. All paths in the repo were relative, so nothing el
 
 | Place | What's there | State (15 Oct, night) |
 |---|---|---|
-| **GitHub** `github.com/vaibhavk93/Indite` (PUBLIC, branch `main`) | Source, docs | **Pushed 15 Oct night** (`aad93dc` and this doc fix), incl. tags `build-7`…`build-10`. Includes the Paytm-commercialisation notes in MAC_PLAN §5 — the founder chose to sync as is. Push again when the founder says so |
+| **GitHub** `github.com/vaibhavk93/Indite` (PUBLIC, branch `main`) | Source, docs | **Pushed 15 Oct night** (`aad93dc` and this doc fix), incl. tags `build-7`…`build-10`. Push again when the founder says so |
 | **Local repo** (this Mac) | Everything, plus git-ignored files: models in `android/app/src/main/assets/models/`, `android/app/libs/sherpa-onnx-1.13.8.aar`, `.tools/` (JDK, whisper.cpp), test audio, old APKs in `phonetest/` and `APK/` (~2.4 GB, OK to delete pending) | HEAD = latest commit; tags `build-7`…`build-10` mark builds installed on the phone |
 | **Mac app builds** | `dist/indite.app` (yours: launcher + its own Python, code runs from this folder) and `dist-share/indite.app` + `indite-mac.zip` (shareable, self-contained). Both git-ignored | Rebuilding resets Accessibility and Screen Recording (ad-hoc signing) |
 | **Founder's phone** (OnePlus CPH2573, USB) | Personal build 0.10 (build 10) + the rounding A/B hook | Notes live only on the phone (no backup). Export via Settings → Storage |
