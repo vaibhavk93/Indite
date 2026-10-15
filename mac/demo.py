@@ -599,6 +599,30 @@ def before(name: str, call: Path) -> None:
         cmd("js:go('home')")
 
 
+# The word indite gets wrong in section 3, and what it should be. Filled in after testing the founder's own S03
+# recording - never guessed, because a demo that fakes its own mistake is worse than one that has none. Written by
+# tools/check_fix.py into this file's sibling so the take and the test cannot drift apart.
+FIX_FILE = Path("/tmp/indite-demo-voice/fix.txt")
+
+
+def teach_the_word() -> None:
+    """Type the fix into the Dictionary, on camera, the way a person would."""
+    if not FIX_FILE.exists():
+        log("no fix.txt - section 3 will show the mistake but not the cure")
+        return
+    heard, _, want = FIX_FILE.read_text().strip().partition("=")
+    heard, want = heard.strip(), want.strip()
+    if not (heard and want):
+        log("fix.txt is not 'heard = want'; skipping the Dictionary beat")
+        return
+    cmd(f"js:(()=>{{const h=document.querySelector('#dh'),w=document.querySelector('#dw');"
+        f"h.focus();h.value={heard!r};w.value={want!r};}})()")
+    time.sleep(1.6)                                      # the words sit there long enough to be read
+    cmd("js:document.querySelector('#dadd').click()")
+    log(f"taught: {heard} -> {want}")
+    time.sleep(2.0)
+
+
 def show_script() -> None:
     """The whole video, driven by docs/DEMO_SCRIPT.md."""
     import wave as _wave
@@ -618,6 +642,8 @@ def show_script() -> None:
             dictate(name, words)
         else:
             say_line(name, words)
+        if name == "N14":                                # the cure, right after the line that promises it
+            teach_the_word()
         time.sleep(HOLD.get(name, 1.2))                  # the screen holds still long enough to be read
 
 
