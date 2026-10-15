@@ -56,6 +56,27 @@ def apply_fixes(text: str, table: dict[str, str]) -> str:
     return " ".join(table.get(w.lower(), w) for w in text.split())
 
 
+def can_listen() -> bool:
+    """
+    macOS will not hand key events to a program that is not trusted for Accessibility - and pynput does not complain
+    when that happens, it simply never fires. So ask first, and say so in words (14 Oct: the first Mac build showed a
+    cheerful microphone that did nothing at all).
+    """
+    try:
+        import Quartz
+        return bool(Quartz.CGPreflightListenEventAccess())
+    except Exception:       # noqa: BLE001 - an old macOS without the call: assume yes and let the hotkey speak for itself
+        return True
+
+
+def ask_to_listen() -> None:
+    try:
+        import Quartz
+        Quartz.CGRequestListenEventAccess()
+    except Exception:       # noqa: BLE001
+        pass
+
+
 def window_for(seconds: float) -> int:
     """The same rule as the phone: the window follows the piece, never shorter than the audio (see Pauses.audioCtx)."""
     return min(1280, max(512, int(math.ceil((seconds + 2) * 50 / 256) * 256)))
@@ -149,7 +170,8 @@ class InditeApp(rumps.App):
         self.started_at = 0.0
         self.last = ""
         self.menu = [
-            rumps.MenuItem("Hold right-Option and speak", callback=None),
+            rumps.MenuItem("Hold right-Option and speak" if can_listen()
+                           else "⚠ No permission to see the hotkey - click About", callback=None),
             None,
             rumps.MenuItem("Copy last text", callback=self.copy_last),
             rumps.MenuItem("About", callback=self.about),
@@ -160,6 +182,16 @@ class InditeApp(rumps.App):
         if problem:
             rumps.alert("indite can't start", problem)
             sys.exit(1)
+        if not can_listen():
+            self.title = "🎙⚠"
+            ask_to_listen()
+            rumps.alert(
+                "indite needs permission to see the hotkey",
+                "macOS has not allowed this program to notice key presses, so holding the key will do nothing.\n\n"
+                "System Settings → Privacy & Security → Accessibility → + → press ⌘⇧G and paste:\n\n"
+                f"{sys.executable}\n\n"
+                "Tick it, then quit indite and start it again.",
+            )
         threading.Thread(target=self.listen, daemon=True).start()
 
     # ---- the hotkey ----------------------------------------------------------------------------------------
