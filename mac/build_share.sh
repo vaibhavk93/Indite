@@ -25,7 +25,7 @@ rm -rf "$RES/python/lib/python3.12/test" "$RES/python/lib/python3.12/idlelib" "$
 
 echo "2/6 Libraries the Mac app uses (no torch: the Mac app never loads it)"
 uv pip install --quiet --python "$RES/python/bin/python3" --target "$RES/site" \
-    numpy sounddevice pynput rumps av sherpa-onnx sherpa-onnx-core \
+    numpy sounddevice pynput==1.8.2 rumps av sherpa-onnx sherpa-onnx-core \
     pyobjc-core pyobjc-framework-Cocoa pyobjc-framework-Quartz pyobjc-framework-ApplicationServices \
     pyobjc-framework-AVFoundation pyobjc-framework-WebKit pyobjc-framework-CoreMedia \
     pyobjc-framework-ScreenCaptureKit pyobjc-framework-CoreAudio

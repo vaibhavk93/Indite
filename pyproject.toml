@@ -13,7 +13,7 @@ dependencies = [
     "uvicorn>=0.30",
     "python-multipart>=0.0.9",  # file uploads
     "sounddevice>=0.5.6",
-    "pynput>=1.8.2",
+    "pynput==1.8.2",       # pinned: indite_mac.py patches its keyboard-layout code (macOS 26 crash)
     "rumps>=0.4.0",
     "pyobjc-framework-avfoundation>=12.2.2",
     "pyobjc-framework-screencapturekit>=12.2.2",

@@ -125,12 +125,16 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+**Mac, 15 Oct 21:55 — key access and Screen Recording both work now.** Hotkey dictation tested by the founder.
+The blocker was a silent crash, not the permission (see "The Mac app now" below). Item 1 in the list below is
+resolved. Next: restart the Mac (a frozen indite copy holds Dock clicks), then record the demo video.
+
 **Mac, 15 Oct evening — the Wispr Flow gap review changed the plan.** 5 of the 14 "missing" features were already
 built (snippets = word fixes, the Dictionary page, and every Insights stat including the streak). What is actually
 next is 3 small Dictionary items (~2 h), two gated experiments, and 11 dropped features — `docs/MAC_PLAN.md` §6.
 
 **⚠ Three things beat every feature on that list, and two are shipped features that do not work:**
-1. **Screen & System Audio Recording is still not granted** → meeting recording (R14) and the demo video (R41) are dead.
+1. ~~**Screen & System Audio Recording is still not granted**~~ (granted 15 Oct night) → meeting recording (R14) and the demo video (R41) are dead.
 2. **The 53 real dictations have never been scored.** Every accuracy number comes from 360 synthetic clips;
    `mac/digits.py:5` admits the digits pass changed 0 of those 53. Scoring them is ~2 h and would re-rank the plan.
 3. **Nothing is signed or notarised** (P7, R20), every rebuild resets permissions, and 10 items are still 🧪.
@@ -239,6 +243,19 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
   against Python itself, so key access stayed False with indite switched on. Every rebuild re-signs ad hoc and
   resets both permissions: rebuild only when the bundle itself must change (code changes need only a restart).
   A local signing certificate would stop the resets; it needs the founder's OK (it adds a trusted certificate).
+- **⚠ Key access finally works (15 Oct, 21:50); the real blocker was a crash, not the permission.** Once keys reached
+  indite, pynput read the keyboard layout from its listener thread; macOS 26 demands the main thread and killed the
+  app silently (SIGTRAP, `dispatch_assert_queue`). Fix: `_layout_on_main_thread()` in `indite_mac.py` reads it once at
+  start-up and hands pynput that copy, so **pynput is pinned to 1.8.2** (the patch reaches into its internals).
+  The log's old "Accessibility" line was checking **Input Monitoring** (`CGPreflightListenEventAccess`), so it read
+  False even with Accessibility on. The log now shows both, plus `faulthandler` writes a Python stack into the log on
+  any crash. Rules: after a crash, read `~/Library/Logs/DiagnosticReports/python3.12-*.ips` before blaming a
+  permission; Accessibility True + Input Monitoring False is the working state.
+- **A frozen indite copy (pid 99097, status `T`) can't be killed, even outside the sandbox.** Likely the company's
+  security agent (unproven: its logs need admin). It makes a normal `open` fail (-1712) and Dock clicks go to it, so
+  the window "doesn't show". Until the Mac restarts: start with `open -n dist/indite.app`, show the window with
+  `echo open: > ~/Library/Application\ Support/indite/demo.cmd`. `launcher.c` now stops waiting on any error but
+  an interruption (source only; takes effect at the next rebuild, which resets permissions).
 - **Ask AI is a side panel** (`openDrawer` in `ui/app.html`): answers first, then actions; new "Ask anything" action
   (`custom` in `ai.py`). The note list shows only "AI · n answers".
 - Logo: `mac/brand/logo.svg` (five voice bars, the middle one is the letter i) → `indite.icns` in both builds.

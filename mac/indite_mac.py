@@ -31,6 +31,30 @@ import rumps
 import sounddevice as sd
 from pynput import keyboard
 
+
+def _layout_on_main_thread() -> None:
+    """
+    pynput reads the keyboard layout (TIS... calls) from its listener thread; on macOS 26 those calls must run on the
+    main thread, and off it macOS kills the whole app (SIGTRAP in dispatch_assert_queue, 15 Oct - it crashed the
+    moment key access was finally granted). Read it once here, on the main thread, and hand pynput that copy.
+    """
+    import contextlib
+    from pynput._util import darwin as util
+    from pynput.keyboard import _darwin as kb
+    with util.keycode_context() as ctx:
+        pass
+    # ponytail: a layout switched after start-up isn't seen; the hotkeys are modifier keys, so it doesn't matter
+    util.keycode_context = kb.keycode_context = contextlib.contextmanager(lambda: (yield ctx))
+
+
+_layout_on_main_thread()
+
+# A crash inside macOS code kills Python with no word in the log (15 Oct: it looked like a permission problem for
+# hours). This writes the Python stack of every thread into the log first. SIGTRAP is what macOS's own checks raise.
+import faulthandler   # noqa: E402
+import signal         # noqa: E402
+faulthandler.enable(all_threads=True)
+faulthandler.register(signal.SIGTRAP, all_threads=True, chain=True)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ai                 # noqa: E402
 from meeting import Meeting  # noqa: E402
@@ -573,7 +597,9 @@ class InditeApp(rumps.App):
         try:                                             # say plainly in the log whether meetings can hear calls
             import Quartz
             print("screen & system audio recording allowed:", bool(Quartz.CGPreflightScreenCaptureAccess()))
-            print("key access (Accessibility) allowed:", can_listen())
+            import ApplicationServices
+            print("hear keys (Input Monitoring) allowed:", can_listen())
+            print("type & control (Accessibility) allowed:", bool(ApplicationServices.AXIsProcessTrusted()))
         except Exception:                                # noqa: BLE001
             pass
         if not self.prefs.get("asked_screen"):           # once: lets the meeting recorder hear the other people

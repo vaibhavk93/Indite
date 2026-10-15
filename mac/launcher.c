@@ -7,6 +7,7 @@
  * on (15 Oct). A parent that stays alive is the "responsible process": macOS credits everything its children do -
  * the hotkey, typing, the microphone, screen recording - to indite, the app the person actually allowed.
  */
+#include <errno.h>
 #include <libgen.h>
 #include <limits.h>
 #include <mach-o/dyld.h>
@@ -40,7 +41,7 @@ int main(void) {
 
     int status = 0;
     while (waitpid(child, &status, 0) < 0) {
-        /* interrupted by a signal we passed on: keep waiting for the child to finish */
+        if (errno != EINTR) return 1;   /* only an interruption (a signal we passed on) is worth waiting again */
     }
     return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 }

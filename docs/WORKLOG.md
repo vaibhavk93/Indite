@@ -4,6 +4,18 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-15 (late night) · Claude Code (Opus 5.5) · Mac: key access fixed; it was a crash
+
+**Next step:** restart the Mac (clears the frozen copy), then the demo video. B22 (real meeting) still open.
+
+- Founder removed and re-added indite in Accessibility; it now reads True. Three dictations typed fine.
+- Root cause of "permission doesn't work": pynput crashed indite the moment keys arrived (keyboard-layout call off the
+  main thread, macOS 26). Fixed by reading the layout once on the main thread; pynput pinned to 1.8.2.
+- The log's Accessibility line was really checking Input Monitoring; now both are logged. Crashes now leave a Python
+  stack in the log (faulthandler).
+- A frozen indite copy can't be killed (probably the company security agent); window opened via `demo.cmd` meanwhile.
+- launcher.c: no endless wait loop on errors (applies at the next rebuild).
+
 ## 2026-10-15 (night) · Claude Code (Opus 5.5) · Mac: UX restructure, AI providers, shareable build
 
 **Next step:** founder sends `dist-share/indite-mac.zip` to his boss; says what still feels bad in Settings; tries a
