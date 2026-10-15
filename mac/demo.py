@@ -200,7 +200,12 @@ def main() -> None:
         rec = True
         time.sleep(0.5)
         T0 = time.time()
-        show_short() if "--short" in sys.argv else show()
+        if "--script" in sys.argv:
+            show_script()
+        elif "--short" in sys.argv:
+            show_short()
+        else:
+            show()
     finally:
         if rec:
             cmd("rec:stop")
@@ -265,6 +270,11 @@ SCRIPT_S = [
 
 
 def prerender() -> None:
+    if "--script" in sys.argv:
+        missing = [n for n, _ in script_lines() if not human(n)]
+        log(f"recorded: {len(script_lines()) - len(missing)} of {len(script_lines())}"
+            + (f"; synthetic for {', '.join(missing[:8])}{'...' if len(missing) > 8 else ''}" if missing else ""))
+        return
     if "--short" in sys.argv:
         for i, t in enumerate(SHORT_N):
             render(t, NARRATOR, f"s{i:02d}")
@@ -300,7 +310,7 @@ def stage(hidden: list) -> None:
     # same way a user who ticked "don't ask again" would have (the warning itself is shown in the Ask AI scene).
     cmd('pref:ai_ok_meetings=true')
     W, H = display()
-    if "--short" in sys.argv:                                     # the short cut fills the screen per beat instead
+    if {"--short", "--script"} & set(sys.argv):                   # these fill the screen per beat instead
         cmd("open", "js:go('home')")
         ax_place("TextEdit", 0, 25, W, H - 25)
     else:
@@ -487,6 +497,123 @@ def show_short() -> None:
     # 7 + 8 - what it is, and the ask
     say(S[8])
     say(S[9], gap=1.5)
+
+
+# ---- the scripted run: docs/DEMO_SCRIPT.md, in the founder's own voice ------------------------------------------
+# The words live in the script file and nowhere else, so editing the script changes the video. A line recorded by
+# mac/narrate.py is used as it is; anything not recorded yet falls back to a synthetic voice, which is fine for a
+# rehearsal and NOT fine for the real take (take 1: the engine wrote "Tier cloist amok p acting" for a sentence it
+# gets right every time from a person).
+VOICES = Path("/tmp/indite-demo-voice")
+
+# Which lines are spoken hands-free, and how long the screen holds after a line before anything moves. The founder's
+# note on take 1: "everything is running so fast that the user is not able to track it" - so results sit still.
+HANDS_FREE = {"S02"}
+HOLD = {"S01": 5.0, "S02": 6.0, "S03": 5.0, "S04": 5.0, "S05": 4.0,
+        "N07": 2.5, "N14": 2.0, "N18": 3.0, "N24": 3.0, "N25": 2.5, "N26": 2.0, "N32": 3.0, "N36": 2.0}
+
+
+def human(name: str) -> tuple[Path, Path, float] | None:
+    """The founder's own recording of this line, if it has been made."""
+    hi, lo = VOICES / f"{name}.wav", VOICES / f"{name}-16k.wav"
+    if not (hi.exists() and lo.exists()):
+        return None
+    import wave
+    with wave.open(str(hi)) as w:
+        return hi, lo, w.getnframes() / w.getframerate()
+
+
+def line_audio(name: str, words: str, narration: bool) -> tuple[Path, Path, float]:
+    got = human(name)
+    if got:
+        return got
+    log(f"{name}: no recording - falling back to a synthetic voice")
+    return render(words, NARRATOR if narration else SPEAKER, name.lower())
+
+
+def say_line(name: str, words: str) -> None:
+    hi, _lo, dur = line_audio(name, words, True)
+    timeline.append({"at": time.time() - T0, "wav": str(hi)})
+    log("narrate:", name, words[:55])
+    time.sleep(dur + 0.4)
+
+
+def dictate(name: str, words: str) -> None:
+    """Hold the hotkey and play this line into indite in place of the microphone."""
+    hi, lo, dur = line_audio(name, words, False)
+    hands = name in HANDS_FREE
+    if hands:
+        for i in range(3):
+            if i == 2:
+                (OUT / "feed.wav").write_bytes(lo.read_bytes())
+                (OUT / "feed.wav").replace(FEED)
+            key(*R_CMD, True); time.sleep(0.08); key(*R_CMD, False); time.sleep(0.15)
+    else:
+        (OUT / "feed.wav").write_bytes(lo.read_bytes())
+        (OUT / "feed.wav").replace(FEED)
+        key(*R_OPT, True)
+    time.sleep(0.25)
+    timeline.append({"at": time.time() - T0, "wav": str(hi), "speech": True})
+    log("speak:", name, words[:55])
+    time.sleep(dur + 0.6)
+    if hands:
+        key(*R_CMD, True); time.sleep(0.08); key(*R_CMD, False)
+    else:
+        key(*R_OPT, False)
+
+
+def script_lines() -> list[tuple[str, str]]:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import narrate
+    return narrate.lines()
+
+
+def before(name: str, call: Path) -> None:
+    """What has to be on screen before this line is spoken."""
+    if name == "N01":
+        fill("TextEdit")
+    elif name == "N13":                                  # the mistake is made in a real app, not in indite
+        fill("TextEdit")
+    elif name == "N14":                                  # teach the word, on camera
+        fill("indite")
+        cmd("js:go('dict')")
+        time.sleep(1.5)
+    elif name == "S04":
+        fill("TextEdit")
+    elif name == "N17":
+        fill("indite")
+        cmd("js:go('files')", f"file:{call}")
+    elif name == "N21":
+        cmd("js:go('todo')")
+    elif name == "N23":
+        cmd("js:go('home')")
+        cmd("js:openDrawer(S.history.find(r => (r.kind || 'dictation') === 'dictation').id)")
+    elif name == "N25":
+        cmd("ai:improve")
+    elif name == "N30":
+        cmd("js:closeDrawer()", "js:go('insights')")
+    elif name == "N31":
+        fill("TextEdit")
+    elif name == "N36":
+        fill("indite")
+        cmd("js:go('home')")
+
+
+def show_script() -> None:
+    """The whole video, driven by docs/DEMO_SCRIPT.md."""
+    import wave as _wave
+    call = OUT / "client-call.wav"
+    with _wave.open(str(ROOT / "bench_synth/dialogue_2spk.wav")) as src, _wave.open(str(call), "wb") as dst:
+        dst.setparams(src.getparams())
+        dst.writeframes(src.readframes(75 * src.getframerate()))
+
+    for name, words in script_lines():
+        before(name, call)
+        if name.startswith("S"):
+            dictate(name, words)
+        else:
+            say_line(name, words)
+        time.sleep(HOLD.get(name, 1.2))                  # the screen holds still long enough to be read
 
 
 if __name__ == "__main__":
