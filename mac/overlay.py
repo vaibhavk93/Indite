@@ -46,7 +46,7 @@ from AppKit import (
 # macOS 13+: may also appear inside another app's full-screen Space. Without it the pill vanished over a full-screen
 # Terminal and came back on any other window (founder, 15 Oct).
 JOIN_ALL_APPS = getattr(AppKit, "NSWindowCollectionBehaviorCanJoinAllApplications", 0)
-GLASS = 0.45                    # how much of the frosted glass shows: 1 = Apple's default, 0 = none
+CLEAR = 60                      # pill transparency in %, 0-100 in steps of 10 (Settings → Look & sounds)
 W, H = 116.0, 30.0              # small on purpose: it sits over whatever you are reading (was 168 x 44)
 ACCENT = (0.886, 0.463, 0.106)      # the indite orange, the same one the phone uses
 
@@ -64,6 +64,7 @@ class PillView(NSView):
         self.bars = [0.12] * 5
         self.shown = [0.12] * 5      # what is drawn: eased toward `bars`, so the bars breathe rather than flicker
         self.since = 0.0
+        self.fill = 0.34                # tint behind the text, from Settings → Pill transparency
         self.label = ""                 # free text for the meeting state                # when the current state began, for the fade-in
         self.locked = False             # hands-free: a small dot on the left says "you can let go"
         self.liquid = False             # True on macOS 26+, where the pill sits in real Liquid Glass
@@ -74,7 +75,11 @@ class PillView(NSView):
         # a hairline edge - without it the blur floats with no boundary and reads as a smudge.
         NSColor.clearColor().set()
         NSBezierPath.fillRect_(rect)
-        if self.liquid:                 # Liquid Glass brings its own light; only the border is added
+        if self.liquid:                 # Liquid Glass brings its own light; only the tint and the border are added
+            if self.fill > 0:
+                NSColor.windowBackgroundColor().colorWithAlphaComponent_(self.fill).set()
+                NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
+                    NSMakeRect(0.5, 0.5, W - 1, H - 1), (H - 1) / 2, (H - 1) / 2).fill()
             self._draw_border()
             self._draw_content()
             return
@@ -236,7 +241,9 @@ class Pill:
             glass = Liquid.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
             glass.setCornerRadius_(H / 2)
             glass.setStyle_(getattr(AppKit, "NSGlassEffectViewStyleClear", 1))
-            glass.setAlphaValue_(GLASS)
+            # The glass itself always stays at full strength: fading it (the old way) froze its view of what is
+            # behind, so the background stuck while you scrolled (founder, 15 Oct). Transparency is a tint drawn
+            # under the text instead - see PillView.fill.
             holder.addSubview_(glass)
             holder.addSubview_(self.view)
             self.glass = glass
@@ -259,10 +266,29 @@ class Pill:
         self.panel.setAlphaValue_(0.0)
         self.visible = False
 
-    def set_glass(self, amount: float) -> None:
-        """Settings → Pill transparency. Only the frosted body fades; the text and border stay solid."""
-        if self.glass is not None:
-            self.glass.setAlphaValue_(max(0.0, min(1.0, amount)))
+    def snapshot(self, request, name: str) -> None:
+        """A picture of the pill as it is on screen, glass and all (developer check)."""
+        import Quartz
+        request.unlink(missing_ok=True)
+
+        def shoot():
+            f = self.panel.frame()                        # the screen around the pill, so what is behind it shows
+            top = NSScreen.screens()[0].frame().size.height
+            rect = Quartz.CGRectMake(f.origin.x - 40, top - f.origin.y - f.size.height - 20, f.size.width + 80,
+                                     f.size.height + 40)
+            img = Quartz.CGWindowListCreateImage(rect, Quartz.kCGWindowListOptionOnScreenOnly, Quartz.kCGNullWindowID,
+                                                 Quartz.kCGWindowImageDefault)
+            if img is not None:
+                rep = AppKit.NSBitmapImageRep.alloc().initWithCGImage_(img)
+                rep.representationUsingType_properties_(AppKit.NSPNGFileType, None).writeToFile_atomically_(
+                    str(request.parent / name), True)
+        from PyObjCTools import AppHelper
+        AppHelper.callLater(1.0, shoot)
+
+    def set_clear(self, percent: int) -> None:
+        """Settings → Pill transparency, 0-100 %. 100 = Apple's clear glass alone; lower adds a tint behind the text."""
+        self.view.fill = (100 - max(0, min(100, int(percent)))) / 100 * 0.85
+        self.view.setNeedsDisplay_(True)
 
     def show(self, state: str) -> None:
         if state != self.view.state:

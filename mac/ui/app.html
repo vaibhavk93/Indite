@@ -313,6 +313,9 @@
   }
   .btn:hover { border-color: var(--ink3); }
   .btn.danger { color: var(--red); }
+  .stepper { display: flex; align-items: center; gap: 6px; flex: none; }
+  .stepper .btn { width: 28px; padding: 3px 0; font-size: 14px; }
+  .stepper b { width: 38px; text-align: right; font-size: 12.5px; }
   .slide { width: 160px; accent-color: var(--brand); flex: none; }
   .pick { font: inherit; font-size: 12px; color: var(--ink); padding: 4px 8px; border-radius: 7px; max-width: 220px;
           border: 1px solid var(--line2); background: var(--paper); }
@@ -498,9 +501,12 @@
                 <button class="sw" id="set-preview" role="switch" aria-label="Show text after dictating"></button>
               </div>
               <div class="item">
-                <div class="body"><b>Pill transparency</b><p>Slide right to see more of what is behind the pill.
-                  Its text and border stay solid.</p></div>
-                <input type="range" class="slide" id="set-pill_glass" min="0" max="100" step="5" aria-label="Pill glass">
+                <div class="body"><b>Pill transparency</b><p>100% is clear glass; lower adds a tint behind the text.
+                  The pill shows for a moment as you change it.</p></div>
+                <div class="stepper"><button class="btn" id="pc-minus" aria-label="Less transparent">−</button>
+                  <input type="range" class="slide" id="set-pill_clear" min="0" max="100" step="10" aria-label="Pill transparency">
+                  <button class="btn" id="pc-plus" aria-label="More transparent">+</button>
+                  <b class="num" id="pc-val"></b></div>
               </div>
               <div class="item">
                 <div class="body"><b>Sounds</b><p>A soft tick when listening starts, a pop when it stops.</p></div>
@@ -823,9 +829,14 @@
     $("#hf-keys").innerHTML = `tap <kbd>${esc(k2)}</kbd> ${n === 3 ? "three times" : "twice"}, then once to finish`;
     seg("#set-hf_taps", { 2: "Twice", 3: "Three times" }, String(n),
         v => send({ action: "pref", key: "hf_taps", value: +v }));
-    const gl = $("#set-pill_glass");
-    gl.value = 100 - Math.round((S.prefs.pill_glass ?? 0.45) * 100);       // right = more transparent = less glass
-    gl.oninput = gl.onchange = () => send({ action: "pref", key: "pill_glass", value: (100 - gl.value) / 100 });
+    const gl = $("#set-pill_clear"), pc = v => { v = Math.max(0, Math.min(100, Math.round(v / 10) * 10));
+      gl.value = v; $("#pc-val").textContent = v + "%"; send({ action: "pref", key: "pill_clear", value: v }); };
+    gl.value = S.prefs.pill_clear ?? 60;
+    $("#pc-val").textContent = gl.value + "%";
+    gl.oninput = () => { $("#pc-val").textContent = gl.value + "%"; };
+    gl.onchange = () => pc(+gl.value);
+    $("#pc-minus").onclick = () => pc(+gl.value - 10);
+    $("#pc-plus").onclick = () => pc(+gl.value + 10);
     const mics = S.mics || [], pickMic = $("#set-mic");
     const chosen = S.prefs.mic || "";
     pickMic.innerHTML = `<option value="">Automatic</option>` + [...new Set([...mics, ...(chosen ? [chosen] : [])])]

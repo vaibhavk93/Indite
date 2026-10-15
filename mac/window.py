@@ -177,6 +177,8 @@ class Bridge(NSObject):
         elif act == "pref":
             store.set_pref(msg.get("key", ""), msg.get("value"))
             self.app.reload_prefs()
+            if msg.get("key") == "pill_clear":
+                self.app.show_pill()
             if msg.get("key") == "theme" and self.app.window:
                 self.app.window.theme()
         elif act == "copy":

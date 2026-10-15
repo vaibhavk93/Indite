@@ -31,7 +31,7 @@ DEFAULTS = {
     "mic": "",                  # a microphone's name; "" = automatic (default, then built-in, then any)
     "hf_key": "",               # hands-free key; "" = the same key you hold to talk
     "hf_taps": 2,               # taps of that key that lock hands-free: 2 or 3
-    "pill_glass": 0.45,         # how much frosted glass the pill shows: 0 = clear, 1 = Apple's default
+    "pill_clear": 60,           # pill transparency in %, steps of 10: 100 = clear glass only, 0 = a solid tint
     "ai": False,                # AI on notes; off until the person turns it on and picks where answers come from (answers come from your own Claude login)
     "ai_ok": False,
     "ai_provider": "claude",    # claude · anthropic · openai · openrouter (keys live in the Keychain, not here)
@@ -50,7 +50,10 @@ DEFAULTS = {
 def prefs() -> dict:
     out = dict(DEFAULTS)
     try:
-        out.update(json.loads(PREFS.read_text(encoding="utf-8")))
+        saved = json.loads(PREFS.read_text(encoding="utf-8"))
+        if "pill_glass" in saved and "pill_clear" not in saved:       # the old 0-1 "glass" setting, as % clear
+            saved["pill_clear"] = int(round((1 - float(saved["pill_glass"])) * 10) * 10)
+        out.update(saved)
     except Exception:           # noqa: BLE001 - a missing or half-written file must not stop the app
         pass
     return {k: out.get(k, v) for k, v in DEFAULTS.items()}      # unknown keys from an older build are dropped

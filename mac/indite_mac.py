@@ -483,7 +483,7 @@ class InditeApp(rumps.App):
         self.file_error = ""
         self.pill = Pill()
         self.preview = Preview()
-        self.pill.set_glass(self.prefs["pill_glass"])
+        self.pill.set_clear(self.prefs["pill_clear"])
         self.done_until = 0.0
         self.done_state = "done"
         # 20 times a second, on the main thread: the only place the pill is ever touched.
@@ -557,6 +557,11 @@ class InditeApp(rumps.App):
         if self.snap_tick % 20 == 0 and SNAP_REQUEST.exists():
             if SNAP_REQUEST.read_text().startswith("preview:"):          # the text card, with this text
                 self.preview.snapshot(SNAP_REQUEST)
+            elif SNAP_REQUEST.read_text().startswith("pill:"):           # the pill at this transparency
+                pct = int(SNAP_REQUEST.read_text()[5:].strip() or 60)
+                self.pill.set_clear(pct)
+                self.done_state, self.done_until = "done", time.time() + 3
+                self.pill.snapshot(SNAP_REQUEST, f"snapshot-pill-{pct}.png")
             elif self.window:
                 self.window.snapshot(SNAP_REQUEST)      # a developer's look at the real window (see window.py)
         if self.meeting.running:
@@ -786,7 +791,7 @@ class InditeApp(rumps.App):
         """Called by the window after a setting changes. The prefs are not cached anywhere else."""
         self.prefs = store.prefs()
         self.mic.chosen = self.prefs["mic"]
-        self.pill.set_glass(self.prefs["pill_glass"])
+        self.pill.set_clear(self.prefs["pill_clear"])
 
     def open_window(self, _) -> None:                    # noqa: ANN001
         if self.window is None:                          # built on first use: AppKit, so main thread only
@@ -1016,6 +1021,11 @@ class InditeApp(rumps.App):
                 if later and self.ai_who.get("loggedIn"):
                     break
         threading.Thread(target=go, daemon=True).start()
+
+    def show_pill(self) -> None:
+        """Settings changed the pill's look: show it for a moment so the change can be seen."""
+        if not (self.started_at or self.busy or self.meeting.running):
+            self.done_state, self.done_until = "done", time.time() + 2.5
 
     def refresh(self) -> None:
         """Tell the window something changed. WKWebView must be touched on the main thread only."""
