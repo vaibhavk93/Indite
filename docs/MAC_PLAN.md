@@ -33,7 +33,7 @@ wisprflow's features and the user flow and UX flow and improve the app."*
 |---|---|---|---|
 | P1 | Your boss tries the zip | Ready to send | You |
 | P2 | Meeting recording with the call's sound, in a real call | Permission granted; untested in a real call | You, then me |
-| P3 | Dropped ends of sentences (8% of wrong words, silent loss) | Being measured now | Me |
+| P3 | Dropped ends of sentences | **Measured: mostly not real.** 48 of the 58 "dropped" words are one test sentence repeated 6 times (the model stops after "Bhej diya." when timestamps are off); most of the rest are faults in the long test file's timings and audio. A detect-and-retry fix recovers it (0 false triggers in 360 clips) but gains ~1 word and can add junk on broken audio. **Not built** - parked unless real dictations show drops | Me, if it shows up in real use |
 | P4 | Settings / UI: what exactly still feels bad | Width and slider fixed; need your specifics | You |
 | P5 | Real-use check: full screen, drag, hands-free over Terminal, ⌃⌘V | Fixes shipped, unconfirmed | You |
 | P6 | Live clean-up while dictating (local model) | Needs a 30-dictation Hinglish test | Me |
