@@ -107,12 +107,6 @@
   .banner p { color: var(--ink2); font-size: 12px; margin-top: 2px; }
   .banner button { margin-left: auto; flex: none; }
 
-  /* ---- stats ---- */
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 26px; }
-  .stat { background: var(--well); border-radius: 12px; padding: 12px 14px; }
-  .stat .n { font-size: 22px; font-weight: 650; letter-spacing: -.6px; line-height: 1.15; }
-  .stat .n small { font-size: 13px; font-weight: 500; color: var(--ink2); margin-left: 2px; letter-spacing: 0; }
-  .stat .l { font-size: 12px; color: var(--ink2); margin-top: 2px; }
 
   /* ---- history ---- */
   .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
@@ -203,8 +197,7 @@
   .chip-now.busy { background: var(--accent-soft); color: var(--accent); }
   .chip-now.rec { background: #c4372a; color: #fff; }
   .chip-now:empty { display: none; }
-  .statline { font-size: 12.5px; color: var(--ink2); margin-right: auto; }
-  .statline b { color: var(--ink); font-weight: 600; }
+  #pane-home .chips { margin-left: 0; }
   .hero { display: flex; gap: 16px; align-items: center; padding: 18px; border-radius: 14px; background: var(--well); margin-bottom: 22px; }
   .hero-ic { width: 44px; height: 44px; border-radius: 12px; background: var(--paper); display: grid; place-items: center; color: var(--accent); flex: none; }
   .hero-t { flex: 1; } .hero-t b { font-size: 15px; } .hero-t p { font-size: 12.5px; color: var(--ink2); margin-top: 2px; }
@@ -365,7 +358,6 @@
   .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
   @media (max-width: 760px) {
-    .stats { grid-template-columns: repeat(3, 1fr); }
     .how { grid-template-columns: 1fr; }
     .search { width: 170px; }
   }
@@ -427,7 +419,6 @@
 
     <section class="pane" id="pane-home">
       <div class="bar">
-        <div class="statline num" id="stats"></div>
         <div class="chips" id="chips"></div>
         <label class="search"><svg width="13" height="13"><use href="#i-search"/></svg>
           <input id="q" placeholder="Search" spellcheck="false" aria-label="Search dictations"><span class="k">⌘F</span></label>
@@ -908,7 +899,6 @@
     drawDict();
     if (tab === "insights") drawInsights();
     drawAI();
-    stats();
     drawList();
     feed($("#meet-list"), S.history.filter(r => r.kind === "meeting"),
       `<div class="empty"><h3>No meetings yet</h3>Press Record when a call or conversation starts. Text appears after each pause.</div>`);
@@ -937,15 +927,6 @@
 
   const words = r => r.text.trim().split(/\s+/).filter(Boolean).length;
 
-  function stats() {
-    const h = S.history.filter(r => (r.kind || "dictation") === "dictation");   // files would skew speed and wait
-    const w = h.reduce((n, r) => n + words(r), 0);
-    const spoke = h.reduce((n, r) => n + (r.seconds || 0), 0);
-    const wpm = spoke > 5 ? Math.round(w / spoke * 60) : 0;
-    const wait = h.length ? h.reduce((n, r) => n + (r.took || 0), 0) / h.length : 0;
-    const k = x => x >= 1000 ? (x / 1000).toFixed(1).replace(/\.0$/, "") + "K" : String(x);
-    $("#stats").innerHTML = h.length ? `<b>${k(w)}</b> words · <b>${wpm || "–"}</b> words a minute · <b>${wait ? wait.toFixed(1) + " s" : "–"}</b> average wait` : "";
-  }
 
   function drawList() {
     const q = $("#q").value.trim().toLowerCase();
