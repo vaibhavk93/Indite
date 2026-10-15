@@ -48,3 +48,22 @@ Two things make that number, and both are easy to lose:
 - The engine takes ~17 s to load at startup. The menu bar shows 🎙… until it is ready.
 - No settings window — the hotkey is fixed to right-Option in the code.
 - No notes, no history: it types the text and forgets it. Use the phone app for anything you want to keep.
+
+## The window
+
+`indite` in the menu bar → **Open indite** (⌘O) opens the app window.
+
+- **Home** — everything you have dictated, newest first, grouped by day. Search it, hover a line to copy it.
+  Beside it: total words, how fast you speak, and how many days in a row you have used it.
+- **Settings** — which key to hold, whether the text is typed or copied, Hinglish spelling, and whether a history
+  is kept at all. Every switch does something; none of them are decoration.
+- **Help** — what to do when the hotkey does nothing, and where the history file lives.
+
+The history is `~/Library/Application Support/indite/history.jsonl` — the last 500 dictations, in plain text you can
+read or delete yourself. Turning *Keep a history* off stops anything being written.
+
+The window is a WKWebView (`mac/ui/app.html`) inside a glass NSWindow, so it needs `pyobjc-framework-WebKit`:
+
+```
+uv pip install pyobjc-framework-WebKit --python .venv/bin/python
+```

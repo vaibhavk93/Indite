@@ -30,7 +30,9 @@ import sounddevice as sd
 from pynput import keyboard
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import store              # noqa: E402
 from overlay import Pill   # noqa: E402 - needs the path above
+from window import Window, front_app   # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
@@ -39,8 +41,11 @@ PORT = 8711                   # localhost only; nothing listens outside this Mac
 MODEL = ROOT / "android/app/src/main/assets/models/ggml-apex-q5_k.bin"
 RATE = 16_000
 
-# Hold this to talk. The right-hand Option key is close to the hand and used by almost nothing else.
-HOTKEY = keyboard.Key.alt_r
+# Hold one of these to talk. The right-hand Option key is the default: close to the hand, used by almost nothing
+# else. Which one is in force is a setting, and changing it rebinds at once - the listener reads it on every press.
+HOTKEYS = {"alt_r": "Right \u2325", "alt_l": "Left \u2325", "cmd_r": "Right \u2318", "ctrl_r": "Right \u2303"}
+KEYS = {"alt_r": keyboard.Key.alt_r, "alt_l": keyboard.Key.alt_l,
+        "cmd_r": keyboard.Key.cmd_r, "ctrl_r": keyboard.Key.ctrl_r}
 
 # Spelling the phone applies too, so Mac and phone write the same words. Loaded from the shared list.
 SPELLING = ROOT / "android/app/src/main/res/raw/spelling.tsv"
@@ -271,6 +276,9 @@ class InditeApp(rumps.App):
         self.mic = Mic()
         self.typer = Typer()
         self.table = fixes()
+        self.prefs = store.prefs()
+        self.window: Window | None = None
+        self.engine_kind = "Starting the engine\u2026"
         self.busy = False
         self.started_at = 0.0
         self.last = ""
@@ -283,8 +291,8 @@ class InditeApp(rumps.App):
             rumps.MenuItem("Hold right-Option and speak" if can_listen()
                            else "⚠ No permission to see the hotkey - click About", callback=None),
             None,
+            rumps.MenuItem("Open indite", callback=self.open_window, key="o"),
             rumps.MenuItem("Copy last text", callback=self.copy_last),
-            rumps.MenuItem("About", callback=self.about),
             None,
             rumps.MenuItem("Quit", callback=self.quit_all),
         ]
@@ -309,8 +317,9 @@ class InditeApp(rumps.App):
         """Load the model now, not when the user is waiting with their finger on the key."""
         self.title = "🎙…"
         ok = self.engine.start_server()
+        self.engine_kind = "Fast engine ready." if ok else "Slower engine \u2014 the model reloads each time."
         self.title = "🎙" if can_listen() else "🎙⚠"
-        print("resident engine:" , "ready" if ok else "not available - using the slower per-sentence path")
+        print("resident engine:", "ready" if ok else "not available - using the slower per-sentence path")
 
     def paint(self, _) -> None:                          # noqa: ANN001 - rumps' signature
         """Shows what is happening, in the place the eye already is: just above the Dock."""
@@ -330,14 +339,18 @@ class InditeApp(rumps.App):
         with keyboard.Listener(on_press=self.on_press, on_release=self.on_release) as listener:
             listener.join()
 
+    def hotkey(self):
+        """Read on every press, so changing it in the window works at once and not after a restart."""
+        return KEYS.get(self.prefs["hotkey"], keyboard.Key.alt_r)
+
     def on_press(self, key) -> None:                     # noqa: ANN001 - pynput's signature
-        if key == HOTKEY and not self.busy and self.started_at == 0.0:
+        if key == self.hotkey() and not self.busy and self.started_at == 0.0:
             self.started_at = time.time()
             self.title = "🔴"
             self.mic.start()
 
     def on_release(self, key) -> None:                   # noqa: ANN001
-        if key != HOTKEY or self.started_at == 0.0:
+        if key != self.hotkey() or self.started_at == 0.0:
             return
         held = time.time() - self.started_at
         self.started_at = 0.0
@@ -352,8 +365,11 @@ class InditeApp(rumps.App):
     # ---- the work ------------------------------------------------------------------------------------------
     def write_it(self, audio: np.ndarray) -> None:
         t0 = time.time()
+        where = front_app()              # asked before anything is typed, so the history says which app it went to
         try:
-            text = apply_fixes(self.engine.transcribe(audio), self.table)
+            text = self.engine.transcribe(audio)
+            if self.prefs["spelling"]:
+                text = apply_fixes(text, self.table)
         except Exception as e:                            # noqa: BLE001 - whatever went wrong, say so and carry on
             self.title = "🎙"
             self.busy = False
@@ -370,16 +386,30 @@ class InditeApp(rumps.App):
         self.last = text
         # The pill says what happened. A notification was tried here and crashed the thread that had just produced
         # the text (rumps needs a bundle identifier it could not find), so the words landed with nothing said.
-        if focused_is_text():
+        mode = self.prefs["output"]
+        if mode == "type" or (mode == "smart" and focused_is_text()):
             self.typer.type(text)
             self.done_state = "done"
         else:
             self.typer.copy(text)
             self.done_state = "copied"
         self.done_until = time.time() + 1.6
-        print(f"{len(audio) / RATE:.1f}s of speech -> {time.time() - t0:.2f}s -> {text}")
+        took = time.time() - t0
+        store.add(text, len(audio) / RATE, took, self.done_state, where)
+        if self.window:
+            self.window.bridge.push()    # the list grows while it is open, so a dictation shows up as it lands
+        print(f"{len(audio) / RATE:.1f}s of speech -> {took:.2f}s -> {text}")
 
     # ---- menu ----------------------------------------------------------------------------------------------
+    def reload_prefs(self) -> None:
+        """Called by the window after a setting changes. The prefs are not cached anywhere else."""
+        self.prefs = store.prefs()
+
+    def open_window(self, _) -> None:                    # noqa: ANN001
+        if self.window is None:                          # built on first use: AppKit, so main thread only
+            self.window = Window(self)
+        self.window.show()
+
     def copy_last(self, _) -> None:                      # noqa: ANN001
         if self.last:
             subprocess.run("pbcopy", input=self.last, text=True, check=False)
@@ -387,14 +417,6 @@ class InditeApp(rumps.App):
     def quit_all(self, _) -> None:                       # noqa: ANN001
         self.engine.stop_server()
         rumps.quit_application()
-
-    def about(self, _) -> None:                          # noqa: ANN001
-        rumps.alert(
-            "indite for Mac",
-            "Hold the right-hand Option key, speak, let go. The text is typed where your cursor is.\n\n"
-            "Everything happens on this Mac. The recording is deleted as soon as it has been written out, and "
-            "nothing is sent anywhere.",
-        )
 
 
 if __name__ == "__main__":
