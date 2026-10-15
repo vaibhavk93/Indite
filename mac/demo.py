@@ -159,11 +159,16 @@ def ax_place(app_name: str, x: float, y: float, w: float, h: float) -> None:
                                      AXUIElementSetAttributeValue, AXValueCreate, kAXPositionAttribute,
                                      kAXSizeAttribute, kAXValueCGPointType, kAXValueCGSizeType, kAXWindowsAttribute)
     el = AXUIElementCreateApplication(pid_of(app_name))
-    for _ in range(20):
+    wins = None
+    for _ in range(40):                                  # an app that was hidden, or still opening, has no window yet
+        NSRunningApplication.runningApplicationWithProcessIdentifier_(pid_of(app_name)).unhide()
         err, wins = AXUIElementCopyAttributeValue(el, kAXWindowsAttribute, None)
         if not err and wins:
             break
         time.sleep(0.3)
+    if not wins:
+        log(f"{app_name} has no window to place - carrying on without moving it")
+        return
     win = wins[0]
     AXUIElementSetAttributeValue(win, kAXPositionAttribute, AXValueCreate(kAXValueCGPointType, Quartz.CGPoint(x, y)))
     AXUIElementSetAttributeValue(win, kAXSizeAttribute, AXValueCreate(kAXValueCGSizeType, Quartz.CGSize(w, h)))
@@ -206,11 +211,20 @@ def main() -> None:
             time.sleep(1.0)
         (OUT / "timeline.json").write_text(json.dumps({"t0_lag": 1.5, "items": timeline}, indent=1))
         from Foundation import NSDate, NSRunLoop
-        for pid in hidden:                            # everything hidden is shown again, whatever happened
-            a = NSRunningApplication.runningApplicationWithProcessIdentifier_(pid)
-            if a:
-                a.unhide()
-        NSRunLoop.currentRunLoop().runUntilDate_(NSDate.dateWithTimeIntervalSinceNow_(1.0))   # deliver the unhides
+        # 16 Oct: a crash in stage() left every hidden app hidden. unhide() only queues the request - it needs the
+        # run loop to deliver it - so ask, pump, and check, until nothing is left hidden.
+        for _ in range(5):
+            left = []
+            for pid in hidden:
+                a = NSRunningApplication.runningApplicationWithProcessIdentifier_(pid)
+                if a and a.isHidden():
+                    a.unhide()
+                    left.append(a.localizedName())
+            NSRunLoop.currentRunLoop().runUntilDate_(NSDate.dateWithTimeIntervalSinceNow_(1.5))
+            if not left:
+                break
+        if left:
+            log("still hidden after asking five times:", ", ".join(left))
         log("done")
 
 
@@ -273,14 +287,25 @@ def stage(hidden: list) -> None:
                 hidden.append(a.processIdentifier())
     note = OUT / "Message to the team.txt"
     note.write_text("")
-    subprocess.run(["open", "-a", "TextEdit", str(note)])
-    time.sleep(2.0)
+    for _ in range(10):                                  # TextEdit with no document shows no window at all
+        subprocess.run(["open", "-a", "TextEdit", str(note)])
+        time.sleep(1.5)
+        r = subprocess.run(["osascript", "-e", 'tell application "TextEdit" to count documents'],
+                           capture_output=True, text=True)
+        if (r.stdout.strip() or "0") != "0":
+            break
+    else:
+        log("TextEdit would not open a document")
     # The meeting/file -> AI warning is a modal: in a demo it would stop the take dead. Answer it up front, the
     # same way a user who ticked "don't ask again" would have (the warning itself is shown in the Ask AI scene).
     cmd('pref:ai_ok_meetings=true')
     W, H = display()
-    ax_place("TextEdit", 0, 25, W / 2, H - 25)                    # full screen, split: TextEdit left, indite right
-    cmd("open", f"place:{W / 2},{25},{W / 2},{H - 25}", "js:go('home')")
+    if "--short" in sys.argv:                                     # the short cut fills the screen per beat instead
+        cmd("open", "js:go('home')")
+        ax_place("TextEdit", 0, 25, W, H - 25)
+    else:
+        ax_place("TextEdit", 0, 25, W / 2, H - 25)                # split: TextEdit left, indite right
+        cmd("open", f"place:{W / 2},{25},{W / 2},{H - 25}", "js:go('home')")
     time.sleep(1.5)
 
 
@@ -402,6 +427,26 @@ SHORT_S = [
 ]
 
 
+def fill(app_name: str) -> None:
+    """
+    Brings an app to the front and makes its window fill the screen, below the menu bar.
+
+    Not macOS full screen (the green button): a Dock app's panels cannot appear over another app's full screen, so
+    the pill - the thing this whole video is about - would be invisible. A maximised window looks the same on camera
+    and keeps the pill, and leaves the menu bar in shot, where the Wi-Fi being off is the privacy claim.
+    """
+    front(app_name)
+    w, h = display()
+    if app_name == "indite":
+        cmd(f"place:0,{MENUBAR},{w},{h - MENUBAR}")
+    else:
+        ax_place(app_name, 0, MENUBAR, w, h - MENUBAR)
+    time.sleep(0.8)
+
+
+MENUBAR = 25.0
+
+
 def show_short() -> None:
     """The 3:20 cut. Same real app, same real engine - only fewer scenes."""
     S = SHORT_N
@@ -412,7 +457,7 @@ def show_short() -> None:
         dst.writeframes(src.readframes(75 * src.getframerate()))
 
     # 1 + 2 - the hero, unbroken, with the menu bar (and the Wi-Fi state) in frame
-    front("TextEdit")
+    fill("TextEdit")
     say(S[0])
     speak_into_indite(*SHORT_S[0])
     time.sleep(2.5)
@@ -423,7 +468,7 @@ def show_short() -> None:
     time.sleep(3.0)
     say(S[3])
     # 4 - the error, and the dictionary that fixes it
-    front("indite")
+    fill("indite")
     cmd("js:go('dict')")
     say(S[4])
     time.sleep(2.0)
