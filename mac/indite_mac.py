@@ -107,6 +107,25 @@ def ask_mic() -> None:
         pass
 
 
+def pieces(audio: np.ndarray, most: float = 20.0, least: float = 15.0) -> list[np.ndarray]:
+    """
+    A long hold, cut where the speaker is quietest, into back-to-back pieces of at most `most` seconds.
+
+    Measured 15 Oct: one 62 s hold came back 75% wrong (the window cap clips every 30 s stretch, and it loops),
+    against 19% for the same sentences sent one by one. Every sample is kept - nothing between pieces is dropped,
+    so a quiet speaker loses no words - and the cut lands in the quietest 0.3 s between `least` and `most` seconds,
+    not mid-word. No voice detector: that would mean torch, 19 s to import, in a menu-bar app.
+    """
+    out, frame = [], int(0.3 * RATE)
+    while len(audio) > most * RATE:
+        lo, hi = int(least * RATE), int(most * RATE)
+        quiet = [float(np.mean(audio[i:i + frame] ** 2)) for i in range(lo, hi - frame, frame // 3)]
+        cut = lo + int(np.argmin(quiet)) * (frame // 3) + frame // 2
+        out.append(audio[:cut])
+        audio = audio[cut:]
+    return out + [audio]
+
+
 def window_for(seconds: float) -> int:
     """The same rule as the phone: the window follows the piece, never shorter than the audio (see Pauses.audioCtx)."""
     return min(1280, max(512, int(math.ceil((seconds + 2) * 50 / 256) * 256)))
@@ -172,6 +191,9 @@ class Engine:
         return path
 
     def transcribe(self, audio: np.ndarray) -> str:
+        return " ".join(t for t in (self._one(p) for p in pieces(audio)) if t)
+
+    def _one(self, audio: np.ndarray) -> str:
         seconds = len(audio) / RATE
         path = self._wav(audio)
         try:

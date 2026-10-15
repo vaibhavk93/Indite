@@ -215,8 +215,19 @@ the old Desktop path working. All paths in the repo were relative, so nothing el
   `~/Library/Application Support/indite/my_fixes.txt` (`heard = wanted`, whole words, multi-word OK, read on every
   dictation; check: `.venv/bin/python mac/store.py`). **Esc while holding cancels** (pill: "cancelled"); Esc also
   reaches the app underneath, pynput cannot block it.
-- **Next Mac features (critic-reviewed, all unproven):** test a 60 s hold
-  first (the window caps at ~25 s); later snippets and hands-free; drop undo-by-backspace, voice "press enter",
+- **Long holds were broken, now fixed (measured 15 Oct, clean synthetic clips, local server):**
+
+  | Hold | Before: one request | Full window only | **After: cut at quiet points (≤20 s pieces)** |
+  |---|---|---|---|
+  | 33 s | 31.2% wrong, 10.4 s | 18.2%, 5.5 s | **16.9%, 3.6 s** |
+  | 62 s | **75.4%**, 21.5 s | 18.3%, 8.5 s | **19.0%, 7.3 s** |
+  | 93 s | 53.5%, 28.9 s | 46.0%, 14.7 s | **19.7%, 10.7 s** |
+
+  Same sentences sent one at a time: 19.0%. With no gaps between sentences: 19.5% (60 s), 22.8% (90 s).
+  `pieces()` keeps every sample and cuts in the quietest 0.3 s between 15 and 20 s; no voice detector (torch took
+  19 s to import). Test: `tests/test_mac_pieces.py`. **Untested:** real non-stop speech and a quiet speaker.
+- The app log was empty because Python buffered its prints; the launcher now runs `python -u`.
+- **Next Mac features (critic-reviewed, all unproven):** later snippets and hands-free (long holds now work); drop undo-by-backspace, voice "press enter",
   command mode (no AI route). Waiting on the founder to say what they actually miss from Wispr.
 
 ### Waiting on the founder

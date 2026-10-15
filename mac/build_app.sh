@@ -29,9 +29,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
+# -u: print at once, so the log shows each dictation (without it nothing appeared until the buffer filled)
 cat > "$APP/Contents/MacOS/indite" <<LAUNCH
 #!/bin/bash
-exec "$ROOT/.venv/bin/python" "$ROOT/mac/indite_mac.py" >> "\$HOME/Library/Logs/indite-mac.log" 2>&1
+exec "$ROOT/.venv/bin/python" -u "$ROOT/mac/indite_mac.py" >> "\$HOME/Library/Logs/indite-mac.log" 2>&1
 LAUNCH
 chmod +x "$APP/Contents/MacOS/indite"
 

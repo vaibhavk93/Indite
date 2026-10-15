@@ -12,7 +12,9 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 - Android and Mac apps separated: Mac has its own model link and spelling list.
 - Leftover `whisper-server` processes (3 × 574 MB) after crashes; the app now clears them at startup.
 - Critic review of Wispr-like Mac features (see HANDOFF "Mac fixes").
-- Built: your own word fixes (`my_fixes.txt`, menu item) and Esc-to-cancel. Self-check passes; founder test pending.
+- Built: your own word fixes (`my_fixes.txt`, menu item) and Esc-to-cancel. Founder says both work.
+- 60 s hold test: 75% words wrong at 62 s. Fixed by cutting long holds at quiet points: 19.0% at 62 s, 19.7% at 93 s.
+- Log was empty (buffered prints); launcher now `python -u`.
 
 ## 2026-10-13/14 · Claude Code (Opus 5) · builds 16-29
 
