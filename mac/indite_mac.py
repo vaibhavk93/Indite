@@ -316,7 +316,11 @@ class Mic:
         remember what worked. Raises MicProblem with something a person can act on if none of them open.
         """
         if self.stream:
-            return
+            # It should already be None. If a previous stop() threw (a device yanked out, a sleep/wake, another app
+            # taking the input), self.stream stayed set and every press after that opened nothing: the pill appeared,
+            # the bars never moved, and the release wrote nothing (founder, 16 Oct). Never trust it - clear it.
+            print("mic: a stream was still open from last time; closing it")
+            self._drop()
         if DEMO_FEED.exists():                          # demo video only: this recording instead of the microphone
             self._feed(DEMO_FEED)
             return
@@ -395,12 +399,21 @@ class Mic:
                 unique.append(d)
         return unique
 
+    def _drop(self) -> None:
+        """Let go of the stream whatever it does on the way out. The one rule: afterwards there is no stream."""
+        try:
+            self.stream.stop()
+            self.stream.close()
+        except Exception as e:                           # noqa: BLE001
+            print("mic: closing the old stream failed:", e)
+        finally:
+            self.stream = None
+            self.level = 0.0
+
     def stop(self) -> np.ndarray:
         if not self.stream:
             return np.zeros(0, dtype="float32")
-        self.stream.stop()
-        self.stream.close()
-        self.stream = None
+        self._drop()
         chunks = []
         while not self.q.empty():
             chunks.append(self.q.get())
@@ -855,7 +868,13 @@ class InditeApp(rumps.App):
         def close_and_write() -> None:
             audio = self.mic.stop()
             if len(audio) < RATE // 2:
+                # Under half a second. Either a very quick press, or the microphone gave us nothing at all - and the
+                # second one used to end in silence, which is indistinguishable from the app being broken.
                 self.title = "🎙"
+                self.done_state = "nothing" if len(audio) else "failed"
+                self.done_until = time.time() + 1.6
+                if not len(audio):
+                    print("mic produced no audio at all - the stream was open but silent")
                 return
             self.title = "⏳"
             self.busy = True
@@ -1248,6 +1267,8 @@ class InditeApp(rumps.App):
                     self.ai_busy[row["id"]] = ai.ACTIONS[arg][0]
                     self.refresh()
                     threading.Thread(target=self._ai, args=(row, arg, ""), daemon=True).start()
+            elif verb == "mictest":                       # developer check: the real Mic, for N seconds
+                threading.Thread(target=self._mictest, args=(float(arg or 3),), daemon=True).start()
             elif verb == "type":                          # developer check: type into whatever is in front
                 self.typer.type(arg)
             elif verb == "pill":
@@ -1271,6 +1292,24 @@ class InditeApp(rumps.App):
             elif verb == "run":                               # the runner, started from here so it has indite's
                 subprocess.Popen([sys.executable, "-u", str(Path(__file__).parent / "demo.py")] + arg.split(),
                                  stdout=open(store.DIR / "demo.log", "a"), stderr=subprocess.STDOUT)
+
+    def _mictest(self, seconds: float) -> None:
+        """Opens the microphone exactly as a key press does, and writes down what came back."""
+        out, levels = store.DIR / "mictest.json", []
+        try:
+            self.mic.start()
+            end = time.time() + seconds
+            while time.time() < end:
+                levels.append(round(self.mic.level, 4))
+                time.sleep(0.1)
+            audio = self.mic.stop()
+            text = ""
+            if len(audio) >= RATE // 2:
+                text = self.tidy(self.engine.transcribe(audio))
+            out.write_text(json.dumps({"mic": self.mic.using, "seconds": round(len(audio) / RATE, 2),
+                                       "loudest": max(levels or [0]), "heard": text}, indent=1))
+        except Exception as e:                            # noqa: BLE001
+            out.write_text(json.dumps({"error": f"{type(e).__name__}: {e}"}, indent=1))
 
     def show_pill(self) -> None:
         """Settings changed the pill's look: show it for a moment so the change can be seen."""
