@@ -111,6 +111,36 @@ def speak_into_indite(text: str, name: str, hands_free: bool = False) -> None:
         key(*R_OPT, False)
 
 
+def display() -> tuple[float, float]:
+    from AppKit import NSScreen
+    f = NSScreen.screens()[0].frame()
+    return f.size.width, f.size.height
+
+
+def chord(*codes_masks) -> None:
+    """Press keys together, release in reverse: e.g. ⌃⌘V for paste-last."""
+    held = 0
+    for code, mask in codes_masks:
+        held |= mask
+        e = Quartz.CGEventCreateKeyboardEvent(None, code, True)
+        if mask:
+            Quartz.CGEventSetType(e, Quartz.kCGEventFlagsChanged)
+        Quartz.CGEventSetFlags(e, held)
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, e)
+        time.sleep(0.05)
+    for code, mask in reversed(codes_masks):
+        held &= ~mask
+        e = Quartz.CGEventCreateKeyboardEvent(None, code, False)
+        if mask:
+            Quartz.CGEventSetType(e, Quartz.kCGEventFlagsChanged)
+        Quartz.CGEventSetFlags(e, held)
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, e)
+        time.sleep(0.05)
+
+
+L_CTRL, L_CMD, V, ESC = (59, Quartz.kCGEventFlagMaskControl | 0x1), (55, Quartz.kCGEventFlagMaskCommand | 0x8), (9, 0), (53, 0)
+
+
 def pid_of(app_name: str) -> int:
     """By process name. NSWorkspace's app list goes stale in a process with no run loop, so ask the system."""
     if app_name == "indite":
@@ -154,7 +184,8 @@ def main() -> None:
         stage(hidden)
         state = store.DIR / "rec.state"
         state.unlink(missing_ok=True)
-        cmd(f"rec:start:{OUT / 'screen.mov'}:20,58,1400,790")
+        W, H = display()
+        cmd(f"rec:start:{OUT / 'screen.mov'}:0,0,{W},{H}")              # the whole screen
         for _ in range(60):
             if state.exists() and state.read_text() != "starting":
                 break
@@ -183,26 +214,36 @@ def main() -> None:
         log("done")
 
 
-SCRIPT_N = [
-    "This is indite. It turns spoken Hinglish into text, on your Mac. No internet, and no account.",
+SCRIPT_N = N = [
+    "This is indite. It turns spoken Hinglish into text, right on your Mac. No internet, and no account.",
     "Click into any app. Hold the right Option key, and just speak.",
-    "The pill above the Dock listens, then writes. About a second later, the words are typed. "
-    "Notice chaar baje became four, in digits.",
+    "The pill above the Dock listens, then writes. About a second later, the words are typed, "
+    "and chaar baje became four, in digits.",
     "For longer thoughts, tap the right Command key three times, and talk hands free.",
-    "One tap ends it. The full thought is typed, and a card shows exactly what was written.",
-    "Every dictation is saved here, on this Mac, and you can search, star, or copy it.",
-    "With AI turned on, one click tidies the wording. Your original always stays next to it.",
-    "You can also drop in a recording, like a client call. indite writes it down, and works out who spoke, "
-    "without a single click.",
-    "Meetings work the same way, live. Your microphone is you; the call's sound is everyone else.",
-    "Insights shows how much you dictate, how fast you speak, and the time you save compared with typing.",
-    "And everything is yours to adjust: the keys, the pill, AI, privacy and backups.",
+    "One tap ends it. The whole thought is typed, and a card shows exactly what was written.",
+    "Changed your mind? Press Escape while speaking, and nothing is typed.",
+    "And Control Command V types your last dictation again, wherever you are.",
+    "Every dictation is saved here, privately, on this Mac.",
+    "Ask AI works on any note: improve it, summarise it, pull out action items, rewrite or translate it.",
+    "Improve keeps your original right next to the new version, so nothing you said is lost.",
+    "Have a recording already? Drop in a call or a voice note.",
+    "indite writes it down, and works out who spoke, without a single click.",
+    "Meetings work live. Your microphone is you, and the call's sound is everyone else, even on headphones.",
+    "When you stop, the other voices are told apart, and you can rename them.",
+    "Anything can become a to-do, from a note or from AI's action items.",
+    "The dictionary teaches indite the words it gets wrong, like your company names.",
+    "Insights shows how much you dictate, how fast you speak, and the time you save.",
+    "The pill can be as clear or as frosted as you like.",
+    "AI is off until you turn it on, with your own Claude login or your own key.",
+    "And Help lists every shortcut, and what to do if something is off.",
     "indite. Speak Hinglish, get text, and keep it all on your Mac.",
 ]
 SCRIPT_S = [
     ("Kal ki meeting chaar baje hai, please sab ko reminder bhej dena.", "s1"),
     ("Aur haan, client ke saath call ke baad, deck mein last quarter ke numbers update karne hain, aur Rohit ko "
      "Friday tak final version bhejna hai.", "s2"),
+    ("Arre nahi, yeh mat likho.", "s3"),
+    ("Chalo shuru karte hain, aaj ka agenda dashboard aur budget hai.", "s4"),
 ]
 
 
@@ -224,56 +265,91 @@ def stage(hidden: list) -> None:
     note.write_text("")
     subprocess.run(["open", "-a", "TextEdit", str(note)])
     time.sleep(2.0)
-    ax_place("TextEdit", 30, 70, 640, 650)
-    cmd("open", "place:690,70,720,650", "js:go('home')")
+    W, H = display()
+    ax_place("TextEdit", 0, 25, W / 2, H - 25)                    # full screen, split: TextEdit left, indite right
+    cmd("open", f"place:{W / 2},{25},{W / 2},{H - 25}", "js:go('home')")
     time.sleep(1.5)
 
 
 
 
 def show() -> None:
-    file60 = OUT / "client-call.wav"                        # the file part: the first 75 s of a two-person test call
     import wave
-    with wave.open(str(ROOT / "bench_synth/dialogue_2spk.wav")) as src, wave.open(str(file60), "wb") as dst:
+    call = OUT / "client-call.wav"                         # the file: the first 75 s of a two-person test call
+    with wave.open(str(ROOT / "bench_synth/dialogue_2spk.wav")) as src, wave.open(str(call), "wb") as dst:
         dst.setparams(src.getparams())
         dst.writeframes(src.readframes(75 * src.getframerate()))
+    them = OUT / "meeting-them.wav"                        # what the other people say in the live meeting
+    with wave.open(str(ROOT / "bench_synth/dialogue_2spk.wav")) as src, wave.open(str(them), "wb") as dst:
+        src.setpos(120 * src.getframerate())
+        dst.setparams(src.getparams())
+        dst.writeframes(src.readframes(22 * src.getframerate()))
 
-    if True:
-        say("This is indite. It turns spoken Hinglish into text, on your Mac. No internet, and no account.")
-        front("TextEdit")
-        say("Click into any app. Hold the right Option key, and just speak.")
-        speak_into_indite("Kal ki meeting chaar baje hai, please sab ko reminder bhej dena.", "s1")
-        time.sleep(2.0)
-        say("The pill above the Dock listens, then writes. About a second later, the words are typed. "
-            "Notice chaar baje became four, in digits.")
-        say("For longer thoughts, tap the right Command key three times, and talk hands free.")
-        speak_into_indite("Aur haan, client ke saath call ke baad, deck mein last quarter ke numbers update karne "
-                          "hain, aur Rohit ko Friday tak final version bhejna hai.", "s2", hands_free=True)
-        time.sleep(3.0)
-        say("One tap ends it. The full thought is typed, and a card shows exactly what was written.")
-        front("indite")
-        cmd("js:go('home')")
-        say("Every dictation is saved here, on this Mac, and you can search, star, or copy it.")
-        cmd("ai:improve")
-        say("With AI turned on, one click tidies the wording. Your original always stays next to it.")
-        time.sleep(4.0)
-        cmd("js:document.querySelector('.aicard .lbl') && document.querySelector('.aicard .lbl').click()")
-        time.sleep(2.0)
-        cmd("js:go('files')", f"file:{file60}")
-        say("You can also drop in a recording, like a client call. indite writes it down, and works out who spoke, "
-            "without a single click.")
-        time.sleep(14.0)
-        cmd("js:go('meetings')")
-        say("Meetings work the same way, live. Your microphone is you; the call's sound is everyone else.")
-        cmd("js:go('insights')")
-        say("Insights shows how much you dictate, how fast you speak, and the time you save compared with typing.")
-        time.sleep(1.0)
-        cmd("js:go('settings'); sgo('pill')")
-        say("And everything is yours to adjust: the keys, the pill, AI, privacy and backups.")
-        for p in (30, 70, 100, 60):
-            cmd(f"pill:{p}")
-            time.sleep(0.9)
-        say("indite. Speak Hinglish, get text, and keep it all on your Mac.", gap=1.5)
+    # 1 - dictation, live
+    say(N[0])
+    front("TextEdit")
+    say(N[1])
+    speak_into_indite(*SCRIPT_S[0])
+    time.sleep(2.0)
+    say(N[2])
+    # 2 - hands-free, live
+    say(N[3])
+    speak_into_indite(*SCRIPT_S[1], hands_free=True)
+    time.sleep(3.0)
+    say(N[4])
+    # 3 - cancel and paste-last, live
+    say(N[5])
+    hi, lo, dur = render(*SCRIPT_S[2][:1], SPEAKER, SCRIPT_S[2][1])
+    (OUT / "feed.wav").write_bytes(lo.read_bytes()); (OUT / "feed.wav").replace(FEED)
+    key(*R_OPT, True); time.sleep(0.25)
+    timeline.append({"at": time.time() - T0, "wav": str(hi), "speech": True})
+    time.sleep(min(dur, 2.2))
+    chord(ESC); key(*R_OPT, False)
+    time.sleep(1.5)
+    say(N[6])
+    chord(L_CTRL, L_CMD, V)
+    time.sleep(2.0)
+    # 4 - the notes, AI, live
+    front("indite")
+    cmd("js:go('home')")
+    say(N[7])
+    cmd("js:openDrawer(S.history.find(r => (r.kind || 'dictation') === 'dictation').id)")
+    say(N[8])
+    cmd("ai:improve")
+    time.sleep(9.0)
+    say(N[9])
+    cmd("js:closeDrawer()")
+    # 5 - a file, live, with who spoke
+    cmd("js:go('files')", f"file:{call}")
+    say(N[10])
+    time.sleep(12.0)
+    say(N[11])
+    # 6 - a meeting, live: the mic says one line, the call (played through the Mac) is the others
+    cmd("js:go('meetings')")
+    say(N[12])
+    hi, lo, dur = render(*SCRIPT_S[3][:1], SPEAKER, SCRIPT_S[3][1])
+    (OUT / "feed.wav").write_bytes(lo.read_bytes()); (OUT / "feed.wav").replace(FEED)
+    cmd("js:document.querySelector('#meet').click()")
+    timeline.append({"at": time.time() - T0 + 0.6, "wav": str(hi), "speech": True})
+    time.sleep(dur + 1.0)
+    play = subprocess.Popen(["afplay", str(them)])
+    timeline.append({"at": time.time() - T0, "wav": str(them), "speech": True})
+    play.wait()
+    time.sleep(2.5)
+    cmd("js:document.querySelector('#meet').click()")
+    say(N[13])
+    time.sleep(6.0)
+    # 7 - the rest, a short tour
+    cmd("js:go('todo')"); say(N[14])
+    cmd("js:go('dict')"); say(N[15])
+    cmd("js:go('insights')"); say(N[16])
+    cmd("js:go('settings'); sgo('pill')"); say(N[17])
+    for p in (30, 70, 100, 60):
+        cmd(f"pill:{p}")
+        time.sleep(0.8)
+    cmd("js:sgo('ai')"); say(N[18])
+    cmd("js:go('help')"); say(N[19])
+    say(N[20], gap=1.5)
 
 
 if __name__ == "__main__":

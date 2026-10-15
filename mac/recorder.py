@@ -33,8 +33,9 @@ class Recorder:
             cfg = SC.SCStreamConfiguration.alloc().init()
             x, y, w, h = self.rect
             cfg.setSourceRect_(Quartz.CGRectMake(x, y, w, h))
-            cfg.setWidth_(int(w * 2))
-            cfg.setHeight_(int(h * 2))
+            scale = min(2.0, 1920 / w)                    # sharp, but a full screen stays 1920 wide
+            cfg.setWidth_(int(w * scale) // 2 * 2)
+            cfg.setHeight_(int(h * scale) // 2 * 2)
             cfg.setMinimumFrameInterval_(CM.CMTimeMake(1, 30))
             cfg.setShowsCursor_(True)
             self.stream = SC.SCStream.alloc().initWithFilter_configuration_delegate_(filt, cfg, None)
