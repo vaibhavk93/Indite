@@ -248,7 +248,7 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1â
   app silently (SIGTRAP, `dispatch_assert_queue`). Fix: `_layout_on_main_thread()` in `indite_mac.py` reads it once at
   start-up and hands pynput that copy, so **pynput is pinned to 1.8.2** (the patch reaches into its internals).
   The log's old "Accessibility" line was checking **Input Monitoring** (`CGPreflightListenEventAccess`), so it read
-  False even with Accessibility on. The log now shows both, plus `faulthandler` writes a Python stack into the log on
+  False even with Accessibility on. `can_listen()` (log, menu âš , window banner, prompt) now checks Accessibility, plus `faulthandler` writes a Python stack into the log on
   any crash. Rules: after a crash, read `~/Library/Logs/DiagnosticReports/python3.12-*.ips` before blaming a
   permission; Accessibility True + Input Monitoring False is the working state.
 - **A frozen indite copy (pid 99097, status `T`) can't be killed, even outside the sandbox.** Likely the company's

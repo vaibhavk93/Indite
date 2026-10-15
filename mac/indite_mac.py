@@ -123,19 +123,20 @@ def can_listen() -> bool:
     """
     macOS will not hand key events to a program that is not trusted for Accessibility - and pynput does not complain
     when that happens, it simply never fires. So ask first, and say so in words (14 Oct: the first Mac build showed a
-    cheerful microphone that did nothing at all).
+    cheerful microphone that did nothing at all). Accessibility, not Input Monitoring (CGPreflightListenEventAccess):
+    15 Oct the hotkey worked with Input Monitoring off, and checking that list showed a false warning for hours.
     """
     try:
-        import Quartz
-        return bool(Quartz.CGPreflightListenEventAccess())
+        import ApplicationServices
+        return bool(ApplicationServices.AXIsProcessTrusted())
     except Exception:       # noqa: BLE001 - an old macOS without the call: assume yes and let the hotkey speak for itself
         return True
 
 
 def ask_to_listen() -> None:
     try:
-        import Quartz
-        Quartz.CGRequestListenEventAccess()
+        import ApplicationServices as AS
+        AS.AXIsProcessTrustedWithOptions({AS.kAXTrustedCheckOptionPrompt: True})   # macOS's own "allow" prompt
     except Exception:       # noqa: BLE001
         pass
 
@@ -597,9 +598,7 @@ class InditeApp(rumps.App):
         try:                                             # say plainly in the log whether meetings can hear calls
             import Quartz
             print("screen & system audio recording allowed:", bool(Quartz.CGPreflightScreenCaptureAccess()))
-            import ApplicationServices
-            print("hear keys (Input Monitoring) allowed:", can_listen())
-            print("type & control (Accessibility) allowed:", bool(ApplicationServices.AXIsProcessTrusted()))
+            print("key access (Accessibility) allowed:", can_listen())
         except Exception:                                # noqa: BLE001
             pass
         if not self.prefs.get("asked_screen"):           # once: lets the meeting recorder hear the other people

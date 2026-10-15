@@ -442,4 +442,5 @@ is a git commit.
 | 209 | **Check Accessibility end to end, then tell me to add it** | Removed and re-added many times | 15 Oct | ✅ | Key access works; three dictations typed. Real cause: indite crashed as soon as keys reached it (fixed); its log was checking the wrong permission (fixed) |
 | 210 | **Make sure such issues don't occur again** | — | 15 Oct | ✅ | Crash stacks now land in the log; the pynput version is pinned; the log checks both key permissions; rule added to HANDOFF |
 | 211 | **I can't see the app window** | — | 15 Oct | 🟡 | A frozen old copy takes your Dock clicks. Opened the live window for you; **restart the Mac** to clear it for good |
+| 213 | **Still see "indite can't hear the hotkey, open Settings"** | — | 15 Oct | ✅ | False alarm: the warning checked Input Monitoring. It now checks Accessibility, which the hotkey really uses |
 | 212 | **Don't touch the GitHub history** | — | 15 Oct | ✅ | Not rewritten; nothing pushed |
