@@ -212,6 +212,12 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
   allowed: False", 15 Oct 20:55). Meetings therefore hear only the mic, and the demo video cannot record. A window
   snapshot of the desktop looked fine only because wallpaper and own windows need no permission. The founder may
   have enabled it for `dist-share/indite.app` (a different signature) instead.
+- **⚠ macOS switches off a slow key listener and pynput never turns it back on** — the founder's shortcuts died
+  after a settings change. Key handlers only change state; mic work runs on `self.ops` (one worker, in order);
+  `listen()` restarts the listener on a "tap disabled" event. Keep anything slow out of `on_press`/`on_release`.
+- **Ad-hoc signing + rebuilds can drop a privacy permission**: after `build_app.sh`, check the log line
+  "screen & system audio recording allowed". If False: remove indite from that list (−), add `dist/indite.app` (+).
+- Logo: `mac/brand/logo.svg` (five voice bars, the middle one is the letter i) → `indite.icns` in both builds.
 - **Demo video** (`mac/demo.py`, `mac/recorder.py`, `mac/demo_make.py`): runs against a demo profile
   (`open --env INDITE_DATA=<folder> dist/indite.app`), started by writing `run:<out_dir>` into that folder's
   `demo.cmd`. Synthetic key presses from the runner work (it inherits Accessibility); screen recording must happen

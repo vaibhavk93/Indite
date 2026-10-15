@@ -173,6 +173,10 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R38 | Full screen: top bar unusable; Close/Minimize dead after leaving | ✅ | App menus added; policy switch moved to app-level focus |
 | R39 | Pill glass froze while scrolling; slider not useful | ✅ | Live glass + tint; 10 % steps, −/+, value shown, pill previews |
 | R40 | Insights page like Wispr Flow | ✅ | Sidebar → Insights |
+| R42 | Remove stats from Dictations | ✅ | Insights has them |
+| R43 | Sidebar: drop “Ready · works offline”; Settings and Help at the bottom | ✅ | |
+| R44 | A logo | ✅ | `mac/brand/logo.svg`, app icon |
+| R45 | Shortcuts / pill dead after a settings change | ✅ | Listener switched off by macOS; now restarted and kept fast |
 | R41 | A real run-time demo video with voice-over, made alone | ⏳ | Built and run twice: hotkeys, typing, hands-free, AI, file + speakers all worked live. **Blocked:** Screen & System Audio Recording is not granted to indite |
 | R32 | Keep saving progress | rule | Commit after each feature; docs in the same session |
 | R23 | Finish the Mac and Android apps before new directions | rule | |
