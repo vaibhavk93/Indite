@@ -10,11 +10,14 @@ History is capped, because an unbounded log of everything a user has ever said i
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from pathlib import Path
 
-DIR = Path.home() / "Library/Application Support/indite"
+# INDITE_DATA points a second copy at another folder - used for the demo video, so a recording never shows a
+# person's real notes.
+DIR = Path(os.environ["INDITE_DATA"]) if os.environ.get("INDITE_DATA") else Path.home() / "Library/Application Support/indite"
 HISTORY = DIR / "history.jsonl"
 PREFS = DIR / "prefs.json"
 MY_FIXES = DIR / "my_fixes.txt"

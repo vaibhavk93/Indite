@@ -13,6 +13,7 @@ First run asks for two macOS permissions - Microphone, and Accessibility (to typ
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import queue
@@ -42,6 +43,8 @@ ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
 SERVER = ROOT / ".tools/whisper.cpp/build/bin/whisper-server"
 PORT = 8711                   # localhost only; nothing listens outside this Mac
+DEMO_FEED = store.DIR / "demo_feed.wav"          # demo video only (mac/demo.py)
+DEMO_CMD = store.DIR / "demo.cmd"                 # demo video only: one instruction per line for the window
 SNAP_REQUEST = store.DIR / "snapshot.request"   # write a tab name into it; the window saves a picture of itself
 HANDS_FREE_CAP = 15 * 60      # seconds; a forgotten hands-free lock stops itself and writes what it heard
 CTRL = {keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r}
@@ -289,6 +292,9 @@ class Mic:
         """
         if self.stream:
             return
+        if DEMO_FEED.exists():                          # demo video only: this recording instead of the microphone
+            self._feed(DEMO_FEED)
+            return
         try:                                            # re-read the device list (3 ms), so a headset connected
             sd._terminate()                             # after launch shows up - PortAudio reads it only once
             sd._initialize()
@@ -313,6 +319,32 @@ class Mic:
             except Exception as e:                      # noqa: BLE001 - try the next one, keep the reason
                 last = e
         raise MicProblem(str(last))
+
+    def _feed(self, path: Path) -> None:
+        """
+        Plays a WAV into the recording as if it were the microphone, in real time, then stops on its own. Used only by
+        the demo video (mac/demo.py), whose voice-over is synthetic speech; everything after this - the pill, the
+        engine, the typing - is the normal path.
+        """
+        with wave.open(str(path)) as w:
+            audio = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
+        path.unlink(missing_ok=True)
+        self.q = queue.Queue()
+        stop = threading.Event()
+
+        def run():
+            for i in range(0, len(audio), 1600):
+                if stop.is_set():
+                    return
+                x = audio[i:i + 1600]
+                self.q.put(x.reshape(-1, 1))
+                self.level = float(np.sqrt(np.mean(x ** 2)) * 12)
+                time.sleep(0.1)
+            self.level = 0.0
+
+        threading.Thread(target=run, daemon=True).start()
+        self.stream = type("Feed", (), {"stop": lambda _s: stop.set(), "close": lambda _s: None})()
+        self.using = "demo recording"
 
     def _candidates(self) -> list:
         """The one picked in Settings, then the one that worked last, the default, the built-in, then any input."""
@@ -535,6 +567,11 @@ class InditeApp(rumps.App):
 
     def warm_up(self) -> None:
         """Load the model now, not when the user is waiting with their finger on the key."""
+        try:                                             # say plainly in the log whether meetings can hear calls
+            import Quartz
+            print("screen & system audio recording allowed:", bool(Quartz.CGPreflightScreenCaptureAccess()))
+        except Exception:                                # noqa: BLE001
+            pass
         if not self.prefs.get("asked_screen"):           # once: lets the meeting recorder hear the other people
             try:
                 import Quartz
@@ -554,6 +591,8 @@ class InditeApp(rumps.App):
     def paint(self, _) -> None:                          # noqa: ANN001 - rumps' signature
         """Shows what is happening, in the place the eye already is: just above the Dock."""
         self.snap_tick = getattr(self, "snap_tick", 0) + 1
+        if self.snap_tick % 5 == 0 and DEMO_CMD.exists():
+            self.demo_cmd()
         if self.snap_tick % 20 == 0 and SNAP_REQUEST.exists():
             if SNAP_REQUEST.read_text().startswith("preview:"):          # the text card, with this text
                 self.preview.snapshot(SNAP_REQUEST)
@@ -1033,6 +1072,51 @@ class InditeApp(rumps.App):
                 if later and self.ai_who.get("loggedIn"):
                     break
         threading.Thread(target=go, daemon=True).start()
+
+    def demo_cmd(self) -> None:
+        """Instructions from mac/demo.py, the demo-video runner (main thread). Only reads its own data folder."""
+        lines = DEMO_CMD.read_text().splitlines()
+        DEMO_CMD.unlink(missing_ok=True)
+        for line in lines:
+            verb, _, arg = line.partition(":")
+            if verb == "open":
+                self.open_window(None)
+            elif verb == "place" and self.window:            # x,y,w,h in screen points, from the top-left
+                from AppKit import NSScreen, NSMakeRect
+                x, y, w, h = (float(v) for v in arg.split(","))
+                top = NSScreen.screens()[0].frame().size.height
+                self.window.win.setFrame_display_(NSMakeRect(x, top - y - h, w, h), True)
+            elif verb == "js" and self.window:
+                self.window.bridge.js(arg)
+            elif verb == "file":
+                threading.Thread(target=self.transcribe_file, args=(Path(arg),), daemon=True).start()
+            elif verb == "ai":                                # on the newest dictation
+                row = next((r for r in store.history() if (r.get("kind") or "dictation") == "dictation"), None)
+                if row:
+                    self.ai_busy[row["id"]] = ai.ACTIONS[arg][0]
+                    self.refresh()
+                    threading.Thread(target=self._ai, args=(row, arg, ""), daemon=True).start()
+            elif verb == "pill":
+                self.pill.set_clear(int(arg))
+                self.done_state, self.done_until = "done", time.time() + 2.0
+            elif verb == "pref":
+                k, _, v = arg.partition("=")
+                store.set_pref(k, json.loads(v))
+                self.reload_prefs()
+                self.refresh()
+            elif verb == "rec":                               # rec:start:<path>:x,y,w,h  or  rec:stop
+                from recorder import Recorder
+                what, _, rest = arg.partition(":")
+                if what == "start":
+                    path, _, rect = rest.rpartition(":")
+                    self.recorder = Recorder(Path(path), tuple(float(v) for v in rect.split(",")),
+                                             store.DIR / "rec.state")
+                    self.recorder.start()
+                elif getattr(self, "recorder", None):
+                    self.recorder.stop()
+            elif verb == "run":                               # the runner, started from here so it has indite's
+                subprocess.Popen([sys.executable, "-u", str(Path(__file__).parent / "demo.py")] + arg.split(),
+                                 stdout=open(store.DIR / "demo.log", "a"), stderr=subprocess.STDOUT)
 
     def show_pill(self) -> None:
         """Settings changed the pill's look: show it for a moment so the change can be seen."""
