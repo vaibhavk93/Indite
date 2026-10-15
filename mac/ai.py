@@ -43,13 +43,32 @@ ACTIONS = {
     "translate": ("Translate", "The same thing, in another language", "Change the words",
                   "Translate the text into {extra}. Reply with the translation only."),
     "prompt": ("Make it a prompt", "A clear request to paste into ChatGPT, Claude or Gemini", "For another AI",
-               "The note is someone thinking out loud about what they want from an AI. Turn it into one well-structured "
-               "prompt, in English even if the note is Hinglish. Use these parts, as headed sections, and leave out a "
-               "part only if the note has nothing for it: Role (who the AI should act as), Context (the facts and "
-               "background from the note), Task (exactly what to do, in clear steps), Constraints (must / must not, "
-               "length, tone, audience), Output format (what the answer should look like). Keep every fact the "
-               "speaker gave; invent nothing; where something needed is missing, write [fill in: ...]. Drop filler "
-               "and repetition. Reply with the prompt only."),
+               "The note is someone thinking out loud about what they want from an AI. Turn it into one "
+               "well-structured prompt, in English even if the note is Hinglish.\n\n"
+               "The person will paste your answer into a different AI that has never seen this note and cannot hear "
+               "the recording, so every fact that AI needs must be written out in the text.\n\n"
+               "Use these five parts as headed sections, in this order, leaving out a part only if the note has "
+               "nothing for it:\n"
+               "1. Role - who the AI should act as.\n"
+               "2. Context - the facts and background from the note.\n"
+               "3. Task - exactly what to do, in clear steps.\n"
+               "4. Constraints - must / must not, length, tone, audience.\n"
+               "5. Output format - what the answer should look like.\n\n"
+               "Keep every fact the speaker gave; invent nothing; where something needed is missing, write "
+               "[fill in: ...]. Keep Indian words that have no exact English word (jugaad, kal, lakh) as they are, "
+               "with a short gloss in brackets the first time. Drop filler and repetition. Reply with the prompt "
+               "only.\n\n"
+               "<example>\n"
+               "note: Yaar mujhe ek email likhna hai vendor ko, payment late hai do mahine se, thoda firm but "
+               "rude nahi. Hindi nahi, English mein.\n\n"
+               "Role\nYou are a professional writing a business email on behalf of a company.\n\n"
+               "Context\nA vendor's payment to us has been outstanding for two months. [fill in: vendor name, "
+               "invoice number, amount]\n\n"
+               "Task\nWrite one email to the vendor asking for the overdue payment and a date by which it will "
+               "be cleared.\n\n"
+               "Constraints\nEnglish only. Firm but not rude. Under 150 words.\n\n"
+               "Output format\nSubject line, then the email body, then a sign-off.\n"
+               "</example>"),
     "cleanup": ("Clean it up", "Punctuation fixed, the umms removed", "Change the words",
                 HINGLISH + "Fix punctuation and remove filler words (umm, matlab, basically, you know) only. Change "
                 "nothing else. Reply with the text only."),
@@ -158,9 +177,12 @@ def _api(provider: str, model: str, prompt: str, text: str) -> str:
     model = model or DEFAULT_MODEL[provider]
     if provider == "anthropic":
         out = _http("https://api.anthropic.com/v1/messages",
-                    {"model": model, "max_tokens": 4000, "system": SYSTEM, "messages": [{"role": "user", "content": user}]},
+                    {"model": model, "max_tokens": 8000, "system": SYSTEM, "messages": [{"role": "user", "content": user}]},
                     {"x-api-key": key, "anthropic-version": "2023-06-01"})
-        return "".join(b.get("text", "") for b in out.get("content", []))
+        answer = "".join(b.get("text", "") for b in out.get("content", []))
+        if out.get("stop_reason") == "max_tokens":            # a cut-off answer must not look like a finished one
+            answer += "\n\n[cut off - the note was too long for one answer. Try a shorter part of it.]"
+        return answer
     url = "https://api.openai.com/v1/chat/completions" if provider == "openai" else \
         "https://openrouter.ai/api/v1/chat/completions"
     out = _http(url, {"model": model, "messages": [{"role": "system", "content": SYSTEM},

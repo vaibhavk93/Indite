@@ -191,11 +191,11 @@ Public app stays internet-free; a tester-only key build only if interviews ask (
 
 ## Before testers
 
-**⚠ Before any Google Play listing: the app is signed with Android's DEBUG key.** `android/app/build.gradle:42`
+**⚠ TRIGGER - the next time an Android build is made, do this first (founder, 16 Oct): the app is signed with Android's DEBUG key.** `android/app/build.gradle:42`
 uses alias `androiddebugkey` with password `android` — both public, and in this repo. Play rejects debug-signed
 APKs, and anyone with the file could sign a fake update. Generate a real release key once, keep it secret, back it
 up in two places, and switch `signingConfigs.testers` to it **before** strangers install the app — after that, a key
-change forces every tester to uninstall, which deletes their notes. (Founder asked to be reminded, 15 Oct.)
+change forces every tester to uninstall, which deletes their notes. Confirmed 16 Oct: `~/.indite/indite-testers.keystore` is byte-identical to `~/.android/debug.keystore`. Founder's decision: not now - the Mac app and the leadership demo come first; raise it at the next Android build.
 
 
 - Try-it screen for first-time users; smaller install (model downloads on first open)

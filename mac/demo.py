@@ -217,22 +217,25 @@ def main() -> None:
 SCRIPT_N = N = [
     "This is indite. It turns spoken Hinglish into text, right on your Mac. No internet, and no account.",
     "Click into any app. Hold the right Option key, and just speak.",
-    "The pill above the Dock listens, then writes. About a second later, the words are typed, "
-    "and chaar baje became four, in digits.",
+    "The pill above the Dock listens, then writes. About a second for a sentence like that, and the "
+    "words are typed - chaar baje became four, in digits.",
     "For longer thoughts, tap the right Command key three times, and talk hands free.",
     "One tap ends it. The whole thought is typed, and a card shows exactly what was written.",
     "Changed your mind? Press Escape while speaking, and nothing is typed.",
     "And Control Command V types your last dictation again, wherever you are.",
     "Every dictation is saved here, privately, on this Mac.",
-    "Ask AI works on any note: improve it, summarise it, pull out action items, rewrite or translate it.",
+    "Ask AI works on any note: improve it, summarise it, pull out action items, rewrite or translate it - "
+    "or turn a rambling thought into a clean prompt for any other AI.",
     "Improve keeps your original right next to the new version, so nothing you said is lost.",
+    "Every note AI has touched keeps a gold edge, so you can find your AI work at a glance, "
+    "and open it again any time.",
     "Have a recording already? Drop in a call or a voice note.",
     "indite writes it down, and works out who spoke, without a single click.",
     "Meetings work live. Your microphone is you, and the call's sound is everyone else, even on headphones.",
     "When you stop, the other voices are told apart, and you can rename them.",
     "Anything can become a to-do, from a note or from AI's action items.",
     "The dictionary teaches indite the words it gets wrong, like your company names.",
-    "Insights shows how much you dictate, how fast you speak, and the time you save.",
+    "Insights shows how much you dictate, how fast you speak, the time you save, and what you asked AI for.",
     "The pill can be as clear or as frosted as you like.",
     "AI is off until you turn it on, with your own Claude login or your own key.",
     "And Help lists every shortcut, and what to do if something is off.",
@@ -265,6 +268,9 @@ def stage(hidden: list) -> None:
     note.write_text("")
     subprocess.run(["open", "-a", "TextEdit", str(note)])
     time.sleep(2.0)
+    # The meeting/file -> AI warning is a modal: in a demo it would stop the take dead. Answer it up front, the
+    # same way a user who ticked "don't ask again" would have (the warning itself is shown in the Ask AI scene).
+    cmd('pref:ai_ok_meetings=true')
     W, H = display()
     ax_place("TextEdit", 0, 25, W / 2, H - 25)                    # full screen, split: TextEdit left, indite right
     cmd("open", f"place:{W / 2},{25},{W / 2},{H - 25}", "js:go('home')")
@@ -319,14 +325,15 @@ def show() -> None:
     time.sleep(9.0)
     say(N[9])
     cmd("js:closeDrawer()")
+    say(N[10])                                         # the gold edge is on the row, so the drawer is shut first
     # 5 - a file, live, with who spoke
     cmd("js:go('files')", f"file:{call}")
-    say(N[10])
-    time.sleep(12.0)
     say(N[11])
+    time.sleep(12.0)
+    say(N[12])
     # 6 - a meeting, live: the mic says one line, the call (played through the Mac) is the others
     cmd("js:go('meetings')")
-    say(N[12])
+    say(N[13])
     hi, lo, dur = render(*SCRIPT_S[3][:1], SPEAKER, SCRIPT_S[3][1])
     (OUT / "feed.wav").write_bytes(lo.read_bytes()); (OUT / "feed.wav").replace(FEED)
     cmd("js:document.querySelector('#meet').click()")
@@ -337,19 +344,19 @@ def show() -> None:
     play.wait()
     time.sleep(2.5)
     cmd("js:document.querySelector('#meet').click()")
-    say(N[13])
+    say(N[14])
     time.sleep(6.0)
     # 7 - the rest, a short tour
-    cmd("js:go('todo')"); say(N[14])
-    cmd("js:go('dict')"); say(N[15])
-    cmd("js:go('insights')"); say(N[16])
-    cmd("js:go('settings'); sgo('pill')"); say(N[17])
+    cmd("js:go('todo')"); say(N[15])
+    cmd("js:go('dict')"); say(N[16])
+    cmd("js:go('insights')"); say(N[17])
+    cmd("js:go('settings'); sgo('pill')"); say(N[18])
     for p in (30, 70, 100, 60):
         cmd(f"pill:{p}")
         time.sleep(0.8)
-    cmd("js:sgo('ai')"); say(N[18])
-    cmd("js:go('help')"); say(N[19])
-    say(N[20], gap=1.5)
+    cmd("js:sgo('ai')"); say(N[19])
+    cmd("js:go('help')"); say(N[20])
+    say(N[21], gap=1.5)
 
 
 if __name__ == "__main__":
