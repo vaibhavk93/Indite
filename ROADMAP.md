@@ -191,6 +191,13 @@ Public app stays internet-free; a tester-only key build only if interviews ask (
 
 ## Before testers
 
+**⚠ Before any Google Play listing: the app is signed with Android's DEBUG key.** `android/app/build.gradle:42`
+uses alias `androiddebugkey` with password `android` — both public, and in this repo. Play rejects debug-signed
+APKs, and anyone with the file could sign a fake update. Generate a real release key once, keep it secret, back it
+up in two places, and switch `signingConfigs.testers` to it **before** strangers install the app — after that, a key
+change forces every tester to uninstall, which deletes their notes. (Founder asked to be reminded, 15 Oct.)
+
+
 - Try-it screen for first-time users; smaller install (model downloads on first open)
 - Test on a ₹15k phone (parked by the founder; still the biggest unknown)
 - Give it to 10–20 people; interviews alongside; ask an open question about translation; sign-up asks "Android or iPhone?"
