@@ -196,6 +196,12 @@ Use push + install always. Three failed installs and ~90 minutes were lost befor
 - **WKWebView ignores `confirm()` and `prompt()`**: use native dialogs or inline forms.
 - **A Finder-launched app has a bare PATH**: `ai.py` adds `~/.local/bin` so `claude` is found.
 - **The founder's Claude login is a Paytm account**: Settings → AI shows the account; AI is off by default for new users.
+- **A class defined in `indite_mac.py` is defined twice** (it runs as the program and `window.py` imports it again):
+  Objective-C refuses the second copy. NSObject subclasses go in `window.py` / `overlay.py`.
+- **Opening a running indite did nothing visible**, so it looked dead: the window now shows whenever the app is
+  activated (Finder, Spotlight, Dock).
+- **The text card was one line + "…"**: it now wraps, grows to ~14 lines and stays 4–15 s by length. Check it with
+  `preview:<text>` in `snapshot.request` (writes `snapshot-preview.png`).
 
 ### The Mac app (15 Oct)
 

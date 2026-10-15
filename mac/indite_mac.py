@@ -36,7 +36,7 @@ from meeting import Meeting  # noqa: E402
 import digits as numbers  # noqa: E402 - mac/digits.py ("numbers" is a stdlib module name)
 import store              # noqa: E402
 from overlay import Pill, Preview   # noqa: E402 - needs the path above
-from window import Window, front_app   # noqa: E402
+from window import Activation, Window, front_app   # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
@@ -518,12 +518,18 @@ class InditeApp(rumps.App):
         threading.Thread(target=self.warm_up, daemon=True).start()
         # Opening the app shows its window, like any Mac app; a timer, so it is built on the main thread once the
         # run loop is going. ponytail: a second `open` while running does nothing; handle reopen if that annoys.
+        self._activation = Activation.alloc().initWithApp_(self)
         self._first = rumps.Timer(self._show_on_launch, 0.5)
         self._first.start()
 
     def _show_on_launch(self, timer) -> None:            # noqa: ANN001
         timer.stop()
         self.open_window(None)
+        # Opening indite again (Finder, Spotlight, Dock) only activates the running copy; nothing appeared, so it
+        # looked as if it was not running (founder, 15 Oct). Show the window whenever the app is activated.
+        from AppKit import NSNotificationCenter
+        NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(
+            self._activation, "fire:", "NSApplicationDidBecomeActiveNotification", None)
 
     def warm_up(self) -> None:
         """Load the model now, not when the user is waiting with their finger on the key."""
@@ -546,8 +552,11 @@ class InditeApp(rumps.App):
     def paint(self, _) -> None:                          # noqa: ANN001 - rumps' signature
         """Shows what is happening, in the place the eye already is: just above the Dock."""
         self.snap_tick = getattr(self, "snap_tick", 0) + 1
-        if self.snap_tick % 20 == 0 and self.window and SNAP_REQUEST.exists():
-            self.window.snapshot(SNAP_REQUEST)          # a developer's look at the real window (see window.py)
+        if self.snap_tick % 20 == 0 and SNAP_REQUEST.exists():
+            if SNAP_REQUEST.read_text().startswith("preview:"):          # the text card, with this text
+                self.preview.snapshot(SNAP_REQUEST)
+            elif self.window:
+                self.window.snapshot(SNAP_REQUEST)      # a developer's look at the real window (see window.py)
         if self.meeting.running:
             t = int(time.time() - self.meeting.started)
             self.pill.view.label = f"REC {t // 60:02d}:{t % 60:02d}"

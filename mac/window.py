@@ -52,6 +52,26 @@ def front_app() -> str:
         return ""
 
 
+class Activation(NSObject):
+    """
+    Calls the app back when macOS activates it (an NSObject, because notifications need a selector). Lives here, not
+    in indite_mac.py: that file is both the program and a module this one imports, so a class there is defined twice
+    and Objective-C refuses the second ("overriding existing Objective-C class").
+    """
+
+    def initWithApp_(self, app):
+        self = objc.super(Activation, self).init()
+        if self is None:
+            return None
+        self.app = app
+        return self
+
+    def fire_(self, _note):                              # noqa: N802
+        w = self.app.window
+        if w is None or not w.win.isVisible():
+            self.app.open_window(None)
+
+
 class Bridge(NSObject):
     """Everything the page is allowed to ask for. Anything not listed here is ignored."""
 

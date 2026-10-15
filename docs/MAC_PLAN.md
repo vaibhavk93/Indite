@@ -164,7 +164,11 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R28 | Choose the hands-free key and the number of taps | 🧪 | Settings: same key or another; 2 or 3 taps |
 | R29 | Pill even more transparent | 🧪 | Glass and drawing separated; Settings → Pill transparency slider (default 45%) |
 | R30 | Find error patterns in real transcriptions and plan fixes | ✅ | ~⅓ of "19% wrong" was spelling or digits. Fixed: punctuation bug in the spelling list, numbers → digits, junk from short taps. Clean set 19.9% → 14.4%. Analysis: docs/research/mac_errors_2026-10-15.txt |
-| R31 | Show or hide the place where the written words appear | 🧪 | Settings → Show the words: a card above the pill for 4 s. ❓ Confirm this is what was meant |
+| R31 | Show or hide the place where the written words appear | ✅ | Settings → Look & sounds → Show text after dictating. Multi-line, grows with the text, stays 4–15 s |
+| R33 | Text card: multi-line, dynamic height | ✅ | Was one line + "…" |
+| R34 | Opening indite again should show it | ✅ | Window appears on every activation |
+| R35 | Demo video with a voice-over | 💬 | Possible; see answer |
+| R36 | Test cases for the founder, in a doc | ✅ | `docs/MAC_TEST_PLAN.md` |
 | R32 | Keep saving progress | rule | Commit after each feature; docs in the same session |
 | R23 | Finish the Mac and Android apps before new directions | rule | |
 | R24 | Think from first principles; do not just drop things | rule | |

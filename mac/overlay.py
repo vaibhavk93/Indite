@@ -305,7 +305,8 @@ class Preview:
     the pill. Called from any thread; all AppKit work is handed to the main thread.
     """
 
-    PW, PH = 380.0, 66.0
+    PW, PH = 460.0, 66.0              # width fixed; the height grows with the text (founder: one line + "…" hid it)
+    MAX_H = 320.0                     # about 14 lines; longer text scrolls inside the card
 
     def __init__(self) -> None:
         screen = NSScreen.mainScreen().frame()
@@ -335,12 +336,14 @@ class Preview:
             glass.layer().setCornerRadius_(14.0)
             glass.layer().setMasksToBounds_(True)
         box.addSubview_(glass)
+        self.glass, self.box, self.base_y = glass, box, y
         self.label = AppKit.NSTextField.wrappingLabelWithString_("")
-        self.label.setFrame_(NSMakeRect(14, 8, self.PW - 28, self.PH - 16))
-        self.label.setFont_(NSFont.systemFontOfSize_(12.5))
+        self.label.setFrame_(NSMakeRect(16, 10, self.PW - 32, self.PH - 20))
+        self.label.setFont_(NSFont.systemFontOfSize_(13.0))
         self.label.setTextColor_(NSColor.labelColor())
-        self.label.setMaximumNumberOfLines_(3)
-        self.label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
+        self.label.setMaximumNumberOfLines_(0)                    # every line, wrapped at words
+        self.label.setLineBreakMode_(AppKit.NSLineBreakByWordWrapping)
+        self.label.setPreferredMaxLayoutWidth_(self.PW - 32)
         box.addSubview_(self.label)
         box.setWantsLayer_(True)
         box.layer().setCornerRadius_(14.0)
@@ -355,11 +358,42 @@ class Preview:
 
     def _show(self, text: str) -> None:
         self.label.setStringValue_(text)
+        need = self.label.cell().cellSizeForBounds_(NSMakeRect(0, 0, self.PW - 32, 10_000)).height
+        h = min(self.MAX_H, max(self.PH, need + 22))
+        if need + 22 > self.MAX_H:                               # very long: keep the end, which is newest
+            self.label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingHead)
+            self.label.setMaximumNumberOfLines_(int((self.MAX_H - 22) // 17))
+        else:
+            self.label.setLineBreakMode_(AppKit.NSLineBreakByWordWrapping)
+            self.label.setMaximumNumberOfLines_(0)
+        f = self.panel.frame()
+        self.panel.setFrame_display_(NSMakeRect(f.origin.x, self.base_y, self.PW, h), True)   # grows upward
+        for v in (self.box, self.glass):
+            v.setFrame_(NSMakeRect(0, 0, self.PW, h))
+        self.label.setFrame_(NSMakeRect(16, 11, self.PW - 32, h - 22))
         self.panel.setAlphaValue_(1.0)
         self.panel.orderFrontRegardless()
         self.shown_at = t = time.time()
         from PyObjCTools import AppHelper
-        AppHelper.callLater(4.0, self._hide, t)
+        # long enough to read: 4 s, plus ~a quarter second a word, at most 15 s
+        AppHelper.callLater(min(15.0, 4.0 + 0.25 * len(text.split())), self._hide, t)
+
+    def snapshot(self, request) -> None:
+        """Shows the card with the request's text and saves a picture of it beside the request (developer check)."""
+        import Quartz
+        text = request.read_text()[len("preview:"):].strip()
+        request.unlink(missing_ok=True)
+        self._show(text)
+
+        def shoot():
+            img = Quartz.CGWindowListCreateImage(Quartz.CGRectNull, Quartz.kCGWindowListOptionIncludingWindow,
+                                                 self.panel.windowNumber(), Quartz.kCGWindowImageBoundsIgnoreFraming)
+            if img is not None:
+                rep = AppKit.NSBitmapImageRep.alloc().initWithCGImage_(img)
+                rep.representationUsingType_properties_(AppKit.NSPNGFileType, None).writeToFile_atomically_(
+                    str(request.parent / "snapshot-preview.png"), True)
+        from PyObjCTools import AppHelper
+        AppHelper.callLater(0.6, shoot)
 
     def _hide(self, t: float) -> None:
         if t == self.shown_at:                            # a newer dictation restarts the clock
