@@ -322,26 +322,51 @@ class MicProblem(Exception):
     """The microphone could not be opened, with a reason worth showing someone."""
 
 
+def _alive() -> None:
+    """
+    Makes sure PortAudio is initialised before we ask it anything.
+
+    It can be left shut down behind our back: re-reading the device list is Pa_Terminate + Pa_Initialize, and if the
+    terminate wedges against CoreAudio's lock (16 Oct) it may finish later, on its own, with nothing to re-initialise
+    it. Every microphone open after that failed with "Error querying device -1" until the app was restarted.
+    """
+    try:
+        sd.query_devices()
+        return
+    except Exception:                                    # noqa: BLE001 - not initialised, or no devices
+        pass
+    try:
+        sd._initialize()
+        print("mic: PortAudio had been shut down; started it again")
+    except Exception as e:                               # noqa: BLE001
+        print("mic: could not start PortAudio:", e)
+
+
 def _rescan() -> None:
     """
-    Makes PortAudio read the device list again (it reads it once, at import).
+    Re-reads the device list, so a microphone plugged in after launch is found.
 
-    This is Pa_Terminate + Pa_Initialize underneath, and it deadlocks against CoreAudio's lock if a stream is still
-    on its way down - which is how four threads ended up wedged (16 Oct). So: never while a stream is open, on a
-    thread of its own, and the app carries on with the old list if it does not come back.
+    This is Pa_Terminate + Pa_Initialize, which deadlocks against CoreAudio's lock if a stream is still on its way
+    down. So it is NOT done on every press any more - only after every known device has already failed to open,
+    where there is nothing left to lose. On its own thread, never waited on for long, and PortAudio is restarted
+    afterwards whatever happened.
     """
     def go() -> None:
         try:
             sd._terminate()
+        except Exception as e:                           # noqa: BLE001
+            print("mic: could not close the device list:", e)
+        try:
             sd._initialize()
         except Exception as e:                           # noqa: BLE001
-            print("mic: could not re-read the device list:", e)
+            print("mic: could not re-open the device list:", e)
 
     t = threading.Thread(target=go, daemon=True)
     t.start()
-    t.join(1.5)
+    t.join(2.0)
     if t.is_alive():
-        print("mic: re-reading the device list did not come back; using the list we have")
+        print("mic: re-reading the device list did not come back; carrying on")
+    _alive()
 
 
 class Mic:
@@ -373,7 +398,7 @@ class Mic:
         if DEMO_FEED.exists():                          # demo video only: this recording instead of the microphone
             self._feed(DEMO_FEED)
             return
-        _rescan()                                       # so a headset plugged in after launch shows up
+        _alive()                                        # PortAudio can be left shut down by a wedged rescan
         self.q = queue.Queue()
 
         def cb(indata, frames, time_info, status):      # noqa: ANN001 - sounddevice's signature
@@ -381,17 +406,21 @@ class Mic:
             self.level = float(np.sqrt(np.mean(indata ** 2)) * 12)   # rough loudness, 0..1 for the pill
 
         last = None
-        for device in self._candidates():
-            try:
-                stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32",
-                                        device=device, callback=cb)
-                stream.start()
-                self.stream = stream
-                self.using = sd.query_devices(device if device is not None else sd.default.device[0])["name"]
-                self.worked = self.using                # remembered by name: positions change after a reconnect
-                return
-            except Exception as e:                      # noqa: BLE001 - try the next one, keep the reason
-                last = e
+        for attempt in (1, 2):
+            for device in self._candidates():
+                try:
+                    stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32",
+                                            device=device, callback=cb)
+                    stream.start()
+                    self.stream = stream
+                    self.using = sd.query_devices(device if device is not None else sd.default.device[0])["name"]
+                    self.worked = self.using            # remembered by name: positions change after a reconnect
+                    return
+                except Exception as e:                  # noqa: BLE001 - try the next one, keep the reason
+                    last = e
+            if attempt == 1:                            # everything failed: the list may be stale, or PortAudio dead
+                print("mic: no device opened; re-reading the device list and trying once more")
+                _rescan()
         raise MicProblem(str(last))
 
     def _feed(self, path: Path) -> None:
@@ -1236,24 +1265,10 @@ class InditeApp(rumps.App):
         row = next((r for r in store.history() if r["id"] == note_id), None)
         if not row or note_id in self.ai_busy:
             return
-        if row.get("kind") in ("meeting", "file") and not self.prefs.get("ai_ok_meetings"):
-            # other people's voices: ask every time, unless the person said not to (founder, 15 Oct)
-            where = ai.PROVIDERS.get(self.prefs["ai_provider"], "Claude")
-            alert = NSAlert.alloc().init()
-            alert.setMessageText_(f"Send a recording of other people to {where}?")
-            alert.setInformativeText_(
-                f"It includes what others said. Check they're OK with it first.\n\n{where} gets the full text. "
-                "Whether it is kept or used to train their AI depends on your account settings with them, not on "
-                "indite.")
-            alert.addButtonWithTitle_("Send")
-            alert.addButtonWithTitle_("Cancel")
-            alert.setShowsSuppressionButton_(True)
-            alert.suppressionButton().setTitle_("Don't ask again for meetings and files")
-            if alert.runModal() != NSAlertFirstButtonReturn:
-                return
-            if alert.suppressionButton().state():
-                store.set_pref("ai_ok_meetings", True)
-                self.reload_prefs()
+        # No warning here on purpose: working out who spoke is done on this Mac by mac/speakers.py. Nothing leaves
+        # the machine, so there is nothing to ask about. (15 Oct the consent dialog was pasted in here as well as in
+        # ask_ai; it asked about a send that never happens, and crashed - NSAlert is imported in ask_ai, not here -
+        # which made every file say "file failed" after transcribing perfectly well.)
         self.ai_busy[note_id] = "finding who spoke"
         self.refresh()
         threading.Thread(target=self._who, args=(row, k), daemon=True).start()
