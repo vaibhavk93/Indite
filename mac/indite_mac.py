@@ -844,9 +844,11 @@ class InditeApp(rumps.App):
                 self.refresh()
             body = "\n\n".join(s["text"] for s in segments)
             if body:
-                store.add(body, at, time.time() - t0, "file", "", kind="file", title=path.name,
+                note = store.add(body, at, time.time() - t0, "file", "", kind="file", title=path.name,
                           segments=segments, source=str(path))
             print(f"file {path.name}: {at:.0f}s of audio -> {time.time() - t0:.0f}s, {len(segments)} parts")
+            if body and note and self.prefs["auto_speakers"] and at >= 20:
+                self.who_spoke(note)                     # by default: no click needed (founder, 15 Oct)
             self.done_state = "done" if body else "nothing"
         except Exception as e:                           # noqa: BLE001 - say so, keep the app alive
             print("file failed:", path, e)
@@ -980,13 +982,23 @@ class InditeApp(rumps.App):
             sys.path.insert(0, str(ROOT))
             from indite.core import load_audio
             meet = row.get("kind") == "meeting"
-            path = store.AUDIO / f"{row['id']}-others.wav" if meet else store.audio_of(row)
+            others = meet and row.get("others")              # the call's sound was captured: split only that track
+            path = (store.AUDIO / f"{row['id']}-{'others' if others else 'you'}.wav") if meet else store.audio_of(row)
             if not path or not Path(path).exists():
                 raise RuntimeError("the audio for this note is not on this Mac any more")
             audio, _ = load_audio(path)
             spans, n = speakers.turns(audio, k)
-            label = (lambda i: f"Person {i + 1}") if meet else (lambda i: f"Speaker {i + 1}")
-            segs = [s for s in row.get("segments", []) if meet and s.get("speaker") == "You"]
+            if n == 1 and not others:
+                # one voice: a file stays unlabelled; a mic-only meeting is just you
+                if meet:
+                    segs = [dict(s, speaker="You") for s in row.get("segments", [])]
+                    store.update(row["id"], segments=segs, speakers=1, speakers_guessed=k == 0,
+                                 text="\n".join(f"You: {s['text']}" for s in segs) or row["text"])
+                else:
+                    store.update(row["id"], speakers=1, speakers_guessed=k == 0)
+                return
+            label = (lambda i: f"Person {i + 1}") if others else (lambda i: f"Speaker {i + 1}")
+            segs = [s for s in row.get("segments", []) if others and s.get("speaker") == "You"]
             for a, b, who in spans:
                 at = a
                 # 0.4 s of lead-in: the cut is found in 0.75 s steps and can land just after a turn's first word

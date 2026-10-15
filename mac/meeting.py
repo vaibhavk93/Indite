@@ -149,8 +149,9 @@ class Meeting:
         self.save(live=False)
         if not self.segments:
             store.update(self.note, text="(nothing was heard)")
-        elif self.others_ok and any(x["speaker"] == "Others" for x in self.segments):
-            self.app.who_spoke(self.note)                       # split "Others" into Person 1, Person 2...
+        elif self.app.prefs.get("auto_speakers", True):
+            # by default: "Others" split into Person 1, 2...; a mic-only meeting split into Speaker 1, 2...
+            self.app.who_spoke(self.note)
 
 
 if __name__ == "__main__":       # the cutting rules: python mac/meeting.py

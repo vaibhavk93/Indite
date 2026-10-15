@@ -39,6 +39,7 @@ DEFAULTS = {
     "keep_audio": False,        # also keep each dictation's recording (about 0.3 MB for 10 s), for backups
     "backup_scope": "all",      # all · star · keep (starred + to-do)
     "backup_audio": False,      # include recordings and transcribed files in a backup
+    "auto_speakers": True,      # find who spoke in every file and meeting, without a click
     "digits": True,             # number words as digits: "chaar baje" -> "4 baje"
     "setup_done": False,
     "asked_screen": False,      # the Screen & System Audio Recording prompt was shown once        # the first-run setup was finished (Help → Run setup again)

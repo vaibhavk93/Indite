@@ -526,6 +526,11 @@
                 <button class="sw" id="set-digits" role="switch" aria-label="Numbers as digits"></button>
               </div>
               <div class="item">
+                <div class="body"><b>Find who spoke</b><p>In every meeting and file, automatically. Lines get Person 1,
+                  Person 2… which you can rename. One voice only: no labels.</p></div>
+                <button class="sw" id="set-auto_speakers" role="switch" aria-label="Find who spoke"></button>
+              </div>
+              <div class="item">
                 <div class="body"><b>Dictionary</b><p id="fixes-line"></p></div>
                 <button class="btn" id="goto-dict">Open Dictionary</button>
               </div>
@@ -810,6 +815,7 @@
     sw("#set-preview", "preview");
     sw("#set-ai", "ai");
     sw("#set-digits", "digits");
+    sw("#set-auto_speakers", "auto_speakers");
     sw("#set-keep_audio", "keep_audio");
     sw("#set-backup_audio", "backup_audio");
     seg("#set-backup_scope", { all: "All notes", star: "Starred", keep: "Starred + To do" }, S.prefs.backup_scope || "all",
