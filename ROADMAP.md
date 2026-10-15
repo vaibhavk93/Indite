@@ -51,7 +51,9 @@ Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr
 - **Native Mac app (15 Oct):** hold a key, speak, text typed in ~0.8 s; pill, history window, settings, mic fallback.
   Kept separate from Android (own model link and spelling list). Built 15 Oct: personal word fixes, Esc cancel, long holds
   cut at quiet points (60 s: 75% → 19% words wrong). Then: password guard, fix a word from history,
-  Transcribe a file (opens the web app). Plan and parity table: `docs/MAC_PLAN.md`. Later: snippets, hands-free. Dropped: undo-by-backspace, voice "press enter", command mode (no AI route)
+  Transcribe a file (opens the web app). Plan and parity table: `docs/MAC_PLAN.md`.
+  15 Oct evening: notes/stars/To do, files in-app, meetings (mic + system audio), who spoke, AI on notes, backup,
+  setup screen. Next: a shareable signed build. Later: snippets, hands-free. Dropped: undo-by-backspace, voice "press enter", command mode (no AI route)
 - Free local engine: whisper.cpp + Oriserve Hindi2Hinglish-Apex, 5-bit (~0.75 GB RAM, ~2.3x real time on an 8 GB M1); audio cut at
   pauses into ≤25 s pieces, only bad pieces re-run (loops 73 → 4; 56-min file 24.7 → 11.6 min). `local-best` = Prime model, slower.
 - Sarvam engine (paid, Roman output), works behind company HTTPS inspection

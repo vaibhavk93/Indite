@@ -38,7 +38,7 @@ The window shows a banner when the permission is missing.
 |---|---|
 | **Dictate anywhere** | Hold Right ⌥ (or Left ⌥ / Right ⌘ / Right ⌃), speak, let go |
 | **Where the words go** | *Smart*: typed into the text box; copied to the clipboard when there is none. Or always type / always copy |
-| **Hands-free** | Double-tap the key and let go; tap once to finish. Red dot in the pill. Stops itself after 15 min |
+| **Hands-free** | Tap the key twice (or three times; or pick another key in Settings) and let go; tap once to finish. Red dot in the pill. Stops itself after 15 min |
 | **Paste last** | ⌃⌘V types the last dictation again (password guard applies) |
 | **Sounds** | Tick on start, pop on stop; Settings → Sounds |
 | **Microphone** | Settings → Microphone: Automatic or a named mic; remembered by name, list refreshed on every press |
@@ -47,7 +47,14 @@ The window shows a banner when the permission is missing.
 | **Hinglish spelling** | Everyday words written one way (achha, kyunki, maine) from `mac/spelling.tsv` |
 | **Word fixes** | Pencil on any history row: "indite wrote / you meant" (shows how many past dictations hold the word). Or Settings → Word fixes → Edit… for the file: `ptm = Paytm`. Whole words, any capitals |
 | **Password boxes** | Never typed, copied or saved. The pill says "password box" |
-| **Files** | Home → Transcribe a file… (or the menu bar) opens the web app on 127.0.0.1:8000 for audio/video files, long recordings, editing and subtitles |
+| **Files** | Home → Transcribe a file… (or the menu bar): any audio/video file, transcribed inside the app with the loaded engine; Text and Subtitles (.srt) export |
+| **Meetings** | Home → Record a meeting: your mic ("You") + the Mac's sound ("Others", needs Screen & System Audio Recording), text at every pause, saved as it goes, both tracks kept as WAV. REC timer in the pill |
+| **Who spoke** | Files: "Who spoke?" (guess, or 2–5). Meetings: Others split into Person 1, 2… after stopping. Click a name to rename. 59/60 turns right on clear voices, 56/60 on similar ones |
+| **Notes** | Star (kept forever), ○ To do (its own page, Done ticks), delete with Undo, filters: All / Starred / Files / Meetings |
+| **AI on notes** | ✨: improve the wording (original kept), meeting notes, action items (→ To do in one click), summary, lecture notes, brain dump, rewrite in a style, translate, clean up. Your own `claude` login; asks once before text leaves the Mac |
+| **Accuracy passes** | Hinglish spelling (now also on words with punctuation), number words → digits next to baje/percent/rupaye, junk from sub-second taps dropped |
+| **Backup** | Settings → Backup: all / starred / starred + to-do, with or without audio; restore adds only what is missing |
+| **Setup** | First-run screen: Accessibility, microphone, key, try it. Help → Run setup again |
 | **The pill** | Small clear Liquid Glass pill with a two-tone border, above the Dock: voice bars while you hold, a wave of dots and a moving glint while writing, then "✓ typed in", "✓ copied", "nothing heard", "cancelled" or "didn't work". Never takes focus, never blocks a click |
 | **Microphone fallback** | If the default mic will not open (a Bluetooth headset that is off), tries the last one that worked, the built-in one, then any other |
 | **History** | Home: last 500 dictations by day, search (⌘F), one-click copy. Stats: words, words a minute, average wait |
@@ -72,13 +79,16 @@ sized to the audio (without it the engine pads to 30 s and takes 2.2 s).
 | Web app log | `~/Library/Logs/indite-web.log` |
 | Settings | `~/Library/Application Support/indite/prefs.json` |
 | Word fixes | `~/Library/Application Support/indite/my_fixes.txt` |
+| Audio (kept dictations, meetings) | `~/Library/Application Support/indite/audio/` |
 | Code | `indite_mac.py` (hotkey, mic, engine, typing) · `overlay.py` (pill) · `window.py` + `ui/app.html` (window) · `store.py` (files) |
 
 ## Checks
 
 ```sh
 .venv/bin/python mac/store.py                                   # word fixes
-.venv/bin/python tests/test_mac_handsfree.py                    # hold / tap / double-tap / Esc
+.venv/bin/python tests/test_mac_handsfree.py                    # hold / tap / double-tap / Esc / other key
+.venv/bin/python mac/digits.py ; .venv/bin/python mac/ai.py ; .venv/bin/python mac/meeting.py
+.venv/bin/python mac/speakers.py                                # who-spoke accuracy on the test dialogue
 .venv/bin/python -c "import sys; sys.path.insert(0,'tests'); import test_mac_pieces as t; \
   t.test_long_hold_is_cut_in_the_quiet_and_loses_nothing(); t.test_short_hold_is_untouched()"
 ```
@@ -88,3 +98,6 @@ sized to the audio (without it the engine pads to 30 s and takes 2.2 s).
 - Not shareable: `indite.app` runs Python and the model from this folder, so it works only on this Mac.
 - The engine takes a few seconds to load at startup; the menu bar shows 🎙… until it is ready.
 - Untested on real non-stop speech over 60 s and on a quiet speaker.
+- Meeting capture of the call's audio is untested with the Screen Recording permission actually granted.
+- Who spoke: the first word of a turn can be clipped where the audio is cut.
+- Credits: TitaNet-small speaker model © NVIDIA, CC BY 4.0; sherpa-onnx Apache 2.0; whisper.cpp MIT; Hinglish model Apache 2.0.

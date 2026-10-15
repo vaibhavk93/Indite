@@ -236,6 +236,12 @@ the old Desktop path working. All paths in the repo were relative, so nothing el
 - **Android + Wispr comparison and plan: `docs/MAC_PLAN.md`** (critic-reviewed). Built from it: password-box guard
   (subrole `AXSecureTextField`, every mode), fix a word from a history row, "Transcribe a file…" opening the web app,
   a Help line for Login Items. Waiting on the founder: hands-free, AI actions (see the PATH catch in the plan).
+- **15 Oct evening: phases 1–5 built** (MAC_PLAN §3 R1–R32): notes with stars, To do page, files transcribed in
+  the app, AI on notes via own `claude` (PATH fixed for Finder launches), improve-with-original, meeting recording
+  (mic + ScreenCaptureKit system audio, `mac/meeting.py`), who spoke (`mac/speakers.py`, sherpa-onnx + TitaNet; needs
+  the `sherpa-onnx-core` package or onnxruntime is missing), backup/restore, first-run setup, accuracy passes
+  (`mac/digits.py`; spelling punctuation bug). **Not yet checked in real use:** meeting audio with the permission
+  granted, full screen, drag strip, hands-free key/taps. **Next:** a shareable signed build (R20).
 - **Founder's requirement list R1–R24 is in `docs/MAC_PLAN.md` §3 and now drives the Mac app** (he overruled the
   earlier drops). Done: clear glass pill with border and writing animation, drag strip, hands-free, ⌃⌘V paste last,
   sounds, mic picker. Next phase: notes with stars, to-do mark and page, files transcribed inside the app. **Built vs planned is

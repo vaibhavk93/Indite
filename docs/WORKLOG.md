@@ -15,6 +15,7 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 - Built: your own word fixes (`my_fixes.txt`, menu item) and Esc-to-cancel. Founder says both work.
 - 60 s hold test: 75% words wrong at 62 s. Fixed by cutting long holds at quiet points: 19.0% at 62 s, 19.7% at 93 s.
 - Log was empty (buffered prints); launcher now `python -u`.
+- Evening: full screen (own Space), hands-free key + taps, transparency slider, notes/stars/To do, files in-app, AI (9 actions, improve keeps original), backup/restore, setup screen, meeting recording (mic + system audio), who spoke (59/60, 56/60), accuracy passes (clean 19.9% → 14.4%). All committed feature by feature.
 - Pill animation fixed (underline glitch, blurred tick, abrupt cuts); capture checked from the log; MAC_PLAN holds R1–R27 + all answers + built-vs-planned.
 - Founder's list R1–R24 (MAC_PLAN §3). Built: hands-free, ⌃⌘V, sounds, mic picker (old 'remember what worked' never saved), drag strip, clear glass pill + border + writing animation. Critic opinions on to-do, improve-with-original, assistant, meeting capture, install, Paytm.
 - Android vs Mac and Wispr Flow research → `docs/MAC_PLAN.md`; critic: "all Android features" is the wrong goal. Built password guard, fix-a-word from history, Transcribe a file (web app), Login Items help. `mac/README.md` rewritten (was stale).

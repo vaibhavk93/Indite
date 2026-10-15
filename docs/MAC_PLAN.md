@@ -93,46 +93,43 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R2 | Pill border, so it never merges with a same-coloured background | ✅ | Two-tone rim (dark outside, light inside) |
 | R3 | Animation while it is writing | ✅ | Dots in a wave + an orange glint sweeping under the word |
 | R4 | Drag the window (not in full screen) | 🧪 | Invisible strip along the top; double-click zooms |
-| R5 | Full screen "not working fine" | ❓ | Needs detail: the indite window in full screen, or the pill over another full-screen app? |
+| R5 | Full screen | 🧪 | Fixed: its own Space, no gaps (indite becomes a normal Dock app while the window is open) |
 | R6 | Password guard | ✅ | Founder checked it on emergent.com: works |
 | R7 | Hands-free: double-tap to lock | 🧪 | Tap to finish, Esc cancels, 15-min cap, red dot in the pill. 5 logic tests |
 | R8 | Paste-last shortcut | 🧪 | ⌃⌘V types the last dictation again |
 | R9 | Start sound | 🧪 | Tick on start, pop on stop; Settings → Sounds |
 | R10 | Mic picker | 🧪 | Settings → Microphone; remembered by name |
-| R11 | Transcribe files inside the app, not the web page | 🔨 | Possible without torch: decode with PyAV, then the Mac's own `pieces()` + engine |
-| R12 | Notes that are kept, with stars | 🔨 | History becomes notes: kept until deleted, starred ones protected |
-| R13 | Mark things as action items, and a separate section to see them | 🔨 | A "to do" mark on any note or line + a To do page with Done ticks (critic: keep it a mark, not a task manager) |
-| R14 | Meeting recording | 📋 | Mic (you) + system audio (them) as two tracks; text after each pause; needs Screen Recording permission |
-| R15 | Speakers ("who spoke") | 📋 | Two tracks give "me / them" for free; splitting "them" needs the phone's recipe (TitaNet: licence to verify) |
-| R16 | AI like the Android app (notes, action items, summary, rewrite, translate) | 📋 | Through your own `claude` login; launcher must set PATH. ⚠ text leaves the Mac — check Paytm policy |
-| R17 | "Improve my wording", original and improved both kept | 📋 | After the fact, a button per note; live clean-up only if a local model passes a 30-dictation Hinglish test |
-| R18 | Backup with options: starred or all, with or without audio | 📋 | Plus restore |
-| R19 | First-run setup screen | 📋 | Mic → Accessibility → mic test → key → try it (Wispr's order) |
+| R11 | Transcribe files inside the app, not the web page | ✅ | PyAV + the loaded engine; 230 s in ~30-50 s; Text and Subtitles export |
+| R12 | Notes that are kept, with stars | ✅ | Starred, to-do, file and meeting notes are never capped or cleared; delete has Undo |
+| R13 | Mark things as action items, and a separate section to see them | ✅ | ○ mark on any note, To do page (open, then done); AI action items → To do in one click |
+| R14 | Meeting recording | 🧪 | Mic (You) + system audio (Others) via ScreenCaptureKit, text at each pause, saved as it goes, both tracks kept. **Needs Screen & System Audio Recording permission** — untested with it granted |
+| R15 | Speakers ("who spoke") | ✅ | 59/60 turns on clear voices, 56/60 similar; files: Who spoke?; meetings: Others split automatically; rename. Known: first word of a turn can be clipped |
+| R16 | AI like the Android app | ✅ | ✨ on each note: 9 actions via your own `claude` login, asked once before text leaves the Mac |
+| R17 | "Improve my wording", original and improved both kept | ✅ | After the fact (~6 s); live clean-up still needs the local-model test |
+| R18 | Backup with options: starred or all, with or without audio | ✅ | Settings → Backup; restore adds only what is missing; optional per-dictation audio |
+| R19 | First-run setup screen | ✅ | Accessibility, mic, key, try it; Help → Run setup again |
 | R20 | Install on someone else's Mac (e.g. a boss) | 💬 not yet | Needs bundled Python + model, Developer ID ($99/yr), notarization |
 | R21 | Can Paytm commercialise it? | 💬 | Licences allow it; ownership, infosec and DPDP questions are Paytm's to answer |
 | R22 | Personal-assistant direction | 💬 later | Roadmap only, after the current apps are complete |
 | R25 | Check the pill animation ("typing / typed in / writing" looked off) | ✅ | The orange line under "writing" crossed the g and jumped; the shadow blurred "✓ typed in"; states cut in abruptly. Now: dots on the baseline, orange tick, no shadow, each word fades in and settles (0.2 s). Checked frame by frame on light and dark |
 | R26 | Is it capturing properly? | ✅ checked | Log of 15 Oct: 76 s → full text in 8.4 s, 58 s in 5.9 s, short ones ~1 s; password guard dropped 3. Misheard: "vishvash flow" (Wispr Flow), "Pace last" (paste last), "holder" (folder), "diary / Diairization" (diarization) — word fixes can take these |
 | R27 | Keep this whole list and every answer in one document | ✅ | This file |
+| R28 | Choose the hands-free key and the number of taps | 🧪 | Settings: same key or another; 2 or 3 taps |
+| R29 | Pill even more transparent | 🧪 | Glass and drawing separated; Settings → Pill transparency slider (default 45%) |
+| R30 | Find error patterns in real transcriptions and plan fixes | ✅ | ~⅓ of "19% wrong" was spelling or digits. Fixed: punctuation bug in the spelling list, numbers → digits, junk from short taps. Clean set 19.9% → 14.4%. Analysis: docs/research/mac_errors_2026-10-15.txt |
+| R31 | Show or hide the place where the written words appear | 🧪 | Settings → Show the words: a card above the pill for 4 s. ❓ Confirm this is what was meant |
+| R32 | Keep saving progress | rule | Commit after each feature; docs in the same session |
 | R23 | Finish the Mac and Android apps before new directions | rule | |
 | R24 | Think from first principles; do not just drop things | rule | |
 
-### What is built and what is only planned (honest status, 15 Oct 16:30)
+### What is built and what is only planned (honest status, 15 Oct 18:00)
 
-| Built and running in the app | Planned, not built yet |
-|---|---|
-| Clear glass pill, border, writing animation (R1–R3, R25) | Files transcribed inside the app (R11) |
-| Window drag strip (R4) | Notes kept forever, stars (R12) |
-| Password guard (R6) | To-do mark and page (R13) |
-| Hands-free double-tap (R7) | Meeting recording (R14) |
-| ⌃⌘V paste last (R8) | Speakers (R15) |
-| Sounds (R9) | AI actions, improve-with-original (R16, R17) |
-| Mic picker (R10) | Backup / restore, first-run setup (R18, R19) |
-| | Shareable signed build (R20) |
+| Built and running | Built, needs a real-world check | Not built yet |
+|---|---|---|
+| Pill (glass, border, animation), password guard, notes with stars, To do, files in the app, AI on notes, improve-with-original, speakers, backup/restore, setup screen, accuracy fixes | Drag strip, full screen, hands-free key/taps, paste last, sounds, mic picker, meeting recording with the call's audio, show-the-words card | Shareable signed build (R20); live clean-up while dictating (needs the local-model test); personal assistant (later) |
 
-**Build order (phases):** 1 · notes with stars, to-do mark and page, files inside the app → 2 · meeting recording
-(mic + system audio) → 3 · speakers → 4 · AI actions + improve-with-original → 5 · backup/restore + first-run
-setup → 6 · a shareable, signed build.
+**Build order:** phases 1–5 were built on 15 Oct (notes, files, meetings, speakers, AI, backup, setup). Next:
+phase 6, a shareable signed build — and the real-world checks in the middle column above.
 
 ## 4. The first plan (critic-reviewed, 15 Oct)
 
