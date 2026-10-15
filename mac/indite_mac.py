@@ -357,22 +357,26 @@ class InditeApp(rumps.App):
         except Exception as e:                            # noqa: BLE001 - whatever went wrong, say so and carry on
             self.title = "🎙"
             self.busy = False
-            rumps.notification("indite", "That didn't work", str(e)[:120])
+            self.done_state = "failed"
+            self.done_until = time.time() + 2.0
+            print("dictation failed:", e)
             return
         self.busy = False
         self.title = "🎙"
         if not text:
-            rumps.notification("indite", "Nothing heard", "Hold the key while you speak.")
+            self.done_state = "nothing"
+            self.done_until = time.time() + 1.2
             return
         self.last = text
+        # The pill says what happened. A notification was tried here and crashed the thread that had just produced
+        # the text (rumps needs a bundle identifier it could not find), so the words landed with nothing said.
         if focused_is_text():
             self.typer.type(text)
             self.done_state = "done"
         else:
             self.typer.copy(text)
             self.done_state = "copied"
-            rumps.notification("indite", "Copied", "No text box was focused, so it is on the clipboard.")
-        self.done_until = time.time() + 1.4
+        self.done_until = time.time() + 1.6
         print(f"{len(audio) / RATE:.1f}s of speech -> {time.time() - t0:.2f}s -> {text}")
 
     # ---- menu ----------------------------------------------------------------------------------------------

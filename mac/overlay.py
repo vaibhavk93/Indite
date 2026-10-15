@@ -70,7 +70,13 @@ class PillView(NSView):
         if self.state == "listening":
             self._draw_bars()
         else:
-            self._draw_word({"writing": "writing…", "done": "✓ typed in"}.get(self.state, "✓ copied"))
+            self._draw_word({
+                "writing": "writing…",
+                "done": "✓ typed in",
+                "copied": "✓ copied",
+                "nothing": "nothing heard",
+                "failed": "didn't work",
+            }.get(self.state, "✓ copied"))
 
     def _draw_bars(self) -> None:
         """Five bars, newest on the right, each eased toward the real level so a quiet moment looks quiet."""
