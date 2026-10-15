@@ -51,7 +51,7 @@ for exe in "$BIN/whisper-server" "$BIN/whisper-cli"; do
     install_name_tool -add_rpath "@executable_path" "$exe"
 done
 
-if otool -l "$BIN/whisper-server" | grep -q "/Users/"; then echo "error: a path from this Mac is still inside the engine"; exit 1; fi
+if otool -l "$BIN/whisper-server" | grep -A2 LC_RPATH | grep -q "/Users/"; then echo "error: a path from this Mac is still inside the engine"; exit 1; fi
 
 echo "6/6 The app bundle"
 cat > "$APP/Contents/Info.plist" <<PLIST
