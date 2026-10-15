@@ -386,3 +386,33 @@ all present. The error came from checking for new files instead of reading the o
 
 **Still open:** swear masking is stored rather than shown (breaks R5 — see HANDOFF §5). Slack and VS Code typing
 untested. The note-before-instructions change for all 13 AI actions is deliberately **not** done before the demo.
+
+## 16 Oct 2026 (early hours) · Mac: four bugs found by testing the whole app, demo cut built
+
+Full end-to-end run, 21 checks. First pass: 16 passed, 5 failed. Final: **21 of 21**.
+
+**Bugs found and fixed**
+1. **CoreAudio deadlock.** Four threads wedged in `FinishStoppingStream` → `std::recursive_mutex::lock()`. Dictation
+   worked once, then every press was dead: pill up, bars frozen, nothing written. `_drop()` now aborts instead of
+   stopping, closes on its own thread and abandons the stream after 1.5 s.
+2. **PortAudio left shut down** — caused by the first fix. The per-press device rescan is `Pa_Terminate` +
+   `Pa_Initialize`; when the terminate wedged and we moved on, it finished later with nothing to re-initialise, so
+   every open after that failed with "Error querying device -1". The rescan now runs only after every device has
+   failed to open, and `_alive()` restarts PortAudio before each use.
+3. **The consent dialog landed in `who_spoke()` as well as `ask_ai()`** (my edit, 15 Oct). Speaker detection is
+   entirely local, so it asked about a send that never happens — and crashed, since `NSAlert` is imported in
+   `ask_ai`. Every file transcribed fine and was then reported "file failed", with no speakers. Removed.
+4. **The app was breaking its own signature every run.** Python wrote `.pyc` files into the bundle (249 found), the
+   seal broke, and macOS dropped Accessibility mid-session — the log shows `allowed: True` → `not trusted` →
+   `allowed: False`. `PYTHONDONTWRITEBYTECODE=1`, bundle cleaned and re-signed, `build_app.sh` now verifies the seal
+   and refuses a build that does not hold, and `signature_broken()` warns at start-up.
+
+**Measured after:** 6 recordings back to back; 389 characters typed exactly in 0.32 s; 230 s two-speaker file → 31 s
+to transcribe, 58 s to find 2 voices; all 8 pages draw; signature still valid after a full run.
+
+**Demo:** `docs/DEMO_PLAN.md` (researched, critic-reviewed — it overturned 6 of its own 8 first recommendations).
+22 scenes → 8 beats, 6–8 min → 3:20, hero at second zero, Wi-Fi off on camera instead of a privacy sentence, live
+meeting recording cut because its permission is still unproven in a real call. `demo.py --short` built.
+Biggest finding: every sound in the current demo is synthetic, including the Hinglish spoken *into* the app.
+
+**Open:** the founder's narration, and whether to show a real error on camera. Signing certificate: after the demo.

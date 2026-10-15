@@ -125,6 +125,18 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+**Mac, 16 Oct ~02:00 — full end-to-end test: 21 of 21 pass.** App, engine, signature, both permissions, 3 live
+recordings through the real microphone, typing 389 characters into TextEdit exactly in 0.32 s, a 230 s two-speaker
+file transcribed and both voices found (58 labelled parts), and all 8 window pages drawing. Four real bugs were
+found and fixed getting there: the CoreAudio deadlock, PortAudio left shut down by a wedged rescan, the consent
+dialog pasted into `who_spoke()` (every file reported "file failed"), and the app breaking its own signature.
+The 3:20 demo cut is built (`python mac/demo.py --short`) to the beat sheet in `docs/DEMO_PLAN.md` §8.
+
+**Before recording:** close anything private (the screen is recorded whole), Do Not Disturb on, and decide the two
+open questions — whether the founder records the narration, and whether a real transcription error is shown on
+camera. The signing certificate is deliberately left until after the demo.
+
+
 **Mac, 16 Oct — ready for the leadership demo.** Fixed since the last entry: long dictation no longer crawls into
 text fields (~40x fewer key events, measured in TextEdit and a Chrome textarea, character-exact at 1,576 chars);
 word fixes no longer break contractions ("don't" stayed "Dawn't" with the fix `don = Dawn`); the demo script now
