@@ -8,6 +8,33 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import objc
+from Foundation import NSObject
+
+
+class _StreamWatch(NSObject):
+    """
+    Hears ScreenCaptureKit when it gives up.
+
+    Both the stream and the recording output take a delegate, and both were None, so a stream that stopped on its
+    own - the machine busy transcribing a file, in the one take we had - simply ended the video early and said
+    nothing. Whatever it reports now lands in the state file, where the runner and the log can see it.
+    """
+
+    def initWithSay_(self, say):                         # noqa: N802 - Objective-C naming
+        self = objc.super(_StreamWatch, self).init()
+        self._say = say
+        return self
+
+    def stream_didStopWithError_(self, stream, error) -> None:   # noqa: N802
+        self._say(f"error: the screen recording stopped early - {error}")
+
+    def recordingOutput_didFailWithError_(self, out, error) -> None:   # noqa: N802
+        self._say(f"error: writing the video failed - {error}")
+
+    def recordingOutputDidFinishRecording_(self, out) -> None:   # noqa: N802
+        self._say("stopped")
+
 
 class Recorder:
     def __init__(self, path: Path, rect: tuple[float, float, float, float], state: Path) -> None:
@@ -38,10 +65,13 @@ class Recorder:
             cfg.setHeight_(int(h * scale) // 2 * 2)
             cfg.setMinimumFrameInterval_(CM.CMTimeMake(1, 30))
             cfg.setShowsCursor_(True)
-            self.stream = SC.SCStream.alloc().initWithFilter_configuration_delegate_(filt, cfg, None)
+            # 16 Oct: a take ended at 52 s of a 116 s run with no message at all, because both delegates were None
+            # and ScreenCaptureKit reports a stream dying through them. Never record blind again.
+            self._delegate = _StreamWatch.alloc().initWithSay_(self._say)
+            self.stream = SC.SCStream.alloc().initWithFilter_configuration_delegate_(filt, cfg, self._delegate)
             rc = SC.SCRecordingOutputConfiguration.alloc().init()
             rc.setOutputURL_(NSURL.fileURLWithPath_(str(self.path)))
-            self.out = SC.SCRecordingOutput.alloc().initWithConfiguration_delegate_(rc, None)
+            self.out = SC.SCRecordingOutput.alloc().initWithConfiguration_delegate_(self._delegate, None)
             ok, e = self.stream.addRecordingOutput_error_(self.out, None)
             if not ok:
                 self._say(f"error: {e}")

@@ -607,7 +607,12 @@ def show_script() -> None:
         dst.setparams(src.getparams())
         dst.writeframes(src.readframes(75 * src.getframerate()))
 
+    state = store.DIR / "rec.state"
     for name, words in script_lines():
+        # A take that quietly stops recording halfway is worse than one that fails: you only find out afterwards.
+        if state.exists() and state.read_text().startswith("error"):
+            log("STOPPING -", state.read_text())
+            raise RuntimeError(state.read_text())
         before(name, call)
         if name.startswith("S"):
             dictate(name, words)
