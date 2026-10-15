@@ -395,8 +395,31 @@
             <button class="sw" id="set-keep_history" role="switch" aria-label="Keep a history"></button>
           </div>
           <div class="item">
+            <div class="body"><b>Keep the audio of each dictation</b><p>So a backup can carry it. About 0.3 MB for
+              10 seconds. Off: only the words are kept.</p></div>
+            <button class="sw" id="set-keep_audio" role="switch" aria-label="Keep audio"></button>
+          </div>
+          <div class="item">
             <div class="body"><b>Clear history</b><p id="count-line"></p></div>
             <button class="btn danger" id="clear">Clear…</button>
+          </div>
+        </div>
+      </div>
+      <div class="section"><h2>Backup</h2>
+        <div class="card">
+          <div class="item">
+            <div class="body"><b>What to back up</b><p id="bk-why"></p></div>
+            <div class="seg" id="set-backup_scope" role="radiogroup" aria-label="What to back up"></div>
+          </div>
+          <div class="item">
+            <div class="body"><b>Include audio</b><p>Kept recordings and the files you transcribed. Makes the
+              backup much bigger.</p></div>
+            <button class="sw" id="set-backup_audio" role="switch" aria-label="Include audio"></button>
+          </div>
+          <div class="item">
+            <div class="body"><b>Back up or restore</b><p>A single .zip you can keep anywhere. Restoring adds the notes
+              that are missing and never changes one that is already here.</p></div>
+            <button class="btn" id="restore">Restore…</button><button class="btn go" id="backup">Back up…</button>
           </div>
         </div>
       </div>
@@ -473,6 +496,8 @@
   });
   $("#edit-fixes").onclick = () => send({ action: "fixes" });
   $("#files").onclick = () => send({ action: "files" });
+  $("#backup").onclick = () => send({ action: "backup" });
+  $("#restore").onclick = () => send({ action: "restore" });
   let filter = "all";
 
   // A web view cannot show confirm() unless the app draws it - the old "Clear history" silently did nothing.
@@ -529,6 +554,13 @@
     sw("#set-sounds", "sounds");
     sw("#set-preview", "preview");
     sw("#set-ai", "ai");
+    sw("#set-keep_audio", "keep_audio");
+    sw("#set-backup_audio", "backup_audio");
+    seg("#set-backup_scope", { all: "All notes", star: "Starred", keep: "Starred + To do" }, S.prefs.backup_scope || "all",
+        v => send({ action: "pref", key: "backup_scope", value: v }));
+    const nb = S.history.filter(r => ({ all: true, star: !!r.star, keep: !!(r.star || r.todo) })[S.prefs.backup_scope || "all"]).length;
+    $("#bk-why").textContent = `${nb} note${nb === 1 ? "" : "s"} right now.`;
+    if (S.notice) { toast(S.notice); send({ action: "notice_seen" }); }
     const hk2 = $("#set-hf_key");
     hk2.innerHTML = `<option value="">Same as the talk key</option>` + Object.entries(S.hotkeys)
       .map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("");

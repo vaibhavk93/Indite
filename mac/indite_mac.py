@@ -451,6 +451,7 @@ class InditeApp(rumps.App):
         self.web_proc: subprocess.Popen | None = None
         self.ai_busy: dict = {}          # note id -> what the AI is doing for it
         self.ai_error = ""
+        self.notice = ""                 # one line for the window: backup done, restore result
         self.job: dict | None = None     # a file being transcribed: name, parts done, parts in all
         self.file_error = ""
         self.pill = Pill()
@@ -708,7 +709,14 @@ class InditeApp(rumps.App):
             self.done_state = "copied"
         self.done_until = time.time() + 1.6
         took = time.time() - t0
-        store.add(text, len(audio) / RATE, took, self.done_state, where)
+        note = store.add(text, len(audio) / RATE, took, self.done_state, where)
+        if note and self.prefs["keep_audio"]:            # off by default: a recording of everything said is a lot
+            store.AUDIO.mkdir(parents=True, exist_ok=True)
+            with wave.open(str(store.AUDIO / f"{note}.wav"), "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(RATE)
+                w.writeframes((np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes())
         self.refresh()                   # the list grows while it is open, so a dictation shows up as it lands
         if self.prefs["preview"]:
             self.preview.show(text)
@@ -840,6 +848,30 @@ class InditeApp(rumps.App):
         for t in ai.tasks(found["text"]) if found else []:
             store.add(t, 0, 0, "task", "", kind="task", todo="open", source=note_id)
         self.refresh()
+
+    def backup(self) -> None:
+        """Main thread: pick where, then write the zip with the scope and audio choice from Settings."""
+        from AppKit import NSSavePanel
+        panel = NSSavePanel.savePanel()
+        panel.setNameFieldStringValue_(time.strftime("indite backup %Y-%m-%d.zip"))
+        NSApp_activate()
+        if panel.runModal() == 1 and panel.URL():
+            n = store.backup(Path(str(panel.URL().path())), self.prefs["backup_scope"], self.prefs["backup_audio"])
+            self.notice = f"Backed up {n} note{'s' if n != 1 else ''}."
+            self.refresh()
+
+    def restore(self) -> None:
+        from AppKit import NSOpenPanel
+        panel = NSOpenPanel.openPanel()
+        panel.setPrompt_("Restore")
+        NSApp_activate()
+        if panel.runModal() == 1 and panel.URLs():
+            try:
+                n = store.restore_zip(Path(str(panel.URLs()[0].path())))
+                self.notice = f"Restored {n} note{'s' if n != 1 else ''}." if n else "Nothing new: every note in that backup is already here."
+            except Exception as e:                       # noqa: BLE001 - not a backup, damaged, or too new
+                self.notice = f"Could not restore: {e}"
+            self.refresh()
 
     def refresh(self) -> None:
         """Tell the window something changed. WKWebView must be touched on the main thread only."""

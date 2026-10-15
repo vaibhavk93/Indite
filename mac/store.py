@@ -34,6 +34,9 @@ DEFAULTS = {
     "pill_glass": 0.45,         # how much frosted glass the pill shows: 0 = clear, 1 = Apple's default
     "ai": True,                 # show the AI button on notes (answers come from your own Claude login)
     "ai_ok": False,             # you said yes to text leaving the Mac for AI answers (asked once)
+    "keep_audio": False,        # also keep each dictation's recording (about 0.3 MB for 10 s), for backups
+    "backup_scope": "all",      # all · star · keep (starred + to-do)
+    "backup_audio": False,      # include recordings and transcribed files in a backup
     "preview": False,           # show what was written in a small card above the pill for a few seconds
 }
 
@@ -135,6 +138,68 @@ def clear() -> int:
     return len(rows) - len(kept)
 
 
+# ---- backup and restore ----------------------------------------------------------------------------------------
+# One zip: notes.jsonl, manifest.json (format version, when, what was chosen), audio/ when asked for. Restore adds
+# notes that are not already here and never overwrites one that is, so restoring twice changes nothing.
+AUDIO = DIR / "audio"
+FORMAT = 1
+SCOPES = {"all": "every note", "star": "starred notes", "keep": "starred notes and to-dos"}
+
+
+def audio_of(row: dict) -> Path | None:
+    """The sound behind a note: a kept dictation recording, or the file a note was transcribed from."""
+    own = AUDIO / f"{row['id']}.wav"
+    if own.exists():
+        return own
+    src = Path(row.get("source", "")) if row.get("kind") == "file" else None
+    return src if src and src.is_file() else None
+
+
+def backup(path: Path, scope: str = "all", with_audio: bool = False) -> int:
+    import zipfile
+    rows = [r for r in _read() if scope == "all" or (scope == "star" and r.get("star"))
+            or (scope == "keep" and (r.get("star") or r.get("todo")))]
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("manifest.json", json.dumps({"app": "indite-mac", "format": FORMAT, "made": time.time(),
+                                                "scope": scope, "audio": with_audio, "notes": len(rows)}))
+        out = []
+        for r in rows:
+            r = dict(r)
+            a = audio_of(r) if with_audio else None
+            if a:
+                r["backup_audio"] = f"audio/{r['id']}{a.suffix}"
+                z.write(a, r["backup_audio"])
+            out.append(r)
+        z.writestr("notes.jsonl", "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in out))
+    return len(rows)
+
+
+def restore_zip(path: Path) -> int:
+    """Returns how many notes were added. Refuses a backup from a newer indite rather than half-reading it."""
+    import zipfile
+    with zipfile.ZipFile(path) as z:
+        meta = json.loads(z.read("manifest.json"))
+        if meta.get("format", 0) > FORMAT:
+            raise ValueError("This backup was made by a newer indite. Update indite, then restore it.")
+        have = {r["id"] for r in _read()}
+        new = []
+        for line in z.read("notes.jsonl").decode("utf-8").splitlines():
+            r = json.loads(line)
+            if r["id"] in have:
+                continue
+            if r.get("backup_audio") and r["backup_audio"] in z.namelist():
+                AUDIO.mkdir(parents=True, exist_ok=True)
+                dest = AUDIO / f"{r['id']}{Path(r['backup_audio']).suffix}"
+                dest.write_bytes(z.read(r["backup_audio"]))
+                if r.get("kind") == "file":
+                    r["source"] = str(dest)          # the original file may not exist on this Mac
+            r.pop("backup_audio", None)
+            new.append(r)
+    if new:
+        _write(sorted(_read() + new, key=lambda r: r.get("at", 0)))
+    return len(new)
+
+
 # ---- your own word fixes ---------------------------------------------------------------------------------------
 # One per line, "what it writes = what you want". Read on every dictation, so a saved edit works on the next one.
 # "=" and not a tab, because the person editing this is in TextEdit, where a tab and spaces look the same.
@@ -206,4 +271,11 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert [r["text"] for r in history()] == ["two", "one"] and history()[1]["star"]
     gone = delete(a); assert len(history()) == 1; restore(gone); assert len(history()) == 2
     update(a, star=None); assert clear() == 1 and [r["text"] for r in history()] == ["two"]   # file note kept
+    c = add("three", 1, 1, "done", ""); update(c, star=True)
+    AUDIO = DIR / "audio"; AUDIO.mkdir(); (AUDIO / f"{c}.wav").write_bytes(b"RIFF")
+    z = DIR / "b.zip"
+    assert backup(z, "star", with_audio=True) == 1
+    assert restore_zip(z) == 0                                # already here: nothing added, nothing changed
+    delete(c); (AUDIO / f"{c}.wav").unlink()
+    assert restore_zip(z) == 1 and (AUDIO / f"{c}.wav").read_bytes() == b"RIFF" and history()[0]["star"]
     print("ok")

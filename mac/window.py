@@ -76,6 +76,7 @@ class Bridge(NSObject):
             "using": self.app.mic.using,
             "job": self.app.job,
             "ai_busy": self.app.ai_busy,
+            "notice": self.app.notice,
             "ai_error": self.app.ai_error,
             "ai_actions": {k: v[:3] for k, v in __import__("ai").ACTIONS.items()},
             "ai_styles": __import__("ai").STYLES,
@@ -121,6 +122,12 @@ class Bridge(NSObject):
         elif act == "dismiss":
             self.app.file_error = ""
             self.app.ai_error = ""
+        elif act == "backup":
+            self.app.backup()
+        elif act == "restore":
+            self.app.restore()
+        elif act == "notice_seen":
+            self.app.notice = ""
         elif act == "ai":
             self.app.ask_ai(str(msg.get("id", "")), str(msg.get("act", "")), str(msg.get("extra", "")))
         elif act == "tasks":
