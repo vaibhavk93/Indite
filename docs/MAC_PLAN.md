@@ -111,8 +111,24 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R20 | Install on someone else's Mac (e.g. a boss) | 💬 not yet | Needs bundled Python + model, Developer ID ($99/yr), notarization |
 | R21 | Can Paytm commercialise it? | 💬 | Licences allow it; ownership, infosec and DPDP questions are Paytm's to answer |
 | R22 | Personal-assistant direction | 💬 later | Roadmap only, after the current apps are complete |
+| R25 | Check the pill animation ("typing / typed in / writing" looked off) | ✅ | The orange line under "writing" crossed the g and jumped; the shadow blurred "✓ typed in"; states cut in abruptly. Now: dots on the baseline, orange tick, no shadow, each word fades in and settles (0.2 s). Checked frame by frame on light and dark |
+| R26 | Is it capturing properly? | ✅ checked | Log of 15 Oct: 76 s → full text in 8.4 s, 58 s in 5.9 s, short ones ~1 s; password guard dropped 3. Misheard: "vishvash flow" (Wispr Flow), "Pace last" (paste last), "holder" (folder), "diary / Diairization" (diarization) — word fixes can take these |
+| R27 | Keep this whole list and every answer in one document | ✅ | This file |
 | R23 | Finish the Mac and Android apps before new directions | rule | |
 | R24 | Think from first principles; do not just drop things | rule | |
+
+### What is built and what is only planned (honest status, 15 Oct 16:30)
+
+| Built and running in the app | Planned, not built yet |
+|---|---|
+| Clear glass pill, border, writing animation (R1–R3, R25) | Files transcribed inside the app (R11) |
+| Window drag strip (R4) | Notes kept forever, stars (R12) |
+| Password guard (R6) | To-do mark and page (R13) |
+| Hands-free double-tap (R7) | Meeting recording (R14) |
+| ⌃⌘V paste last (R8) | Speakers (R15) |
+| Sounds (R9) | AI actions, improve-with-original (R16, R17) |
+| Mic picker (R10) | Backup / restore, first-run setup (R18, R19) |
+| | Shareable signed build (R20) |
 
 **Build order (phases):** 1 · notes with stars, to-do mark and page, files inside the app → 2 · meeting recording
 (mic + system audio) → 3 · speakers → 4 · AI actions + improve-with-original → 5 · backup/restore + first-run
@@ -147,3 +163,55 @@ spoken punctuation (unproven with Hinglish).
 
 **Open questions for the founder:** what do you actually miss from Wispr? Do you speak for over a minute at once?
 Do you transcribe files on the Mac? Would you use rewrite/translate on short dictations, given the wait and quota?
+
+---
+
+## 5. Answers and opinions (15 Oct, critic-reviewed)
+
+### Meeting recording: what Android does, what the Mac needs
+Android records a long conversation, turns each piece into text at every pause (the text grows during the meeting),
+saves it as a note with the audio, and can label each sentence with a speaker. On a Mac in an online call, the
+other people come out of the headphones, not into the mic, so a mic-only recording hears only you.
+
+| Option | Gain | Cost |
+|---|---|---|
+| Mic only | No new permission | With headphones, everyone else is lost |
+| **★ Mic + system audio** (ScreenCaptureKit, or a Core Audio tap on macOS 14.2+) | Hears everyone; two tracks give "me / them" for free | Screen Recording permission; macOS 15 asks again monthly; without headphones, others are heard twice |
+| BlackHole driver | Works on older macOS | Install a driver, volume keys stop working; GPL, cannot be bundled |
+
+⚠ Tell people they are being recorded; check Paytm's rules on recording calls.
+
+### To-do / action items section
+Build it small: a "to do" mark on any note or line, a **To do** page listing them with a Done tick. No due dates or
+reminders on the Mac (the roadmap rules out becoming a to-do app). Same field name as Android (`todo: open|done`) so
+a backup can carry it, no shared code. Unproven: whether the list gets cleared or turns into clutter.
+
+### Improve my wording, original kept
+A button per note, after the fact: one AI call, the improved version saved beside the original, which is never
+overwritten. Not live: the only AI route (your own `claude` login) takes seconds and uses plan quota. Wispr removed
+its strongest clean-up after users said it rewrote their meaning; with ~19% words wrong, a polished version can hide
+the errors, which is why the original stays. Live clean-up with a small model on the Mac (~1 s) is **unproven for
+Roman Hinglish**: test on 30 real dictations first. ⚠ AI sends the text off the Mac — check Paytm policy if the
+login or the content is Paytm's.
+
+### Personal assistant (later, roadmap only)
+Concretely: search your own notes, "what did I promise X?", a daily brief, and acting on what you say — e.g. "Slack
+par Vaibhav ko message daalna ki woh ho gaya kya" (founder's example, 15 Oct: draft the message, improve it, send it
+after you confirm). First must be true: fewer wrong words (a brief on 19% errors cannot be trusted), notes kept
+long-term (phase 1), speaker names (phase 3), an approved AI route. Cheapest first step: offline search across notes.
+Cost to weigh: it means keeping everything you say.
+
+### Can someone else (a boss) install it? Not yet
+It runs Python and the model from this folder. Needed: Python bundled into the app (py2app or PyInstaller), the
+574 MB model inside or downloaded on first run, an Apple Developer ID ($99/yr), every library signed and the app
+notarized. Without it macOS blocks the app. ⚠ A Paytm-managed Mac may block an app with keyboard, mic and screen
+permissions (it looks like a keylogger): expect an infosec review.
+
+### Can Paytm commercialise it? (not legal advice)
+Licences allow it: the Hinglish model (Apache 2.0), whisper.cpp (MIT), most libraries MIT/BSD; pynput is LGPL (fine
+unmodified, ship its licence); **TitaNet (speakers) has no licence noted in the repo — verify** (NVIDIA models are
+usually CC-BY-4.0, credit needed). The bigger questions are Paytm's: who owns a side project built by an employee
+(contracts often give the employer work related to its business or made on its equipment/accounts); the public repo
+with no LICENSE; DPDP notice and consent if AI features send personal data out; an infosec review. Ask Paytm
+HR/Legal first.
+

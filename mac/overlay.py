@@ -12,6 +12,7 @@ Three rules it must obey, and all three are easy to get wrong:
 from __future__ import annotations
 
 import math
+import time
 
 import AppKit
 import objc
@@ -58,6 +59,7 @@ class PillView(NSView):
         self.phase = 0.0                # for the writing animation
         self.bars = [0.12] * 5
         self.shown = [0.12] * 5      # what is drawn: eased toward `bars`, so the bars breathe rather than flicker
+        self.since = 0.0                # when the current state began, for the fade-in
         self.locked = False             # hands-free: a small dot on the left says "you can let go"
         self.liquid = False             # True on macOS 26+, where the pill sits in real Liquid Glass
         return self
@@ -141,60 +143,54 @@ class PillView(NSView):
                 NSMakeRect(x, (H - h) / 2, bw, h), bw / 2, bw / 2).fill()
             x += bw + gap
 
+    def _enter(self) -> float:
+        """0 -> 1 over the first 0.2 s of a state, so each new word fades in and settles instead of cutting in."""
+        return min(1.0, (time.time() - self.since) / 0.2)
+
+    def _attrs(self, alpha: float = 1.0) -> dict:
+        colour = NSColor.labelColor() if self.liquid else NSColor.colorWithCalibratedWhite_alpha_(0.92, 1.0)
+        return {NSFontAttributeName: NSFont.systemFontOfSize_weight_(11.5, NSFontWeightMedium),
+                NSForegroundColorAttributeName: colour.colorWithAlphaComponent_(alpha)}
+
     def _draw_writing(self) -> None:
         """
-        "writing" followed by three dots in a travelling wave, and a soft orange glint sweeping under the word, so a
-        slow sentence reads as work in progress and never as a frozen app.
+        "writing" and three dots that light up one after another, sitting on the text's baseline. No underline or
+        glint: drawn under a word with a descender it read as a glitch (founder, 15 Oct).
         """
-        attrs = self._attrs()
+        a = self._enter()
+        attrs = self._attrs(a)
         s = NSString.stringWithString_("writing")
         size = s.sizeWithAttributes_(attrs)
-        dots_w = 3 * 3.0 + 2 * 3.0
-        x = (W - size.width - 4 - dots_w) / 2
-        y = (H - size.height) / 2
+        font = attrs[NSFontAttributeName]
+        dot, gap = 3.2, 3.0
+        x = (W - (size.width + 5 + 3 * dot + 2 * gap)) / 2
+        y = (H - size.height) / 2 - (1 - a) * 3
         s.drawAtPoint_withAttributes_((x, y), attrs)
         r, g, b = ACCENT
+        base = y - font.descender()                                  # the baseline, where the dots sit
         for i in range(3):
-            wave = math.sin(self.phase - i * 0.9)                   # each dot a beat behind the one before
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.45 + 0.55 * max(0.0, wave)).set()
-            cx = x + size.width + 4 + i * 6.0
-            cy = H / 2 - 3 + max(0.0, wave) * 2.5
-            NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(cx, cy, 3.0, 3.0)).fill()
-        sweep = (self.phase % (2 * math.pi)) / (2 * math.pi)        # 0..1, left to right under the word
-        gx = x - 6 + sweep * (size.width + dots_w + 16)
-        NSGradient.alloc().initWithColors_([                         # evenly spaced: clear, orange, clear
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.0),
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.85),
-            NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 0.0),
-        ]).drawInRect_angle_(NSMakeRect(gx - 10, y - 2, 20, 1.5), 0)
-
-    def _attrs(self) -> dict:
-        if self.liquid:
-            colour = NSColor.labelColor()
-        else:
-            colour = NSColor.colorWithCalibratedWhite_alpha_(0.92, 1.0)
-        return {NSFontAttributeName: NSFont.systemFontOfSize_weight_(11.5, NSFontWeightMedium),
-                NSForegroundColorAttributeName: colour}
+            wave = max(0.0, math.sin(self.phase - i * 1.1))          # each dot a beat behind the one before
+            NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, a * (0.3 + 0.7 * wave)).set()
+            cx = x + size.width + 5 + i * (dot + gap)
+            NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(cx, base + wave * 1.5, dot, dot)).fill()
 
     def _draw_word(self, word: str) -> None:
+        """A state word. A leading tick is drawn in orange, the rest in the system text colour - no shadow, it blurred."""
+        a = self._enter()
+        attrs = self._attrs(a)
+        tick = word.startswith("✓ ")
+        rest = NSString.stringWithString_(word[2:] if tick else word)
+        size = rest.sizeWithAttributes_(attrs)
         r, g, b = ACCENT
-        if self.liquid:                 # clear glass can sit on white or black: the system label colour adapts
-            colour = NSColor.labelColor()
-            shadow = AppKit.NSShadow.alloc().init()
-            shadow.setShadowBlurRadius_(3.0)
-            shadow.setShadowOffset_((0, -0.5))
-            shadow.setShadowColor_(NSColor.colorWithCalibratedWhite_alpha_(0.5, 0.35))
-            shadow.set()
-        else:
-            colour = (NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, 1.0) if self.state != "writing"
-                      else NSColor.colorWithCalibratedWhite_alpha_(0.92, 1.0))
-        attrs = {
-            NSFontAttributeName: NSFont.systemFontOfSize_weight_(11.5, NSFontWeightMedium),
-            NSForegroundColorAttributeName: colour,
-        }
-        s = NSString.stringWithString_(word)
-        size = s.sizeWithAttributes_(attrs)
-        s.drawAtPoint_withAttributes_(((W - size.width) / 2, (H - size.height) / 2), attrs)
+        tick_attrs = {NSFontAttributeName: NSFont.systemFontOfSize_weight_(12.0, AppKit.NSFontWeightBold),
+                      NSForegroundColorAttributeName: NSColor.colorWithCalibratedRed_green_blue_alpha_(r, g, b, a)}
+        t = NSString.stringWithString_("✓ ")
+        tw = t.sizeWithAttributes_(tick_attrs).width if tick else 0.0
+        x = (W - size.width - tw) / 2
+        y = (H - size.height) / 2 - (1 - a) * 3
+        if tick:
+            t.drawAtPoint_withAttributes_((x, y), tick_attrs)
+        rest.drawAtPoint_withAttributes_((x + tw, y), attrs)
 
 
 class Pill:
@@ -248,6 +244,8 @@ class Pill:
         self.visible = False
 
     def show(self, state: str) -> None:
+        if state != self.view.state:
+            self.view.since = time.time()
         self.view.state = state
         if not self.visible:
             self.panel.orderFrontRegardless()         # front, but never focused
