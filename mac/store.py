@@ -247,7 +247,11 @@ def parse_fixes(raw: str) -> list[tuple[str, str]]:
 def apply_my_fixes(text: str, pairs: list[tuple[str, str]]) -> str:
     for heard, want in pairs:
         words = r"\s+".join(re.escape(w) for w in heard.split())
-        text = re.sub(rf"(?<!\w){words}(?!\w)", lambda _m, w=want: w, text, flags=re.IGNORECASE)
+        # An apostrophe does not end a word: with the fix "don = Dawn", "don't go" became "Dawn't go" (15 Oct).
+        # So a match must not sit either side of one - "don't", "it's", "y'all" are left alone. The cost: a
+        # possessive is left alone too ("ptm's app" stays). Deliberate - a missed fix reads fine, "Dawn't" does not.
+        text = re.sub(rf"(?<!\w)(?<!['’]){words}(?!\w)(?!['’]\w)",
+                      lambda _m, w=want: w, text, flags=re.IGNORECASE)
     return text
 
 
@@ -297,6 +301,8 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     pairs = parse_fixes(FIXES_HEADER + "ptm = Paytm\npay tm = Paytm\n  c++  = C++\nbroken line\n= nothing\n")
     assert pairs == [("pay tm", "Paytm"), ("ptm", "Paytm"), ("c++", "C++")], pairs
     assert apply_my_fixes("PTM se pay  tm karo", pairs) == "Paytm se Paytm karo"
+    assert apply_my_fixes("don't go", [("don", "Dawn")]) == "don't go"      # an apostrophe does not end a word
+    assert apply_my_fixes("don ko bulao", [("don", "Dawn")]) == "Dawn ko bulao"
     assert apply_my_fixes("aptm wala", pairs) == "aptm wala"          # inside a word: left alone
     assert apply_my_fixes("c++ seekho", pairs) == "C++ seekho"
     assert apply_my_fixes("addr1", [("addr1", r"12 \1 Road")]) == r"12 \1 Road"   # replacement taken literally
