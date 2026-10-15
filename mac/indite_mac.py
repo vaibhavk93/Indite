@@ -954,7 +954,9 @@ class InditeApp(rumps.App):
             segs = [s for s in row.get("segments", []) if meet and s.get("speaker") == "You"]
             for a, b, who in spans:
                 at = a
-                for p in pieces(audio[int(a * RATE):int(b * RATE)]):
+                # 0.4 s of lead-in: the cut is found in 0.75 s steps and can land just after a turn's first word
+                # (measured: "CleverTap wala" lost its first word without it; no repeated words with it)
+                for p in pieces(audio[int(max(0.0, a - 0.4) * RATE):int(b * RATE)]):
                     text = self.tidy(self.engine.transcribe(p)) if float(np.sqrt(np.mean(p ** 2))) > 0.004 else ""
                     if text:
                         segs.append({"start": round(at, 2), "end": round(at + len(p) / RATE, 2),

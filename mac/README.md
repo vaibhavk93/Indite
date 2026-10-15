@@ -99,5 +99,4 @@ sized to the audio (without it the engine pads to 30 s and takes 2.2 s).
 - The engine takes a few seconds to load at startup; the menu bar shows 🎙… until it is ready.
 - Untested on real non-stop speech over 60 s and on a quiet speaker.
 - Meeting capture of the call's audio is untested with the Screen Recording permission actually granted.
-- Who spoke: the first word of a turn can be clipped where the audio is cut.
 - Credits: TitaNet-small speaker model © NVIDIA, CC BY 4.0; sherpa-onnx Apache 2.0; whisper.cpp MIT; Hinglish model Apache 2.0.

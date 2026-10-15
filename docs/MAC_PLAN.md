@@ -103,7 +103,7 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R12 | Notes that are kept, with stars | ✅ | Starred, to-do, file and meeting notes are never capped or cleared; delete has Undo |
 | R13 | Mark things as action items, and a separate section to see them | ✅ | ○ mark on any note, To do page (open, then done); AI action items → To do in one click |
 | R14 | Meeting recording | 🧪 | Mic (You) + system audio (Others) via ScreenCaptureKit, text at each pause, saved as it goes, both tracks kept. **Needs Screen & System Audio Recording permission** — untested with it granted |
-| R15 | Speakers ("who spoke") | ✅ | 59/60 turns on clear voices, 56/60 similar; files: Who spoke?; meetings: Others split automatically; rename. Known: first word of a turn can be clipped |
+| R15 | Speakers ("who spoke") | ✅ | 59/60 turns on clear voices, 56/60 similar; files: Who spoke?; meetings: Others split automatically; rename. Each turn starts 0.4 s early so its first word is not clipped |
 | R16 | AI like the Android app | ✅ | ✨ on each note: 9 actions via your own `claude` login, asked once before text leaves the Mac |
 | R17 | "Improve my wording", original and improved both kept | ✅ | After the fact (~6 s); live clean-up still needs the local-model test |
 | R18 | Backup with options: starred or all, with or without audio | ✅ | Settings → Backup; restore adds only what is missing; optional per-dictation audio |
