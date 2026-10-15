@@ -459,3 +459,13 @@ is a git commit.
 | 226 | **Does Rewrite cover the usual cases?** | — | 15 Oct | ✅ | It didn't: added Friendly, Slack/Teams, LinkedIn post, Follow-up, Request (13 total); 3 more languages (13) |
 | 227 | **AI review of a recording: find transcription mistakes, fix them, learn; insights; regional personalisation** | Add to the roadmap | 15 Oct | 🔬 | Planned (`docs/ROADMAP_DETAIL.md` C1-C7, ROADMAP "Now" 7): offline near-miss check first, then AI review with guards |
 | 228 | **Roadmap in simple tables + Wispr Flow comparison** | Use the earlier Wispr screenshot analysis + web research | 15 Oct | ✅ | `docs/ROADMAP_DETAIL.md` sections A and B (sources dated) |
+| 229 | **AI usage in Insights** | — | 15 Oct | 🧪 | Small card: answers, notes, top 3 actions, "See the notes with AI →" (new "With AI" filter). Critic trimmed weekly counts (no dates on improved wording) |
+| 230 | **Make a structured prompt from what I said** | Best prompt-engineering practice | 15 Oct | 🧪 | Ask AI → "For another AI" → Make it a prompt (Role, Context, Task, Constraints, Output format; English; [fill in] for gaps). Critic dropped a separate "shorten" (Summary covers it). Android copy not yet |
+| 231 | **Golden border on the AI chip, click to see what AI made** | — | 15 Oct | 🧪 | Gold edge + icon, no fill or glow (critic preferred icon only; your call kept). "AI is writing…" stays neutral |
+| 232 | **Ask AI must not stay open on other pages** | — | 15 Oct | 🧪 | Closes when you switch pages |
+| 233 | **Pill disappears after minimise/maximise** | — | 15 Oct | 🧪 | Cause: the pill trusted its own "showing" flag after macOS hid it. Now asks the window; also can't be hidden with the app. Tested with indite hidden |
+| 234 | **How do I back up the Android signing key?** | — | 15 Oct | ✅ | Steps given (copy to 2 places + checksum check). Still your 5-minute task |
+| 235 | **₹15k phone test last; AI review steps 1-2 first** | — | 15 Oct | ✅ | ROADMAP and ROADMAP_DETAIL reordered |
+| 236 | **Hide swear words** | — | 15 Oct | 🧪 | Settings → Writing, off by default, ~40 clear-cut words (everyday words like "saala" left out). The saved note keeps the stars |
+| 237 | **Warn before sending meetings to AI (others' voices, training)** | — | 15 Oct | 🧪 | Asks every time for meetings and files; "Don't ask again" box |
+| 238 | **How Wispr builds each feature; our best 2 options; challenges; more languages** | Research | 15 Oct | 🔬 | Research running |

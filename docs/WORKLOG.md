@@ -27,6 +27,8 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
   one-click Rewrite/Translate chips, loading + ready/failed message, calm styling app-wide). Summary scales with the
   note; API limits raised (300 s, 4000 tokens; long meetings untested).
 - Roadmap research (web + MAC_PLAN §6) critic-reviewed -> `docs/ROADMAP_DETAIL.md`; ROADMAP "Now" 6-7 updated.
+- Round 4: pill-after-hide bug fixed (tested with indite hidden); Ask AI closes on page switch; AI usage in Insights +
+  "With AI" filter; gold AI chip; "Make it a prompt"; meeting/file → AI warning; optional swear masking (critic-reviewed).
 
 ## 2026-10-15 (night) · Claude Code (Opus 5.5) · Mac: UX restructure, AI providers, shareable build
 

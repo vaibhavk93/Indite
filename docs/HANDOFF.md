@@ -125,6 +125,10 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+**Mac, 15 Oct 23:30 — Ask AI rebuilt three times on founder feedback (latest: answers as documents, options on a
+sunken surface, one-click Rewrite/Translate, "Make it a prompt", gold AI chip, AI in Insights). Pill-after-hide bug
+fixed. Next: founder looks, restarts the Mac, demo video. Plans: `docs/ROADMAP_DETAIL.md` (AI review first).**
+
 **Mac, 15 Oct 21:55 — key access and Screen Recording both work now.** Hotkey dictation tested by the founder.
 The blocker was a silent crash, not the permission (see "The Mac app now" below). Item 1 in the list below is
 resolved. Next: restart the Mac (a frozen indite copy holds Dock clicks), then record the demo video.
