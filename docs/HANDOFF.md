@@ -217,6 +217,11 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
   `listen()` restarts the listener on a "tap disabled" event. Keep anything slow out of `on_press`/`on_release`.
 - **Ad-hoc signing + rebuilds can drop a privacy permission**: after `build_app.sh`, check the log line
   "screen & system audio recording allowed". If False: remove indite from that list (−), add `dist/indite.app` (+).
+- **Your app now carries its own Python** (`build_app.sh` copies the interpreter into the bundle). Reason: macOS
+  checked Screen & System Audio Recording against the interpreter *outside* the app, so the switch for indite
+  never applied. After this one change Accessibility and Screen Recording must be granted again, once.
+- **Ask AI is a side panel** (`openDrawer` in `ui/app.html`): answers first, then actions; new "Ask anything" action
+  (`custom` in `ai.py`). The note list shows only "AI · n answers".
 - Logo: `mac/brand/logo.svg` (five voice bars, the middle one is the letter i) → `indite.icns` in both builds.
 - **Demo video** (`mac/demo.py`, `mac/recorder.py`, `mac/demo_make.py`): runs against a demo profile
   (`open --env INDITE_DATA=<folder> dist/indite.app`), started by writing `run:<out_dir>` into that folder's

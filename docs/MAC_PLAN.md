@@ -177,7 +177,10 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R43 | Sidebar: drop “Ready · works offline”; Settings and Help at the bottom | ✅ | |
 | R44 | A logo | ✅ | `mac/brand/logo.svg`, app icon |
 | R45 | Shortcuts / pill dead after a settings change | ✅ | Listener switched off by macOS; now restarted and kept fast |
-| R41 | A real run-time demo video with voice-over, made alone | ⏳ | Built and run twice: hotkeys, typing, hands-free, AI, file + speakers all worked live. **Blocked:** Screen & System Audio Recording is not granted to indite |
+| R46 | Ask AI: less clutter, focused, separated | ✅ | Side panel per note; answers first; Ask anything |
+| R47 | Which app needs key access | 💬 | indite (Accessibility, Microphone, Screen & System Audio Recording) |
+| R48 | Is the logo original | 💬 | Drawn here from basic shapes; the voice-bar motif is common - search before trademarking |
+| R41 | A real run-time demo video with voice-over, made alone | ⏳ | Built and run twice: hotkeys, typing, hands-free, AI, file + speakers all worked live. Full screen, more features live, short tour at the end. **Waiting:** the founder re-grants Accessibility and Screen Recording (the app now has its own Python) |
 | R32 | Keep saving progress | rule | Commit after each feature; docs in the same session |
 | R23 | Finish the Mac and Android apps before new directions | rule | |
 | R24 | Think from first principles; do not just drop things | rule | |
