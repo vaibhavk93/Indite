@@ -87,6 +87,26 @@ def ask_to_listen() -> None:
         pass
 
 
+def mic_allowed() -> bool | None:
+    """True, False, or None when macOS will not say (an old system, or the framework is absent)."""
+    try:
+        import AVFoundation
+        status = AVFoundation.AVCaptureDevice.authorizationStatusForMediaType_(AVFoundation.AVMediaTypeAudio)
+        return {0: None, 1: False, 2: False, 3: True}.get(int(status))   # notDetermined, restricted, denied, authorized
+    except Exception:       # noqa: BLE001
+        return None
+
+
+def ask_mic() -> None:
+    """Shows the system prompt the first time; after a refusal only System Settings can change it."""
+    try:
+        import AVFoundation
+        AVFoundation.AVCaptureDevice.requestAccessForMediaType_completionHandler_(
+            AVFoundation.AVMediaTypeAudio, lambda granted: None)
+    except Exception:       # noqa: BLE001
+        pass
+
+
 def window_for(seconds: float) -> int:
     """The same rule as the phone: the window follows the piece, never shorter than the audio (see Pauses.audioCtx)."""
     return min(1280, max(512, int(math.ceil((seconds + 2) * 50 / 256) * 256)))
@@ -186,6 +206,10 @@ class Engine:
             return " ".join(r.read().decode("utf-8", "replace").split())
 
 
+class MicProblem(Exception):
+    """The microphone could not be opened, with a reason worth showing someone."""
+
+
 class Mic:
     """Records only while the key is held. Nothing is captured before the press or after the release."""
 
@@ -193,8 +217,18 @@ class Mic:
         self.q: queue.Queue[np.ndarray] = queue.Queue()
         self.stream: sd.InputStream | None = None
         self.level = 0.0
+        self.preferred: int | None = None      # the device that worked last time
+        self.using = ""
 
     def start(self) -> None:
+        """
+        Opens the first microphone that actually opens.
+
+        The default input is whatever macOS last picked, and that is often a Bluetooth headset that is off, or an
+        iPhone that is not nearby (15 Oct: default was "Rockerz 255 Pro+" and every press died with PortAudio -9986,
+        taking the key handler with it). So: try the default, then the built-in microphone, then anything else, and
+        remember what worked. Raises MicProblem with something a person can act on if none of them open.
+        """
         if self.stream:
             return
         self.q = queue.Queue()
@@ -203,8 +237,39 @@ class Mic:
             self.q.put(indata.copy())
             self.level = float(np.sqrt(np.mean(indata ** 2)) * 12)   # rough loudness, 0..1 for the pill
 
-        self.stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32", callback=cb)
-        self.stream.start()
+        last = None
+        for device in self._candidates():
+            try:
+                stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32",
+                                        device=device, callback=cb)
+                stream.start()
+                self.stream = stream
+                self.using = sd.query_devices(device if device is not None else sd.default.device[0])["name"]
+                return
+            except Exception as e:                      # noqa: BLE001 - try the next one, keep the reason
+                last = e
+        raise MicProblem(str(last))
+
+    def _candidates(self) -> list:
+        """The remembered one first, then the default, then the built-in, then every other input."""
+        out: list = []
+        if self.preferred is not None:
+            out.append(self.preferred)
+        out.append(None)                                 # None = whatever macOS calls the default
+        try:
+            devices = sd.query_devices()
+            built_in = [i for i, d in enumerate(devices)
+                        if d["max_input_channels"] > 0 and "macbook" in d["name"].lower()]
+            others = [i for i, d in enumerate(devices) if d["max_input_channels"] > 0 and i not in built_in]
+            out += built_in + others
+        except Exception:                                # noqa: BLE001 - no list is better than a crash
+            pass
+        seen, unique = set(), []
+        for d in out:
+            if d not in seen:
+                seen.add(d)
+                unique.append(d)
+        return unique
 
     def stop(self) -> np.ndarray:
         if not self.stream:
@@ -345,9 +410,15 @@ class InditeApp(rumps.App):
 
     def on_press(self, key) -> None:                     # noqa: ANN001 - pynput's signature
         if key == self.hotkey() and not self.busy and self.started_at == 0.0:
+            try:
+                self.mic.start()
+            except Exception as e:                       # noqa: BLE001 - never let this kill the listener
+                self.started_at = 0.0
+                self.title = "🎙"
+                self.mic_trouble(e)
+                return
             self.started_at = time.time()
             self.title = "🔴"
-            self.mic.start()
 
     def on_release(self, key) -> None:                   # noqa: ANN001
         if key != self.hotkey() or self.started_at == 0.0:
@@ -361,6 +432,30 @@ class InditeApp(rumps.App):
         self.title = "⏳"
         self.busy = True
         threading.Thread(target=self.write_it, args=(audio,), daemon=True).start()
+
+    def mic_trouble(self, err: Exception) -> None:
+        """
+        A microphone that will not open is either a permission macOS has not granted, or a device that is not there.
+        Both are fixable by the user, and neither should be a silent nothing-happens (the lesson from the alarm
+        switch, the API key and the hotkey: a thing that cannot work has to say so).
+        """
+        self.pill.show("error")
+        allowed = mic_allowed()
+        if allowed is False:
+            ask_mic()
+            rumps.alert(
+                "indite cannot hear the microphone",
+                "macOS has not given indite permission to use the microphone.\n\n"
+                "System Settings → Privacy & Security → Microphone → turn on indite, then quit and open it again.",
+            )
+        else:
+            rumps.alert(
+                "indite could not open any microphone",
+                "Tried every input on this Mac and none of them opened.\n\n"
+                "The usual cause is a Bluetooth headset that is switched off, or an iPhone microphone that is not "
+                f"nearby. Connect a microphone, or turn Bluetooth off, and try again.\n\n({err})",
+            )
+        threading.Timer(2.0, self.pill.hide).start()
 
     # ---- the work ------------------------------------------------------------------------------------------
     def write_it(self, audio: np.ndarray) -> None:

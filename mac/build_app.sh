@@ -3,7 +3,7 @@
 # Without a bundle, the permission attaches to whatever launched the script (Terminal, or Claude, or iTerm),
 # which is why granting it to a python binary never stuck.
 set -e
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"   # -P: the real folder, never the Desktop symlink macOS blocks
 APP="$ROOT/dist/indite.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
