@@ -125,6 +125,19 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+**Mac, 15 Oct evening — the Wispr Flow gap review changed the plan.** 5 of the 14 "missing" features were already
+built (snippets = word fixes, the Dictionary page, and every Insights stat including the streak). What is actually
+next is 3 small Dictionary items (~2 h), two gated experiments, and 11 dropped features — `docs/MAC_PLAN.md` §6.
+
+**⚠ Three things beat every feature on that list, and two are shipped features that do not work:**
+1. **Screen & System Audio Recording is still not granted** → meeting recording (R14) and the demo video (R41) are dead.
+2. **The 53 real dictations have never been scored.** Every accuracy number comes from 360 synthetic clips;
+   `mac/digits.py:5` admits the digits pass changed 0 of those 53. Scoring them is ~2 h and would re-rank the plan.
+3. **Nothing is signed or notarised** (P7, R20), every rebuild resets permissions, and 10 items are still 🧪.
+
+Also cheap and open: the public repo has **no LICENSE file**; the Android keystore still has **one copy**.
+
+
 **Build 29 (0.29) is on the founder's phone and passes every gate.** Measured 14 Oct, phone cool (33.5 → 36.9 °C):
 
 | Measure | Build 29 | Best before |

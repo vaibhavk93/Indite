@@ -161,6 +161,12 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a â
 5. **The install size.** 681 MB takes 34 minutes over a cable; on mobile data it is where most testers stop. The gate
    for a smaller model is set: it must match 25.0% on the 15-min file and 13.0% on clean synthetic.
 
+6. **Mac: two shipped features are dead and one number is missing** (15 Oct, after the Wispr screenshot review).
+   Screen & System Audio Recording is not granted, so meeting recording and the demo video do not work. The 53 real
+   dictations have never been scored, so every accuracy number comes from synthetic clips. Nothing is signed or
+   notarised, so no second person can install it. All three beat every feature on the Wispr list â€” see
+   `docs/MAC_PLAN.md` section 6.
+
 ## Next build (planned, critic-reviewed)
 
 **Look and feel** (research: colours and font are fine; what feels "AI-made" is no motion and everything looking the same):
@@ -234,6 +240,13 @@ Public app stays internet-free; a tester-only key build only if interviews ask (
 | Dubbing, language learning, call-centre QA, bookkeeping, creator-subtitle focus | Different products or crowded markets |
 | Search across transcripts (web), in-browser recording, YouTube import, meeting bot, collaboration, editing audio by editing text | Out of scope for now |
 | Bookmark a moment while recording; pin / tags / folders | Unproven; search exists |
+| Wispr: AI clean-up on every dictation (Auto Cleanup) | ~6 s AI call on a 0.8-1.6 s transcription: 4-7x slower, spends the founder's own quota, and types the rewrite instead of the raw text. Wispr withdrew its own "High" level |
+| Wispr: transforms on a hotkey; command mode; stacked messages | "Ask anything" already exists; the new part is reading and replacing other apps' selection. A misheard "delete that" has no undo |
+| Wispr: show/hide the Dock icon | Harmful: indite is a normal app only while its window is in front, so the pill would stop appearing over full-screen apps |
+| Wispr: mute music while dictating; launch at login as a LaunchAgent | Unasked; a LaunchAgent would lose Accessibility (Login Items -> indite.app keeps it) |
+| Wispr: scratchpad with its own hotkey | The window is already one (Dictations, To do, stars, search) |
+| Wispr: read the IDE's open file for code variable names | Continuously reading another app's document; the free 80% is ~20 identifiers in the Dictionary |
+| Wispr: team dictionary, cloud sync, referrals | Breaks audio-never-leaves, zero-cost and no-account |
 
 ## Competitors noted
 

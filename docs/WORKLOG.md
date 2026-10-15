@@ -298,3 +298,36 @@ Untested on the phone: Settings groups, bubble hide notification, OpenRouter, Re
 
 Decisions (founder): bubble without accessibility now, accessibility add-on later (personal has it); guess-then-confirm
 speaker count; iPhone not now (trigger: 5+ tester asks); one roadmap.
+
+## 15 Oct 2026 (evening) — Wispr Flow screenshots: gap check, critic pass, plan
+
+The founder sent 15 Wispr Flow screenshots and asked which features indite lacks, which are easy, which are not.
+Checked each against the code (not from memory), then put the whole list past an independent critic.
+
+**The result overturned most of the list.** 5 of 14 "missing" features are already built:
+- Snippets = the existing word fixes (`store.apply_my_fixes`; the file's own example is a full postal address).
+- The Dictionary page, add/remove, and "teach this" from a past dictation all exist (`ui/app.html:452`, `:1300`).
+- Words per minute, time saved, by app, by hour, day streak and the heat map are all on Insights (`:1368`-`1394`).
+  Note the contradiction: ROADMAP says "no streaks", the code shows one. Someone should decide which is right.
+
+**Build now (~2 h):** W1 one example phrase row on the Dictionary page; W2 "teach this word" one click from the
+Dictations list; W3 a "fixes made" count on Insights.
+
+**Gated:** W4 feed the Dictionary to whisper as `initial_prompt` — the only item that can actually lower the error
+rate, and the only one whose failure is invisible (the model already wrote `nan` into a real app on a 1.7 s hold).
+Gate: the 360-clip bench must improve *and* show 0 false insertions of dictionary words. W5 "Light" clean-up with no
+AI at all (strip a fixed filler list in `tidy()`, keep the raw text) — gate: 30 real dictations, 0 real words removed.
+
+**Dropped, 11 items** — AI clean-up on every dictation (4-7x slower, spends the founder's quota, replaces the raw
+text), transforms hotkey, per-app styles, command mode, stacked messages, Dock-icon toggle (would break the pill over
+full-screen apps), mute music, LaunchAgent login, scratchpad, IDE file reading, extra languages, team/sync/referrals.
+Reasons in `docs/MAC_PLAN.md` section 6.
+
+**What the critic said matters more:** (1) Screen & System Audio Recording is still not granted, so meeting recording
+and the demo video are built-but-dead; (2) the 53 real dictations have never been scored — every accuracy number is
+from 360 synthetic clips, and `digits.py` admits its pass changed 0 of those 53; (3) nothing is signed or notarised,
+and 10 items are still "built, founder to check". Also: the public repo has no LICENSE file, and the keystore still
+has one copy.
+
+Corrected in this session: I first reported snippets, the Dictionary UI and the Insights stats as missing. They are
+all present. The error came from checking for new files instead of reading the ones that exist.

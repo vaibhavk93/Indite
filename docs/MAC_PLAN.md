@@ -270,3 +270,77 @@ The licences allow it: the Hinglish model (Apache 2.0), whisper.cpp (MIT), most 
 (fine unmodified, ship its licence); **TitaNet (speakers) has no licence noted in the repo — verify** (NVIDIA models
 are usually CC-BY-4.0, credit needed). The repo itself has no LICENSE yet. Ownership, privacy law (consent and
 notice if AI features send personal data out) and any security review are questions for the founder's own advisers.
+
+## 6. The Wispr Flow screenshots: gap check and the plan that came out of it (15 Oct, critic-reviewed)
+
+The founder sent 15 screenshots of Wispr Flow's own settings and pages and asked which features indite lacks, which
+are easy, which are not. **Most of the "gaps" were not gaps.** The list below was checked against the code, not from
+memory, and then handed to an independent critic (the standing rule). The critic's verdict changed 9 of 14 items.
+
+### Already built — nothing to do but say so
+
+| Wispr feature | indite already has it | Where |
+|---|---|---|
+| Snippets (say a short word, get a long string) | Word fixes take a phrase and give back any text; longest match wins | `mac/store.py:235` `parse_fixes`, `:245` `apply_my_fixes`; the file's own example is `addr1 = 12 MG Road, Bengaluru 560001` |
+| Dictionary page, add and remove terms | Dictionary tab, add box, remove button, and a pencil on any past dictation | `mac/ui/app.html:452`, `:1416`, `:1300`; `mac/window.py` `add_fix` / `remove_fix` |
+| Words per minute, time saved, by app, by hour | All four on the Insights page | `mac/ui/app.html:1368`–`1394` |
+| Day streak and a heat map | Built and showing (`streak` + `best`) | `mac/ui/app.html:1372`, `:1387` — note: ROADMAP says "no streaks", the code disagrees; the code wins, decide which is right |
+| Tone rewrites, translate, meeting notes, action items, clean-up | 9 tones, 10 languages, 5 note types | `mac/ai.py` |
+
+### Build now (≈2 h, no new permissions, no new store)
+
+| | What | Why it is worth it |
+|---|---|---|
+| W1 | One example phrase row on the Dictionary page (`addr1 → full address`) | The snippet feature exists and is invisible. Cost ~20 min |
+| W2 | "Teach this word" reachable in one click from the Dictations list | Deterministic fixes are the only *proven* accuracy gain in this repo: the spelling and digits passes are about a third of 19.9% → 14.4% |
+| W3 | A "fixes made" count on Insights | The one honest new number: it measures whether the Dictionary is earning its keep |
+
+### Gated — do not build until the gate passes
+
+| | What | The gate | The risk if we skip the gate |
+|---|---|---|---|
+| W4 | Feed the Dictionary to the engine as whisper's `initial_prompt`, so names are *heard* right instead of repaired afterwards | Re-run the 360-clip bench with the Dictionary primed. Ship only if words-wrong drops **and** dictionary words appear **0** times in clips that do not contain them | This is the only item that can lower the error rate — and the only one whose failure is invisible. The model already writes `nan` on silence (`mac/indite_mac.py:224`, 15 Oct: a 1.7 s hold typed `nan` into a real app). Priming it with real people's names risks a colleague's name landing in a message they were never in |
+| W5 | "Light" clean-up with **no AI**: strip a fixed list of filler words (umm, matlab, basically, you know) in `tidy()`, and store the raw text beside it | 30 real Hinglish dictations: removes ≥1 filler on ≥10 of them and **0** real words on all 30 | ~10 lines, offline, free. Must keep the raw text (R5: nothing is deleted silently) |
+
+### Dropped, with the reason
+
+| Wispr feature | Why not |
+|---|---|
+| Auto Cleanup levels (AI on every dictation) | ~6 s AI call on top of a 0.8–1.6 s transcription: **4–7× slower on every dictation**, the one measure where indite already matches Wispr. Spends the founder's own Claude quota per dictation (R2: zero cost per use) and types the rewrite instead of the raw text (R3). Wispr itself withdrew its "High" level after complaints |
+| Transforms on a hotkey (Opt+1/2) | The "Ask anything" action already exists in `mac/ai.py`. The new part is reading and replacing the selection inside other apps — the same trust problem as a keylogger, and it overwrites text with no stored original (R3) |
+| Per-app styles (formal for email, casual for chat) | Already decided against in ROADMAP ("no accounts, streaks or per-app tone"). Also costs one AI call per dictation, and Wispr's styles are English-only |
+| Command mode ("delete that", "press enter") | Already dropped in §4 for misfires. On a 14.4%-wrong engine a misheard "delete that" in a chat box has no undo (R5) |
+| Stacked messages | Nobody asked. Needs Hinglish sentence splitting plus per-app Enter behaviour — the misfire problem again |
+| Show / hide the Dock icon | **Actively harmful.** indite is a normal app only while its window is in front; a Dock app's panels cannot appear over another app's full screen. A toggle here breaks the pill over full-screen apps |
+| Mute music while dictating | Unasked, and touching other apps' audio on a tool already fighting permission resets is a bad trade |
+| Launch at login | No code needed: a LaunchAgent running Python would lose Accessibility. Login Items → `indite.app` keeps it. One Help line (§4e) |
+| Scratchpad with its own hotkey | The window is already one: Dictations, To do with a direct add box, stars, search. PRD §9 rules out being a to-do app |
+| Read the IDE's open file for code variable names | Biggest cost on the list and the worst shape: continuously reading another app's document through Accessibility, on a tool a company Mac may already block for looking like a keylogger (§5). The free 80% is putting ~20 identifiers in the Dictionary — do that first and measure |
+| Extra Indian languages (Hindi, Marathi…) | PRD §9: demand unproven, ask the testers — and there are no testers yet. 20 h+ and a second model each |
+| Team dictionary, cloud sync, referrals | Breaks R1 (audio never leaves), R2 (zero cost) and R6 (no account). PRD §9: "a different company" |
+
+### What the critic said matters more than any of the above
+
+**⚠ Remember: three things beat the whole Wispr list, and two of them are shipped features that do not work right now.**
+
+1. **Screen & System Audio Recording is not granted to indite.** Meeting recording (R14) and the demo video (R41) are
+   built and non-functional until the founder re-grants it (HANDOFF §"Screen & System Audio Recording is NOT granted").
+   Fixing a broken shipped feature beats adding a new one.
+2. **Real-world accuracy has never been measured.** Every number in this repo comes from 360 synthetic clips. 53 real
+   dictations by the founder exist and are unscored — `mac/digits.py:5` admits the digits pass "changed 0 of the
+   founder's 53 dictations". Scoring them is ~2 h and would re-rank this entire list.
+3. **Nothing is signed or notarised** (P7, R20), and every rebuild resets Accessibility and Screen Recording. Until
+   that is fixed the app cannot be given to a second person — and **10 items are still 🧪 "built, founder to check"**.
+   Unverified built features outnumber the Wispr gaps.
+
+Also open and cheap: the public repo has **no LICENSE file**, and the Android keystore still has **one copy**.
+
+### Is "catch up with Wispr Flow" even the right question?
+
+No. Wispr's feature list is shaped by a ₹320/month subscription: accounts, teams, streaks, referrals. indite's own
+rules forbid most of it. The three questions that should drive the Mac app instead, in order:
+
+1. How many Hinglish words does it get wrong **on real speech**? (not synthetic clips)
+2. Can a second person install it and have it work? (signed, notarised, permissions that survive a rebuild)
+3. Does it ever surprise you? No invented names, no silent rewrites. W4 and the AI clean-up both trade this away —
+   which is why one is gated and the other is dropped.
