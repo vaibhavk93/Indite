@@ -222,6 +222,17 @@ class WindowEvents(NSObject):
     def windowWillClose_(self, _note):              # noqa: N802
         NSApp.setActivationPolicy_(1)                 # accessory: menu bar only, no Dock icon
 
+    def windowDidBecomeKey_(self, _note):           # noqa: N802
+        NSApp.setActivationPolicy_(0)                 # in front: a normal app, so the green button gives a Space
+
+    def windowDidResignKey_(self, note):            # noqa: N802
+        # Back to menu-bar-only as soon as another app is in front, unless indite itself is full screen. A normal
+        # app's floating panels cannot enter another app's full-screen Space, so staying "normal" hid the pill
+        # over a full-screen Terminal (founder, 15 Oct).
+        win = note.object()
+        if not (win.styleMask() & (1 << 14)):          # NSWindowStyleMaskFullScreen
+            NSApp.setActivationPolicy_(1)
+
     def windowDidEnterFullScreen_(self, _note):     # noqa: N802
         self.bridge.js("document.body.classList.add('fs')")    # no traffic lights to clear: drop the top gap
 

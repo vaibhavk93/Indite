@@ -522,6 +522,14 @@ class InditeApp(rumps.App):
 
     def warm_up(self) -> None:
         """Load the model now, not when the user is waiting with their finger on the key."""
+        if not self.prefs.get("asked_screen"):           # once: lets the meeting recorder hear the other people
+            try:
+                import Quartz
+                if not Quartz.CGPreflightScreenCaptureAccess():
+                    Quartz.CGRequestScreenCaptureAccess()  # macOS shows its own prompt and adds indite to the list
+            except Exception:                            # noqa: BLE001
+                pass
+            store.set_pref("asked_screen", True)
         self.title = "🎙…"
         ok = self.engine.start_server()
         self.engine_kind = "Fast engine ready." if ok else "Slower engine \u2014 the model reloads each time."

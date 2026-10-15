@@ -43,6 +43,9 @@ from AppKit import (
     NSWindowStyleMaskNonactivatingPanel,
 )
 
+# macOS 13+: may also appear inside another app's full-screen Space. Without it the pill vanished over a full-screen
+# Terminal and came back on any other window (founder, 15 Oct).
+JOIN_ALL_APPS = getattr(AppKit, "NSWindowCollectionBehaviorCanJoinAllApplications", 0)
 GLASS = 0.45                    # how much of the frosted glass shows: 1 = Apple's default, 0 = none
 W, H = 116.0, 30.0              # small on purpose: it sits over whatever you are reading (was 168 x 44)
 ACCENT = (0.886, 0.463, 0.106)      # the indite orange, the same one the phone uses
@@ -219,7 +222,8 @@ class Pill:
         self.panel.setCollectionBehavior_(
             NSWindowCollectionBehaviorCanJoinAllSpaces
             | NSWindowCollectionBehaviorStationary
-            | NSWindowCollectionBehaviorFullScreenAuxiliary)
+            | NSWindowCollectionBehaviorFullScreenAuxiliary
+            | JOIN_ALL_APPS)
         # Real macOS glass: it blurs what is actually behind the pill, so it sits on a bright document and a dark
         # terminal equally well. A painted panel cannot do that - it looks pasted on one of them.
         self.view = PillView.alloc().initWithFrame_(NSMakeRect(0, 0, W, H))
@@ -316,7 +320,8 @@ class Preview:
         self.panel.setIgnoresMouseEvents_(True)
         self.panel.setCollectionBehavior_(
             NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorStationary
-            | NSWindowCollectionBehaviorFullScreenAuxiliary)
+            | NSWindowCollectionBehaviorFullScreenAuxiliary
+            | JOIN_ALL_APPS)
         box = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, self.PW, self.PH))
         Liquid = getattr(AppKit, "NSGlassEffectView", None)
         if Liquid is not None:
