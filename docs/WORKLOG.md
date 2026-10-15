@@ -357,3 +357,32 @@ has one copy.
 
 Corrected in this session: I first reported snippets, the Dictionary UI and the Insights stats as missing. They are
 all present. The error came from checking for new files instead of reading the ones that exist.
+
+## 16 Oct 2026 · Mac: ready for the leadership demo
+
+- **Long dictation no longer crawls in** (founder, request 244). pynput sends two key events per character, so a
+  paragraph was hundreds of events and Chromium apps drained them a frame at a time. One macOS key event can carry
+  20 UTF-16 units instead — about 40x fewer events. Measured through indite itself: TextEdit 0.23–0.61 s, a Chrome
+  textarea 0.48–0.85 s, character-exact at 197 / 788 / 1576 chars. Numbers in
+  `docs/research/mac_typing_speed_2026-10-16.txt`. The clipboard is still never touched.
+  **The clipboard route was rejected** by the critic: a restore racing a slow app can paste the *previous* clipboard
+  (a password manager entry) into the target, and a missed secure-field check would leave a spoken secret on the
+  clipboard. It would also adopt the mechanism MAC_PLAN names as Wispr's weakness.
+- **Word fixes no longer break contractions.** With `don = Dawn`, "don't go" became "Dawn't go". Found by the
+  research agent, reproduced, fixed, covered by `store.py`'s self-check. Possessives are left alone too, on purpose.
+- **Demo script updated** (request 242): a scene for the gold AI edge, "Make it a prompt" named in the Ask AI line,
+  AI usage named in the Insights line, the "about a second" claim narrowed to "a second for a sentence like that",
+  and `stage()` pre-answers the meeting→AI warning so the modal cannot interrupt a take.
+- **"Make it a prompt" rebuilt** (request 243) to Anthropic's published guidance: says why the rules exist, five
+  numbered parts, one worked Hinglish→prompt example, keeps Indian words with a gloss. `max_tokens` 4000 → 8000 and
+  a cut-off answer now says so instead of looking finished.
+- **`docs/WISPR_DEEPDIVE.md`** (732 lines, request 238): how Wispr builds each feature we lack, every option for us,
+  the best two each, challenges and workarounds, multi-language routes, the AI-review algorithms, profanity design.
+  Three findings that change decisions: the offline near-miss check only passes its gate when gated on the engine's
+  own confidence (1.9 → 0.4 false alarms per 100 words); feeding the Dictionary to whisper as `initial_prompt` makes
+  overall accuracy *worse* in published measurements, and collapsed on German (6.3% → 15.2%), and our model is a
+  non-English fine-tune; the tester keystore is byte-identical to `~/.android/debug.keystore`.
+- Founder's decision: the Android release key waits for the next Android build; the Mac demo comes first.
+
+**Still open:** swear masking is stored rather than shown (breaks R5 — see HANDOFF §5). Slack and VS Code typing
+untested. The note-before-instructions change for all 13 AI actions is deliberately **not** done before the demo.

@@ -125,6 +125,18 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+**Mac, 16 Oct — ready for the leadership demo.** Fixed since the last entry: long dictation no longer crawls into
+text fields (~40x fewer key events, measured in TextEdit and a Chrome textarea, character-exact at 1,576 chars);
+word fixes no longer break contractions ("don't" stayed "Dawn't" with the fix `don = Dawn`); the demo script now
+covers the gold AI edge, "Make it a prompt" and AI usage in Insights, and pre-answers the meeting→AI warning so the
+modal cannot stop a take; "Make it a prompt" rebuilt to Anthropic's published guidance. Research landed in
+`docs/WISPR_DEEPDIVE.md`.
+
+**⚠ Open, and it breaks a product rule:** swear masking runs inside `tidy()`, so with the switch on the real word
+is never stored — the stars are what gets saved. R5 says nothing is deleted silently. Masking should be a view
+(mask when shown or typed, keep the raw text). Off by default, so nothing is lost yet.
+
+
 **Mac, 15 Oct 23:30 — Ask AI rebuilt three times on founder feedback (latest: answers as documents, options on a
 sunken surface, one-click Rewrite/Translate, "Make it a prompt", gold AI chip, AI in Insights). Pill-after-hide bug
 fixed. Next: founder looks, restarts the Mac, demo video. Plans: `docs/ROADMAP_DETAIL.md` (AI review first).**
@@ -287,7 +299,7 @@ whisper.cpp tools in `.tools/` are shared, and Android builds its own copy from 
 |---|---|
 | **Speed** | **0.75–0.89 s** per 3–8 s sentence, measured 15 Oct. Was 1.2–1.5 s when every sentence reloaded the model |
 | How | `whisper-server` on 127.0.0.1:8711 keeps the 574 MB model in memory; the per-sentence binary is the fallback |
-| Typing | character by character, so **nothing touches the clipboard** (the phone's bubble has to, and that is its one real privacy cost) |
+| Typing | synthetic key events carrying up to 20 characters each, so **nothing touches the clipboard** (the phone's bubble has to, and that is its one real privacy cost). One-per-character typing made long dictations crawl into Chromium apps; see `docs/research/mac_typing_speed_2026-10-16.txt` |
 | Feedback | a floating pill: voice bars while held, "writing…", a tick when it lands |
 | Window | history grouped by day, searchable, one-click copy, words/minute and a day streak; settings for the hotkey, typed-or-copied, Hinglish spelling, and whether history is kept at all |
 | History | capped at 500 lines in Application Support — an unbounded log of everything said is a liability, not a feature |
