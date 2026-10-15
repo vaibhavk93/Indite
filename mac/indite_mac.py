@@ -31,6 +31,8 @@ from pynput import keyboard
 
 ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
+SERVER = ROOT / ".tools/whisper.cpp/build/bin/whisper-server"
+PORT = 8711                   # localhost only; nothing listens outside this Mac
 MODEL = ROOT / "android/app/src/main/assets/models/ggml-apex-q5_k.bin"
 RATE = 16_000
 
@@ -83,10 +85,18 @@ def window_for(seconds: float) -> int:
 
 
 class Engine:
-    """whisper.cpp, one utterance at a time. Serialised, because two at once would fight over the cores."""
+    """
+    whisper.cpp kept loaded and waiting.
+
+    The first Mac build ran `whisper-cli` per sentence, which reloads the 574 MB model every time - about 0.9 s of
+    the 1.4 s a user waits. A small local server keeps the model in memory, so only the transcription is paid for.
+    It listens on 127.0.0.1 and nothing else; if it will not start, the per-sentence binary is used instead and the
+    app still works, only slower.
+    """
 
     def __init__(self) -> None:
         self.lock = threading.Lock()
+        self.proc: subprocess.Popen | None = None
 
     def ready(self) -> str | None:
         if not WHISPER.exists():
@@ -95,25 +105,77 @@ class Engine:
             return f"the speech model is missing at {MODEL}"
         return None
 
-    def transcribe(self, audio: np.ndarray) -> str:
-        seconds = len(audio) / RATE
+    def start_server(self) -> bool:
+        """Starts the resident engine and waits for the model to load. False means we fall back to the binary."""
+        if not SERVER.exists():
+            return False
+        self.proc = subprocess.Popen(
+            [str(SERVER), "-m", str(MODEL), "--port", str(PORT), "--host", "127.0.0.1", "-t", "6", "-nt"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        for _ in range(60):                     # the model takes a few seconds to load; wait, do not guess
+            time.sleep(0.5)
+            if self.proc.poll() is not None:
+                return False
+            try:
+                import urllib.request
+                urllib.request.urlopen(f"http://127.0.0.1:{PORT}/", timeout=1)
+                return True
+            except Exception:                   # noqa: BLE001 - not up yet
+                continue
+        return False
+
+    def stop_server(self) -> None:
+        if self.proc and self.proc.poll() is None:
+            self.proc.terminate()
+
+    def _wav(self, audio: np.ndarray) -> str:
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             path = f.name
+        with wave.open(path, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(RATE)
+            w.writeframes((np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes())
+        return path
+
+    def transcribe(self, audio: np.ndarray) -> str:
+        seconds = len(audio) / RATE
+        path = self._wav(audio)
         try:
-            with wave.open(path, "wb") as w:
-                w.setnchannels(1)
-                w.setsampwidth(2)
-                w.setframerate(RATE)
-                w.writeframes((np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes())
             with self.lock:
+                if self.proc and self.proc.poll() is None:
+                    return self._ask_server(path, window_for(seconds))
                 r = subprocess.run(
                     [str(WHISPER), "-m", str(MODEL), "-f", path, "-ac", str(window_for(seconds)),
                      "-t", "6", "-np", "-nt"],
                     capture_output=True, text=True, timeout=120,
                 )
-            return " ".join(r.stdout.split())
+                return " ".join(r.stdout.split())
         finally:
-            os.unlink(path)           # the recording never outlives the transcription
+            os.unlink(path)       # the recording never outlives the transcription
+
+    def _ask_server(self, path: str, audio_ctx: int) -> str:
+        """A plain multipart POST, so there is no HTTP library to add."""
+        import uuid
+        boundary = uuid.uuid4().hex
+        with open(path, "rb") as f:
+            wav = f.read()
+        body = (
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.wav\"\r\n"
+            f"Content-Type: audio/wav\r\n\r\n".encode() + wav +
+            f"\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"response_format\"\r\n\r\ntext\r\n"
+            # Without this the server pads every sentence to 30 s and takes 2.2 s instead of 0.5 s (measured 15 Oct).
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"audio_ctx\"\r\n\r\n{audio_ctx}\r\n"
+            f"--{boundary}--\r\n".encode()
+        )
+        import urllib.request
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{PORT}/inference", data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        )
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return " ".join(r.read().decode("utf-8", "replace").split())
 
 
 class Mic:
@@ -176,7 +238,7 @@ class InditeApp(rumps.App):
             rumps.MenuItem("Copy last text", callback=self.copy_last),
             rumps.MenuItem("About", callback=self.about),
             None,
-            rumps.MenuItem("Quit", callback=rumps.quit_application),
+            rumps.MenuItem("Quit", callback=self.quit_all),
         ]
         problem = self.engine.ready()
         if problem:
@@ -193,6 +255,14 @@ class InditeApp(rumps.App):
                 "Tick it, then quit indite and start it again.",
             )
         threading.Thread(target=self.listen, daemon=True).start()
+        threading.Thread(target=self.warm_up, daemon=True).start()
+
+    def warm_up(self) -> None:
+        """Load the model now, not when the user is waiting with their finger on the key."""
+        self.title = "🎙…"
+        ok = self.engine.start_server()
+        self.title = "🎙" if can_listen() else "🎙⚠"
+        print("resident engine:" , "ready" if ok else "not available - using the slower per-sentence path")
 
     # ---- the hotkey ----------------------------------------------------------------------------------------
     def listen(self) -> None:
@@ -241,6 +311,10 @@ class InditeApp(rumps.App):
     def copy_last(self, _) -> None:                      # noqa: ANN001
         if self.last:
             subprocess.run("pbcopy", input=self.last, text=True, check=False)
+
+    def quit_all(self, _) -> None:                       # noqa: ANN001
+        self.engine.stop_server()
+        rumps.quit_application()
 
     def about(self, _) -> None:                          # noqa: ANN001
         rumps.alert(

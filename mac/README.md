@@ -25,19 +25,26 @@ program, not to the script. Nothing is granted silently: you tick it yourself, o
 
 ## Speed, measured
 
-On an M1, 14 Oct, 24 real clips:
+On an M1, 15 Oct, with the model kept loaded:
 
 | Utterance | Time to text |
 |---|---|
-| 3 s | 1.2–1.4 s |
-| 5 s | 1.3–1.5 s |
-| 8 s | 1.3–1.5 s |
+| 3 s | 0.67–0.71 s |
+| 5 s | 0.70–0.71 s |
+| 8 s | 0.77–0.81 s |
 
-For comparison: the phone takes 9.6 s for the same work. The difference is heat and small cores, not the model.
+**Median 0.71 s.** For comparison: the phone takes 9.6 s for the same work, and Wispr Flow's cloud takes 1–2 s.
+
+Two things make that number, and both are easy to lose:
+
+- **The model stays loaded.** Reloading it per sentence cost 0.9 s (1.35 s per sentence instead of 0.71).
+- **The window is sent with every request.** Without it the engine pads every sentence to 30 seconds and takes
+  **2.19 s** - slower than not keeping the model loaded at all.
 
 ## What it does not do yet
 
-- The model is loaded for every utterance (about 0.9 s of the time above). A resident engine would make it ~0.5 s.
-- No installer: it runs from this folder. A drag-to-Applications bundle is the next step.
+- No installer beyond `indite.app` in `dist/`: it still borrows Python and the model from this folder, so it cannot
+  be handed to anyone else yet.
+- The engine takes ~17 s to load at startup. The menu bar shows 🎙… until it is ready.
 - No settings window — the hotkey is fixed to right-Option in the code.
 - No notes, no history: it types the text and forgets it. Use the phone app for anything you want to keep.
