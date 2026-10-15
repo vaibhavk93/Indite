@@ -23,7 +23,7 @@ from AppKit import NSRunningApplication, NSWorkspace
 
 import store
 
-OUT = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/indite-demo")
+OUT = Path(next((a for a in sys.argv[1:] if not a.startswith("--")), "/tmp/indite-demo"))
 OUT.mkdir(parents=True, exist_ok=True)
 CMD, FEED = store.DIR / "demo.cmd", store.DIR / "demo_feed.wav"
 NARRATOR, SPEAKER = "Aman (English (India))", "Tara (English (India))"
@@ -195,7 +195,7 @@ def main() -> None:
         rec = True
         time.sleep(0.5)
         T0 = time.time()
-        show()
+        show_short() if "--short" in sys.argv else show()
     finally:
         if rec:
             cmd("rec:stop")
@@ -251,6 +251,13 @@ SCRIPT_S = [
 
 
 def prerender() -> None:
+    if "--short" in sys.argv:
+        for i, t in enumerate(SHORT_N):
+            render(t, NARRATOR, f"s{i:02d}")
+        for t, n in SHORT_S:
+            render(t, SPEAKER, n)
+        log(f"{len(CLIPS)} voice clips ready (short cut)")
+        return
     for i, t in enumerate(SCRIPT_N):
         render(t, NARRATOR, f"n{i:02d}")
     for t, n in SCRIPT_S:
@@ -357,6 +364,84 @@ def show() -> None:
     cmd("js:sgo('ai')"); say(N[19])
     cmd("js:go('help')"); say(N[20])
     say(N[21], gap=1.5)
+
+
+# ---- the short cut (docs/DEMO_PLAN.md §8): 8 beats, ~3:20, for leadership --------------------------------------
+# The long run above stays as the detailed walkthrough. This one drops 12 scenes and merges 2: the hero starts at
+# second zero and the problem is spoken over it, the Wi-Fi-off menu bar does the privacy claim without a word of
+# marketing, a real error gets fixed on camera, and the live meeting is cut because its permission is the one thing
+# still unproven in a real call.
+SHORT_N = [
+    # 1 - hero, with the problem spoken over it
+    "Typing Hinglish is slow. You think in two languages and your keyboard only knows one. So: hold a key, and talk.",
+    # 2 - the claim the screen proves by itself
+    "That was this Mac alone. The Wi-Fi is off, there is no account, and nothing was uploaded. "
+    "Chaar baje came out as four, in digits.",
+    # 3 - a long, real thought, hands free
+    "For a longer thought, tap the right Command key three times and keep your hands free.",
+    "One tap ends it, and the whole thing is typed where you were already working.",
+    # 4 - honest accuracy
+    "It gets about one word in seven wrong today, and company names are the usual casualty. "
+    "So you teach it once, in the dictionary, and it stops getting that word wrong.",
+    # 5 - a recording, and who said what
+    "It also takes a recording you already have - a call, a voice note - and writes it down.",
+    "And it works out who said what, without being told how many people there were.",
+    # 6 - your own AI, your own account
+    "AI is optional, and it runs on your own account, not ours. Ask it to improve a note and your original stays "
+    "beside it, so nothing you actually said is lost.",
+    # 7 - what it is
+    "indite. Speak Hinglish, get text, and keep every word on your own Mac.",
+    # 8 - the ask
+    "It works today, on this machine. What it needs next is a handful of people willing to use it for a week.",
+]
+
+SHORT_S = [
+    ("Kal ki meeting chaar baje hai, please sab ko reminder bhej dena.", "h1"),
+    ("Client ke saath call ke baad, deck mein last quarter ke numbers update karne hain, "
+     "aur Rohit ko Friday tak final version bhejna hai.", "h2"),
+]
+
+
+def show_short() -> None:
+    """The 3:20 cut. Same real app, same real engine - only fewer scenes."""
+    S = SHORT_N
+    call = OUT / "client-call.wav"
+    import wave
+    with wave.open(str(ROOT / "bench_synth/dialogue_2spk.wav")) as src, wave.open(str(call), "wb") as dst:
+        dst.setparams(src.getparams())
+        dst.writeframes(src.readframes(75 * src.getframerate()))
+
+    # 1 + 2 - the hero, unbroken, with the menu bar (and the Wi-Fi state) in frame
+    front("TextEdit")
+    say(S[0])
+    speak_into_indite(*SHORT_S[0])
+    time.sleep(2.5)
+    say(S[1])
+    # 3 - hands free, a real sentence
+    say(S[2])
+    speak_into_indite(*SHORT_S[1], hands_free=True)
+    time.sleep(3.0)
+    say(S[3])
+    # 4 - the error, and the dictionary that fixes it
+    front("indite")
+    cmd("js:go('dict')")
+    say(S[4])
+    time.sleep(2.0)
+    # 5 - a recording, and who spoke
+    cmd("js:go('files')", f"file:{call}")
+    say(S[5])
+    time.sleep(12.0)
+    say(S[6])
+    # 6 - AI on your own account, original kept
+    cmd("js:go('home')")
+    cmd("js:openDrawer(S.history.find(r => (r.kind || 'dictation') === 'dictation').id)")
+    cmd("ai:improve")
+    say(S[7])
+    time.sleep(6.0)
+    cmd("js:closeDrawer()")
+    # 7 + 8 - what it is, and the ask
+    say(S[8])
+    say(S[9], gap=1.5)
 
 
 if __name__ == "__main__":
