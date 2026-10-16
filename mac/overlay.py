@@ -294,6 +294,12 @@ class Pill:
     def show(self, state: str) -> None:
         if state != self.view.state:
             self.view.since = time.time()
+            # Say it out loud, every time. The founder has reported "the pill is not there" four times, and each
+            # guess cost a round trip; a forced snapshot proves it can draw, not that it drew when he was looking.
+            f = self.panel.frame()
+            print(f"pill: {self.view.state or 'hidden'} -> {state} | on screen={bool(self.panel.isVisible())} "
+                  f"alpha={self.panel.alphaValue():.2f} at ({f.origin.x:.0f},{f.origin.y:.0f}) "
+                  f"{f.size.width:.0f}x{f.size.height:.0f} clear={getattr(self.view, 'clear', '?')}", flush=True)
         self.view.state = state
         # Ask the window, not our own flag: hiding or minimising indite takes the panel off screen behind our back,
         # and the flag then said "showing" forever - the pill never came back (founder, 15 Oct)
@@ -304,7 +310,7 @@ class Pill:
             self.panel.setAlphaValue_(min(1.0, self.panel.alphaValue() + 0.18))
         self.view.setNeedsDisplay_(True)
 
-    def hide(self) -> None:
+    def hide(self) -> None:                               # logged only when it was actually up, to keep the log quiet
         if not self.visible:
             return
         a = self.panel.alphaValue() - 0.12            # ~400 ms fade out, so it leaves rather than blinks off

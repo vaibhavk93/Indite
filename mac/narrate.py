@@ -68,6 +68,12 @@ class Mic:
     def start(self) -> None:
         self.chunks, self.on = [], True
 
+    def pause(self) -> None:
+        self.on = False                                  # the stream stays open; we simply stop keeping what arrives
+
+    def resume(self) -> None:
+        self.on = True
+
     def take(self) -> np.ndarray:
         self.on = False
         got, self.chunks = self.chunks, []
@@ -103,21 +109,55 @@ def blocks() -> list[list[tuple[str, str]]]:
     return out
 
 
-def record(mic: "Mic", name: str, words: str) -> bool:
+def bar(done: int, total: int, width: int = 24) -> str:
+    filled = int(width * done / max(total, 1))
+    return "[" + "#" * filled + "." * (width - filled) + f"] {done}/{total}"
+
+
+def covers(name: str) -> str:
+    """Which script lines this one recording is responsible for - so a file is never a mystery later."""
+    for b in blocks():
+        if b[0][0] == name:
+            ids = [n for n, _ in b]
+            return ids[0] if len(ids) == 1 else f"{ids[0]}-{ids[-1]} ({len(ids)} lines)"
+    return name
+
+
+def listen_back(name: str) -> None:
+    """Play what is on disk for this line, whichever version exists."""
+    for p in (OUT / f"{name}-polished.wav", OUT / f"{name}.wav"):
+        if p.exists():
+            print(f"  playing {p.name} …")
+            subprocess.run(["afplay", str(p)], check=False)
+            return
+    print("  nothing recorded for that one yet")
+
+
+def record(mic: "Mic", name: str, words: str, done: int = 0, total: int = 0) -> bool:
     """One line. Returns False if the person wants to stop."""
-    print(f"\n\033[1m{name}\033[0m")
+    print(f"\n\033[1m{name}\033[0m   covers {covers(name)}   {bar(done, total)}")
     print(f"  {words}\n")
     while True:
-        go = input("  [Enter] record · [s]kip · [q]uit > ").strip().lower()
+        go = input("  [Enter] record · [p]lay what is saved · [s]kip · [q]uit > ").strip().lower()
         if go == "q":
             return False
         if go == "s":
             return True
+        if go == "p":
+            listen_back(name)
+            continue
         print("  … get ready", end="", flush=True)
         time.sleep(0.7)                                  # the Enter keypress and your breath stay out of the take
-        print("\r  ● recording — press Enter when you have finished   ")
+        print("\r  ● recording — Enter to finish, or type p then Enter to pause   ")
         mic.start()
-        input()
+        while True:
+            key = input().strip().lower()
+            if key != "p":
+                break
+            mic.pause()                                  # the gap is dropped, not recorded
+            input("  ⏸ paused — Enter to carry on from where you stopped > ")
+            mic.resume()
+            print("  ● recording again")
         audio = trim(mic.take())
         if not len(audio):
             print("  nothing was recorded - is the microphone allowed for Terminal?")
@@ -127,7 +167,10 @@ def record(mic: "Mic", name: str, words: str) -> bool:
         print(f"  {secs:.1f}s, loudest {peak:.2f}" + ("  ⚠ very quiet - move closer to the mic" if peak < 0.05 else ""))
         write(name, audio)
         subprocess.run(["afplay", str(OUT / f"{name}.wav")], check=False)
-        what = input("  [k]eep · [r]edo · [q]uit > ").strip().lower()
+        what = input("  [k]eep · [r]edo · [l]isten again · [q]uit > ").strip().lower()
+        while what == "l":
+            subprocess.run(["afplay", str(OUT / f"{name}.wav")], check=False)
+            what = input("  [k]eep · [r]edo · [l]isten again · [q]uit > ").strip().lower()
         if what == "q":
             return False
         if what != "r":
@@ -181,12 +224,26 @@ def main() -> None:
     if not todo:
         sys.exit("no N.. or S.. lines found in the script - has its format changed?")
     want = [a.upper() for a in sys.argv[1:] if not a.startswith("--")]
-    done = {p.stem for p in OUT.glob("*.wav") if not p.stem.endswith("-16k")}
+    # the raw takes only: -16k is the copy fed to indite, -polished is mac/polish.py's tidied version
+    done = {p.stem for p in OUT.glob("*.wav") if not p.stem.endswith("-16k") and "-polished" not in p.stem}
 
     if "--list" in sys.argv:
-        for name, words in todo:
-            print(f"  {'✓' if name in done else ' '} {name}  {words[:70]}")
-        print(f"\n  {len(done)} of {len(todo)} recorded")
+        secs = 0.0
+        print(f"  {'':2} {'file':6} {'covers':18} {'length':>7}  first words")
+        for b in blocks():
+            name = b[0][0]
+            has = name in done
+            length = ""
+            if has:
+                with wave.open(str(OUT / f"{name}.wav")) as w:
+                    d = w.getnframes() / w.getframerate()
+                    secs += d
+                    length = f"{d:5.1f}s"
+            ids = [n for n, _ in b]
+            span = ids[0] if len(ids) == 1 else f"{ids[0]}-{ids[-1]}"
+            print(f"  {'✓' if has else ' '}  {name:6} {span:18} {length:>7}  {b[0][1][:46]}")
+        print(f"\n  {len(done)} of {len(blocks())} recorded · {secs/60:.1f} min of audio")
+        print(f"  files in {OUT}   (play one: afplay {OUT}/N06.wav)")
         return
 
     if "--blocks" in sys.argv:
@@ -206,12 +263,13 @@ def main() -> None:
     print("  the Hinglish lines (S) spoken naturally, the way you actually talk.\n")
     mic = Mic()
     try:
-        for name, words in queue:
-            if not record(mic, name, words):
+        for i, (name, words) in enumerate(queue):
+            if not record(mic, name, words, i, len(queue)):
                 break
     finally:
         mic.close()
-    done = {p.stem for p in OUT.glob("*.wav") if not p.stem.endswith("-16k")}
+    # the raw takes only: -16k is the copy fed to indite, -polished is mac/polish.py's tidied version
+    done = {p.stem for p in OUT.glob("*.wav") if not p.stem.endswith("-16k") and "-polished" not in p.stem}
     print(f"\n  {len(done)} of {len(todo)} recorded → {OUT}")
 
 
