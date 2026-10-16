@@ -190,6 +190,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 | 9 | **W4 experiment:** Dictionary words as the engine's starting prompt | Me | 2 h | Expected to drop (risk: invented names) |
 | 10 | **After the real set is scored:** decide step 1 → **step 2** (one detect-only AI call, nothing changes without a tap, ≥70% right, note before instructions) → C3 review insights → **W5** filler strip (raw kept) | Me | 2-3 days | Each with its own pass/fail |
 | 11 | **Parity:** edit a paragraph + undo; per-paragraph speaker fix + merge (meetings, files) | Me | M | — |
+| 12 | **AI actions on the text card** (founder, 16 Oct): two or three actions - Rewrite to send, Summary, Improve - on the card that appears after dictating, so a note can be acted on without opening the window. | Me | ~1 day | **After the demo.** Two hard parts: the card ignores clicks on purpose so it never steals one meant for the app underneath (fix: accept clicks only while the pointer rests inside - `Preview.hovered` already exists); and an AI answer takes ~6 s while the card now lives 6 s, so it needs a working-then-answer state, not just a button |
 
 **Mac next:** detect a call and *ask* "Record this call?" · editable swear list (D1, ~2 h) · Indian formatting (₹,
 lakh/crore; unproven) · 7-day assistant test (#252, founder's yes) · note-before-instructions order on the other AI

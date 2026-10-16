@@ -948,6 +948,8 @@ class InditeApp(rumps.App):
         self.started_at = time.time()
         self.set_title("🔴")
 
+        self.preview.hide_now()      # an old card must never sit over the dictation you are starting now
+
         def open_mic() -> None:
             try:
                 self.mic.start()
