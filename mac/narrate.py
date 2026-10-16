@@ -44,7 +44,42 @@ def lines() -> list[tuple[str, str]]:
     return out
 
 
-def record(name: str, words: str) -> bool:
+class Mic:
+    """
+    One microphone, open for the whole session.
+
+    Opening and closing a stream per line is what got redo stuck: closing a CoreAudio input and immediately opening
+    another deadlocks, the same trap that killed dictation in the app itself (16 Oct). So the stream is opened once
+    and never closed until the end; recording is just a flag that says whether to keep what is arriving.
+    """
+
+    def __init__(self) -> None:
+        self.chunks: list[np.ndarray] = []
+        self.on = False
+        self.stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32", callback=self._got)
+        self.stream.start()
+
+    def _got(self, data, frames, at, status) -> None:    # noqa: ANN001 - sounddevice's signature
+        if self.on:
+            self.chunks.append(data.copy())
+
+    def start(self) -> None:
+        self.chunks, self.on = [], True
+
+    def take(self) -> np.ndarray:
+        self.on = False
+        got, self.chunks = self.chunks, []
+        return np.concatenate(got).flatten() if got else np.zeros(0, dtype="float32")
+
+    def close(self) -> None:
+        try:
+            self.stream.abort()
+            self.stream.close()
+        except Exception:                                # noqa: BLE001 - leaving is not worth an error
+            pass
+
+
+def record(mic: "Mic", name: str, words: str) -> bool:
     """One line. Returns False if the person wants to stop."""
     print(f"\n\033[1m{name}\033[0m")
     print(f"  {words}\n")
@@ -55,15 +90,12 @@ def record(name: str, words: str) -> bool:
         if go == "s":
             return True
         print("  ● recording — press Enter when you have finished the line")
-        chunks: list[np.ndarray] = []
-        stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32",
-                                callback=lambda d, *_: chunks.append(d.copy()))
-        with stream:
-            input()
-        if not chunks:
+        mic.start()
+        input()
+        audio = mic.take()
+        if not len(audio):
             print("  nothing was recorded - is the microphone allowed for Terminal?")
             continue
-        audio = np.concatenate(chunks).flatten()
         peak = float(np.abs(audio).max()) if len(audio) else 0.0
         secs = len(audio) / RATE
         print(f"  {secs:.1f}s, loudest {peak:.2f}" + ("  ⚠ very quiet - move closer to the mic" if peak < 0.05 else ""))
@@ -122,9 +154,13 @@ def main() -> None:
 
     print(f"\n  {len(queue)} line(s) to record. Narration (N) in your normal voice;")
     print("  the Hinglish lines (S) spoken naturally, the way you actually talk.\n")
-    for name, words in queue:
-        if not record(name, words):
-            break
+    mic = Mic()
+    try:
+        for name, words in queue:
+            if not record(mic, name, words):
+                break
+    finally:
+        mic.close()
     done = {p.stem for p in OUT.glob("*.wav") if not p.stem.endswith("-16k")}
     print(f"\n  {len(done)} of {len(todo)} recorded → {OUT}")
 
