@@ -31,7 +31,7 @@ VOICES = Path("/tmp/indite-demo-voice")
 RATE, LOW = 44100, 16000
 KEEP = 0.45          # a pause longer than this is shortened to this - about a natural breath
 GAP = 1.0            # what counts as "a pause worth shortening"
-PEAK = 0.89          # final loudness: loud, with room left so nothing clips
+PEAK = 0.72          # final loudness. Higher than this just makes the room louder too
 
 
 def read(path: Path) -> tuple[np.ndarray, int]:
@@ -68,6 +68,33 @@ def speech_mask(a: np.ndarray, rate: int) -> np.ndarray:
     if len(mask) < len(a):                               # the last partial block: treat it like its neighbour
         mask = np.concatenate([mask, np.full(len(a) - len(mask), mask[-1] if len(mask) else True)])
     return mask[: len(a)]
+
+
+def denoise(a: np.ndarray, rate: int, speech: np.ndarray, over: float = 2.0, floor: float = 0.08) -> np.ndarray:
+    """
+    Takes the room out, by learning what the room sounds like and subtracting it.
+
+    A gate only turns the hiss down between words; while someone is talking the hiss is still there, underneath. The
+    fix is to measure the noise's own shape - its spectrum - during the quiet stretches, and subtract that shape from
+    every moment, speech included. What is left is the voice.
+
+    `over` subtracts a bit more than measured, because noise moves about; `floor` is how much is always left behind,
+    since subtracting all of it makes the famous underwater warble. Both are deliberately mild: this recording's
+    noise is 45 dB below the voice, so there is not much to take and plenty to spoil.
+    """
+    nfft = 1024
+    f, t, Z = signal.stft(a, rate, nperseg=nfft, noverlap=nfft * 3 // 4)
+    mag, phase = np.abs(Z), np.angle(Z)
+    # the noise's shape, learned from the frames with no speech in them
+    step = len(a) / max(len(t), 1)
+    quiet_frame = np.array([not speech[min(int(i * step), len(speech) - 1)] for i in range(len(t))])
+    if quiet_frame.sum() < 4:                            # hardly any silence: fall back to the quietest frames
+        energy = mag.sum(axis=0)
+        quiet_frame = energy <= np.percentile(energy, 10)
+    noise = np.median(mag[:, quiet_frame], axis=1, keepdims=True)
+    clean = np.maximum(mag - over * noise, floor * mag)
+    _, out = signal.istft(clean * np.exp(1j * phase), rate, nperseg=nfft, noverlap=nfft * 3 // 4)
+    return out[: len(a)].astype(np.float32)
 
 
 def duck(a: np.ndarray, speech: np.ndarray, by: float = 0.45) -> np.ndarray:
@@ -120,6 +147,7 @@ def polish(path: Path) -> tuple[Path, float, float]:
     a = high_pass(a, rate)
     speech = speech_mask(a, rate)                        # computed ONCE: ducking moves the levels the mask is
     want = int(speech.sum())
+    a = denoise(a, rate, speech)                         # take the room out before anything is made louder
     a = duck(a, speech)
     a, kept = tighten(a, speech, rate)
     if kept != want:                                     # the one rule: only silence may ever be removed
