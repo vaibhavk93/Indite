@@ -15,24 +15,20 @@ import threading
 import numpy as np
 
 RATE = 16_000
+_Out = None
 
 
-class SystemAudio:
-    def __init__(self) -> None:
-        self.q: queue.Queue[np.ndarray] = queue.Queue()
-        self.stream = None
-        self.error = ""
-        self.level = 0.0
-
-    def start(self, timeout: float = 5.0) -> bool:
-        """True once audio is flowing; False with self.error set (usually: permission not given)."""
+def _output_class():
+    """
+    The receiver for ScreenCaptureKit's audio, defined once per process. Objective-C refuses a second class with the
+    same name, so defining it inside start() made every meeting after the first in a session fail to start
+    ("Out is overriding existing Objective-C class", 16 Oct). Each recording points its own instance at itself.
+    """
+    global _Out
+    if _Out is None:
         import ScreenCaptureKit as SC
-        from Foundation import NSObject
-        import objc
         import CoreMedia as CM
-
-        ready = threading.Event()
-        me = self
+        from Foundation import NSObject
 
         class Out(NSObject):
             def stream_didOutputSampleBuffer_ofType_(self, _stream, buf, kind):   # noqa: N802
@@ -46,13 +42,31 @@ class SystemAudio:
                 if err == 0 and data:
                     x = np.frombuffer(bytes(data), dtype=np.float32)
                     x = x[: len(x) // 3 * 3].reshape(-1, 3).mean(axis=1)       # 48 kHz -> 16 kHz
-                    me.q.put(x.astype(np.float32))
-                    me.level = float(np.sqrt(np.mean(x ** 2)) * 12) if len(x) else 0.0
+                    self.me.q.put(x.astype(np.float32))
+                    self.me.level = float(np.sqrt(np.mean(x ** 2)) * 12) if len(x) else 0.0
 
             def stream_didStopWithError_(self, _stream, error):                 # noqa: N802
-                me.error = str(error)
+                self.me.error = str(error)
 
-        self.out = Out.alloc().init()
+        _Out = Out
+    return _Out
+
+
+class SystemAudio:
+    def __init__(self) -> None:
+        self.q: queue.Queue[np.ndarray] = queue.Queue()
+        self.stream = None
+        self.error = ""
+        self.level = 0.0
+
+    def start(self, timeout: float = 5.0) -> bool:
+        """True once audio is flowing; False with self.error set (usually: permission not given)."""
+        import ScreenCaptureKit as SC
+        import CoreMedia as CM
+
+        ready = threading.Event()
+        self.out = _output_class().alloc().init()
+        self.out.me = self                                  # where this recording's audio goes
 
         def got(content, error):
             if error is not None or content is None:

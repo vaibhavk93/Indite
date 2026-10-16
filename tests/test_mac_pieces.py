@@ -22,3 +22,19 @@ def test_long_hold_is_cut_in_the_quiet_and_loses_nothing():
 def test_short_hold_is_untouched():
     audio = np.zeros(8 * RATE, dtype=np.float32)
     assert len(pieces(audio)) == 1
+
+
+def test_a_stuck_coreaudio_is_noticed_and_restarts_at_most_once_in_10_minutes(tmp_path, monkeypatch):
+    import threading
+    from indite_mac import Mic, MicStuck, restart_allowed
+    m = Mic()
+    monkeypatch.setattr(m, "_start", threading.Event().wait)   # an open that never comes back, like the deadlock
+    for _ in range(2):                                           # the second press fails at once, without waiting
+        try:
+            m.start(wait=0.2)
+            raise AssertionError("a stuck open must raise MicStuck")
+        except MicStuck:
+            pass
+    assert m.stuck
+    mark = tmp_path / "mic-restart.last"
+    assert restart_allowed(mark) and not restart_allowed(mark)

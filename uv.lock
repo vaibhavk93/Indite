@@ -1355,7 +1355,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pyannote-audio", marker = "extra == 'speakers'", specifier = ">=4" },
-    { name = "pynput", specifier = ">=1.8.2" },
+    { name = "pynput", specifier = "==1.8.2" },
     { name = "pyobjc-framework-avfoundation", specifier = ">=12.2.2" },
     { name = "pyobjc-framework-screencapturekit", specifier = ">=12.2.2" },
     { name = "python-multipart", specifier = ">=0.0.9" },

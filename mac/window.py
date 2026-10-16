@@ -13,6 +13,7 @@ is no network in the page and no file access - everything goes through `Bridge` 
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import objc
@@ -141,7 +142,9 @@ class Bridge(NSObject):
         from indite_mac import can_listen, HOTKEYS
         return {
             "prefs": store.prefs(),
-            "history": store.history(),
+            "history": [dict(r, audio=len(store.audio_files(r))) for r in
+                        ([store.masked(r) for r in store.history()] if self.app.prefs.get("mask_swears")
+                         else store.history())],
             "listening": bool(can_listen()),
             "hotkeys": HOTKEYS,
             "engine": self.app.engine_kind,
@@ -211,12 +214,10 @@ class Bridge(NSObject):
         elif act == "mic_ask":
             from indite_mac import ask_mic, mic_allowed
             if mic_allowed() is False:                   # refused before: only System Settings can change it
-                import subprocess
                 subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"])
             else:
                 ask_mic()
         elif act == "ax_open":
-            import subprocess
             subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"])
         elif act == "status":
             pass                                         # the page polls while setup is open; push() below answers
@@ -234,6 +235,11 @@ class Bridge(NSObject):
             import ai
             ai.claude_login()
             self.app.check_ai(later=True)
+        elif act in ("play", "reveal"):                  # a note's kept recording: play it, or show it in Finder
+            row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+            files = [str(f) for f in store.audio_files(row)] if row else []
+            if files:
+                subprocess.run(["open", *files] if act == "play" else ["open", "-R", files[0]], check=False)
         elif act == "who":
             self.app.who_spoke(str(msg.get("id", "")), int(msg.get("k", 0) or 0))
         elif act == "meeting":

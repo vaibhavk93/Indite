@@ -343,6 +343,11 @@
   .working { margin-top: 8px; font-size: 12px; color: var(--ink2); display: flex; gap: 6px; align-items: center; }
   .working i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink3); animation: pulse 1s infinite ease-in-out; }
   @keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
+  /* a tab with something still recording (red) or working (grey) in it */
+  .ndot { margin-left: auto; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ink3);
+          animation: pulse 1s infinite ease-in-out; }
+  .ndot.rec { background: #c4372a; }
+  @media (prefers-reduced-motion: reduce) { .ndot, .working i { animation: none; } }
   .twin { display: flex; gap: 4px; margin-bottom: 6px; }
   #meet.rec { background: #c4372a; border-color: #c4372a; color: #fff; }
   .lines { display: grid; gap: 6px; }
@@ -857,6 +862,23 @@
       : Object.keys(S.ai_busy || {}).length ? "Working…"
       : !engineReady && S.engine ? (/first/.test(S.engine) ? "Starting… the first start can take a minute" : "Starting…") : "";
     if (!engineReady && S.engine && !m.running && !S.job) now.className = "chip-now busy";
+    navDots();
+  }
+  // A dot on Meetings / Files / Dictations while one of its notes is still recording or being worked on.
+  function navDots() {
+    const m = S.meeting || {}, kind = {};
+    (S.history || []).forEach(r => kind[r.id] = r.kind || "dictation");
+    const busy = { meeting: false, file: !!S.job, dictation: false };
+    Object.keys(S.ai_busy || {}).forEach(id => { if (kind[id] in busy) busy[kind[id]] = true; });
+    [["meetings", "meeting"], ["files", "file"], ["home", "dictation"]].forEach(([tab, k]) => {
+      const b = document.querySelector(`nav button[data-tab="${tab}"]`);
+      let d = b.querySelector(".ndot");
+      const rec = tab === "meetings" && !!m.running, on = rec || busy[k];
+      if (!on) { if (d) d.remove(); return; }
+      if (!d) { d = document.createElement("span"); b.appendChild(d); }
+      d.className = "ndot" + (rec ? " rec" : "");
+      d.title = rec ? "Recording" : "Still working";
+    });
   }
   $("#backup").onclick = () => send({ action: "backup" });
   $("#go-ax").onclick = () => send({ action: "ax_open" });
@@ -1132,7 +1154,8 @@
   function aiParts(r) {
     const n = (r.ai || []).length + (r.improved ? 1 : 0), busy = S.ai_busy && S.ai_busy[r.id];
     let h = "";
-    if (busy === "finding who spoke") h += `<div class="working"><i></i>Finding who spoke…</div>`;
+    if (busy === "finding who spoke" || busy === "finishing")
+      h += `<div class="working"><i></i>${busy === "finishing" ? "Finishing the last words…" : "Finding who spoke…"}</div>`;
     else if (busy || n) h += `<button class="aichip${busy ? "" : " has"}" data-id="${esc(r.id)}" title="${busy ? "" : "Open what AI made for this note"}">
         <svg width="12" height="12"><use href="#i-spark"/></svg>${busy ? "AI is writing…" : `AI · ${n} answer${n > 1 ? "s" : ""}`}</button>`;
     return h;
@@ -1159,6 +1182,8 @@
                        [["aioff", "AI is off", "Turn it on in Settings → AI"]]),
       ...(media ? [["who", "Who spoke?", "Label each line with a speaker"], ["txt", "Save as text…", ""], ["srt", "Save as subtitles…", ""]]
                 : [["fix", "Fix a word…", "Teach indite a word it got wrong"]]),
+      ...(r.audio ? [["play", "Play recording", r.audio > 1 ? "Opens both tracks: you, and the others" : ""],
+                     ["reveal", "Show recording in Finder", ""]] : []),
       ["sep"], ["del", "Delete", ""],
     ];
     const b = btn.getBoundingClientRect();
@@ -1174,6 +1199,7 @@
       if (k === "who") whoMenu(btn, r);
       if (k === "txt" || k === "srt") send({ action: "export", id: r.id, fmt: k });
       if (k === "fix") openFixer(btn, r);
+      if (k === "play" || k === "reveal") send({ action: k, id: r.id });
       if (k === "del") { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); }
     });
     m.querySelector("button").focus();

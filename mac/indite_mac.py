@@ -322,6 +322,25 @@ class MicProblem(Exception):
     """The microphone could not be opened, with a reason worth showing someone."""
 
 
+class MicStuck(MicProblem):
+    """
+    CoreAudio is deadlocked inside this process, and nothing but a new process gets the microphone back.
+
+    16 Oct, sampled live: PortAudio's stop waited on CoreAudio's device lock while CoreAudio's own audio thread, inside
+    PortAudio's start/stop listener, waited on PortAudio's lock. Neither ever lets go, and every later open queues on
+    the same device lock - the pill appeared, nothing was recorded. Abandoning the stream does not release the lock.
+    """
+
+
+def restart_allowed(mark: Path, every: float = 600.0) -> bool:
+    """True at most once per `every` seconds; touching `mark` records the restart. Stops a restart loop."""
+    if mark.exists() and time.time() - mark.stat().st_mtime < every:
+        return False
+    mark.parent.mkdir(parents=True, exist_ok=True)
+    mark.touch()
+    return True
+
+
 def _alive() -> None:
     """
     Makes sure PortAudio is initialised before we ask it anything.
@@ -379,8 +398,33 @@ class Mic:
         self.worked = ""                       # name of the mic that opened last time (names survive reconnects)
         self.chosen = ""                       # the mic picked in Settings; "" = automatic
         self.using = ""
+        self.stuck = False                     # CoreAudio deadlocked in this process: only a restart helps (MicStuck)
 
-    def start(self) -> None:
+    def start(self, wait: float = 8.0) -> None:
+        """
+        Opens the microphone, but never waits on a stuck CoreAudio for longer than `wait` seconds (a Bluetooth mic can
+        be slow; a deadlock is forever). Raises MicStuck if CoreAudio is stuck, now or since an earlier close.
+        """
+        if self.stuck:
+            raise MicStuck("the microphone got stuck in macOS earlier")
+        box: dict = {}
+
+        def go() -> None:
+            try:
+                self._start()
+            except Exception as e:                       # noqa: BLE001 - handed to the caller below
+                box["e"] = e
+
+        t = threading.Thread(target=go, daemon=True)
+        t.start()
+        t.join(wait)
+        if t.is_alive():
+            self.stuck = True
+            raise MicStuck(f"macOS did not open the microphone within {wait:.0f} s")
+        if "e" in box:
+            raise box["e"]
+
+    def _start(self) -> None:
         """
         Opens the first microphone that actually opens.
 
@@ -499,7 +543,8 @@ class Mic:
         t.start()
         t.join(1.5)
         if t.is_alive():
-            print("mic: CoreAudio would not let go of the stream; abandoned it and carried on")
+            self.stuck = True                            # the device lock is held for good: the next press restarts
+            print("mic: CoreAudio would not let go of the stream; abandoned it - the app restarts on the next press")
 
     def stop(self) -> np.ndarray:
         if not self.stream:
@@ -989,6 +1034,10 @@ class InditeApp(rumps.App):
         Both are fixable by the user, and neither should be a silent nothing-happens (the lesson from the alarm
         switch, the API key and the hotkey: a thing that cannot work has to say so).
         """
+        print("mic: could not start:", repr(err))
+        if isinstance(err, MicStuck):
+            self.restart_for_stuck_mic(err)
+            return
         self.pill.show("error")
         allowed = mic_allowed()
         if allowed is False:
@@ -1006,6 +1055,33 @@ class InditeApp(rumps.App):
                 f"nearby. Connect a microphone, or turn Bluetooth off, and try again.\n\n({err})",
             )
         threading.Timer(2.0, self.pill.hide).start()
+
+    def restart_for_stuck_mic(self, err: Exception) -> None:
+        """
+        A deadlocked CoreAudio (MicStuck) holds the microphone until this process ends, so indite starts itself
+        again. It happens on the next press, not when the close sticks: by then the last dictation has been typed and
+        a meeting's text saved. At most once in 10 minutes, so a Mac whose audio is broken outright gets a message,
+        not a restart loop.
+        """
+        print("mic:", err)
+        bundle = next((p for p in Path(sys.executable).parents if p.suffix == ".app"), None)
+        if bundle is None or not restart_allowed(store.DIR / "mic-restart.last"):
+            self.pill.show("error")
+            rumps.alert("The microphone is stuck in macOS",
+                        "macOS stopped answering indite about the microphone. Quit indite and open it again.\n\n"
+                        "If it is stuck again straight away, restart the Mac.")
+            threading.Timer(2.0, self.pill.hide).start()
+            return
+        for _ in range(120):                         # a meeting that is still saving its last words goes first
+            if "finishing" not in self.ai_busy.values():
+                break
+            time.sleep(0.5)
+        print("mic: restarting indite to get the microphone back")
+        # A detached shell, so the old process is gone before the new one opens (two copies would both hear the keys).
+        subprocess.Popen(["/bin/sh", "-c", 'osascript -e "display notification \\"The microphone got stuck in macOS. '
+                          'indite is restarting - try again in a few seconds.\\" with title \\"indite\\""; '
+                          f'sleep 1; open -n "{bundle}"'], start_new_session=True)
+        os._exit(0)                  # not sys.exit: sounddevice's exit hook calls Pa_Terminate, which waits on the lock
 
     # ---- the work ------------------------------------------------------------------------------------------
     def write_it(self, audio: np.ndarray) -> None:
@@ -1033,15 +1109,15 @@ class InditeApp(rumps.App):
             self.done_until = time.time() + 2.0
             print("password box focused - dictation dropped")
             return
-        self.last = text
+        self.last = self.out(text)                      # what is typed, copied and previewed; the note keeps the real words
         # The pill says what happened. A notification was tried here and crashed the thread that had just produced
         # the text (rumps needs a bundle identifier it could not find), so the words landed with nothing said.
         mode = self.prefs["output"]
         if mode == "type" or (mode == "smart" and focused_is_text()):
-            self.typer.type(text)
+            self.typer.type(self.last)
             self.done_state = "done"
         else:
-            self.typer.copy(text)
+            self.typer.copy(self.last)
             self.done_state = "copied"
         self.done_until = time.time() + 1.6
         took = time.time() - t0
@@ -1056,7 +1132,7 @@ class InditeApp(rumps.App):
                 w.writeframes((np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes())
         self.refresh()                   # the list grows while it is open, so a dictation shows up as it lands
         if self.prefs["preview"]:
-            self.preview.show(text)
+            self.preview.show(self.last)
         print(f"{len(audio) / RATE:.1f}s of speech -> {took:.2f}s -> {text}")
 
     # ---- menu ----------------------------------------------------------------------------------------------
@@ -1237,13 +1313,19 @@ class InditeApp(rumps.App):
             text = apply_fixes(text, self.table)
         if self.prefs["digits"]:
             text = numbers.digits(text)
-        text = store.apply_my_fixes(text, store.my_fixes())   # yours last, and even with the others off
+        return store.apply_my_fixes(text, store.my_fixes())   # yours last, and even with the others off
+        # Swears are NOT masked here: this text is what gets saved. They are masked on the way out (out()).
+
+    def out(self, text: str) -> str:
+        """Text as it leaves indite - typed, copied, previewed, exported - with swears masked if that is switched on."""
         return store.mask_swears(text) if self.prefs.get("mask_swears") else text
 
     def toggle_meeting(self, _=None) -> None:            # noqa: ANN001
         """Start or stop a meeting recording (main thread)."""
         if self.meeting.running:
-            threading.Thread(target=self.meeting.stop, daemon=True).start()
+            # The old one finishes on its own thread; a fresh one is ready at once, so back-to-back calls never wait.
+            old, self.meeting = self.meeting, Meeting(self, after=self.meeting)
+            threading.Thread(target=old.stop, daemon=True).start()
             self.meeting_item.title = "Record a meeting"
             return
         if self.started_at or self.busy:
@@ -1446,6 +1528,7 @@ class InditeApp(rumps.App):
             body, ext = srt({"segments": row["segments"]}), ".srt"
         else:
             body, ext = (row.get("improved") or row["text"]) if fmt == "improved" else row["text"], ".txt"
+        body = self.out(body)
         panel = NSSavePanel.savePanel()
         panel.setNameFieldStringValue_(name + ext)
         if panel.runModal() == 1 and panel.URL():

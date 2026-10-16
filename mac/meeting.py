@@ -75,8 +75,17 @@ class Track:
 
 
 class Meeting:
-    def __init__(self, app) -> None:
+    """
+    One recording. A new one is made for every meeting, so the next call can start while the last one is still
+    finishing (last words, save, who spoke) in the background. The microphone is shared: a meeting lets go of it
+    (`released`) before the next one opens it, and never reads it again after that.
+    """
+
+    def __init__(self, app, after: "Meeting | None" = None) -> None:
         self.app = app
+        self.after = after                                      # the meeting before this one, maybe still finishing
+        self.released = threading.Event()
+        self.released.set()                                     # holds no microphone yet
         self.running = False
         self.note = None
         self.started = 0.0
@@ -86,13 +95,25 @@ class Meeting:
         self.lock = threading.Lock()
 
     def start(self) -> None:
+        if self.after:                                          # it must be done with the shared mic first (~2 s at most)
+            self.after.released.wait(10)
         self.app.mic.start()                                    # raises MicProblem: the caller shows it
+        self.released.clear()
+        try:
+            self._begin()
+        except Exception:
+            self.app.mic.stop()                                 # a failed start must not leave the mic running
+            self.released.set()
+            raise
+
+    def _begin(self) -> None:
         self.sys = SystemAudio()
         self.others_ok = self.sys.start()
         self.problem = "" if self.others_ok else (
             "Recording your microphone only. To hear the other people in a call, allow indite under System "
             "Settings → Privacy & Security → Screen & System Audio Recording, then start again.")
         self.started = time.time()
+        self.segments = []                                      # else the second meeting in a session keeps the first's lines
         self.note = store.add("…", 0, 0, "meeting", "", kind="meeting", title=time.strftime("Meeting %d %b, %H:%M"),
                               segments=[], live=True)
         store.AUDIO.mkdir(parents=True, exist_ok=True)
@@ -108,10 +129,13 @@ class Meeting:
 
     def pump(self, force: bool = False) -> None:
         with self.lock:
-            while not self.app.mic.q.empty():
-                self.you.feed(self.app.mic.q.get().flatten())
-            while not self.sys.q.empty():
-                self.them.feed(self.sys.q.get())
+            if not force:
+                if not self.running:                            # stopped: the mic queue may be the next meeting's now
+                    return
+                while not self.app.mic.q.empty():
+                    self.you.feed(self.app.mic.q.get().flatten())
+                while not self.sys.q.empty():
+                    self.them.feed(self.sys.q.get())
             for track in (self.them, self.you):                 # others first, so an echo can be spotted
                 got = track.take(force)
                 if got and quiet(got[1]) > 0.004:               # skip pure silence: the model writes "nan" for it
@@ -139,14 +163,22 @@ class Meeting:
         if not self.running:
             return
         self.running = False
-        time.sleep(0.6)                                         # let the loop finish its last pump
-        with self.lock:
-            self.you.feed(self.app.mic.stop())                  # whatever the streams still held: not one sample lost
-            self.them.feed(self.sys.stop())
-        self.pump(force=True)                                   # the last words, however short
-        for t in (self.you, self.them):
-            t.wav.close()
-        self.save(live=False)
+        self.app.ai_busy[self.note] = "finishing"               # the row and the Meetings tab show it is still working
+        self.app.refresh()
+        try:
+            mine, theirs = self.app.mic.stop(), self.sys.stop()  # whatever the streams still held: not one sample lost
+            self.released.set()                                  # the next meeting may open the mic from here on
+            with self.lock:                                      # after any piece the loop is still writing
+                self.you.feed(mine)
+                self.them.feed(theirs)
+            self.pump(force=True)                               # the last words, however short
+            for t in (self.you, self.them):
+                t.wav.close()
+            self.save(live=False)
+        finally:
+            self.released.set()
+            self.app.ai_busy.pop(self.note, None)
+            self.app.refresh()
         if not self.segments:
             store.update(self.note, text="(nothing was heard)")
         elif self.app.prefs.get("auto_speakers", True):

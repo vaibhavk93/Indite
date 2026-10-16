@@ -170,6 +170,14 @@ def audio_of(row: dict) -> Path | None:
     return src if src and src.is_file() else None
 
 
+def audio_files(row: dict) -> list[Path]:
+    """Every recording kept for a note: a meeting has two tracks (you, others), anything else at most one."""
+    if row.get("kind") == "meeting":
+        return [p for p in (AUDIO / f"{row['id']}-you.wav", AUDIO / f"{row['id']}-others.wav") if p.exists()]
+    own = audio_of(row)
+    return [own] if own else []
+
+
 def backup(path: Path, scope: str = "all", with_audio: bool = False) -> int:
     import zipfile
     rows = [r for r in _read() if scope == "all" or (scope == "star" and r.get("star"))
@@ -295,9 +303,29 @@ def mask_swears(text: str) -> str:
     return _SWEAR_RE.sub(lambda m: m.group(0)[0] + "*" * (len(m.group(0)) - 1), text)
 
 
+def masked(row: dict) -> dict:
+    """
+    A copy of a note for showing, with swears masked. The note on disk keeps the real words (R5: nothing is deleted
+    silently) - masking is only ever applied where text is shown, typed, copied or exported.
+    """
+    r = dict(row)
+    for k in ("text", "improved"):
+        if r.get(k):
+            r[k] = mask_swears(r[k])
+    if r.get("segments"):
+        r["segments"] = [{**s, "text": mask_swears(s.get("text", ""))} for s in r["segments"]]
+    if r.get("ai"):
+        r["ai"] = [{**a, "text": mask_swears(a.get("text", ""))} if isinstance(a, dict) else a for a in r["ai"]]
+    return r
+
+
 if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert mask_swears("Yeh BC kya hai, chutiya mat bana") == "Yeh B* kya hai, c****** mat bana"
     assert mask_swears("saala hell dickens bcc") == "saala hell dickens bcc"          # everyday words untouched
+    note = {"text": "chutiya", "segments": [{"speaker": "You", "text": "bc yaar"}], "ai": [{"text": "shit"}]}
+    shown = masked(note)
+    assert (shown["text"], shown["segments"][0]["text"], shown["ai"][0]["text"]) == ("c******", "b* yaar", "s***")
+    assert note["text"] == "chutiya" and note["segments"][0]["text"] == "bc yaar"    # the stored note is untouched
     pairs = parse_fixes(FIXES_HEADER + "ptm = Paytm\npay tm = Paytm\n  c++  = C++\nbroken line\n= nothing\n")
     assert pairs == [("pay tm", "Paytm"), ("ptm", "Paytm"), ("c++", "C++")], pairs
     assert apply_my_fixes("PTM se pay  tm karo", pairs) == "Paytm se Paytm karo"
