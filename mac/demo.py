@@ -632,7 +632,17 @@ def show_script() -> None:
         dst.writeframes(src.readframes(75 * src.getframerate()))
 
     state = store.DIR / "rec.state"
+    import narrate
+    covered: dict[str, list[str]] = {}
+    for b in narrate.blocks():
+        covered[b[0][0]] = [n for n, _ in b]
+    skip: set[str] = set()
+
     for name, words in script_lines():
+        if name in skip:                                 # already spoken as part of a block
+            continue
+        if human(name) and len(covered.get(name, [name])) > 1:
+            skip |= set(covered[name][1:])               # one recording, several lines of script
         # A take that quietly stops recording halfway is worse than one that fails: you only find out afterwards.
         if state.exists() and state.read_text().startswith("error"):
             log("STOPPING -", state.read_text())

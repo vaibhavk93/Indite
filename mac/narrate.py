@@ -16,6 +16,7 @@ right every time from a person. A demo of a speech product has to use a real voi
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -79,6 +80,28 @@ class Mic:
             pass
 
 
+# Lines where the screen changes. A recording can never span one of these, because the picture has to move while
+# the words are still going. Everything between them can be spoken as one paragraph, which is how a person talks.
+BREAKS = {"N01", "N13", "N14", "N17", "N21", "N23", "N25", "N30", "N31", "N36"}
+
+
+def blocks() -> list[list[tuple[str, str]]]:
+    """The script grouped into what can be read in one breath. A spoken line (S..) is always its own block."""
+    out: list[list[tuple[str, str]]] = []
+    cur: list[tuple[str, str]] = []
+    for name, words in lines():
+        if name.startswith("S") or name in BREAKS:
+            if cur:
+                out.append(cur)
+                cur = []
+            out.append([(name, words)])
+        else:
+            cur.append((name, words))
+    if cur:
+        out.append(cur)
+    return out
+
+
 def record(mic: "Mic", name: str, words: str) -> bool:
     """One line. Returns False if the person wants to stop."""
     print(f"\n\033[1m{name}\033[0m")
@@ -89,10 +112,12 @@ def record(mic: "Mic", name: str, words: str) -> bool:
             return False
         if go == "s":
             return True
-        print("  ● recording — press Enter when you have finished the line")
+        print("  … get ready", end="", flush=True)
+        time.sleep(0.7)                                  # the Enter keypress and your breath stay out of the take
+        print("\r  ● recording — press Enter when you have finished   ")
         mic.start()
         input()
-        audio = mic.take()
+        audio = trim(mic.take())
         if not len(audio):
             print("  nothing was recorded - is the microphone allowed for Terminal?")
             continue
@@ -107,6 +132,23 @@ def record(mic: "Mic", name: str, words: str) -> bool:
         if what != "r":
             print(f"  kept → {OUT / (name + '.wav')}")
             return True
+
+
+def trim(audio: np.ndarray, pad: float = 0.25) -> np.ndarray:
+    """
+    Cuts the silence off both ends, leaving a quarter second of air.
+
+    Without this, a slow start or a pause before reaching for Enter shows up as dead time in the video - and was a
+    reason to redo a line that was otherwise fine (founder, 16 Oct).
+    """
+    if not len(audio):
+        return audio
+    loud = np.abs(audio) > max(0.02, float(np.abs(audio).max()) * 0.06)
+    if not loud.any():
+        return audio
+    first, last = int(np.argmax(loud)), len(audio) - int(np.argmax(loud[::-1]))
+    air = int(pad * RATE)
+    return audio[max(0, first - air):min(len(audio), last + air)]
 
 
 def write(name: str, audio: np.ndarray) -> None:
@@ -146,8 +188,15 @@ def main() -> None:
         print(f"\n  {len(done)} of {len(todo)} recorded")
         return
 
-    queue = [(n, w) for n, w in todo if (n in want) if want] or \
-            [(n, w) for n, w in todo if n not in done]
+    if "--blocks" in sys.argv:
+        groups = [b for b in blocks() if not b[0][0].startswith("S")]
+        queue = [(b[0][0], " ".join(w for _, w in b)) for b in groups
+                 if (b[0][0] in want if want else b[0][0] not in done)]
+        OUT.mkdir(parents=True, exist_ok=True)       # the runner reads this to know which lines a file covers
+        (OUT / "blocks.json").write_text(json.dumps({b[0][0]: [n for n, _ in b] for b in blocks()}, indent=1))
+    else:
+        queue = [(n, w) for n, w in todo if (n in want) if want] or \
+                [(n, w) for n, w in todo if n not in done]
     if not queue:
         print("Every line is already recorded. Pass a line's name (e.g. N07) to do it again.")
         return
