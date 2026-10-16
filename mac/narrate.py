@@ -83,7 +83,7 @@ class Mic:
 
 # Lines where the screen changes. A recording can never span one of these, because the picture has to move while
 # the words are still going. Everything between them can be spoken as one paragraph, which is how a person talks.
-BREAKS = {"N01", "N13", "N14", "N17", "N21", "N23", "N25", "N30", "N31", "N36"}
+BREAKS = {"N01", "N13", "N14", "N17", "N20", "N21", "N23", "N25", "N31", "N36"}
 
 
 def blocks() -> list[list[tuple[str, str]]]:

@@ -43,8 +43,8 @@ Timings are targets. Every typed result holds on screen for at least 4 seconds b
 > **N03.** Speaking is about three times faster than typing. The problem has never been the speed of our hands. It is
 > that nothing listens to the way we actually talk.
 
-> **N04.** This is indite. It runs on this Mac, with no internet and no account, and it turns spoken Hinglish into
-> text, directly into whatever app you are already in.
+> **N04.** This is indite. It runs on this Mac, with no internet, and no account needed for now, and it turns
+> spoken Hinglish into text, directly into whatever app you are already in.
 
 *On screen: empty TextEdit, full screen, menu bar in shot. Nothing else.*
 
@@ -148,8 +148,6 @@ Timings are targets. Every typed result holds on screen for at least 4 seconds b
 > that rambling into a properly structured prompt — role, context, task, constraints, output format — ready to paste
 > into ChatGPT, Claude or Gemini.
 
-> **N30.** Insights shows what this is actually saving you: how much you dictate, how fast you speak, and the time
-> against typing it by hand.
 
 ### 6. Why this one and not a cloud tool (8:25 – 9:15)
 
@@ -160,7 +158,7 @@ Timings are targets. Every typed result holds on screen for at least 4 seconds b
 > **S05.** Yeh poora demo abhi internet ke bina chal raha hai.
 
 > **N32.** The Wi-Fi is off. The speech never left this Mac — not to a server, not to us, not to anyone. There is no
-> account, no sign-in, and nothing to approve with infosec, because there is nothing to send.
+> account needed for now, no sign-in, and nothing to approve with infosec, because there is nothing to send.
 
 > **N33.** There is no per-person subscription either. The dictation costs nothing to run. AI is off until you turn
 > it on, and when you do, it runs on your own account.

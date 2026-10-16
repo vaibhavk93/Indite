@@ -514,8 +514,15 @@ HOLD = {"S01": 5.0, "S02": 6.0, "S03": 5.0, "S04": 5.0, "S05": 4.0,
 
 
 def human(name: str) -> tuple[Path, Path, float] | None:
-    """The founder's own recording of this line, if it has been made."""
-    hi, lo = VOICES / f"{name}.wav", VOICES / f"{name}-16k.wav"
+    """
+    The founder's own recording of this line, if it has been made.
+
+    The tidied version wins when it exists (mac/polish.py): room noise removed, long pauses shortened, loudness
+    evened. The raw take is never deleted, so going back to it is a matter of removing the polished file.
+    """
+    hi, lo = VOICES / f"{name}-polished.wav", VOICES / f"{name}-polished-16k.wav"
+    if not (hi.exists() and lo.exists()):
+        hi, lo = VOICES / f"{name}.wav", VOICES / f"{name}-16k.wav"
     if not (hi.exists() and lo.exists()):
         return None
     import wave
@@ -583,6 +590,9 @@ def before(name: str, call: Path) -> None:
     elif name == "N17":
         fill("indite")
         cmd("js:go('files')", f"file:{call}")
+    elif name == "N20":                                  # the live meeting, shown rather than claimed (founder, 16 Oct)
+        cmd("js:go('meetings')")
+        time.sleep(1.0)
     elif name == "N21":
         cmd("js:go('todo')")
     elif name == "N23":
@@ -590,9 +600,9 @@ def before(name: str, call: Path) -> None:
         cmd("js:openDrawer(S.history.find(r => (r.kind || 'dictation') === 'dictation').id)")
     elif name == "N25":
         cmd("ai:improve")
-    elif name == "N30":
-        cmd("js:closeDrawer()", "js:go('insights')")
     elif name == "N31":
+        cmd("js:closeDrawer()")
+    elif name == "N31b":
         fill("TextEdit")
     elif name == "N36":
         fill("indite")
@@ -621,6 +631,40 @@ def teach_the_word() -> None:
     cmd("js:document.querySelector('#dadd').click()")
     log(f"taught: {heard} -> {want}")
     time.sleep(2.0)
+
+
+def live_meeting() -> None:
+    """
+    Records a real meeting on camera: the microphone is "you", the call's own sound is everybody else.
+
+    The founder asked for this to be shown rather than described (16 Oct). It is the riskiest beat in the video -
+    it needs Screen & System Audio Recording, and it is the one feature never tried on a real call - so if anything
+    fails the take carries on without it rather than stopping.
+    """
+    them = OUT / "meeting-them.wav"
+    try:
+        import wave as _w
+        with _w.open(str(ROOT / "bench_synth/dialogue_2spk.wav")) as src, _w.open(str(them), "wb") as dst:
+            src.setpos(120 * src.getframerate())
+            dst.setparams(src.getparams())
+            dst.writeframes(src.readframes(16 * src.getframerate()))
+        hi, lo, dur = human("S02") or (None, None, 0)
+        if lo:
+            (OUT / "feed.wav").write_bytes(lo.read_bytes())
+            (OUT / "feed.wav").replace(FEED)
+        cmd("js:document.querySelector('#meet').click()")
+        time.sleep(1.0)
+        if hi:
+            timeline.append({"at": time.time() - T0, "wav": str(hi), "speech": True})
+            time.sleep(dur + 0.5)
+        play = subprocess.Popen(["afplay", str(them)])
+        timeline.append({"at": time.time() - T0, "wav": str(them), "speech": True})
+        play.wait()
+        time.sleep(1.5)
+        cmd("js:document.querySelector('#meet').click()")
+        time.sleep(3.0)                                  # the two voices are told apart, on screen
+    except Exception as e:                               # noqa: BLE001 - never lose the take over one beat
+        log("live meeting beat failed, carrying on:", e)
 
 
 def show_script() -> None:
@@ -654,6 +698,8 @@ def show_script() -> None:
             say_line(name, words)
         if name == "N14":                                # the cure, right after the line that promises it
             teach_the_word()
+        if name == "N20":
+            live_meeting()
         time.sleep(HOLD.get(name, 1.2))                  # the screen holds still long enough to be read
 
 
