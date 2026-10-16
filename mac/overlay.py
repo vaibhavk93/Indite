@@ -335,7 +335,8 @@ class Preview:
     """
 
     PW, PH = 460.0, 66.0              # width fixed; the height grows with the text (founder: one line + "…" hid it)
-    MAX_H = 320.0                     # about 14 lines; longer text scrolls inside the card
+    MAX_H = 320.0                     # about 14 lines; text longer than this keeps its END and loses its start
+    CAP = 6.0                         # never on screen longer than this, however long the text (founder, 16 Oct)
 
     def __init__(self) -> None:
         screen = NSScreen.mainScreen().frame()
@@ -405,8 +406,36 @@ class Preview:
         self.panel.orderFrontRegardless()
         self.shown_at = t = time.time()
         from PyObjCTools import AppHelper
-        # long enough to read: 4 s, plus ~a quarter second a word, at most 15 s
-        AppHelper.callLater(min(15.0, 4.0 + 0.25 * len(text.split())), self._hide, t)
+        # Long enough to read: 4 s plus about a quarter second a word - but never more than CAP, because a card that
+        # sits over your work is worse than one that leaves too early (founder, 16 Oct). If you want longer, keep the
+        # pointer on it: _maybe_hide puts the timer back for as long as the mouse is inside the card.
+        AppHelper.callLater(min(self.CAP, 4.0 + 0.25 * len(text.split())), self._maybe_hide, t)
+
+    def hovered(self) -> bool:
+        """
+        Is the pointer on the card right now?
+
+        Asked, not listened for: the panel deliberately ignores mouse events (overlay rule 2 - never swallow a click
+        meant for the window underneath), so a tracking area would mean taking clicks back. Reading the pointer's
+        position costs nothing and breaks nothing.
+        """
+        if self.panel.alphaValue() <= 0.0:
+            return False
+        import AppKit as AK
+        return AK.NSMouseInRect(AK.NSEvent.mouseLocation(), self.panel.frame(), False)
+
+    def _maybe_hide(self, t: float) -> None:
+        """Hide, unless the pointer is on the card - then ask again shortly."""
+        if self.hovered():
+            from PyObjCTools import AppHelper
+            AppHelper.callLater(0.3, self._maybe_hide, t)
+            return
+        self._hide(t)
+
+    def hide_now(self) -> None:
+        """Take it away at once - used when the next dictation starts, so an old card never sits over a new one."""
+        from PyObjCTools import AppHelper
+        AppHelper.callAfter(self._hide, self.shown_at)
 
     def snapshot(self, request) -> None:
         """Shows the card with the request's text and saves a picture of it beside the request (developer check)."""
