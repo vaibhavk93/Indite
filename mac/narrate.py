@@ -20,6 +20,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 import wave
 from pathlib import Path
 
@@ -230,6 +231,22 @@ if __name__ == "__main__":
             assert w.getframerate() == LOW and w.getnchannels() == 1 and w.getsampwidth() == 2
         for f in OUT.glob("__selftest*"):
             f.unlink()
-        print(f"ok - {len(got)} lines, {sum(1 for n, _ in got if n[0] == 'S')} of them spoken into indite")
+        # Actually walk the recording path. The --selftest used to check only the parsing, so a missing `import
+        # time` reached the founder mid-take (16 Oct): it failed the moment he pressed Enter.
+        import builtins
+        answers = iter(["", "", "k"])
+        real_input, builtins.input = builtins.input, lambda *a, **k: next(answers)
+        here, globals()["OUT"] = OUT, Path("/tmp/indite-narrate-selftest")
+        try:
+            mic = Mic()
+            record(mic, "__selftest", "one short line")
+            mic.close()
+        finally:
+            builtins.input, globals()["OUT"] = real_input, here
+        for f in Path("/tmp/indite-narrate-selftest").glob("*"):
+            f.unlink()
+        Path("/tmp/indite-narrate-selftest").rmdir()
+        print(f"ok - {len(got)} lines, {sum(1 for n, _ in got if n[0] == 'S')} of them spoken into indite; "
+              f"the record path runs")
         sys.exit(0)
     main()
