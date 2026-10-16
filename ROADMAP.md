@@ -1,6 +1,6 @@
 # indite roadmap
 
-Last updated: 2026-10-10 (after the v0.6 phone test). **This file is the one roadmap.** The roadmap page
+Last updated: 2026-10-16 (re-prioritised; Wispr comparison items folded in; founder parked 4 items). **This file is the one roadmap.** The roadmap page
 (https://claude.ai/artifact/GuCGtX4TJeASaS2RpGFS4q) is published from it. PLAN.md keeps the full decisions and test results.
 Every item passed an independent critic review, or is the founder's own decision.
 
@@ -68,6 +68,10 @@ Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr
 
 ---
 
+- **16 Oct (Mac):** stuck microphone → indite restarts itself (at most once per 10 min); back-to-back meetings
+  (the next starts while the last one finishes) + working dots on the tabs; every 2nd meeting in a session failing
+  to start, fixed; swear masking keeps the real word stored (stars only where shown, typed or exported).
+
 ## Founder's requests (10 Oct 2026) and their status
 
 | Request | Status |
@@ -98,7 +102,7 @@ Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr
 | "Where AI requests go": tick several | **Built** (build 7) |
 | OpenRouter key, answers saved inside indite | **Built** (build 7, personal); waiting for the founder's key |
 | Reminders / timers | **Built** as "Remind me" → Clock app (indite stores nothing); build 7 |
-| Wispr Flow comparison | Done: password/OTP guard built; snippets later; no accounts, streaks or per-app tone |
+| Wispr Flow comparison | Done (15-16 Oct): `docs/MAC_PLAN.md` §6, `docs/WISPR_DEEPDIVE.md`. Snippets = word fixes and the streak are built; build items now in "Now" |
 | Mac web app: restarting still starts jobs from scratch (PLAN §5) | Next (web) |
 | Check whether Sarvam Edge / Gboard already do Roman Hinglish | Research, before testers |
 | Repo has no LICENSE (public repo) | Founder decision, before testers |
@@ -148,98 +152,104 @@ items, Windows, retention setting, custom vocabulary. Biggest risk: speed on a �
   (founder decisions).
 - Rule: one batch per build; quick test after every build, phone < ~36 °C, untouched.
 
-## Now
+## How the two apps relate (founder, 16 Oct)
 
-1. **Founder's hand check of build 29** — everything built since build 15 is untested by a human: the backup and
-   restore, the rebuilt Ask AI sheet, speaker correction, retry-a-part, task ticks, the keyboard rewrite chips,
-   reminders ringing and stopping. The code is verified by compiler and 22 unit tests; none of it has been *used*.
-2. **Back up the signing key** (`~/.indite/indite-testers.keystore`). One copy. Five minutes. Without it no tester can
-   ever receive an update.
-3. **A new OpenRouter key.** No AI feature has ever produced an answer on the phone. Until one does, Translate,
-   Rewrite to send, meeting notes and the keyboard chips are untested promises. Pick `apodex/apodex-1.1-mini:free`
-   (measured: 15/15 answers, 25 s median, keeps Roman Hinglish).
-4. **The ₹15k phone** — moved to the last stage (founder, 15 Oct): test it just before testers, on the final build.
-5. **The install size.** 681 MB takes 34 minutes over a cable; on mobile data it is where most testers stop. The gate
-   for a smaller model is set: it must match 25.0% on the 15-min file and 13.0% on clean synthetic.
+**One product, two apps.** Same features, same words in the UI, same note fields. A feature differs only where a
+platform limit forces it, and the workaround is written down here. Every item below passed an independent critic
+(16 Oct). Detail for AI review and the Wispr items: `docs/WISPR_DEEPDIVE.md`, `docs/MAC_PLAN.md` §6,
+`docs/ROADMAP_DETAIL.md` C1-C7.
 
-6. **Mac: two shipped features are dead and one number is missing** (15 Oct, after the Wispr screenshot review).
-   ~~Screen & System Audio Recording is not granted~~ (granted 15 Oct night; one real call left). The 53 real
-   dictations can't be scored (their audio wasn't saved): **record ~50 fresh ones with audio on, then score them** -
-   this set also gates AI review and every accuracy claim. Nothing is signed or
-   notarised, so no second person can install it. All three beat every feature on the Wispr list — see
-   `docs/MAC_PLAN.md` section 6.
+| Platform limit | Android | Mac | What we do |
+|---|---|---|---|
+| Recording calls | Banned on Play | Allowed (mic + system audio) | Android imports call recordings instead |
+| Internet | Public build has none | Has it | Android AI = share to your AI app, or (personal build) Mac route / own key |
+| Typing into other apps | Keyboard + bubble; auto-type only in the personal build | Hold a key anywhere | Same goal, each platform's own way |
+| Seeing your edits in other apps | Only inside indite | Only inside indite (most Mac text goes to other apps) | Learning comes from fixes accepted in AI review, not from edits |
+| Install | 681 MB, debug-signed | Unsigned, Apple Silicon only | Smaller install via Play asset packs; Mac certificate parked |
+| Engine detail for AI review | No per-word confidence yet (JNI change needed) | Per-word confidence via `verbose_json` (~1 h) | Mac first; Android after it passes on the Mac |
 
-7. **⚑ Top priority (founder, 15 Oct): AI review of a dictation, steps 1 and 2 (detail: `docs/ROADMAP_DETAIL.md` C1-C7).** Step 1 offline: flag
-   near-misses of Dictionary words ("in diet" -> "indite"), works in every build. Step 2 with the user's AI: per-item
-   suggestions, nothing changes without a tap, original kept; gate >=70% right on the real set. Accepted fixes feed
-   the Dictionary; Insights gains most-fixed words and fixes per 100 words. Regional personalisation (number formats,
-   script choice, name packs, more languages) is Later, each with a trigger. Wispr comparison: same file, section B.
+**Parity gaps to close** (each sits in a roadmap below):
+- Mac is missing: edit a paragraph + undo; per-paragraph speaker fix + merge; reminders (left out on purpose).
+- Android is missing: Improve, Ask anything, Make it a prompt (#230); swear masking; an Insights page; any AI answer actually received.
+- Naming: Android says "Word fixes", Mac says "Dictionary" - pick one (founder).
 
-8. **⚠ Swear masking breaks R5: it deletes the real word (found 16 Oct, not yet fixed).** `mask_swears` runs inside
-   `tidy()` in `mac/indite_mac.py`, which is before the note is saved - so with the switch on, the stars are what
-   gets stored and the word the founder actually said is gone for good. R5 says nothing is deleted silently.
-   **The fix:** keep the raw text in the note, and mask only where it is shown or typed out (the history row, the
-   note body, the typed/copied output). Small job, one place to change, but it is a product-rule breach rather than
-   polish. Off by default, so nothing has been lost yet. Gate: with the switch on, the stored note still contains
-   the real word and every shown copy is masked.
+---
 
-## Next build (planned, critic-reviewed)
+## Mac roadmap (in order)
 
-**Look and feel** (research: colours and font are fine; what feels "AI-made" is no motion and everything looking the same):
-1. Screen transitions (S) · 2. "Done" moment: check-mark + haptic on the note screen (S) · 3. Writing dots → real progress,
-paragraphs fade in (S) · 4. **Settings split into 6 groups:** Look & feel, Dictation, AI, Word fixes, Storage & privacy, About (M)
-· 5. Stop button pulses with your voice (S) · 6. Record button press spring (S) · 7. Home: plain rows instead of boxed cards (S)
-· 8. Bigger title, Today / Yesterday headers, one-line help text (S) · 9. Custom icons (S) · 10. Animations respect
-"Remove animations" (S). Cut: framework upgrade, shared-element transitions, Lottie/Rive, settings search.
+| # | Item | Who | Size | Gate / note |
+|---|---|---|---|---|
+| 1 | **Leadership demo video.** Confirm narration + real-mistake scene (both built), pick the length (3:00-3:30 or ~9:30), freeze Mac code, dry run, record | Founder + me | ½ day | UI changes since the last take: tab dots, swear masking, Play recording |
+| 2 | **Real speech set:** audio on, use indite normally, hand-type what was really said for ~50 dictations, score | Founder + me | ~1 day | Start now, in parallel. Gates AI review steps 1-2, W5 and every accuracy claim (Android's too) |
+| 3 | **Founder checks:** two real calls back to back; dictation delay while who-spoke runs (priority line only if >1.5 s); stuck-mic log line | Founder | minutes | Built 16 Oct, never tried for real |
+| 4 | **W1** example phrase row on the Dictionary page | Me | 20 min | After the demo |
+| 5 | **Per-word confidence** (`verbose_json`) | Me | ~1 h | Without it step 1 measured 1.9 false flags per 100 words (limit 1) |
+| 6 | **Dictionary length cap + duplicate check** | Me | 20 min | Before anything writes to the Dictionary by itself |
+| 7 | **AI review step 1 (offline):** likely-wrong flags with the confidence gate, Wispr's skip list, 6+ letter targets, ▶ play that bit, Fix + "Always fix?" (W2), a fix log, and "Always fix?" offered after the 2nd identical fix | Me | ~2 days, unproven | Ships only if ≤1 false flag per 100 words on the real set. Replaces Mac "auto-learn from edits" |
+| 8 | **W3** fixes-made count on Insights | Me | ~1 h | Built on the fix log; also the personalisation number |
+| 9 | **W4 experiment:** Dictionary words as the engine's starting prompt | Me | 2 h | Expected to drop (risk: invented names) |
+| 10 | **After the real set is scored:** decide step 1 → **step 2** (one detect-only AI call, nothing changes without a tap, ≥70% right, note before instructions) → C3 review insights → **W5** filler strip (raw kept) | Me | 2-3 days | Each with its own pass/fail |
+| 11 | **Parity:** edit a paragraph + undo; per-paragraph speaker fix + merge (meetings, files) | Me | M | — |
 
-**Your own API key (personal build first):** first a 1-hour test: 3 free OpenRouter models × 5 real Hinglish notes vs Claude
-on the Mac. Stop if clearly worse. If good: OpenRouter only; order = Mac → key → your AI app; on error, a "Send to my AI app"
-button; no "Both" setting. ⚠ About half the free models may train on what you send: one-time warning before meeting notes.
-Public app stays internet-free; a tester-only key build only if interviews ask (15–25 h).
+**Mac next:** detect a call and *ask* "Record this call?" · editable swear list (D1, ~2 h) · Indian formatting (₹,
+lakh/crore; unproven) · 7-day assistant test (#252, founder's yes) · note-before-instructions order on the other AI
+actions (measure) · check the Haiku model id.
+**Mac parked:** signing certificate (until a second person gets the app) · Intel Macs · Practice / Brain dump
+questions (until they are checked on Android).
 
-## Before testers
+---
 
-**⚠ TRIGGER - the next time an Android build is made, do this first (founder, 16 Oct): the app is signed with Android's DEBUG key.** `android/app/build.gradle:42`
-uses alias `androiddebugkey` with password `android` — both public, and in this repo. Play rejects debug-signed
-APKs, and anyone with the file could sign a fake update. Generate a real release key once, keep it secret, back it
-up in two places, and switch `signingConfigs.testers` to it **before** strangers install the app — after that, a key
-change forces every tester to uninstall, which deletes their notes. Confirmed 16 Oct: `~/.indite/indite-testers.keystore` is byte-identical to `~/.android/debug.keystore`. Founder's decision: not now - the Mac app and the leadership demo come first; raise it at the next Android build.
+## Android roadmap (in order)
 
+**⚠ Every new Android build waits on the release-key switch, which the founder parked.** Item 1 needs no build.
 
-- Try-it screen for first-time users; smaller install (model downloads on first open)
-- Test on a ₹15k phone (parked by the founder; still the biggest unknown)
-- Give it to 10–20 people; interviews alongside; ask an open question about translation; sign-up asks "Android or iPhone?"
+| # | Item | Who | Size | Gate / note |
+|---|---|---|---|---|
+| 1 | **No build needed:** a new OpenRouter key *or* Tailscale for the Mac route (either gives the phone its first AI answer); the 1-hour model test (3 free models × 5 real notes vs Claude, run on the Mac); record part of the real speech set on the phone | Founder (+ me for the test) | ~2 h | — |
+| 2 | **Un-park: hand-check build 29**, above all that backup → restore works; plus the reminders 3-day check | Founder | ~1 h | Must pass before the key switch: a key change forces an uninstall, which deletes the phone's notes |
+| 3 | **Release key:** 1 h research on key rotation (may avoid the uninstall; unproven), then the real key, backed up in two places | Me + founder | ~2 h | Unlocks every build below |
+| 4 | **One parity build:** Improve, Ask anything, Make it a prompt; swear masking (real word stored); Dictionary length cap (duplicates already handled) | Me | M | — |
+| 5 | **AI review step 1 on Android:** add per-word confidence to the whisper.cpp bridge (native rebuild), then the same flags as the Mac | Me | M | Only after it passes on the Mac |
+| 6 | **Batch A** (Show only [name], recovery banner, find & replace, WhatsApp date titles, permissions checklist) + **look-and-feel top 10** | Me | M | Batch A's old "after build 10" gate is replaced by item 2 |
+| 7 | **Before testers:** ₹15k phone → Play internal testing → model download via Play asset packs (smaller install; the public build has no internet, so asset packs are the only route) → try-it onboarding, newer Android target, battery check, restore on a new phone, strip personal-only features | Me + founder | L | Then 10-20 testers with interviews |
 
-## Next
+Look-and-feel top 10 (item 6): screen transitions · "done" tick + haptic · real progress instead of writing dots ·
+Settings in 6 groups · Stop button pulses with your voice · Record button spring · plain rows instead of cards ·
+bigger title with Today / Yesterday · custom icons · all of it respects "Remove animations".
 
-- **Speaker labels in the web app** + rename: reuse the phone recipe instead of pyannote/Hugging Face (Sarvam's paid labels stay
-  the fallback). The old "speaker test 2" (pyannote on the 56-min file) is superseded.
-- **Windows support** (founder decision): setup script, whisper.cpp Windows build (CUDA / Vulkan / CPU); speed unmeasured, needs
-  a real Windows PC.
-- **v0.8 · Your own AI key:** separate "indite AI" build with the user's own key (OpenAI / Gemini / OpenRouter / Anthropic); the
-  default app stays offline. Only if testers want in-app AI. Plus a test of a small on-phone AI (Gemma) on 20 real brain dumps.
-- Action items v2: real dates ("kal" → a date) once JSON modes exist; practice "Your tries" history (after 3 testers retry)
-- Engine choice from `bench` on real clips (3–5 files per user group, plus a fixed hand-checked test set)
-- **Choose when each transcript is deleted** (founder request): 30 days / 1 year / 3 years / never
-- Custom vocabulary (names, brands); Indian formatting (₹, lakh, dates, numbers)
-- Optional "fix unclear bits with Sarvam" switch for the local engine (off by default; ~₹0.40 per file; those bits leave the Mac)
-- Subtitle line-length setting (check the 56-min SRT first)
-- Later bubble ideas, only if testers ask: snooze for 10 min, snippets, filler-word removal, spoken "new line"
+**Android later:** Insights page · voice "Me" (#64) · overlap marking (gate: >3% of words lost) · widget / tile.
 
-## Later
+---
 
-- Better Hinglish model (fine-tuned) to close the gap to Sarvam; phone's AI chip for speed
+## Personalisation: making indite yours (founder request #188, #227; critic-reviewed 16 Oct)
+
+| Layer | What it does | Status |
+|---|---|---|
+| **1. Your words** | Dictionary / word fixes replace what the engine gets wrong ("in diet" → "indite"). Android also offers a fix after the same edit twice | **Built, both.** The only proven gain |
+| **2. Learn from your corrections** | AI review flags likely mistakes; each accepted fix goes to the log; the 2nd identical fix offers "Always fix?" → Dictionary | Mac #7-10, Android #5 |
+| **3. Prime the engine with your words** | Your names and brands given to the engine before it listens (W4) | 2 h experiment, expected to drop |
+| **How we know it works** | Fixes made per 100 words (W3) going down over time, and a re-score of the real speech set | Mac #8 |
+
+**Cut, with reasons:**
+- Separate "style rules" (e.g. "kr rha" → "kar raha"): that is just a word fix plus the existing everyday-spelling switch.
+- Training the speech model on each user's voice: ruled out before (#188: no trainer, no memory to spare), it needs
+  hours of corrected audio (the real set is minutes), the engine can't load a per-user add-on, and every user would
+  need a Mac. The route kept instead: one better shared Hinglish model (Later).
+- "Rewrite in my style" with AI: nobody has asked; needs internet. Later, if 3 people ask.
+
+---
+
+## Both apps, later
+
+- Better Hinglish model (fine-tuned, shared by everyone); phone's AI chip for speed
 - Public Hinglish test set and leaderboard
-- Indian English, then Marathi/Bengali, then Tamil
-- Translation of our own (on-phone engine + spoken output): only after 3 real people ask; then a 1-day test (Google Translate vs
-  Tencent Hy-MT2 on 30 Hinglish sentences, RAM check on a cheap phone). Research: reports/Offline translation and speech output.md
-- Accessibility add-on in the public build (decide after Play's review cost is known)
-- Play Store launch (asset packs, newer Android target, policy declarations for overlay, special-use service, keyboard)
-- Hosting, Google login, payments (Razorpay / UPI), installable web app, DOCX export, batch upload, Devanagari output,
-  subtitle burn-in, autosave to server, "Sign in with ChatGPT" (apply via OpenAI's form)
-- **iPhone app** (critic-reviewed 2026-10-10): not now. Trigger: 5+ testers ask for iPhone (tester sign-up asks "Android or
-  iPhone?"). First step then: a 1-day speed test of whisper.cpp's own iOS example on a real iPhone (free Apple ID install).
-  iOS blocks the floating bubble, mic in keyboards and auto-paste; the $99/yr developer account is needed to give it to others.
+- More languages, one at a time: the tester sign-up asks which; a language starts at 5+ asks (2-4 weeks each)
+- Choose when notes are deleted (#53) · action items with real dates ("kal" → a date) · Devanagari output switch
+- Own translation (after 3 asks) · Windows (needs a PC) · web app: resume after a crash, speaker labels
+- Play Store launch; hosting, login, payments · iPhone (when 5+ testers ask)
+- Engine choice from `bench` on real clips · optional "fix unclear bits with Sarvam" switch (off by default, ~₹0.40
+  per file, those bits leave the device) · subtitle line-length setting · own-key AI build for testers (only if
+  interviews ask)
 
 ## Not doing (for now), and why
 
@@ -248,7 +258,7 @@ change forces every tester to uninstall, which deletes their notes. Confirmed 16
 | Claude or Gemini subscription login in the app | Their terms forbid it; the founder's Mac route does it legally |
 | Deepgram; AI or cloud fallback on our own keys | Breaks zero-cost and privacy rules |
 | Live voice roleplay; PM coach as a product | Too slow offline (10–15 s per turn); crowded; kept as "Practice answer" |
-| Rough text while you speak; shading unsure words | Draft models write Hindi script; confidence doesn't match real mistakes |
+| Rough text while you speak; shading every unsure word | Draft models write Hindi script; confidence alone doesn't match real mistakes (it *is* used as a gate in AI review step 1, Now 6) |
 | Our own call recorder | Banned on Play since 2022; import recordings instead |
 | Full typing keyboard; model in a laptop browser | Endless work; no browser-ready model |
 | Bubble only when a keyboard is up, without accessibility | Not possible on Android 11+; the indite keyboard covers it |
@@ -270,6 +280,7 @@ change forces every tester to uninstall, which deletes their notes. Confirmed 16
 | Wispr: scratchpad with its own hotkey | The window is already one (Dictations, To do, stars, search) |
 | Wispr: read the IDE's open file for code variable names | Continuously reading another app's document; the free 80% is ~20 identifiers in the Dictionary |
 | Wispr: team dictionary, cloud sync, referrals | Breaks audio-never-leaves, zero-cost and no-account |
+| Personal-assistant layer (send to Slack / Gmail / Drive, notify people, chase ETAs) | Claude and Gemini already do the actions through their own connectors; it needs sign-ins, an online AI and breaks the no-internet phone rule. Sharing to Claude already exists. Revisit: WhatsApp pre-fill if testers ask (founder question, 16 Oct, critic-reviewed) |
 
 ## Competitors noted
 

@@ -125,6 +125,28 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+**16 Oct 10:20 — ROADMAP.md is now two roadmaps (Mac, Android) + a limits/parity table + personalisation.**
+Recordings can be played from a note's menu. ⚠ Another session works in this folder too: check `git status` before
+committing and commit only your own files.
+
+**16 Oct 09:50 — roadmap re-prioritised (ROADMAP.md "Now" + "Parked").** Order: demo (freeze Mac code until
+recorded) → real speech set → founder checks → verbose_json → Dictionary cap → AI review step 1. Swear masking now
+keeps the real word stored. The published roadmap page is still the 10 Oct version.
+
+**Mac, 16 Oct 03:10 — back-to-back meetings built (founder request 251).** Each recording is its own `Meeting`;
+Stop hands it to a background finisher and the next can start at once (it waits only for `released`, ~2 s max).
+A stopped meeting never reads the shared mic queue again. `system_audio._output_class()` defines the ScreenCaptureKit
+receiver once: before this, **every second meeting in a session failed to start**. Tab dots (`navDots` in
+`ui/app.html`) and a "finishing" entry in `ai_busy`. Tested live with `demo_feed.wav` (no real mic); not on a real
+call. Four test meetings (16 Oct 03:02-03:06) are in the founder's Meetings list. Assistant idea: request 252.
+
+**Mac, 16 Oct 02:40 — the stuck-mic bug came back; the old fix could not work.** After a meeting, CoreAudio
+deadlocked closing the mic and held the device lock for the life of the process, so every later press queued forever
+(pill shown, nothing recorded). Now `Mic.start` gives up after 8 s, a stuck close or open raises `MicStuck`, and the
+next press restarts indite itself (at most once per 10 min, else "restart the Mac"). **The self-restart is untested
+on a real lock-up**: if the log shows "restarting indite to get the microphone back", check it came back.
+Founder's assistant idea answered: use Claude/Gemini for actions (ROADMAP "Not doing").
+
 **Mac, 16 Oct ~02:00 — full end-to-end test: 21 of 21 pass.** App, engine, signature, both permissions, 3 live
 recordings through the real microphone, typing 389 characters into TextEdit exactly in 0.32 s, a 230 s two-speaker
 file transcribed and both voices found (58 labelled parts), and all 8 window pages drawing. Four real bugs were

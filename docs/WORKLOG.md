@@ -4,6 +4,78 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-16 (10:20) · Claude Code (Opus 5.5) · Two roadmaps, personalisation plan, recordings reachable
+
+**Next step:** founder: demo decisions (length) and the real speech set; Android item 1 (key or Tailscale).
+
+- Recordings: saved but unreachable. Added Play / Show in Finder to the note menu (`store.audio_files`, window
+  actions `play`/`reveal`). Crashed the app once on the way (a local `import subprocess` later in the same handler
+  shadowed the module import); fixed, pyflakes clean, Show in Finder tested.
+- ROADMAP.md forward sections rewritten as two roadmaps + limits table + personalisation (critic-reviewed).
+- Another session (founder's other account) commits in the same folder (81f8487, narrate.py only). Commit this work
+  soon so it is not swept into someone else's commit.
+
+---
+
+## 2026-10-16 (09:50) · Claude Code (Opus 5.5) · Swear masking fixed; roadmap re-prioritised
+
+**Next step:** founder confirms the demo decisions and length; the real speech set starts (ROADMAP Now 1-2).
+
+- Swear masking: removed from `tidy()` (the saved text); `App.out()` masks typed/copied/previewed/exported text;
+  `store.masked()` masks the window's copy of notes. Check added to `mac/store.py`. App restarted, no rebuild.
+- Wispr comparison found in MAC_PLAN §6, ROADMAP_DETAIL, WISPR_DEEPDIVE; ~10 decided items were missing from
+  ROADMAP.md. "Now" rewritten (9 items) after a critic: demo first with a code freeze; real speech set gates step 1
+  too (~1 day, not 2 h); verbose_json and the Dictionary cap before step 1; C2 + W2 merged into step 1; W1/W3 after
+  the demo. New "Parked" table (₹15k phone, Mac certificate, build 29 check, Android key backup + release key).
+- Stale fixed: header date, Wispr row, "shading unsure words", language order; requests #236, #238, #240, #244.
+
+---
+
+## 2026-10-16 (03:10) · Claude Code (Opus 5.5) · Mac: back-to-back meetings + working dots built
+
+**Next step:** founder tries two real calls back to back; check both notes and the "Others" track.
+
+- Each meeting is its own object; Stop finishes in the background; Start waits only for the old one to let go of the mic.
+- Found while testing live: every 2nd meeting in a session failed ("Out is overriding existing Objective-C class") -
+  `SystemAudio.start` defined its class each time. Fixed (defined once). A failed start now closes the mic.
+- `mic_trouble` now logs the reason (it only showed a pop-up, which hid the cause during this test).
+- UI: dot on Meetings / Files / Dictations tabs (red = recording, grey = working; still under reduced motion);
+  "Finishing the last words…" on the row.
+- Tests: `tests/test_mac_meetings.py` (B keeps its first 2 s, A keeps all of its own); 11 Mac tests pass. Live test
+  with sample audio: two meetings 14 s apart, each with only its own text. Snapshot checked.
+- Four test meeting notes left in the founder's list (03:02-03:06).
+
+---
+
+## 2026-10-16 (03:00) · Claude Code (Opus 5.5) · Mac: back-to-back meetings planned; assistant idea tested on paper
+
+**Next step:** founder's go-ahead on the meetings plan (founder request 251) and on the 7-day assistant test (252).
+
+- Bug fixed: `Meeting.start` never cleared `segments`, so a 2nd meeting in one app session saved the 1st's lines too. Saved meetings unaffected (each was in a different session).
+- Two races found, unfixed: after Stop, Start is allowed at once; the old `stop()` then calls `app.mic.stop()` (kills the new mic) and `pump(force=True)` (reads the new meeting's audio from the shared mic queue).
+- Research: Granola admits back-to-back calls can merge; macOS 14+ lists which app holds the mic (poll; listeners reportedly don't fire). Anthropic forbids routing users' Claude plans through third-party apps (API keys only). WhatsApp bans automating personal accounts.
+- Founder usage: 127 of 167 notes were typed into Terminal or the Claude app; Ask AI used 14 times.
+
+---
+
+## 2026-10-16 (02:30) · Claude Code (Opus 5.5) · Mac: stuck mic, for real this time; assistant question answered
+
+**Next step:** watch the log for "restarting indite to get the microphone back" to confirm the self-restart works on a real lock-up.
+
+- Pill showed, nothing recorded, right after a meeting. A live stack sample showed a deadlock between PortAudio's stop
+  and CoreAudio's audio thread, and the next open waiting on the same device lock forever. The 16 Oct "abandon the
+  stream" fix cannot recover this: only a new process can. Force-restarted the app.
+- Fix (critic: adopt with changes): `MicStuck`; `Mic.start` waits at most 8 s; a stuck close or open marks the mic
+  stuck; the next press restarts indite (detached `open -n`, then `os._exit`, since `sys.exit` would hang in
+  sounddevice's exit hook), at most once per 10 min (`restart_allowed`), else an alert. Test added; 10 Mac tests pass.
+- Untested: the restart on a real lock-up. Unproven: that meetings are the trigger (1 of 2 lock-ups followed plain
+  dictation). Worth checking: whether a newer PortAudio (bundled one is V19.7.0-devel) fixes the cause.
+- Founder asked: build a personal assistant (Slack/Gmail/Drive) into indite, or use Claude? Critic-reviewed answer:
+  use Claude/Gemini; nothing new now. Added to ROADMAP "Not doing". WhatsApp pre-fill is the one gap, if testers ask.
+- uv.lock synced to the pynput==1.8.2 pin already in pyproject.
+
+---
+
 ## 2026-10-15 (late night) · Claude Code (Opus 5.5) · Mac: key access fixed; it was a crash
 
 **Next step:** restart the Mac (clears the frozen copy), then the demo video. B22 (real meeting) still open.
