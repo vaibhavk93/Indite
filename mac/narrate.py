@@ -234,8 +234,16 @@ if __name__ == "__main__":
         # Actually walk the recording path. The --selftest used to check only the parsing, so a missing `import
         # time` reached the founder mid-take (16 Oct): it failed the moment he pressed Enter.
         import builtins
-        answers = iter(["", "", "k"])
-        real_input, builtins.input = builtins.input, lambda *a, **k: next(answers)
+        step = {"n": 0}
+
+        def answer(*_a, **_k) -> str:
+            step["n"] += 1
+            if step["n"] == 2:                           # the stop press: leave time for sound to arrive
+                time.sleep(1.2)
+                return ""
+            return "" if step["n"] == 1 else "k"
+
+        real_input, builtins.input = builtins.input, answer
         here, globals()["OUT"] = OUT, Path("/tmp/indite-narrate-selftest")
         try:
             mic = Mic()
