@@ -109,7 +109,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 - Detect a call and *ask* "Record this call?" · your own swear list (~2 h) · ₹ / lakh-crore formatting (unproven)
 - Live clean-up while dictating with a local model (MAC_PLAN P6; needs a 30-dictation test first)
 - 7-day assistant test with Claude Code over your notes (#252, waiting for your yes) · note-before-instructions order
-  on the other AI actions (measure first) · check the Haiku model id
+  on the other AI actions (measure first) · ✅ Haiku model id checked 17 Oct (`claude-haiku-5-5`, current)
 - From the Wispr comparison: flags from low confidence alone (~3 h) · two-step AI review (only if step 2 < 70%) ·
   topics in Insights · regional name and place packs · a whispered-speech test
 - Insights when the data exists: weekday pattern (~4 weeks), speakers found, an honest accuracy measure

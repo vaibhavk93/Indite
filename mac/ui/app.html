@@ -855,7 +855,7 @@
   <div class="sbox">
     <svg width="56" height="56" viewBox="100 100 824 824" style="margin-bottom:16px"><use href="#brandmark"/></svg>
     <h1>Set up indite</h1>
-    <p class="lead">Four steps, about a minute. Everything stays on this Mac.</p>
+    <p class="lead">Four steps and one choice, about a minute. Everything stays on this Mac.</p>
     <ol class="ssteps">
       <li id="st-ax"><span class="sn">1</span><div><b>Let indite notice the key and type for you</b>
         <p>System Settings → Privacy &amp; Security → Accessibility → switch on <b>indite</b>. Then quit and reopen
@@ -868,6 +868,10 @@
       <li id="st-try"><span class="sn">4</span><div><b>Try it</b>
         <p>Click in the box, hold <kbd class="hk-name"></kbd>, say “Hello indite, yeh mera pehla test hai”, and let go.</p>
         <textarea id="try" placeholder="Your words appear here" spellcheck="false"></textarea></div><span class="ok"></span></li>
+      <li><span class="sn">5</span><div><b>Show your words after you speak? <span class="fine" style="display:inline">optional</span></b>
+        <p>A small card above the pill shows what was written for a few seconds, with Ask AI and To do. It sits over
+        the bottom of the screen, so a click there can land on the card instead of a chat box. Change it any time in
+        Settings → Look &amp; sounds.</p></div><button class="sw" id="setup-preview" role="switch" aria-label="Show text after dictating"></button></li>
     </ol>
     <div class="sfoot"><button class="btn" id="setup-skip">Skip for now</button>
       <button class="btn go" id="setup-done">Done</button></div>
@@ -962,6 +966,7 @@
     mark("#st-mic", S.mic_ok === true, "✓ Allowed");
     mark("#st-try", $("#try").value.trim().length > 2, "✓ It works");
     seg("#setup-key", S.hotkeys, S.prefs.hotkey, v => send({ action: "pref", key: "hotkey", value: v }));
+    sw("#setup-preview", "preview");
   }
   $("#restore").onclick = () => send({ action: "restore" });
   let filter = "all";
