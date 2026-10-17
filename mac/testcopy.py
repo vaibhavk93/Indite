@@ -43,8 +43,12 @@ def evaluate(expr: str, wait: float = 10.0) -> str:
     end = time.time() + wait
     while time.time() < end:
         if out.exists() and out.stat().st_size:
-            got = json.loads(out.read_text())            # the window sends JSON.stringify(value), as a JSON string
-            return json.loads(got) if isinstance(got, str) else got
+            raw = out.read_text()
+            try:
+                got = json.loads(raw)                    # the window sends JSON.stringify(value), as a JSON string
+                return json.loads(got) if isinstance(got, str) else got
+            except json.JSONDecodeError:
+                return {"error": raw.strip()[:500]}       # the expression threw: say what the page said
         time.sleep(0.2)
     raise SystemExit("no answer from the test copy (is it running? python mac/testcopy.py start)")
 
@@ -91,6 +95,8 @@ if __name__ == "__main__":
     elif verb == "js":
         cmd("js:" + arg)
     elif verb == "eval":
+        if "\n" in arg:
+            raise SystemExit("eval takes one line (demo.cmd reads one instruction per line)")
         print(json.dumps(evaluate(arg), indent=1)[:4000])
     elif verb == "cmd":
         cmd(arg)

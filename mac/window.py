@@ -189,6 +189,16 @@ class Bridge(NSObject):
             msg = json.loads(str(message.body()))
         except Exception:   # noqa: BLE001
             return
+        try:
+            self.handle(msg)
+        except Exception:   # noqa: BLE001 - one bad action must never take the whole app down (17 Oct: it did)
+            import traceback
+            print("window action failed:", msg.get("action"))
+            traceback.print_exc()
+            self.js("toast('That didn’t work. The details are in the log.')")
+
+    @objc.python_method
+    def handle(self, msg: dict) -> None:
         act = msg.get("action")
         if act == "ready":
             self.app.check_ai()
@@ -302,7 +312,7 @@ class Bridge(NSObject):
                 text = row["text"]
                 if how in ("fix", "always"):
                     import re as _re
-                    text = _re.sub(r"(?<!\w)" + _re.escape(f["heard"]) + r"(?!\w)", f["want"], text, count=1, flags=_re.I)
+                    text = _re.sub(r"(?<!\w)" + _re.escape(f["heard"]) + r"(?!\w)", lambda _m: f["want"], text, count=1, flags=_re.I)
                 if how == "always":
                     why = store.fix_problem(f["heard"], f["want"])
                     if why:
@@ -410,7 +420,7 @@ class Bridge(NSObject):
             alert.addButtonWithTitle_("Delete")
             alert.addButtonWithTitle_("Cancel")
             alert.buttons()[0].setHasDestructiveAction_(True)
-            if alert.runModal() == NSAlertFirstButtonReturn:
+            if __import__('indite_mac').run_modal(alert) == NSAlertFirstButtonReturn:
                 store.clear()
         elif act == "permission":
             from indite_mac import ask_to_listen

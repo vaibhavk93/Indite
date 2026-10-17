@@ -22,6 +22,7 @@ class Player:
         self.track = 0                 # which of the note's files (a meeting: 0 = you, 1 = others)
         self.tmp: Path | None = None   # a converted copy, for formats AVAudioPlayer cannot read
         self.vol = 1.0                 # kept across loads (tests run silent)
+        self.speed = 1.0               # kept across loads too
 
     def load(self, note: str, path: Path | list[Path], track: int = 0) -> float:
         """
@@ -39,6 +40,7 @@ class Player:
         if p is None:
             raise RuntimeError("this recording cannot be played")
         p.setEnableRate_(True)
+        p.setRate_(self.speed)                         # switching track keeps the speed you picked
         p.setVolume_(self.vol)
         p.prepareToPlay()
         self.p, self.note, self.track = p, note, track
@@ -90,7 +92,8 @@ class Player:
 
     def rate(self, r: float) -> None:
         if self.p:
-            self.p.setRate_(float(r))
+            self.speed = float(r)
+            self.p.setRate_(self.speed)
 
     def stop(self) -> None:
         if self.p:

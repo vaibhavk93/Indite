@@ -107,7 +107,10 @@ def apply_fixes(text: str, table: dict[str, str]) -> str:
     """
     def one(w: str) -> str:
         m = re.match(r"^(\W*)(.*?)(\W*)$", w)
-        return m.group(1) + table.get(m.group(2).lower(), m.group(2)) + m.group(3)
+        word, new = m.group(2), table.get(m.group(2).lower(), m.group(2))
+        if word[:1].isupper() and new[:1].islower():     # "Thik hai" stays capitalised: "Theek hai", not "theek hai"
+            new = new[:1].upper() + new[1:]
+        return m.group(1) + new + m.group(3)
     return " ".join(one(w) for w in text.split())
 
 
@@ -667,6 +670,14 @@ class Mic:
         return np.concatenate(chunks).flatten() if chunks else np.zeros(0, dtype="float32")
 
 
+def run_modal(dialog) -> int:
+    """Every alert and file panel goes through here: the hidden test copy answers Cancel and shows nothing."""
+    if store.TEST:
+        print("dialog (not shown, answered Cancel):", type(dialog).__name__)
+        return 0
+    return dialog.runModal()
+
+
 def NSApp_activate() -> None:
     if store.TEST:                                       # the test copy never comes to the front
         return
@@ -868,6 +879,8 @@ class InditeApp(rumps.App):
         self.player = Player()           # a note's recording, played inside the window (Listen)
         if store.TEST:
             self.typer, self.player.vol = Offstage("typer"), 0.0
+        threading.Thread(target=lambda: print("audio of deleted notes removed:", store.drop_orphan_audio()),
+                         daemon=True).start()
         for r in store.history():                        # nothing is recording yet: a LIVE left by a crash is stale
             if r.get("live"):
                 store.update(r["id"], live=None)
@@ -1356,7 +1369,7 @@ class InditeApp(rumps.App):
         panel.setPrompt_("Transcribe")
         panel.setAllowsMultipleSelection_(False)
         NSApp_activate()
-        if panel.runModal() == 1 and panel.URLs():
+        if run_modal(panel) == 1 and panel.URLs():
             path = Path(str(panel.URLs()[0].path()))
             threading.Thread(target=self.transcribe_file, args=(path,), daemon=True).start()
 
@@ -1396,7 +1409,9 @@ class InditeApp(rumps.App):
         except Exception as e:                           # noqa: BLE001 - say so, keep the app alive
             print("file failed:", path, e)
             self.done_state = "failed"
-            self.file_error = f"{path.name}: {e}"
+            plain = ("indite can’t read this file as audio or video." if "Invalid data" in str(e) or "Errno" in str(e)
+                     else str(e))                          # the raw error stays in the log, not the banner
+            self.file_error = f"{path.name}: {plain}"
         finally:
             self.job = None
             self.set_title("🎙")
@@ -1419,7 +1434,7 @@ class InditeApp(rumps.App):
                 "again; change or turn off AI in Settings → AI.")
             alert.addButtonWithTitle_("Send")
             alert.addButtonWithTitle_("Cancel")
-            if alert.runModal() != NSAlertFirstButtonReturn:
+            if run_modal(alert) != NSAlertFirstButtonReturn:
                 return
             store.set_pref("ai_ok", True)
             self.reload_prefs()
@@ -1439,7 +1454,7 @@ class InditeApp(rumps.App):
             alert.addButtonWithTitle_("Cancel")
             alert.setShowsSuppressionButton_(True)
             alert.suppressionButton().setTitle_("Don’t ask again for meetings and files")
-            if alert.runModal() != NSAlertFirstButtonReturn:
+            if run_modal(alert) != NSAlertFirstButtonReturn:
                 return
             if alert.suppressionButton().state():
                 store.set_pref("ai_ok_meetings", True)
@@ -1506,6 +1521,10 @@ class InditeApp(rumps.App):
                     print(f"word times: estimated for {note_id} (the engine matched too few words)")
                     times = wordtimes.spread(words, floor, [float(l.get("end", 0)) for l in lines], audio)
                 wt += [{"s": float(l.get("start", 0)), "k": k, "t": t} for l, t in zip(lines, times)]
+            now = next((r for r in store.history() if r["id"] == note_id), {})
+            if (now.get("text"), now.get("segments")) != (row.get("text"), row.get("segments")):
+                print(f"word times: {note_id} was edited meanwhile - not saved, lined up again next time")
+                return
             store.update(note_id, wt=wt)
             print(f"word times: {sum(len(x['t']) for x in wt)} words lined up for {note_id}")
         except Exception as e:                           # noqa: BLE001 - the player still works by line without it
@@ -1558,7 +1577,7 @@ class InditeApp(rumps.App):
                                                        "at": time.time()}])
             print(f"ai {action}: {time.time() - t0:.1f}s")
             if self.prefs.get("also_copy", True) or self.card_job == (row["id"], action):
-                self.typer.copy(answer)                  # the answer is on the clipboard the moment it is shown
+                self.typer.copy(self.out(answer))        # on the clipboard the moment it is shown; masked like all output
                 if self.window and self.card_job != (row["id"], action):
                     from PyObjCTools import AppHelper
                     AppHelper.callAfter(self.window.bridge.js, "toast('Answer copied. Paste it anywhere.')")
@@ -1571,7 +1590,7 @@ class InditeApp(rumps.App):
             if self.card_job == (row["id"], action):     # asked from the text card: the answer goes back there
                 self.card_job = None
                 if answer:
-                    shown = re.sub(r"\*\*(.+?)\*\*", r"\1", answer)   # the card shows plain text; Copy keeps the original
+                    shown = re.sub(r"\*\*(.+?)\*\*", r"\1", self.out(answer))   # plain text on the card, masked
                     self.preview.answer("Copied. Paste it anywhere.\n\n" + shown)
                 else:
                     self.preview.failed("The AI did not answer: " + (self.ai_error or "no reply") +
@@ -1591,7 +1610,7 @@ class InditeApp(rumps.App):
         panel = NSSavePanel.savePanel()
         panel.setNameFieldStringValue_(time.strftime("indite backup %Y-%m-%d.zip"))
         NSApp_activate()
-        if panel.runModal() == 1 and panel.URL():
+        if run_modal(panel) == 1 and panel.URL():
             n = store.backup(Path(str(panel.URL().path())), self.prefs["backup_scope"], self.prefs["backup_audio"])
             self.notice = f"Backed up {n} note{'s' if n != 1 else ''}."
             self.refresh()
@@ -1601,7 +1620,7 @@ class InditeApp(rumps.App):
         panel = NSOpenPanel.openPanel()
         panel.setPrompt_("Restore")
         NSApp_activate()
-        if panel.runModal() == 1 and panel.URLs():
+        if run_modal(panel) == 1 and panel.URLs():
             try:
                 n = store.restore_zip(Path(str(panel.URLs()[0].path())))
                 self.notice = f"Restored {n} note{'s' if n != 1 else ''}." if n else "Nothing new: every note in that backup is already here."
@@ -1902,7 +1921,7 @@ class InditeApp(rumps.App):
         body = self.out(body)
         panel = NSSavePanel.savePanel()
         panel.setNameFieldStringValue_(name + ext)
-        if panel.runModal() == 1 and panel.URL():
+        if run_modal(panel) == 1 and panel.URL():
             Path(str(panel.URL().path())).write_text(body, encoding="utf-8")
 
     def copy_last(self, _) -> None:                      # noqa: ANN001
@@ -1918,6 +1937,8 @@ class InditeApp(rumps.App):
 
 if __name__ == "__main__":
     if "--selftest" in sys.argv:                         # uv run python mac/indite_mac.py --selftest
+        assert apply_fixes("Thik hai. thik", {"thik": "theek"}) == "Theek hai. theek"   # a capital stays
+        assert apply_fixes("PTM", {"ptm": "Paytm"}) == "Paytm"
         assert utf16_chunks("", 20) == []
         assert utf16_chunks("hello", 20) == ["hello"]
         assert utf16_chunks("abcdef", 2) == ["ab", "cd", "ef"]

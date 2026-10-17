@@ -289,7 +289,8 @@ def edit_line(row: dict, start: float, speaker: str, text: str) -> str | None:
             old, s["text"] = s["text"], text
             wt = [dict(w) for w in row.get("wt") or []]
             for w in wt:                                  # keep the word times: re-match just this line's words
-                if abs(w["s"] - float(start)) < 0.01 and len(w["t"]) == len(old.split()):
+                if abs(w["s"] - float(start)) < 0.01 and w["k"] == track_of(s, row.get("kind") == "meeting") \
+                        and len(w["t"]) == len(old.split()):     # this line's own track, not a line at the same moment
                     import wordtimes
                     w["t"] = wordtimes.align([text.split()], list(zip(old.split(), w["t"], w["t"])), [w["s"]])[0]
             update(row["id"], segments=segs, text=text_of(segs), edited=True, **({"wt": wt} if wt else {}))
@@ -317,6 +318,27 @@ def audio_files(row: dict) -> list[Path]:
     return [own] if own else []
 
 
+def drop_orphan_audio(older_than: float = 3600.0) -> int:
+    """
+    Recordings of notes that are gone (deleted, cleared, or past the 500 kept) are removed - at start-up, so Undo
+    still had them (17 Oct: nothing ever removed them, so meetings kept other people's voices after Delete).
+    Never runs on an empty or unreadable history, and leaves anything touched in the last hour.
+    """
+    try:
+        ids = {r["id"] for r in _read()}
+    except Exception:                                    # noqa: BLE001 - an unreadable history must never cost audio
+        return 0
+    if not ids or not AUDIO.exists():
+        return 0
+    gone = 0
+    for f in AUDIO.iterdir():
+        note = re.match(r"^(\d+\.\d+)(?:-you|-others)?\.\w+$", f.name)
+        if note and note.group(1) not in ids and time.time() - f.stat().st_mtime > older_than:
+            f.unlink()
+            gone += 1
+    return gone
+
+
 def backup(path: Path, scope: str = "all", with_audio: bool = False) -> int:
     import zipfile
     rows = [r for r in _read() if scope == "all" or (scope == "star" and r.get("star"))
@@ -327,7 +349,11 @@ def backup(path: Path, scope: str = "all", with_audio: bool = False) -> int:
         out = []
         for r in rows:
             r = dict(r)
-            a = audio_of(r) if with_audio else None
+            if with_audio and r.get("kind") == "meeting":   # both tracks (17 Oct: meetings had none in backups)
+                r["backup_tracks"] = [f"audio/{f.name}" for f in audio_files(r)]
+                for f in audio_files(r):
+                    z.write(f, f"audio/{f.name}")
+            a = audio_of(r) if with_audio and r.get("kind") != "meeting" else None
             if a:
                 r["backup_audio"] = f"audio/{r['id']}{a.suffix}"
                 z.write(a, r["backup_audio"])
@@ -355,6 +381,10 @@ def restore_zip(path: Path) -> int:
                 dest.write_bytes(z.read(r["backup_audio"]))
                 if r.get("kind") == "file":
                     r["source"] = str(dest)          # the original file may not exist on this Mac
+            for name in r.pop("backup_tracks", []):            # a meeting's you / others tracks
+                if name in z.namelist() and "/" not in name[len("audio/"):]:
+                    AUDIO.mkdir(parents=True, exist_ok=True)
+                    (AUDIO / Path(name).name).write_bytes(z.read(name))
             r.pop("backup_audio", None)
             new.append(r)
     if new:
@@ -485,12 +515,12 @@ def masked(row: dict, mine=()) -> dict:
     A copy of a note for showing, with swears masked. The note on disk keeps the real words (R5: nothing is deleted
     silently) - masking is only ever applied where text is shown, typed, copied or exported.
     """
-    r = dict(row)
+    r = dict(row, real_text=row.get("text", ""))      # edit boxes get the real words: saving stars over them lost them
     for k in ("text", "improved"):
         if r.get(k):
             r[k] = mask_swears(r[k], mine)
     if r.get("segments"):
-        r["segments"] = [{**s, "text": mask_swears(s.get("text", ""), mine)} for s in r["segments"]]
+        r["segments"] = [{**s, "text": mask_swears(s.get("text", ""), mine), "real": s.get("text", "")} for s in r["segments"]]
     if r.get("ai"):
         r["ai"] = [{**a, "text": mask_swears(a.get("text", ""), mine)} if isinstance(a, dict) else a for a in r["ai"]]
     return r
@@ -543,6 +573,7 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     shown = masked(note)
     assert (shown["text"], shown["segments"][0]["text"], shown["ai"][0]["text"]) == ("c******", "b* yaar", "s***")
     assert note["text"] == "chutiya" and note["segments"][0]["text"] == "bc yaar"    # the stored note is untouched
+    assert shown["real_text"] == "chutiya" and shown["segments"][0]["real"] == "bc yaar"   # what an edit box starts from
     pairs = parse_fixes(FIXES_HEADER + "ptm = Paytm\npay tm = Paytm\n  c++  = C++\nbroken line\n= nothing\n")
     assert pairs == [("pay tm", "Paytm"), ("ptm", "Paytm"), ("c++", "C++")], pairs
     assert apply_my_fixes("PTM se pay  tm karo", pairs) == "Paytm se Paytm karo"
@@ -568,4 +599,15 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert restore_zip(z) == 0                                # already here: nothing added, nothing changed
     delete(c); (AUDIO / f"{c}.wav").unlink()
     assert restore_zip(z) == 1 and (AUDIO / f"{c}.wav").read_bytes() == b"RIFF" and history()[0]["star"]
+    mt = add("call", 1, 1, "done", "", kind="meeting"); update(mt, star=True)
+    for t in ("you", "others"):
+        (AUDIO / f"{mt}-{t}.wav").write_bytes(t.encode())
+    assert backup(z, "star", with_audio=True) == 2
+    delete(mt)
+    for t in ("you", "others"):
+        (AUDIO / f"{mt}-{t}.wav").unlink()
+    assert restore_zip(z) == 1 and (AUDIO / f"{mt}-others.wav").read_bytes() == b"others"   # both tracks come back
+    (AUDIO / "1700000000.5-you.wav").write_bytes(b"x"); (AUDIO / "notes.txt").write_bytes(b"x")
+    assert drop_orphan_audio(older_than=0) == 1                      # a deleted note's track goes; nothing else
+    assert (AUDIO / f"{mt}-you.wav").exists() and (AUDIO / "notes.txt").exists()
     print("ok")
