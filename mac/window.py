@@ -394,10 +394,17 @@ class Bridge(NSObject):
             self.app.add_tasks(str(msg.get("id", "")), str(msg.get("label", "")))
         elif act == "ai_clear":                           # remove one AI answer, or the improved version
             row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+            if row:
+                self.ai_undo = (row["id"], row.get("improved"), row.get("ai"))   # one step back: Undo on the toast
             if row and msg.get("label") == "improved":
                 store.update(row["id"], improved=None)
             elif row:
                 store.update(row["id"], ai=[a for a in row.get("ai", []) if a["label"] != msg.get("label")] or None)
+        elif act == "ai_undo":
+            u = getattr(self, "ai_undo", None)
+            if u:
+                store.update(u[0], improved=u[1], ai=u[2])
+                self.ai_undo = None
         elif act == "add_fix":
             heard, want = msg.get("heard", ""), msg.get("want", "")
             why = store.fix_problem(heard, want)         # a refusal has to say why; it used to fail in silence

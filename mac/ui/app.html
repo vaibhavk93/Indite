@@ -1040,6 +1040,12 @@
   }
   const clock = t => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase();
 
+  // ⌘Z right after a delete (or any change with an Undo toast): the toast's own Undo. Text boxes keep their own ⌘Z.
+  document.addEventListener("keydown", e => {
+    if (!(e.metaKey && e.key.toLowerCase() === "z") || e.shiftKey) return;
+    if (/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || "") || document.activeElement?.isContentEditable) return;
+    const b = $("#toast.on.act button"); if (b && b.textContent === "Undo") { e.preventDefault(); b.click(); }
+  });
   function toast(msg, undo, label = "Undo") {
     const el = $("#toast"); el.textContent = msg; el.classList.add("on");
     el.classList.toggle("act", !!undo);
@@ -1327,6 +1333,12 @@
     setTimeout(() => document.addEventListener("mousedown", function off(e) {
       if (!m.contains(e.target)) { m.remove(); document.removeEventListener("mousedown", off); } }), 0);
     m.onkeydown = e => { if (e.key === "Escape") { e.stopPropagation(); m.remove(); } };   // Esc shuts the menu only, not the panel
+    m.addEventListener("keydown", e => {                 // ↑ ↓ move between items; Return clicks the focused one
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault(); e.stopPropagation();
+      const bs = [...m.querySelectorAll("button")], i = bs.indexOf(document.activeElement);
+      (bs[i < 0 ? (e.key === "ArrowDown" ? 0 : bs.length - 1) : (i + (e.key === "ArrowDown" ? 1 : bs.length - 1)) % bs.length] || {}).focus?.();
+    });
     return m;
   }
 
@@ -1633,7 +1645,8 @@
       b.innerHTML = `<svg width="14" height="14"><use href="#i-check"/></svg>`; b.classList.add("done");   // same as a note's copy
       toast("Copied");
       setTimeout(() => { b.innerHTML = `<svg width="14" height="14"><use href="#i-copy"/></svg>`; b.classList.remove("done"); }, 1400); });
-    $("#drawer").querySelectorAll("[data-del]").forEach(b => b.onclick = () => send({ action: "ai_clear", id: r.id, label: b.dataset.del }));
+    $("#drawer").querySelectorAll("[data-del]").forEach(b => b.onclick = () => {   // answers cost money: Undo, not gone
+      send({ action: "ai_clear", id: r.id, label: b.dataset.del }); toast("Answer removed", () => send({ action: "ai_undo" })); });
     $("#drawer").querySelectorAll("[data-tasks]").forEach(b => b.onclick = () => { send({ action: "tasks", id: r.id, label: b.dataset.tasks }); toast("Added to To do"); });
   }
 
@@ -1679,7 +1692,7 @@
       b.replaceWith(input); input.focus(); input.select();
       const done = ok => { if (ok && input.value.trim()) send({ action: "rename", id: r.id, who, name: input.value }); else draw(); };
       input.onkeydown = e => { if (e.key === "Enter") done(true); if (e.key === "Escape") { e.stopPropagation(); done(false); } };
-      input.onblur = () => done(true);
+      input.onblur = () => done(false);                  // only Enter saves: a half-typed name is never kept
     });
 
     on(".del", r => { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); });
@@ -1919,9 +1932,10 @@
     const list = S.fixes_list || [];
     $("#dict-list").innerHTML = list.length ? list.map(([h, w]) => `<div class="dict-row"><span class="h">${esc(h)}</span>
       <span class="arrow">→</span><span class="w">${esc(w)}</span>
-      <button class="copy fixdel" data-h="${esc(h)}" aria-label="Remove" title="Remove"><svg width="14" height="14"><use href="#i-trash"/></svg></button></div>`).join("")
+      <button class="copy fixdel" data-h="${esc(h)}" data-w="${esc(w)}" aria-label="Remove" title="Remove"><svg width="14" height="14"><use href="#i-trash"/></svg></button></div>`).join("")
       : `<div class="empty" style="padding:30px"><h3>No words yet</h3>Add the first one above.</div>`;
-    $("#dict-list").querySelectorAll(".fixdel").forEach(b => b.onclick = () => send({ action: "fix_del", heard: b.dataset.h }));
+    $("#dict-list").querySelectorAll(".fixdel").forEach(b => b.onclick = () => { const heard = b.dataset.h, want = b.dataset.w;
+      send({ action: "fix_del", heard }); toast("Removed from Dictionary", () => send({ action: "add_fix", heard, want })); });
     $("#fixes-line").textContent = list.length ? `${list.length} word${list.length > 1 ? "s" : ""} indite always writes your way.`
       : "Teach indite words it gets wrong, like “ptm → Paytm”.";
   }
