@@ -49,10 +49,18 @@ Docs that matter, in order:
 `docs/DESIGN.md` before any UI work and add new patterns to it.
 
 **Testing without disturbing the founder (founder, 17 Oct):** tests of the running app must not take over his screen.
-Target: a separate full-screen space or a separate test instance (feasibility being researched; build it after the
-current roadmap items). Until then: mute playback (`pctl volume 0`), restore the clipboard, never open other apps
-(TextEdit) on his screen, check the log for recent dictation before restarting the app, and ask first if a test is
-visible. He rejected a test mid-run on 17 Oct because it was running while he dictated.
+Use the **hidden test copy**: `python mac/testcopy.py start | js | eval | cmd | stop` (own data folder
+`~/Library/Application Support/indite-test`, own engine on port 8712 with 2 threads; no keys, mic, typing, clipboard,
+pill, card, menu icon, sound or focus; what it would have typed or shown goes to `offstage.jsonl`). Feed speech with
+`cmd "dictate:<wav>"` (16 kHz mono, e.g. `bench_synth/clean/s03.wav`).
+- **⚠ Stop it when done.** While it runs, opening indite from Spotlight/Finder may reach the hidden copy.
+- **⚠ Restart the founder's app with `open -n -g dist/indite.app`** - plain `open` hands over to the test copy if it
+  is running (happened 17 Oct: his indite was down ~30 s). Before any restart, check the log: no `pill:` line in the
+  last ~2 minutes (the `paint:` lines come every ~10 s).
+- Its window does not draw pictures (macOS stops painting off-screen windows): check the page with `eval`; for a
+  picture, render `mac/ui/app.html` in headless Chrome with made-up notes.
+- Still on the real screen, only with his OK: typing into other apps, the pill, the card's look.
+- Never kill engines with `pkill -f "whisper-server...8712"` from a shell command line: the pattern matches the shell.
 
 **Repo rules:**
 - **Never quote speech-set sentences, references or results in docs or commits** (they may hold work names; the repo is public). They live in `~/Library/Application Support/indite/speechset/`.
