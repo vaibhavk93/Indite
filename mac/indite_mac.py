@@ -1446,7 +1446,7 @@ class InditeApp(rumps.App):
                                  title=path.name + (" (stopped)" if stopped else ""),
                           segments=segments, source=str(path))
             print(f"file {path.name}: {at:.0f}s of audio -> {time.time() - t0:.0f}s, {len(segments)} parts")
-            if body and note and self.prefs["auto_speakers"] and at >= 20:
+            if body and note and self.prefs["auto_speakers"] and at >= 20 and not self.job_stop:   # stopped: you asked to stop
                 self.who_spoke(note)                     # by default: no click needed (founder, 15 Oct)
             self.done_state = "done" if body else "nothing"
         except Exception as e:                           # noqa: BLE001 - say so, keep the app alive
