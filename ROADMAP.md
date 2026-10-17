@@ -52,6 +52,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 - **Dictation anywhere:** hold a key (or tap twice for hands-free), speak, text typed in ~0.8 s; Esc cancels; smart
   output (typed into a text box, else copied); typed words **also on the clipboard** (setting, 17 Oct); long holds cut
   at quiet points; password boxes never typed into; long text ~40x fewer key events (16 Oct); pill with live levels.
+- **Self-contained app for other Macs (17 Oct):** `./mac/build_portable.sh` → `dist/portable/indite-mac.zip` (630 MB, macOS 14+, Apple Silicon), checked by `mac/portable_check.py`; read-me and Help inside. **Bug sweep (17 Oct):** 4 high, 5 medium and the low bugs from an end-to-end test fixed; UI review items 1-21 done.
 - **Calls (17 Oct):** when Zoom, Teams, Slack, FaceTime, WhatsApp or Webex starts using the mic, the card asks "Record this call?" (never records itself; browser calls not noticed). **Your own words to hide** next to swear masking. **Setup** offers the card as an optional step.
 - **Text card after a dictation:** your words, then **Ask AI · two AI buttons (your most used, or picked in Settings) · To do** (17 Oct); takes
   clicks only after the pointer moves onto it; answers wrap and are copied the moment they land.

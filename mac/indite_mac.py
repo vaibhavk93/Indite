@@ -927,10 +927,10 @@ class InditeApp(rumps.App):
             ask_to_listen()
             rumps.alert(
                 "indite needs permission to see the hotkey",
-                "macOS has not allowed this program to notice key presses, so holding the key will do nothing.\n\n"
-                "System Settings → Privacy & Security → Accessibility → + → press ⌘⇧G and paste:\n\n"
-                f"{sys.executable}\n\n"
-                "Tick it, then quit indite and start it again.",
+                "macOS has not allowed indite to notice key presses yet, so holding the key does nothing.\n\n"
+                "System Settings → Privacy & Security → Accessibility → switch on indite. If indite is not in the "
+                "list, click + and pick indite from Applications.\n\n"
+                "Then quit indite (menu bar icon → Quit) and open it again.",
             )
         # macOS slows a background app's timers down (App Nap). indite spends its whole working life in the
         # background, so the pill's animation and the level bars were being starved exactly when they matter.

@@ -67,6 +67,11 @@ pill, card, menu icon, sound or focus; what it would have typed or shown goes to
   then `codesign --verify --deep --strict dist/indite.app`.
 
 **Repo rules:**
+- **⚠ Giving indite to anyone else: send ONLY `dist/portable/indite-mac.zip`, built with `./mac/build_portable.sh`.**
+  `dist/indite.app` (mac/build_app.sh) is the founder's own copy: it runs code, libraries and the model from this
+  project folder, so on another Mac it "does nothing" (17 Oct, his boss's M2). The portable build carries everything,
+  needs macOS 14+ on Apple Silicon, and stops itself if `mac/portable_check.py` finds a home-folder path, a binary for
+  a newer macOS or another chip, a missing file, or anything loaded from outside the app. It needs 4 GB free.
 - **Never quote speech-set sentences, references or results in docs or commits** (they may hold work names; the repo is public). They live in `~/Library/Application Support/indite/speechset/`.
 - **The GitHub repo is PUBLIC** (github.com/vaibhavk93/Indite). Never commit `.env`, `data/`, `clips/`, `phonetest/`,
   `test_recordings/`, APKs, models, or any recording of real people. Never put tokens or keys in docs.

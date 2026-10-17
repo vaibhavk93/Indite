@@ -170,6 +170,8 @@ class Bridge(NSObject):
             "ai_style_groups": __import__("ai").STYLE_GROUPS,
             "ai_langs": __import__("ai").LANGUAGES,
             "ai_names": __import__("ai").NAMES,
+            "version": (Path(__file__).with_name("VERSION").read_text().strip()
+                        if Path(__file__).with_name("VERSION").exists() else ""),
             "file_error": self.app.file_error,
         }
 

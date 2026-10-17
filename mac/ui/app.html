@@ -856,6 +856,26 @@
           <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-gear"/></svg></div>
             <div class="body"><b>Set up again</b>
               <p>Permissions, the key, and a test. <button class="more" id="rerun-setup">Run setup again</button></p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-help"/></svg></div>
+            <div class="body"><b>indite does not open, or closes at once</b>
+              <p>It shows a message saying why. The details are in <span class="path">~/Library/Logs/indite-mac.log</span>
+              (Finder → Go → Go to Folder). Send that file to whoever gave you indite.</p></div></div>
+        </div>
+      </div>
+      <div class="section"><h2>Give indite to someone else</h2>
+        <div class="card faq">
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-check"/></svg></div>
+            <div class="body"><b>What their Mac needs</b>
+              <p>Apple Silicon (Apple menu → About This Mac → Chip says M1, M2, M3 or M4), macOS 14 or newer, about
+              1.2 GB free. Intel Macs are not supported.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-file"/></svg></div>
+            <div class="body"><b>What to send</b>
+              <p>The file <span class="path">indite-mac.zip</span> (about 630 MB). It holds the app and “READ ME FIRST”.
+              The copy of indite you use every day is not the one to send: it needs this Mac’s project folder.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-key"/></svg></div>
+            <div class="body"><b>The first open</b>
+              <p>Unzip, drag indite to Applications, then right-click it → Open → Open (only the first time: indite is
+              not from the App Store yet). Then allow Accessibility and the Microphone when setup asks.</p></div></div>
         </div>
       </div>
       <div class="section"><h2>Privacy</h2>
@@ -868,7 +888,7 @@
               <p>Notes, dictionary and audio live in <span class="path">~/Library/Application Support/indite</span></p></div></div>
         </div>
       </div>
-      <p class="fine">indite for Mac 0.1 · speaker model TitaNet © NVIDIA (CC BY 4.0) · whisper.cpp (MIT) · Hinglish model by Oriserve (Apache 2.0)</p>
+      <p class="fine">indite for Mac <span id="ver"></span> · speaker model TitaNet © NVIDIA (CC BY 4.0) · whisper.cpp (MIT) · Hinglish model by Oriserve (Apache 2.0)</p>
     </section>
   </div>
 </main>
@@ -1090,6 +1110,7 @@
     sw("#set-ask_calls", "ask_calls");
     sw("#set-keep_audio", "keep_audio");
     sw("#set-speech_test", "speech_test");
+    $("#ver").textContent = S.version || "";            // one version, from mac/VERSION
     sw("#set-also_copy", "also_copy");
     sw("#set-review", "review");
     sw("#set-backup_audio", "backup_audio");

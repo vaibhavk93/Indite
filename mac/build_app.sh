@@ -16,8 +16,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>indite</string>
   <key>CFBundleDisplayName</key><string>indite</string>
   <key>CFBundleIdentifier</key><string>com.indite.mac</string>
-  <key>CFBundleVersion</key><string>0.1</string>
-  <key>CFBundleShortVersionString</key><string>0.1</string>
+  <key>CFBundleVersion</key><string>$(cat "$ROOT/mac/VERSION")</string>
+  <key>CFBundleShortVersionString</key><string>$(cat "$ROOT/mac/VERSION")</string>
   <key>CFBundleExecutable</key><string>indite</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleIconFile</key><string>indite</string>
