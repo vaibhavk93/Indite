@@ -199,6 +199,32 @@ def fix_counts() -> dict:
     return out
 
 
+def text_of(segments: list[dict]) -> str:
+    """A note's text from its timed lines, the way meetings and files write it: "Speaker: words" per line, else paragraphs."""
+    if any(s.get("speaker") for s in segments):
+        return "\n".join(f"{s.get('speaker', '')}: {s['text']}" for s in segments)
+    return "\n\n".join(s["text"] for s in segments)
+
+
+def edit_line(row: dict, start: float, speaker: str, text: str) -> str | None:
+    """
+    Changes one timed line and the note's text with it; returns the old words for Undo, or None if no line matched.
+    The line is found by its start time and speaker, never by position: Who spoke rebuilds the list.
+    """
+    segs = [dict(s) for s in row.get("segments") or []]
+    for s in segs:
+        if abs(float(s.get("start", 0)) - float(start)) < 0.01 and (s.get("speaker") or "") == (speaker or ""):
+            old, s["text"] = s["text"], text
+            wt = [dict(w) for w in row.get("wt") or []]
+            for w in wt:                                  # keep the word times: re-match just this line's words
+                if abs(w["s"] - float(start)) < 0.01 and len(w["t"]) == len(old.split()):
+                    import wordtimes
+                    w["t"] = wordtimes.align([text.split()], list(zip(old.split(), w["t"], w["t"])), [w["s"]])[0]
+            update(row["id"], segments=segs, text=text_of(segs), edited=True, **({"wt": wt} if wt else {}))
+            return old
+    return None
+
+
 def named_segments(row: dict) -> list[dict]:
     """A meeting's lines with the speakers' names as renamed by the user ("Person 1" -> "Rohit")."""
     names = row.get("names") or {}
@@ -404,6 +430,15 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert not fix_problem("pay tm", "Paytm")                         # a normal two-word fix is fine
     assert mask_swears("Yeh BC kya hai, chutiya mat bana") == "Yeh B* kya hai, c****** mat bana"
     assert mask_swears("saala hell dickens bcc") == "saala hell dickens bcc"          # everyday words untouched
+    assert text_of([{"speaker": "You", "text": "a"}, {"speaker": "Others", "text": "b"}]) == "You: a\nOthers: b"
+    assert text_of([{"text": "a"}, {"text": "b"}]) == "a\n\nb"
+    import tempfile
+    HISTORY = Path(tempfile.mkdtemp()) / "h.jsonl"
+    HISTORY.write_text(json.dumps({"id": "f1", "text": "kal aana", "segments": [{"start": 2.0, "end": 4.0, "text": "kal aana"}],
+                                   "wt": [{"s": 2.0, "k": 0, "t": [2.1, 2.6]}]}) + "\n")
+    assert edit_line(history()[0], 2.0, "", "kal zaroor aana") == "kal aana"
+    r = history()[0]
+    assert r["text"] == "kal zaroor aana" and len(r["wt"][0]["t"]) == 3                 # word times kept for the new words
     meet = {"text": "Person 1: haan", "names": {"Person 1": "Rohit"},
             "segments": [{"speaker": "Person 1", "text": "haan"}, {"speaker": "You", "text": "theek hai"}]}
     assert named_text(meet) == "Rohit: haan\nYou: theek hai" and named_text({"text": "plain"}) == "plain"

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import threading
 from pathlib import Path
 
 import objc
@@ -207,6 +208,25 @@ class Bridge(NSObject):
             if row and new and new != row["text"]:
                 self.edit_undo = (row["id"], row["text"])
                 store.update(row["id"], text=new, edited=True)
+        elif act == "word_times":                        # first Listen on a note: line its words up with the audio
+            if msg.get("id") and msg.get("id") not in self.app.ai_busy:
+                threading.Thread(target=self.app.line_up, args=(str(msg["id"]),), daemon=True).start()
+        elif act == "edit_line":                         # one line of a meeting or file, from the Listen view
+            row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+            new = " ".join(str(msg.get("text", "")).split())
+            if row and self.app.ai_busy.get(row["id"]) == "finding who spoke":
+                self.js("toast('Wait until Who spoke has finished - it rewrites the lines')")
+            elif row and new:
+                old = store.edit_line(row, float(msg.get("start", 0)), str(msg.get("speaker", "")), new)
+                if old is not None and old != new:
+                    self.line_undo = (row["id"], float(msg.get("start", 0)), str(msg.get("speaker", "")), old)
+                    self.js("toast('Line saved', () => send({action:'undo_line'}))")
+        elif act == "undo_line":
+            u = getattr(self, "line_undo", None)
+            row = next((r for r in store.history() if u and r["id"] == u[0]), None)
+            if row:
+                store.edit_line(row, u[1], u[2], u[3])
+                self.line_undo = None
         elif act == "undo_edit":
             if getattr(self, "edit_undo", None):
                 store.update(self.edit_undo[0], text=self.edit_undo[1], edited=None)

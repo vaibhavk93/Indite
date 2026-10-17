@@ -331,21 +331,50 @@ class Engine:
                 os.unlink(path)
         return out
 
-    def _ask_server(self, path: str, audio_ctx: int, detail: bool = False) -> str:
+    def word_times(self, audio: np.ndarray) -> list[tuple[str, float, float]]:
+        """
+        Every word with when it was spoken (seconds from the start), for the Listen view's highlight. Needs the FULL
+        listening window and timestamps on: with the short window the dictation path uses, every word after ~4 s got
+        the same time (measured 17 Oct). About 4 s per piece of up to 20 s, so it runs once and is kept on the note.
+        """
+        out: list[tuple[str, float, float]] = []
+        at = 0.0
+        for piece in pieces(audio):
+            path = self._wav(piece)
+            try:
+                with self.lock:
+                    if not (self.proc and self.proc.poll() is None):
+                        return out
+                    raw = self._ask_server(path, 0, detail=True, times=True)
+                for seg in json.loads(raw).get("segments", []):
+                    for w in seg.get("words") or []:
+                        piece_text = w.get("word") or ""
+                        if not piece_text.strip():
+                            continue
+                        a, b = at + float(w.get("start", 0)), at + float(w.get("end", 0))
+                        if piece_text.startswith(" ") or not out:
+                            out.append((piece_text.strip(), a, b))
+                        else:                            # a word piece joins the word before ("chem" + "ist")
+                            out[-1] = (out[-1][0] + piece_text.strip(), out[-1][1], b)
+            finally:
+                os.unlink(path)
+            at += len(piece) / RATE
+        return out
+
+    def _ask_server(self, path: str, audio_ctx: int, detail: bool = False, times: bool = False) -> str:
         """A plain multipart POST, so there is no HTTP library to add."""
         import uuid
         boundary = uuid.uuid4().hex
         with open(path, "rb") as f:
             wav = f.read()
         fmt = "verbose_json" if detail else "text"
-        body = (
-            f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.wav\"\r\n"
-            f"Content-Type: audio/wav\r\n\r\n".encode() + wav +
-            f"\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"response_format\"\r\n\r\n{fmt}\r\n"
-            # Without this the server pads every sentence to 30 s and takes 2.2 s instead of 0.5 s (measured 15 Oct).
-            f"--{boundary}\r\nContent-Disposition: form-data; name=\"audio_ctx\"\r\n\r\n{audio_ctx}\r\n"
-            f"--{boundary}--\r\n".encode()
-        )
+        field = lambda k, v: f"--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n"
+        # Without audio_ctx the server pads every sentence to 30 s and takes 2.2 s instead of 0.5 s (measured 15 Oct).
+        # Word times are the exception: they need the full window and timestamps back on (the server starts with -nt).
+        extra = field("no_timestamps", "false") if times else field("audio_ctx", audio_ctx)
+        body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.wav\"\r\n"
+                f"Content-Type: audio/wav\r\n\r\n".encode() + wav +
+                ("\r\n" + field("response_format", fmt) + extra + f"--{boundary}--\r\n").encode())
         import urllib.request
         req = urllib.request.Request(
             f"http://127.0.0.1:{PORT}/inference", data=body,
@@ -1386,6 +1415,38 @@ class InditeApp(rumps.App):
             print(f"review: {len(found)} likely mistake(s) in {note}: " + ", ".join(f"{f['heard']} -> {f['want']}" for f in found))
             self.refresh()
 
+    def line_up(self, note_id: str) -> None:
+        """
+        When each shown word was spoken, once per note, kept on the note as "wt" (mac/wordtimes.py). Runs on its own
+        thread: about 4 s of engine time per 20 s of audio, so a 15-minute file takes ~3 minutes the first time.
+        """
+        import wordtimes
+        from indite.core import load_audio
+        row = next((r for r in store.history() if r["id"] == note_id), None)
+        if not row or note_id in self.ai_busy:
+            return
+        self.ai_busy[note_id] = "lining up the words"
+        self.refresh()
+        try:
+            files, segs, meet = store.audio_files(row), row.get("segments") or [], row.get("kind") == "meeting"
+            wt = []
+            for k, path in enumerate(files):
+                lines = ([s for s in segs if (s.get("speaker") != "You") == bool(k)] if meet else segs) if segs \
+                    else [{"start": 0.0, "text": row["text"]}]
+                if not lines:
+                    continue
+                audio, _ = load_audio(path)
+                times = wordtimes.align([l["text"].split() for l in lines], self.engine.word_times(audio),
+                                        [float(l.get("start", 0)) for l in lines])
+                wt += [{"s": float(l.get("start", 0)), "k": k, "t": t} for l, t in zip(lines, times)]
+            store.update(note_id, wt=wt)
+            print(f"word times: {sum(len(x['t']) for x in wt)} words lined up for {note_id}")
+        except Exception as e:                           # noqa: BLE001 - the player still works by line without it
+            print("word times failed:", e)
+        finally:
+            self.ai_busy.pop(note_id, None)
+            self.refresh()
+
     def card_action(self, i: int) -> None:
         """
         A button on the text card (main thread). Ask AI opens that note's Ask AI panel; the other two run straight
@@ -1604,6 +1665,11 @@ class InditeApp(rumps.App):
                 self.window.win.setFrame_display_(NSMakeRect(x, top - y - h, w, h), True)
             elif verb == "js" and self.window:
                 self.window.bridge.js(arg)
+            elif verb == "eval" and self.window and self.window.bridge.web is not None:
+                # developer check: a JS expression's value goes to eval.out - never the founder's clipboard (17 Oct)
+                def done(result, error):
+                    (store.DIR / "eval.out").write_text(str(error) if error else json.dumps(result, default=str))
+                self.window.bridge.web.evaluateJavaScript_completionHandler_(f"JSON.stringify({arg})", done)
             elif verb == "file":
                 threading.Thread(target=self.transcribe_file, args=(Path(arg),), daemon=True).start()
             elif verb == "ai":                                # on the newest dictation

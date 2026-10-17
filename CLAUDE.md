@@ -11,3 +11,10 @@ At the end of every session:
 Key rules (details in HANDOFF): the GitHub repo is public (no recordings, keys, APKs or models in git); the public app
 build has no internet permission; every suggestion goes past an independent critic before it is recommended; write in
 plain, simple language.
+
+**Two founder rules (17 Oct), always:**
+- **Our own design, not the common AI-tool look.** Before building or changing any screen, read `docs/DESIGN.md` and
+  follow it; add any new pattern to it.
+- **Never test on the founder's screen while he works.** Test in a separate space (see HANDOFF "Testing without
+  disturbing the founder"). Until that exists: no opening other apps, no taking over the clipboard without restoring it,
+  sound muted, no app restarts while he is dictating (check the log first), and ask before anything visible.

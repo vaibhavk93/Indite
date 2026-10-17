@@ -45,6 +45,15 @@ Docs that matter, in order:
 - No in-app Claude/Gemini/ChatGPT login (terms). **Reminders: indite sets its own** (founder decision, 10 Oct, overrides the old "hand off to Calendar / Clock" rule); Calendar and Share are still offered on task rows.
 - The `personal` flavour is founder-only: internet, Mac route, OpenRouter key, accessibility auto-paste.
 
+**Design rule (founder, 17 Oct):** indite has its own design language, not the generic AI-tool look. Read
+`docs/DESIGN.md` before any UI work and add new patterns to it.
+
+**Testing without disturbing the founder (founder, 17 Oct):** tests of the running app must not take over his screen.
+Target: a separate full-screen space or a separate test instance (feasibility being researched; build it after the
+current roadmap items). Until then: mute playback (`pctl volume 0`), restore the clipboard, never open other apps
+(TextEdit) on his screen, check the log for recent dictation before restarting the app, and ask first if a test is
+visible. He rejected a test mid-run on 17 Oct because it was running while he dictated.
+
 **Repo rules:**
 - **Never quote speech-set sentences, references or results in docs or commits** (they may hold work names; the repo is public). They live in `~/Library/Application Support/indite/speechset/`.
 - **The GitHub repo is PUBLIC** (github.com/vaibhavk93/Indite). Never commit `.env`, `data/`, `clips/`, `phonetest/`,

@@ -1,6 +1,6 @@
 # indite roadmap
 
-Last updated: 2026-10-17. **This is the one roadmap.** Order and status live only here. Other planning files hold
+Last updated: 2026-10-17. **This is the one roadmap.** Design rule: every screen follows `docs/DESIGN.md`. Order and status live only here. Other planning files hold
 detail and are not roadmaps: `docs/ROADMAP_DETAIL.md` (AI review design), `docs/MAC_PLAN.md` (Mac vs Android vs Wispr),
 `docs/WISPR_DEEPDIVE.md` (measurements), `docs/AI_MODES.md` (AI spec), `PLAN.md` (decisions and test results),
 `docs/FOUNDER_REQUESTS.md` (every request and its status), `docs/ROADMAP_ARCHIVE.md` (the old 10 Oct snapshot).
@@ -98,7 +98,8 @@ platform limit forces it, and the workaround is written down here. Every item be
 | 4 | 🧪 **Fixes count on Insights** (W3, built 17 Oct): "likely mistakes fixed · N per 100 words" and how many were not mistakes; hidden until there is data | Me | done | The number should fall over time |
 | 5 | ✅ **Engine-hint test** (W4, run 17 Oct on 60 synthetic clips): words wrong 24.9% → 24.7%, Dictionary names right 4/10 → 5/10, nothing invented. **Not shipped:** one word is too small to trust. Re-run on the real speech set | Me | done | Re-test with #1 |
 | 6 | **After the real set is scored:** AI review step 2 (AI suggests, nothing changes without a tap, ≥70% right) → review insights → filler-word removal (W5, raw kept) | Me | 2-3 days | Each with its own pass/fail |
-| 6b | 🧪 **In-app player** (founder #279, plan `docs/PLAYER_PLAN.md`, critic-reviewed): step 1 built 17 Oct (Listen view: controls, lit line, click to jump, keys). Next: edit a line · play/copy a line · **bug: meeting tracks don't share a clock** (pad Others with silence, then "both tracks") | Me | M | — |
+| 6b | 🧪 **In-app player** (founder #279/#280, plan `docs/PLAYER_PLAN.md`, critic-reviewed): built 17 Oct - Listen view, lit line + **lit word**, click a line or word to jump, Edit / Copy / ▶ line with Undo. Left: **bug: meeting tracks don't share a clock** (pad Others with silence, then "both tracks"); a visible check with the founder's OK | Me | M | — |
+| 6c | **Test copy of indite** (founder rule #282): a hidden second instance for testing - own data folder, engine port 8712, no hotkey / pill / card / menu icon, window off-screen; typing and pill tests still need the real screen with the founder's OK | Me | M | Research 17 Oct: a separate Space is not possible on macOS |
 | 7 | **Parity with Android:** 🧪 edit a note's text + Undo (built 17 Oct: ⋯ → Edit text; the list never redraws over an open edit box) · still to do: edit a meeting line by line, per-line speaker fix + merge | Me | M | — |
 | 8 | **Leadership demo video** - on hold (founder, 17 Oct); when it resumes: pick the length (3:00-3:30 or ~9:30), freeze the code, dry run, record | Founder + me | ½ day | — |
 
