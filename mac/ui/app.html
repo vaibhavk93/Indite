@@ -494,6 +494,7 @@
   <symbol id="i-home" viewBox="0 0 16 16"><path d="M2.5 7 8 2.5 13.5 7v6a.5.5 0 0 1-.5.5H10V10H6v3.5H3a.5.5 0 0 1-.5-.5V7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
   <symbol id="i-gear" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1M12.4 12.4l-1.1-1.1M4.7 4.7 3.6 3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
   <symbol id="i-help" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1v.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.4" r=".8" fill="currentColor"/></symbol>
+  <symbol id="i-more" viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="12.5" cy="8" r="1.3" fill="currentColor"/></symbol>
   <symbol id="i-play" viewBox="0 0 16 16"><path d="M5 3.2v9.6a.6.6 0 0 0 .9.5l7.4-4.8a.6.6 0 0 0 0-1L5.9 2.7a.6.6 0 0 0-.9.5Z" fill="currentColor"/></symbol>
   <symbol id="i-pause" viewBox="0 0 16 16"><rect x="4" y="3" width="2.8" height="10" rx="1" fill="currentColor"/><rect x="9.2" y="3" width="2.8" height="10" rx="1" fill="currentColor"/></symbol>
   <symbol id="i-listen" viewBox="0 0 16 16"><path d="M2.5 6.2h2.2L8 3.3v9.4L4.7 9.8H2.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M10.6 5.6a3.4 3.4 0 0 1 0 4.8M12.4 3.9a5.8 5.8 0 0 1 0 8.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
@@ -909,7 +910,8 @@
         <p>One you do not use for anything else.</p></div><div class="seg" id="setup-key" role="radiogroup" aria-label="Hold-to-talk key"></div></li>
       <li id="st-try"><span class="sn">4</span><div><b>Try it</b>
         <p>Click in the box, hold <kbd class="hk-name"></kbd>, say “Hello indite, yeh mera pehla test hai”, and let go.</p>
-        <textarea id="try" aria-label="Test box" placeholder="Your words appear here" spellcheck="false"></textarea></div><span class="ok"></span></li>
+        <textarea id="try" aria-label="Test box" placeholder="Your words appear here" spellcheck="false"></textarea>
+        <p class="fine" id="try-wait" style="text-align:left">Works once steps 1 and 2 show ✓.</p></div><span class="ok"></span></li>
       <li><span class="sn">5</span><div><b>Show your words after you speak? <span class="fine" style="display:inline">optional</span></b>
         <p>A small card above the pill shows what was written for a few seconds, with Ask AI and To do. It sits over
         the bottom of the screen, so a click there can land on the card instead of a chat box. Change it any time in
@@ -1007,6 +1009,7 @@
     mark("#st-ax", S.listening, "✓ On");
     mark("#st-mic", S.mic_ok === true, "✓ Allowed");
     mark("#st-try", $("#try").value.trim().length > 2, "✓ It works");
+    $("#try-wait").hidden = !!(S.listening && S.mic_ok === true);    // say why the test box stays empty
     seg("#setup-key", S.hotkeys, S.prefs.hotkey, v => send({ action: "pref", key: "hotkey", value: v }));
     sw("#setup-preview", "preview");
   }
@@ -1278,7 +1281,7 @@
           <span class="num">${words(r)} words</span></div></div>
       <div class="acts">
         ${ic("cp", "i-copy", "Copy")}
-        <button class="copy moreb" data-id="${id}" aria-label="More actions" title="More actions">•••</button>
+        <button class="copy moreb" data-id="${id}" aria-label="More actions" title="More actions"><svg width="15" height="15"><use href="#i-more"/></svg></button>
       </div></div>`;
   }
 
@@ -1543,6 +1546,7 @@
     aiWas = { ...now };
   }
   function drawDrawer() {
+    $("#drawer").setAttribute("aria-label", drawerMode === "listen" ? "Listen" : "Ask AI");   // say which tab is open
     if (!drawerId) return;
     const r = byId(drawerId);
     if (!r) return closeDrawer();
