@@ -1141,7 +1141,8 @@
     if (err) $("#warn").innerHTML += `<div class="banner"><div><b>${err[0]}</b><p>${esc(err[1])}</p></div>
         <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>`;
     meetButton();
-    $("#meet-perm").textContent = S.meeting && S.meeting.problem ? S.meeting.problem : "";
+    $("#meet-perm").textContent = [S.meeting && S.meeting.mic ? `Recording from: ${S.meeting.mic}` : "",
+      S.meeting && S.meeting.problem ? S.meeting.problem : ""].filter(Boolean).join(" · ");
     const dic = S.history.filter(r => (r.kind || "dictation") === "dictation" && r.audio), left = dic.filter(r => !r.said).length;
     if (!S.prefs.speech_test && filter === "check") filter = "all";
     $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["ai", "With AI"],

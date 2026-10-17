@@ -113,6 +113,7 @@ class Meeting:
             self.after.released.wait(10)
         self.app.mic.start()                                    # raises MicProblem: the caller shows it
         self.t0 = time.time()                                   # the meeting's clock: the mic's first sample
+        print("meeting: mic =", getattr(self.app.mic, "using", "?"))   # which mic heard you (headphones? D20)
         self.released.clear()
         try:
             self._begin()
