@@ -212,6 +212,8 @@
   .pline .pt { color: var(--ink3); font-size: 12px; min-width: 32px; padding-top: 2px; }
   .pline .pwho { flex: none; width: 52px; font-size: 12px; font-weight: 600; padding-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pline .pwho.you { color: var(--accent); } .pline .pwho.them { color: #2f6fb3; }
+  .pline button.pwho { appearance: none; border: 0; background: none; text-align: left; font-family: inherit; cursor: default; }
+  .pline button.pwho:hover { text-decoration: underline; text-underline-offset: 3px; }
   .pline .px { flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
   .pline .pacts { flex: none; opacity: 0; display: flex; gap: 0; margin: -4px -4px 0 0; } .pline:hover .pacts, .pline:focus-within .pacts { opacity: 1; }
   .pline .pacts .copy { width: 26px; height: 26px; }
@@ -335,6 +337,7 @@
   .row .acts .copy { opacity: .55; } .row:hover .acts .copy { opacity: 1; }
   .starred { color: var(--brand); }
   .menu .sep { height: 1px; background: var(--line); margin: 5px 4px; }
+  .menu .mh { font-size: 11.5px; font-weight: 600; color: var(--ink3); padding: 6px 10px 3px; }
   .menu button.danger b { color: var(--red); }
   .setup { position: fixed; inset: 0; z-index: 9; background: var(--paper); display: grid; place-items: center; overflow: auto; }
   .setup[hidden] { display: none; }
@@ -1342,6 +1345,7 @@
     drawerMode = b.dataset.mode; drawerHtml = ""; drawDrawer();
     if (drawerMode === "listen" && P.note !== drawerId) send({ action: "listen", id: drawerId, autoplay: false });
   });
+  const kOf = (x, meet) => x.k != null ? +x.k : (meet && x.speaker !== "You" ? 1 : 0);   // the track a line was heard on (store.track_of)
   const tclock = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
   // Listen: the recording plays in the app (mac/player.py); the line being spoken lights up; click a line to go there
   const wtAsked = new Set();                                 // notes whose word times were requested this session
@@ -1365,8 +1369,8 @@
         <span class="num ptime" id="ptime">0:00 / 0:00</span><input type="range" id="pseek" min="0" max="1000" value="0" aria-label="Position">
         <div class="seg mini" id="prate">${[1, 1.5, 2].map(x => `<button data-r="${x}">${x}×</button>`).join("")}</div></div>` +
         (meet && r.audio > 1 ? `<div class="ptrack">Track <div class="seg mini" id="ptrack">${r.clock ? `<button data-t="2">Both</button>` : ""}<button data-t="0">You</button><button data-t="1">The others</button></div></div>` : "") +
-        (segs.length ? `<div class="plines">${segs.map(x => `<div class="pline" data-s="${x.start}" data-e="${x.end}" data-k="${meet && x.speaker !== "You" ? 1 : 0}">
-            <span class="pt num">${tclock(x.start || 0)}</span>${x.speaker ? `<span class="pwho ${x.speaker === "You" ? "you" : "them"}" title="${esc(nm[x.speaker] || x.speaker)}">${esc(nm[x.speaker] || x.speaker)}</span>` : ""}<span class="px">${timedWords(r, x.text, x.start || 0, meet && x.speaker !== "You" ? 1 : 0)}</span>
+        (segs.length ? `<div class="plines">${segs.map(x => `<div class="pline" data-s="${x.start}" data-e="${x.end}" data-k="${kOf(x, meet)}">
+            <span class="pt num">${tclock(x.start || 0)}</span>${x.speaker ? `<button class="pwho ${x.speaker === "You" ? "you" : "them"}" title="${esc(nm[x.speaker] || x.speaker)} · click to change who said this">${esc(nm[x.speaker] || x.speaker)}</button>` : ""}<span class="px">${timedWords(r, x.text, x.start || 0, kOf(x, meet))}</span>
             <span class="pacts"><button class="copy pp" title="Play just this line" aria-label="Play just this line"><svg width="13" height="13"><use href="#i-play"/></svg></button><button class="copy pc" title="Copy this line" aria-label="Copy this line"><svg width="14" height="14"><use href="#i-copy"/></svg></button><button class="copy pe" title="Edit this line" aria-label="Edit this line"><svg width="14" height="14"><use href="#i-pen"/></svg></button></span></div>`).join("")}</div>`
           : `<div class="plines"><div class="pline whole"><span class="px">${timedWords(r, r.text, 0, 0)}</span></div></div>`) +
         (lining ? `<p class="fine phint">Lining up each word with the sound - only the first time, about a minute per 5 minutes of audio…</p>` : "") +
@@ -1383,7 +1387,19 @@
     $("#prate").querySelectorAll("button").forEach(b => b.onclick = () => send({ action: "pctl", cmd: "rate", r: +b.dataset.r }));
     if ($("#ptrack")) $("#ptrack").querySelectorAll("button").forEach(b => b.onclick = () =>
       send({ action: "listen", id: r.id, track: +b.dataset.t, t: 0, autoplay: P.playing }));
-    const segOf = l => (r.segments || []).find(x => Math.abs((x.start || 0) - +l.dataset.s) < 0.01 && (meet ? (x.speaker !== "You" ? 1 : 0) === +l.dataset.k : true));
+    const segOf = l => (r.segments || []).find(x => Math.abs((x.start || 0) - +l.dataset.s) < 0.01 && (meet ? kOf(x, meet) === +l.dataset.k : true));
+    // who said this line: pick another speaker of this note, or join it with the next line of the same speaker
+    $("#drawer").querySelectorAll(".pline .pwho").forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const seg = segOf(b.closest(".pline")); if (!seg) return;
+      const who = [...new Set(["You", ...(r.segments || []).map(x => x.speaker).filter(Boolean)])].filter(x => x !== seg.speaker);
+      const rect = b.getBoundingClientRect();
+      const m = popup(`<div class="mh">Who said this line?</div>` + who.map(x => `<button data-to="${esc(x)}"><b>${esc(nm[x] || x)}</b></button>`).join("") +
+        `<div class="sep"></div><button data-join="1"><b>Join with the next line</b><span>When one turn was cut in two</span></button>`, rect.left, rect.bottom + 4);
+      m.querySelectorAll("button").forEach(x => x.onclick = () => { m.remove();
+        send(x.dataset.join ? { action: "merge_line", id: r.id, start: seg.start || 0, speaker: seg.speaker || "" }
+                            : { action: "line_speaker", id: r.id, start: seg.start || 0, speaker: seg.speaker || "", to: x.dataset.to }); });
+    });
     const go = (l, stop) => { const k = +l.dataset.k, t = +l.dataset.s; stopAt = stop ? +l.dataset.e : null;
       if (P.note === r.id && ((P.track || 0) === k || P.track === 2)) { send({ action: "pctl", cmd: "seek", t }); send({ action: "pctl", cmd: "play" }); }
       else send({ action: "listen", id: r.id, track: k, t, autoplay: true }); };

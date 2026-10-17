@@ -52,6 +52,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 - **Dictation anywhere:** hold a key (or tap twice for hands-free), speak, text typed in ~0.8 s; Esc cancels; smart
   output (typed into a text box, else copied); typed words **also on the clipboard** (setting, 17 Oct); long holds cut
   at quiet points; password boxes never typed into; long text ~40x fewer key events (16 Oct); pill with live levels.
+- **Calls (17 Oct):** when Zoom, Teams, Slack, FaceTime, WhatsApp or Webex starts using the mic, the card asks "Record this call?" (never records itself; browser calls not noticed). **Your own words to hide** next to swear masking. **Setup** offers the card as an optional step.
 - **Text card after a dictation:** your words, then **Ask AI · two AI buttons (your most used, or picked in Settings) · To do** (17 Oct); takes
   clicks only after the pointer moves onto it; answers wrap and are copied the moment they land.
 - **Notes window:** Dictations, Meetings, Files, To do, Dictionary, Insights, Settings, Help; stars, search, backup and
@@ -98,14 +99,13 @@ platform limit forces it, and the workaround is written down here. Every item be
 | 4 | 🧪 **Fixes count on Insights** (W3, built 17 Oct): "likely mistakes fixed · N per 100 words" and how many were not mistakes; hidden until there is data | Me | done | The number should fall over time |
 | 5 | ✅ **Engine-hint test** (W4, run 17 Oct on 60 synthetic clips): words wrong 24.9% → 24.7%, Dictionary names right 4/10 → 5/10, nothing invented. **Not shipped:** one word is too small to trust. Re-run on the real speech set | Me | done | Re-test with #1 |
 | 6 | **After the real set is scored:** AI review step 2 (AI suggests, nothing changes without a tap, ≥70% right) → review insights → filler-word removal (W5, raw kept) | Me | 2-3 days | Each with its own pass/fail |
-| 6b | 🧪 **In-app player** (founder #279/#280, plan `docs/PLAYER_PLAN.md`, critic-reviewed): built 17 Oct - Listen view, lit line + **lit word**, click a line or word to jump, Edit / Copy / ▶ line with Undo. Left: **bug: meeting tracks don't share a clock** (pad Others with silence, then "both tracks"); a visible check with the founder's OK | Me | M | — |
-| 6c | **Test copy of indite** (founder rule #282): a hidden second instance for testing - own data folder, engine port 8712, no hotkey / pill / card / menu icon, window off-screen; typing and pill tests still need the real screen with the founder's OK | Me | M | Research 17 Oct: a separate Space is not possible on macOS |
-| 7 | **Parity with Android:** 🧪 edit a note's text + Undo (built 17 Oct: ⋯ → Edit text; the list never redraws over an open edit box) · still to do: edit a meeting line by line, per-line speaker fix + merge | Me | M | — |
+| 6b | 🧪 **In-app player - built 17 Oct** (founder #279/#280/#283, plan `docs/PLAYER_PLAN.md`): Listen view in indite's own look, lit line + **lit word** (kept while paused), click a line or word to jump, Edit / Copy / ▶ line with Undo; **meeting tracks now share one clock** and play **Both** together (meetings recorded from 17 Oct); word times rebuilt when a note's words change | Me | done | Founder check |
+| 6c | ✅ **Test copy of indite - built 17 Oct** (founder rule #282): `python mac/testcopy.py start/eval/cmd/stop`; own data and engine (port 8712), no keys / mic / typing / clipboard / pill / card / menu icon / focus. Its window can't take pictures (headless Chrome does that). Typing and pill tests still need the real screen with the founder's OK | Me | done | — |
+| 7 | 🧪 **Parity with Android - built 17 Oct:** edit a note's text + Undo (⋯ → Edit text); edit a meeting line by line (Listen → ✎); **per-line speaker fix and join with the next line** (Listen → click the speaker name), each with Undo; lines remember their track, so a fixed speaker still plays the right audio | Me | done | Founder check |
 | 8 | **Leadership demo video** - on hold (founder, 17 Oct); when it resumes: pick the length (3:00-3:30 or ~9:30), freeze the code, dry run, record | Founder + me | ½ day | — |
 
 ## Mac: later
 
-- Offer the text card in setup (off by default for new users: it can catch a click in a chat box)
 - ₹ / lakh-crore formatting (unproven)
 - Live clean-up while dictating with a local model (MAC_PLAN P6; needs a 30-dictation test first)
 - 7-day assistant test with Claude Code over your notes (#252, waiting for your yes) · note-before-instructions order

@@ -171,7 +171,8 @@ class Meeting:
         if who == "You" and any(s["speaker"] == "Others" and s["start"] < end and s["end"] > start
                                 and echo(text, s["text"]) for s in self.segments):
             return
-        self.segments.append({"start": round(start, 2), "end": round(end, 2), "speaker": who, "text": text})
+        self.segments.append({"start": round(start, 2), "end": round(end, 2), "speaker": who, "text": text,
+                              "k": 0 if who == "You" else 1})              # the track it was heard on: 0 you, 1 others
         self.segments.sort(key=lambda s: s["start"])
         self.save()
 

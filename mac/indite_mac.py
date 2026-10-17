@@ -1478,7 +1478,7 @@ class InditeApp(rumps.App):
             files, segs, meet = store.audio_files(row), row.get("segments") or [], row.get("kind") == "meeting"
             wt = []
             for k, path in enumerate(files):
-                lines = ([s for s in segs if (s.get("speaker") != "You") == bool(k)] if meet else segs) if segs \
+                lines = ([s for s in segs if store.track_of(s, meet) == k] if meet else segs) if segs \
                     else [{"start": 0.0, "text": row["text"]}]
                 if not lines:
                     continue
@@ -1697,7 +1697,7 @@ class InditeApp(rumps.App):
                     text = self.tidy(self.engine.transcribe(p)) if float(np.sqrt(np.mean(p ** 2))) > 0.004 else ""
                     if text:
                         segs.append({"start": round(at, 2), "end": round(at + len(p) / RATE, 2),
-                                     "speaker": label(who), "text": text})
+                                     "speaker": label(who), "text": text, "k": 1 if others else 0})
                     at += len(p) / RATE
             segs.sort(key=lambda s: s["start"])
             names = row.get("names") or {}

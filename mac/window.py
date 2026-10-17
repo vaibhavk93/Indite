@@ -221,6 +221,26 @@ class Bridge(NSObject):
                 if old is not None and old != new:
                     self.line_undo = (row["id"], float(msg.get("start", 0)), str(msg.get("speaker", "")), old)
                     self.js("toast('Line saved', () => send({action:'undo_line'}))")
+        elif act in ("line_speaker", "merge_line"):      # Listen view: fix one line's speaker, or join it with the next
+            row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+            start, who = float(msg.get("start", 0)), str(msg.get("speaker", ""))
+            if row and self.app.ai_busy.get(row["id"]) == "finding who spoke":
+                self.js("toast('Wait until Who spoke has finished - it rewrites the lines')")
+            elif row:
+                keep = {k: row.get(k) for k in ("segments", "text", "wt", "edited")}
+                done = store.set_speaker(row, start, who, str(msg.get("to", ""))) if act == "line_speaker" \
+                    else store.merge_next(row, start, who)
+                if done:
+                    self.lines_undo = (row["id"], keep)
+                    what = "Speaker changed" if act == "line_speaker" else "Lines joined"
+                    self.js(f"toast({what!r}, () => send({{action:'undo_lines'}}))")
+                elif act == "merge_line":
+                    self.js("toast('Nothing to join: the next line is another speaker, or there is none')")
+        elif act == "undo_lines":
+            u = getattr(self, "lines_undo", None)
+            if u:
+                store.update(u[0], **u[1])                       # None values remove what the change added
+                self.lines_undo = None
         elif act == "undo_line":
             u = getattr(self, "line_undo", None)
             row = next((r for r in store.history() if u and r["id"] == u[0]), None)

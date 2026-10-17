@@ -143,13 +143,55 @@ def update(note_id: str, **fields) -> None:
     _write(rows)
 
 
+def track_of(seg: dict, meet: bool = True) -> int:
+    """Which of a meeting's audio files a line was heard on: 0 = you, 1 = the others. Lines saved before 17 Oct
+    have no "k" and are placed by speaker; a line whose speaker you changed keeps its own track."""
+    return int(seg["k"]) if "k" in seg else int(meet and seg.get("speaker") != "You")
+
+
+def set_speaker(row: dict, start: float, speaker: str, new: str) -> bool:
+    """One line gets another speaker ("Rohit" -> "You"); it keeps its track and word times."""
+    segs = [dict(s) for s in row.get("segments") or []]
+    meet = row.get("kind") == "meeting"
+    for s in segs:
+        if abs(float(s.get("start", 0)) - float(start)) < 0.01 and (s.get("speaker") or "") == (speaker or ""):
+            s["k"], s["speaker"] = track_of(s, meet), new
+            update(row["id"], segments=segs, text=text_of(segs), edited=True)
+            return True
+    return False
+
+
+def merge_next(row: dict, start: float, speaker: str) -> bool:
+    """Joins a line with the next line of the same speaker on the same track (Who spoke cut one turn in two)."""
+    segs = [dict(s) for s in row.get("segments") or []]
+    meet = row.get("kind") == "meeting"
+    i = next((i for i, s in enumerate(segs) if abs(float(s.get("start", 0)) - float(start)) < 0.01
+              and (s.get("speaker") or "") == (speaker or "")), None)
+    if i is None:
+        return False
+    a = segs[i]
+    j = next((j for j in range(i + 1, len(segs)) if track_of(segs[j], meet) == track_of(a, meet)), None)
+    if j is None or (segs[j].get("speaker") or "") != (speaker or ""):
+        return False
+    b = segs.pop(j)
+    a.update(text=f"{a['text']} {b['text']}", end=b.get("end", a.get("end")), k=track_of(a, meet))
+    wt = [dict(w) for w in row.get("wt") or []]
+    wa = next((w for w in wt if abs(w["s"] - float(a["start"])) < 0.01 and w["k"] == a["k"]), None)
+    wb = next((w for w in wt if abs(w["s"] - float(b["start"])) < 0.01 and w["k"] == a["k"]), None)
+    if wa and wb:                                        # the joined line keeps both lines' word times
+        wa["t"] = wa["t"] + wb["t"]
+        wt.remove(wb)
+    update(row["id"], segments=segs, text=text_of(segs), edited=True, **({"wt": wt} if wa and wb else {}))
+    return True
+
+
 def wt_fits(row: dict) -> bool:
     """Each line's word times ("wt") still have one time per shown word (the Listen view needs exactly that)."""
     segs, meet = row.get("segments") or [], row.get("kind") == "meeting"
     for w in row.get("wt") or []:
         if segs:
             line = next((x for x in segs if abs(float(x.get("start", 0)) - w["s"]) < 0.01
-                         and (not meet or (x.get("speaker") != "You") == bool(w["k"]))), None)
+                         and (not meet or track_of(x, meet) == w["k"])), None)
             if not line:
                 return False
             text = line["text"]
@@ -479,6 +521,20 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert "wt" not in history()[0]                                                     # a fix changed the words: redone
     assert not wt_fits({"text": "a b c", "wt": [{"s": 0, "k": 0, "t": [0.0, 0.0, 0.0]}]})       # nothing matched
     assert wt_fits({"text": "a b c", "wt": [{"s": 0, "k": 0, "t": [0.0, 0.4, 0.9]}]})
+    HISTORY.write_text(json.dumps({"id": "m", "at": 2, "kind": "meeting", "text": "", "segments": [
+        {"start": 0.0, "end": 2.0, "speaker": "Person 1", "text": "haan deck"},
+        {"start": 1.0, "end": 3.0, "speaker": "You", "text": "theek"},
+        {"start": 2.0, "end": 4.0, "speaker": "Person 1", "text": "bhej dena"}],
+        "wt": [{"s": 0.0, "k": 1, "t": [0.1, 0.6]}, {"s": 2.0, "k": 1, "t": [2.1, 2.5]}]}) + "\n")
+    assert merge_next(history()[0], 0.0, "Person 1")             # "You" sits between, on the other track: still joins
+    m = history()[0]
+    assert [x["text"] for x in m["segments"]] == ["haan deck bhej dena", "theek"] and m["segments"][0]["end"] == 4.0
+    assert m["wt"] == [{"s": 0.0, "k": 1, "t": [0.1, 0.6, 2.1, 2.5]}] and wt_fits(m)
+    assert not merge_next(m, 1.0, "You")                          # nothing after it on its track
+    assert set_speaker(m, 0.0, "Person 1", "You")
+    m = history()[0]
+    assert m["segments"][0]["speaker"] == "You" and track_of(m["segments"][0]) == 1   # still plays from the others
+    assert m["text"].startswith("You: haan deck") and wt_fits(m)
     meet = {"text": "Person 1: haan", "names": {"Person 1": "Rohit"},
             "segments": [{"speaker": "Person 1", "text": "haan"}, {"speaker": "You", "text": "theek hai"}]}
     assert named_text(meet) == "Rohit: haan\nYou: theek hai" and named_text({"text": "plain"}) == "plain"
