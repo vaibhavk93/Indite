@@ -52,6 +52,7 @@ Keep gold for that one meaning. Do not spread it to buttons or headings.
 | `--ink` / `--ink2` / `--ink3` | `#1d1d1f` / `#5f5f66` / `#737379` | `#f2f2f4` / `#a8a8b0` / `#8e8e95` | Text: main, secondary, faint. All pass WCAG AA (the contrast standard) |
 | `--line` / `--line2` | `#ececef` / `#e2e2e6` | `#2c2c30` / `#36363b` | Dividers, borders |
 | `--well` / `--hover` | `#f4f4f6` / `#f7f7f9` | `#2a2a2d` / `#252528` | Sunken areas, hover |
+| `--who2` / `--who3` | `#2f6fb3` / `#7a4fb3` | `#6ea8e8` / `#b28be6` | Speaker names (others, a 2nd/4th person); "You" uses `--accent`. One helper: `whoCls()` |
 | `--red` | `#c4372a` | `#ff6b5e` | Recording, delete, errors only |
 | `--shadow` | two 4 % shadows | none | Settings cards only |
 
@@ -100,7 +101,8 @@ Dynamic colour (Material You) is **off**: our colours on every phone.
 | Nothing here yet | `.empty` | Icon in a well, a heading, a next step |
 | Work on one note | `.drawer` | Right side, tabs **Ask AI \| Listen** (`.dtabs`) |
 | Play a recording | `.plisten` | Looks like the note list: 22 px gutter, `.who` speaker colours, 14 px text, hairline rows. Player = one `--well` strip (round ink play button, thin orange-fill slider). Line being spoken = `--well`; word being spoken = `--accent-soft` + `--accent`. Line actions = `.copy` icons on hover (play, copy, pen). No orange box or bar (founder, 17 Oct) |
-| Settings | `.card` + `.item` | Grouped, label left, control right |
+| Settings | `.card` + `.item` | Grouped, label left, control right; with no room the control drops under the label (label ≥ 220 px) |
+| Menus | `popup()` | One short line per item; the explanation goes in the hover title |
 
 ### Copy (founder #269, #270)
 

@@ -16,7 +16,7 @@
     --line: #ececef; --line2: #e2e2e6; --well: #f4f4f6; --hover: #f7f7f9;
     --side-ink: #3a3a3f; --side-pick: rgba(0,0,0,.065);
     --sw-off: #d6d6db; --toast: #1d1d1f; --copied: #a14e09;
-    --red: #c4372a;
+    --red: #c4372a; --who2: #2f6fb3; --who3: #7a4fb3;
     --shadow: 0 1px 2px rgba(16,16,20,.04), 0 2px 8px rgba(16,16,20,.04);
   }
   /* Appearance (Settings → Look & sounds): light by default - the founder asked for white - or dark, or the Mac's. */
@@ -28,7 +28,7 @@
       --line: #2c2c30; --line2: #36363b; --well: #2a2a2d; --hover: #252528;
       --side-ink: #d6d6da; --side-pick: rgba(255,255,255,.08);
       --sw-off: #48484c; --toast: #3a3a3d; --copied: #f0903f;
-      --red: #ff6b5e;
+      --red: #ff6b5e; --who2: #6ea8e8; --who3: #b28be6;
       --shadow: none;
     }
   }
@@ -39,10 +39,11 @@
       --line: #2c2c30; --line2: #36363b; --well: #2a2a2d; --hover: #252528;
       --side-ink: #d6d6da; --side-pick: rgba(255,255,255,.08);
       --sw-off: #48484c; --toast: #3a3a3d; --copied: #f0903f;
-      --red: #ff6b5e;
+      --red: #ff6b5e; --who2: #6ea8e8; --who3: #b28be6;
       --shadow: none;
   }
   * { box-sizing: border-box; margin: 0; }
+  [hidden] { display: none !important; }   /* hidden always wins, even over a row's own display (UI review G1) */
   html, body { height: 100%; }
   body {
     font: 13px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
@@ -99,7 +100,6 @@
   /* Full screen made every row 1,300 px wide, with each switch far from its label. Keep reading width sane. */
   header > *, .scroll > * { max-width: 980px; }
   .setwrap { max-width: 900px; }
-  .pane[hidden] { display: none; }
 
   .banner {
     display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; margin-bottom: 18px;
@@ -145,7 +145,8 @@
   .when { color: var(--ink2); font-size: 12px; padding-top: 1px; }
   .text { font-size: 14px; line-height: 1.5; color: var(--ink); -webkit-user-select: text; user-select: text;
           overflow-wrap: anywhere; }
-  .meta { display: flex; gap: 8px; align-items: center; margin-top: 5px; font-size: 12px; color: var(--ink2); }
+  .meta { display: flex; gap: 8px; align-items: center; margin-top: 5px; font-size: 12px; color: var(--ink2); flex-wrap: wrap; row-gap: 2px; }
+  .meta > * { white-space: nowrap; } .chip, kbd { white-space: nowrap; }
   .tag { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 20px; background: var(--well);
          color: var(--ink2); }
   .tag.copied { background: var(--accent-soft); color: var(--copied); }
@@ -154,14 +155,14 @@
     display: grid; place-items: center; width: 28px; height: 28px; color: var(--ink2);
   }
   .copy:hover { background: var(--well); color: var(--ink); }
-  .editor textarea { width: 100%; font: inherit; color: var(--ink); background: var(--well); border: 1px solid var(--line);
+  .editor textarea { width: 100%; font: inherit; font-size: 14px; line-height: 1.5; color: var(--ink); background: var(--well); border: 1px solid var(--line);
     border-radius: 8px; padding: 8px 10px; resize: none; } .editor .ed-acts { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
   .flag { font-size: 12.5px; color: var(--ink2); margin: 4px 0 2px; } .flag b { color: var(--ink); } .flag .lnk { margin-left: 8px; }
   .copy.done { color: var(--copied); background: var(--accent-soft); }
   .acts { display: flex; gap: 2px; }
   .copy.on { color: var(--accent); }
   .badge { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--ink2); }
-  .chips { display: flex; gap: 4px; margin-right: auto; margin-left: 10px; }
+  .chips { display: flex; gap: 4px; margin-right: auto; margin-left: 10px; flex-wrap: wrap; }
   .chip { appearance: none; border: 0; background: none; font-size: 12px; font-weight: 500; color: var(--ink2);
           padding: 3px 10px; border-radius: 20px; cursor: default; }
   .chip[aria-pressed="true"] { background: var(--well); color: var(--ink); }
@@ -181,7 +182,6 @@
   .aichip:hover { color: var(--ink); border-color: var(--ink3); }
   /* a note with AI work: a quiet gold edge and icon, so it's findable at a glance (founder) - no fill, no glow */
   .aichip.has { border-color: var(--gold); } .aichip.has svg { color: var(--gold); } .aichip.has:hover { border-color: var(--gold); background: var(--gold-soft); }
-  .drawer[hidden] { display: none; }
   .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 92vw); z-index: 7; background: var(--paper);
             border-left: 1px solid var(--line2); box-shadow: -18px 0 40px rgba(0,0,0,.14); display: flex; flex-direction: column;
             outline: none; animation: slidein .18s ease-out; }
@@ -210,8 +210,8 @@
   .pline + .pline { border-top: 1px solid var(--line); border-radius: 0; } .pline:hover { background: var(--hover); }
   .pline.now { background: var(--well); border-radius: 8px; } .pline.now + .pline { border-top-color: transparent; }
   .pline .pt { color: var(--ink3); font-size: 12px; min-width: 32px; padding-top: 2px; }
-  .pline .pwho { flex: none; width: 52px; font-size: 12px; font-weight: 600; padding-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pline .pwho.you { color: var(--accent); } .pline .pwho.them { color: #2f6fb3; }
+  .pline .pwho { flex: none; width: auto; min-width: 52px; max-width: 96px; font-size: 12px; font-weight: 600; padding-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pline .pwho.you { color: var(--accent); } .pline .pwho.them { color: var(--who2); }
   .pline button.pwho { appearance: none; border: 0; background: none; text-align: left; font-family: inherit; cursor: default; }
   .pline button.pwho:hover { text-decoration: underline; text-underline-offset: 3px; }
   .pline .px { flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
@@ -243,6 +243,8 @@
   .md .mh { font-weight: 650; margin: 10px 0 2px; } .md .mh:first-child { margin-top: 0; }
   .md .mli { padding-left: 14px; position: relative; } .md .mli::before { content: "•"; position: absolute; left: 2px; color: var(--ink3); }
   .md .mgap { height: 6px; }
+  .md .mrow { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); }
+  .md .mrow span:not(:first-child) { color: var(--ink2); }
   .dpend { margin: 6px 22px 10px; padding: 12px 14px; border-radius: 10px; background: var(--well); }
   .dpend b { font-size: 13px; font-weight: 600; } .dpend p { font-size: 12px; color: var(--ink2); margin-top: 6px; }
   .dbar { height: 3px; border-radius: 3px; background: var(--line2); overflow: hidden; margin-top: 10px; }
@@ -340,8 +342,7 @@
   .menu .mh { font-size: 11.5px; font-weight: 600; color: var(--ink3); padding: 6px 10px 3px; }
   .menu button.danger b { color: var(--red); }
   .setup { position: fixed; inset: 0; z-index: 9; background: var(--paper); display: grid; place-items: center; overflow: auto; }
-  .setup[hidden] { display: none; }
-  .sbox { width: min(620px, 92vw); padding: 40px 0; }
+  .sbox { width: min(620px, 92vw); padding: 40px 0 80px; }
   .mark.big { width: 48px; height: 48px; border-radius: 14px; margin-bottom: 18px; }
   .sbox h1 { font-size: 26px; }
   .lead { color: var(--ink2); margin: 4px 0 22px; }
@@ -394,7 +395,7 @@
   .line { display: grid; grid-template-columns: 74px 1fr; gap: 10px; font-size: 13.5px; line-height: 1.5; }
   .who { appearance: none; border: 0; background: none; padding: 0; text-align: left; font: inherit; font-size: 12px;
          font-weight: 600; cursor: default; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .who.you { color: var(--accent); } .who.them { color: #2f6fb3; }
+  .who.you { color: var(--accent); } .who.them { color: var(--who2); } .who.who3, .pline .pwho.who3 { color: var(--who3); }
   .who:hover { text-decoration: underline; }
   .live { font-size: 11px; font-weight: 700; color: #fff; background: #c4372a; border-radius: 4px; padding: 0 5px; }
   .line.hide { display: none; }
@@ -421,9 +422,9 @@
   .section { margin-bottom: 26px; }
   .section h2 { font-size: 12px; font-weight: 600; color: var(--ink2); margin: 0 0 8px; }
   .card { border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); background: var(--paper); }
-  .item { display: flex; gap: 16px; align-items: center; padding: 14px 16px; }
+  .item { display: flex; gap: 16px; align-items: center; padding: 14px 16px; flex-wrap: wrap; }
+  .item .body { flex: 1 1 220px; min-width: 220px; }   /* no room: the control drops under its label instead of crushing it */
   .item + .item { border-top: 1px solid var(--line); }
-  .item .body { flex: 1; min-width: 0; }
   .item b { font-weight: 550; font-size: 13px; }
   .item p { font-size: 12px; color: var(--ink2); margin-top: 2px; line-height: 1.45; }
   .seg { display: flex; background: var(--well); padding: 2px; border-radius: 8px; flex: none; }
@@ -471,6 +472,7 @@
   .fine { font-size: 12px; color: var(--ink3); text-align: center; margin-top: 8px; }
 
   .toast {
+    z-index: 10;                           /* above the Ask AI / Listen panel */
     position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
     background: var(--toast); border: 1px solid var(--line2); color: #fff; font-size: 12px; font-weight: 500; padding: 7px 14px; border-radius: 20px;
     transition: opacity .16s, transform .16s; box-shadow: 0 6px 20px rgba(0,0,0,.18);
@@ -873,7 +875,7 @@
 
 <div class="setup" id="setup" hidden>
   <div class="sbox">
-    <svg width="56" height="56" viewBox="100 100 824 824" style="margin-bottom:16px"><use href="#brandmark"/></svg>
+    <svg width="56" height="56" style="margin-bottom:16px"><use href="#brandmark"/></svg>
     <h1>Set up indite</h1>
     <p class="lead">Four steps and one optional choice, about a minute. Everything stays on this Mac.</p>
     <ol class="ssteps">
@@ -997,9 +999,11 @@
 
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   // AI answers come as Markdown; show headings, bold and bullets instead of # and ** (escaped first, so it stays safe)
+  // "task | who | by when" lines (Action items) read as a small table, not raw pipes (UI review A1)
   const md = t => esc(t).split("\n").map(l => {
     l = l.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
-    const h = l.match(/^#{1,4}\s+(.*)/), li = l.match(/^\s*[-*•]\s+(.*)/);
+    const h = l.match(/^#{1,4}\s+(.*)/), li = l.match(/^\s*[-*•]\s+(.*)/), cells = l.split(" | ");
+    if (cells.length >= 2) return `<div class="mrow">${cells.map(c => `<span>${c.replace(/^\s*[-*•]\s+/, "")}</span>`).join("")}</div>`;
     return h ? `<div class="mh">${h[1]}</div>` : li ? `<div class="mli">${li[1]}</div>` : l.trim() ? `<div>${l}</div>` : `<div class="mgap"></div>`;
   }).join("");
   const day = t => new Date(t * 1000).toDateString();
@@ -1137,7 +1141,7 @@
       <div class="bar2"><i style="width:${j.total ? Math.round(100 * j.done / j.total) : 3}%"></i></div>
       <span class="num" style="color:var(--ink2);font-size:12px">${j.total ? `${j.done} of ${j.total}` : "Reading the file…"}</span></div>`
       : "";
-    const err = S.ai_error ? [/^Could not tell who spoke/.test(S.ai_error) ? "Couldn’t find who spoke" : "The AI couldn’t answer", S.ai_error] : S.file_error ? ["That file didn’t work", S.file_error] : null;
+    const err = S.ai_error && !(drawerId && drawerMode === "ai") ? [/^Could not tell who spoke/.test(S.ai_error) ? "Couldn’t find who spoke" : "The AI couldn’t answer", S.ai_error] : S.file_error ? ["That file didn’t work", S.file_error] : null;
     if (err) $("#warn").innerHTML += `<div class="banner"><div><b>${err[0]}</b><p>${esc(err[1])}</p></div>
         <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>`;
     meetButton();
@@ -1146,8 +1150,8 @@
     const dic = S.history.filter(r => (r.kind || "dictation") === "dictation" && r.audio), left = dic.filter(r => !r.said).length;
     if (!S.prefs.speech_test && filter === "check") filter = "all";
     $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["ai", "With AI"],
-      ...(S.prefs.speech_test ? [["check", `To check · ${left} left, ${dic.length - left} done`]] : [])].map(([v, l]) =>
-      `<button class="chip" aria-pressed="${filter === v}" data-f="${v}">${l}</button>`).join("");
+      ...(S.prefs.speech_test ? [["check", `To check · ${left}`, `${left} left, ${dic.length - left} done`]] : [])].map(([v, l, t]) =>
+      `<button class="chip" aria-pressed="${filter === v}" data-f="${v}"${t ? ` title="${t}"` : ""}>${l}</button>`).join("");
     $("#chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); });
     drawTodo();
     drawDict();
@@ -1157,9 +1161,9 @@
     drawAI();
     drawList();
     feed($("#meet-list"), S.history.filter(r => r.kind === "meeting"),
-      `<div class="empty"><h3>No meetings yet</h3>Click Record when a call or conversation starts. Text appears after each pause.</div>`);
+      `<div class="empty"><div class="art"><svg width="28" height="28"><use href="#i-mic"/></svg></div><h3>No meetings yet</h3>Click Record when a call or conversation starts. Text appears after each pause.</div>`);
     feed($("#file-list"), S.history.filter(r => r.kind === "file"),
-      `<div class="empty"><h3>No files yet</h3>Choose an audio or video file. It is written down here, on this Mac.</div>`);
+      `<div class="empty"><div class="art"><svg width="28" height="28"><use href="#i-file"/></svg></div><h3>No files yet</h3>Choose an audio or video file. It is written down here, on this Mac.</div>`);
   }
 
   function seg(sel, options, current, pick) {
@@ -1193,7 +1197,7 @@
       $("#list").innerHTML = `<div class="empty">
         <div class="art"><svg width="28" height="28"><use href="#i-mic"/></svg></div>
         <h3>${S.prefs.keep_history === false ? "Saving is off" : "Nothing dictated yet"}</h3>
-        ${S.prefs.keep_history === false ? "Turn on “Save my dictations” in Settings → Privacy to see what you say here." : "Your words will show up here."}
+        <p>${S.prefs.keep_history === false ? "Turn on “Save my dictations” in Settings → Privacy to see what you say here." : "Your words will show up here."}</p>
         <div class="steps">
           <div class="step"><b>1</b>Click into any text box</div>
           <div class="step"><b>2</b>Hold <kbd>${esc(hk())}</kbd> and say a sentence</div>
@@ -1241,14 +1245,14 @@
           ${r.live ? `<span class="live">Live</span>` : ""}</div>` : ""}
         ${(r.segments || []).some(x => x.speaker) ? meetingLines(r) : `<div class="text${file ? " clamp" : ""}">${esc(r.text)}</div>`}
         ${todoView ? "" : flagParts(r) + aiParts(r)}
-        ${file && !(r.segments || []).some(x => x.speaker) && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
+        ${file && !(r.segments || []).some(x => x.speaker) && r.text.length > 240 ? `<button class="more showall" data-id="${id}">Show all</button>` : ""}
         <div class="meta">${r.star ? `<svg width="12" height="12" class="starred"><use href="#i-star-on"/></svg>` : ""}
           ${r.todo === "open" && !todoView ? `<span class="tag">To do</span>` : ""}${r.said && S.prefs.speech_test ? `<span class="tag">Checked</span>` : ""}${copied ? `<span class="tag copied">Copied</span>` : ""}
           ${todoView ? `<span>${dayLabel(r.at)} · ${clock(r.at)}</span>·` : ""}
-          ${file ? `<span>${mins(r.seconds || 0)} of audio</span>·
+          ${file ? (r.live ? `<span>Recording…</span>·` : `<span>${mins(r.seconds || 0)} of audio</span>·
             <button class="more exp" data-id="${id}" data-fmt="txt">Text</button>·
-            <button class="more exp" data-id="${id}" data-fmt="srt">Subtitles</button>·
-            ${r.live ? "" : `<button class="more whob" data-id="${id}">${r.speakers ? `${r.speakers} speaker${r.speakers > 1 ? "s" : ""}${r.speakers_guessed ? " (guessed)" : ""}` : "Who spoke?"}</button>·`}`
+            <button class="more exp" data-id="${id}" data-fmt="srt">Subtitles</button>·`) +
+            (r.live ? "" : `<button class="more whob" data-id="${id}">${r.speakers ? `${r.speakers} speaker${r.speakers > 1 ? "s" : ""}${r.speakers_guessed ? " (guessed)" : ""}` : "Who spoke?"}</button>·`)
             : r.app ? `<span>${esc(r.app)}</span>·` : ""}
           <span class="num">${words(r)} words</span></div></div>
       <div class="acts">
@@ -1261,8 +1265,8 @@
     const names = r.names || {}, segs = r.segments || [];
     if (!segs.length) return `<div class="text" style="color:var(--ink2)">${r.live ? "Listening… text appears after each pause." : esc(r.text)}</div>`;
     const lines = segs.map((s, i) => `<div class="line${i >= 6 && !r._open ? " hide" : ""}">
-      <button class="who ${s.speaker === "You" ? "you" : "them"}" data-id="${esc(r.id)}" data-who="${esc(s.speaker)}"
-        title="Rename this speaker" style="${/^(Speaker|Person) [2468]/.test(s.speaker) ? "color:#7a4fb3" : ""}">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${esc(s.text)}</div></div>`).join("");
+      <button class="who ${whoCls(s.speaker)}" data-id="${esc(r.id)}" data-who="${esc(s.speaker)}"
+        title="Rename this speaker">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${esc(s.text)}</div></div>`).join("");
     return `<div class="lines">${lines}</div>` + (segs.length > 6 ? `<button class="more mshow" data-id="${esc(r.id)}">Show all ${segs.length} lines</button>` : "");
   }
 
@@ -1320,7 +1324,7 @@
     ];
     const b = btn.getBoundingClientRect();
     const m = popup(items.map(([k, l, d]) => k === "sep" ? `<div class="sep"></div>` :
-      `<button data-k="${k}" class="${k === "del" ? "danger" : ""}"><b>${l}</b>${d ? `<span>${d}</span>` : ""}</button>`).join(""),
+      `<button data-k="${k}" class="${k === "del" ? "danger" : ""}"${d ? ` title="${esc(d)}"` : ""}><b>${l}</b></button>`).join(""),   // short: Delete stays in view
       x ?? b.right - 290, y ?? b.bottom + 4);
     m.querySelectorAll("button").forEach(x2 => x2.onclick = () => {
       const k = x2.dataset.k; m.remove();
@@ -1363,6 +1367,7 @@
     drawerMode = b.dataset.mode; drawerHtml = ""; drawDrawer();
     if (drawerMode === "listen" && P.note !== drawerId) send({ action: "listen", id: drawerId, autoplay: false });
   });
+  const whoCls = s => s === "You" ? "you" : /^(Speaker|Person) [2468]/.test(s) ? "who3" : "them";   // one colour rule
   const kOf = (x, meet) => x.k != null ? +x.k : (meet && x.speaker !== "You" ? 1 : 0);   // the track a line was heard on (store.track_of)
   const tclock = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
   // Listen: the recording plays in the app (mac/player.py); the line being spoken lights up; click a line to go there
@@ -1388,7 +1393,7 @@
         <div class="seg mini" id="prate">${[1, 1.5, 2].map(x => `<button data-r="${x}">${x}×</button>`).join("")}</div></div>` +
         (meet && r.audio > 1 ? `<div class="ptrack">Track <div class="seg mini" id="ptrack">${r.clock ? `<button data-t="2">Both</button>` : ""}<button data-t="0">You</button><button data-t="1">The others</button></div></div>` : "") +
         (segs.length ? `<div class="plines">${segs.map(x => `<div class="pline" data-s="${x.start}" data-e="${x.end}" data-k="${kOf(x, meet)}">
-            <span class="pt num">${tclock(x.start || 0)}</span>${x.speaker ? `<button class="pwho ${x.speaker === "You" ? "you" : "them"}" title="${esc(nm[x.speaker] || x.speaker)} · click to change who said this">${esc(nm[x.speaker] || x.speaker)}</button>` : ""}<span class="px">${timedWords(r, x.text, x.start || 0, kOf(x, meet))}</span>
+            <span class="pt num">${tclock(x.start || 0)}</span>${x.speaker ? `<button class="pwho ${whoCls(x.speaker)}" title="${esc(nm[x.speaker] || x.speaker)} · click to change who said this">${esc(nm[x.speaker] || x.speaker)}</button>` : ""}<span class="px">${timedWords(r, x.text, x.start || 0, kOf(x, meet))}</span>
             <span class="pacts"><button class="copy pp" title="Play just this line" aria-label="Play just this line"><svg width="13" height="13"><use href="#i-play"/></svg></button><button class="copy pc" title="Copy this line" aria-label="Copy this line"><svg width="14" height="14"><use href="#i-copy"/></svg></button><button class="copy pe" title="Edit this line" aria-label="Edit this line"><svg width="14" height="14"><use href="#i-pen"/></svg></button></span></div>`).join("")}</div>`
           : `<div class="plines"><div class="pline whole"><span class="px">${timedWords(r, r.text, 0, 0)}</span></div></div>`) +
         (lining ? `<p class="fine phint">Lining up each word with the sound. Only the first time: about a minute per 5 minutes of audio…</p>` : "") +
@@ -1653,7 +1658,7 @@
 
     on(".del", r => { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); });
     on(".exp", (r, b) => send({ action: "export", id: r.id, fmt: b.dataset.fmt }));
-    root.querySelectorAll(".more:not(.exp)").forEach(b => b.onclick = () => {
+    root.querySelectorAll(".showall").forEach(b => b.onclick = () => {   // only "Show all": not Who spoke or Show all N lines
       b.previousElementSibling.classList.toggle("clamp"); b.textContent = b.textContent === "Show all" ? "Show less" : "Show all"; });
     root.querySelectorAll("[data-flag]").forEach(b => b.onclick = () => {
       send({ action: "flag", id: b.dataset.id, i: +b.dataset.flag, how: b.dataset.how });
@@ -1713,7 +1718,7 @@
     f.className = "fixer";
     f.innerHTML = `indite wrote <input class="h" aria-label="Word indite wrote" placeholder="ptm" spellcheck="false" value="${esc(sel)}">
       you meant <input class="w" aria-label="Word you meant" placeholder="Paytm" spellcheck="false">
-      <button class="btn go">Add fix</button><button class="btn">Cancel</button><div class="why"></div>`;
+      <button class="btn go">Add to Dictionary</button><button class="btn">Cancel</button><div class="why"></div>`;
     host.appendChild(f);
     const h = f.querySelector(".h"), w = f.querySelector(".w"), why = f.querySelector(".why");
     const check = () => {
@@ -1801,6 +1806,8 @@
     const total = sum(d, W);
     const week = d.filter(r => r.at * 1000 >= today - 6 * DAY), prev = d.filter(r => r.at * 1000 < today - 6 * DAY && r.at * 1000 >= today - 13 * DAY);
     const wk = sum(week, W), pw = sum(prev, W);
+    if (!all.length) { $("#ins").innerHTML = `<div class="empty"><div class="art"><svg width="28" height="28"><use href="#i-chart"/></svg></div>
+      <h3>Nothing to show yet</h3>Insights fill in as you dictate.</div>`; return; }   // no rows of zeros (DESIGN: hide empty tiles)
     const last = d.slice(0, 100), spoke = sum(last, r => r.seconds || 0);
     const wpm = spoke > 5 ? Math.round(sum(last, W) / spoke * 60) : 0;
     // time saved: typing the same words at 40 words a minute, minus the time spent speaking them
@@ -1854,8 +1861,8 @@
     h += `<div class="kpis">` +
       kpi(d.length, "", `dictations · ${d.length ? Math.round(copied / d.length * 100) : 0}% went to the clipboard`) + `</div>`;
     h += sec("Meetings, files &amp; AI") + `<div class="kpis">` +
-      kpi(meets.length, "", `meetings · ${Math.round(sum(meets, r => r.seconds || 0) / 60)} min`) +
-      kpi(files.length, "", `files · ${Math.round(sum(files, r => r.seconds || 0) / 60)} min of audio`) +
+      kpi(meets.length, "", `${meets.length === 1 ? "meeting" : "meetings"} · ${Math.round(sum(meets, r => r.seconds || 0) / 60)} min`) +
+      kpi(files.length, "", `${files.length === 1 ? "file" : "files"} · ${Math.round(sum(files, r => r.seconds || 0) / 60)} min of audio`) +
       // likely mistakes you fixed (Mark likely mistakes); hidden until there is something to count
       (() => { const fc = S.fix_counts || {}, fixed = (fc.fix || 0) + (fc.always || 0), all = fixed + (fc.dismiss || 0);
         return all ? kpi(fixed, "", `likely mistakes fixed · ${(fixed / Math.max(1, total) * 100).toFixed(2)} per 100 words`,
