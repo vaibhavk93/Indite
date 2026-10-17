@@ -1,5 +1,8 @@
 # indite AI modes: product, design and technical spec
 
+> **Detail only, not a roadmap.** Order and status of every item live in `ROADMAP.md` (Mac and Android, done / next / later). If this file disagrees with it, `ROADMAP.md` wins.
+
+
 Last updated: 2026-10-10. Status: **draft, critic-reviewed once** (objections and changes in [section 13](#13-critic-review)).
 Builds on [PLAN.md](../PLAN.md) sections 5c and 5d, and on [ROADMAP.md](../ROADMAP.md).
 Code it matches: `android/app/src/{main,personal,public}/java/com/whispercppdemo/` as of v0.5 plus uncommitted work

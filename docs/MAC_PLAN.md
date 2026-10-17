@@ -1,5 +1,8 @@
 # indite for Mac: what to build, and why
 
+> **Detail only, not a roadmap.** Order and status of every item live in `ROADMAP.md` (Mac and Android, done / next / later). If this file disagrees with it, `ROADMAP.md` wins.
+
+
 What the Mac app does today is in `mac/README.md`. This file holds the comparison with the Android app and with
 Wispr Flow, and the critic-reviewed plan that came out of it. Update the plan's status column as things land.
 

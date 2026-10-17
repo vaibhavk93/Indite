@@ -1,5 +1,8 @@
 # Wispr Flow deep dive: the features indite lacks, and how to build them (16 Oct 2026)
 
+> **Detail only, not a roadmap.** Order and status of every item live in `ROADMAP.md` (Mac and Android, done / next / later). If this file disagrees with it, `ROADMAP.md` wins.
+
+
 Answers the founder's question: *"All the features Wispr has that we don't. How do they do it? How do we do it? What
 goes wrong, what's the workaround? Give me the best 2 options for each. And how do we add more languages?"*
 

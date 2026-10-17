@@ -4,6 +4,22 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-17 (15:00-17:15) · Claude Code (Opus 5.5) · Card, clipboard, Insights, Mark likely mistakes, one roadmap
+
+**Next step:** Mac next #4 (fixes count), #5 (engine-hint test), #7 (edit + undo); founder's 30-min checks (Mac next #2).
+
+- Card: Ask AI + the two most-used AI actions + To do; copy icon tried and removed at the founder's call; answers wrap.
+- Clipboard: typed words also copied; every AI answer copied (tested end to end in TextEdit: dictation, card
+  Rewrite · Formal, Ask AI Summary).
+- Insights: a rebuild was rolled back on founder feedback; the original page grouped into 4 sections + 4 KPIs.
+- Copy: one icon on notes and answers; meeting copy/export use renamed speakers (bug).
+- Mark likely mistakes built and tested end to end ("crasin" → Fix → "Crocin"). Found on the way: confidence comes
+  in word pieces (merged now), and the second listen can differ from the typed text (flags now come from the text).
+- ROADMAP.md rewritten as one file (Mac / Android, done / next / later / parked); 10 Oct sections archived; an audit
+  of all requests, commits and chat logs added 11 missing items and 8 founder decisions.
+
+---
+
 ## 2026-10-17 (14:40) · Claude Code (Opus 5.5) · Text card AI buttons; crash fix; context-safe fixes planned
 
 **Next step:** founder dictates, hovers the card, clicks Make it a prompt - confirms the click-through works.

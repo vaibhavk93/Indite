@@ -1,5 +1,8 @@
 # indite: detailed roadmap and Wispr Flow comparison (15 Oct 2026)
 
+> **Detail only, not a roadmap.** Order and status of every item live in `ROADMAP.md` (Mac and Android, done / next / later). If this file disagrees with it, `ROADMAP.md` wins.
+
+
 Researched and critic-reviewed. The one roadmap stays `ROADMAP.md`; this is the detail behind its new items. Built on `ROADMAP.md`, `docs/MAC_PLAN.md` (§0, §3, §6) and
 `docs/FOUNDER_REQUESTS.md`, plus fresh research on Wispr Flow (sources and dates at the end).
 

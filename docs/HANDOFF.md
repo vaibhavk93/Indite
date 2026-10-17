@@ -19,7 +19,7 @@ Offline, private Hinglish speech-to-text. Speak Hindi + English, get Roman-scrip
 | Benchmarks | `bench_synth/` (synthetic Hinglish + automated phone test), `indite bench` | working |
 
 Docs that matter, in order:
-1. `ROADMAP.md`: **the one roadmap** (built / now / next / later / not doing / founder requests with status). The page
+1. `ROADMAP.md`: **the one roadmap**, split Mac / Android, each done / next / later / parked (17 Oct). Add new items there, nowhere else (built / now / next / later / not doing / founder requests with status). The page
    https://claude.ai/artifact/GuCGtX4TJeASaS2RpGFS4q is published from it. **Update both together.**
 2. `PLAN.md`: every decision and test result, with reasons.
 3. `docs/AI_MODES.md`: AI features spec (notes, action items, practice, tiers T1–T4).
@@ -124,6 +124,15 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 ---
 
 ## 5. Where things stand (update every session)
+
+**17 Oct 17:15 — Mac: text card AI buttons + To do, clipboard rules, Mark likely mistakes, Insights grouped.**
+- Every dictation is typed AND copied (`also_copy`); every AI answer is copied when it lands; the card shows it.
+- Mark likely mistakes (`mac/review.py`, setting `review`, on for the founder): after typing, a second listen with
+  per-word confidence; a saved word is "unsure" unless heard the same way with p ≥ 0.9; Dictionary targets ≥ 6
+  letters; Hinglish sound-key; joins with Hindi particles skipped. Synthetic bench 0.19 false/100 words. Note keeps
+  `raw` (engine text) and `flags`; decisions go to `fixlog.jsonl`. The real speech set is the gate.
+- Swear masking is FIXED (real word stored). The stuck-mic restart has fired 3 times for real and worked.
+- ⚠ Two sessions work in this folder and both number FOUNDER_REQUESTS rows: check the last number before adding.
 
 **16 Oct 10:20 — ROADMAP.md is now two roadmaps (Mac, Android) + a limits/parity table + personalisation.**
 Recordings can be played from a note's menu. ⚠ Another session works in this folder too: check `git status` before
