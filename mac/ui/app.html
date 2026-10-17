@@ -154,6 +154,9 @@
     display: grid; place-items: center; width: 28px; height: 28px; color: var(--ink2);
   }
   .copy:hover { background: var(--well); color: var(--ink); }
+  .editor textarea { width: 100%; font: inherit; color: var(--ink); background: var(--well); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; resize: none; } .editor .ed-acts { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+  .flag { font-size: 12.5px; color: var(--ink2); margin: 4px 0 2px; } .flag b { color: var(--ink); } .flag .lnk { margin-left: 8px; }
   .copy.done { color: var(--copied); background: var(--accent-soft); }
   .acts { display: flex; gap: 2px; }
   .copy.on { color: var(--accent); }
@@ -598,6 +601,11 @@
                 <div class="seg" id="set-output" role="radiogroup" aria-label="Where the words go"></div>
               </div>
               <div class="item">
+                <div class="body"><b>Also keep it on the clipboard</b><p>Typed words, and every AI answer, are copied too,
+                  so ⌘V pastes them anywhere. It replaces what you had copied before.</p></div>
+                <button class="sw" id="set-also_copy" role="switch" aria-label="Also copy to the clipboard"></button>
+              </div>
+              <div class="item">
                 <div class="body"><b>Microphone</b><p id="mic-why"></p></div>
                 <select class="pick" id="set-mic" aria-label="Microphone"></select>
               </div>
@@ -642,8 +650,14 @@
               </div>
               <div class="item">
                 <div class="body"><b>Hide swear words (b****)</b><p>Common Hindi and English swear words are written with
-                  stars, in dictations, meetings and files. The saved note keeps the stars too. Off by default.</p></div>
+                  stars wherever text is shown, typed, copied or exported. The saved note keeps the real word. Off by default.</p></div>
                 <button class="sw" id="set-mask_swears" role="switch" aria-label="Hide swear words"></button>
+              </div>
+              <div class="item">
+                <div class="body"><b>Mark likely mistakes (being tested)</b><p>After a dictation, indite looks for your
+                  Dictionary words it may have misheard ("cross in" → Crocin) and asks you. Nothing changes until you
+                  tap Fix. Runs on this Mac.</p></div>
+                <button class="sw" id="set-review" role="switch" aria-label="Mark likely mistakes"></button>
               </div>
               <div class="item">
                 <div class="body"><b>Find who spoke</b><p>In every meeting and file, automatically. Lines get Person 1,
@@ -985,6 +999,8 @@
     sw("#set-mask_swears", "mask_swears");
     sw("#set-auto_speakers", "auto_speakers");
     sw("#set-keep_audio", "keep_audio");
+    sw("#set-also_copy", "also_copy");
+    sw("#set-review", "review");
     sw("#set-backup_audio", "backup_audio");
     seg("#set-backup_scope", { all: "All notes", star: "Starred", keep: "Starred + To do" }, S.prefs.backup_scope || "all",
         v => send({ action: "pref", key: "backup_scope", value: v }));
@@ -1103,6 +1119,7 @@
   }
 
   function feed(el, rows, empty) {
+    if (el.querySelector(".editor, .fixer")) return;            // never redraw over text you are typing
     if (!rows.length) { el.innerHTML = empty || ""; return; }
     let html = "", seen = "";
     const count = {};
@@ -1130,7 +1147,7 @@
       <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${esc(r.title || "File")}
           ${r.live ? `<span class="live">LIVE</span>` : ""}</div>` : ""}
         ${(r.segments || []).some(x => x.speaker) ? meetingLines(r) : `<div class="text${file ? " clamp" : ""}">${esc(r.text)}</div>`}
-        ${todoView ? "" : aiParts(r)}
+        ${todoView ? "" : flagParts(r) + aiParts(r)}
         ${file && !(r.segments || []).some(x => x.speaker) && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
         <div class="meta">${r.star ? `<svg width="12" height="12" class="starred"><use href="#i-star-on"/></svg>` : ""}
           ${r.todo === "open" && !todoView ? `<span class="tag">To do</span>` : ""}${copied ? `<span class="tag copied">Copied</span>` : ""}
@@ -1157,6 +1174,18 @@
   }
 
   // In the list a note only says it has AI answers; the answers live in the Ask AI panel (one note at a time).
+  // likely mistakes found after a dictation (mac/review.py): one line each, nothing changes until a tap
+  function flagParts(r) {
+    return (r.flags || []).map((f, i) => {
+      const re = new RegExp("(?<![\\p{L}\\p{N}_])" + f.heard.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").split(/\s+/).join("\\s+") + "(?![\\p{L}\\p{N}_])", "iu");
+      const elsewhere = S.history.filter(x => x.id !== r.id && re.test(x.text || "")).length;   // self-contained: rows draw early
+      return `<div class="flag">Did you mean <b>${esc(f.want)}</b>? indite wrote “${esc(f.heard)}”.
+        <button class="lnk" data-flag="${i}" data-id="${esc(r.id)}" data-how="fix">Fix</button>
+        <button class="lnk" data-flag="${i}" data-id="${esc(r.id)}" data-how="always" title="${elsewhere ? `“${esc(f.heard)}” is also in ${elsewhere} other note${elsewhere > 1 ? "s" : ""} you left alone - it may be a real word` : "Fix it in every future dictation"}">Always fix${elsewhere ? ` (in ${elsewhere} other note${elsewhere > 1 ? "s" : ""})` : ""}</button>
+        <button class="lnk mute" data-flag="${i}" data-id="${esc(r.id)}" data-how="dismiss">Not a mistake</button></div>`;
+    }).join("");
+  }
+
   function aiParts(r) {
     const n = (r.ai || []).length + (r.improved ? 1 : 0), busy = S.ai_busy && S.ai_busy[r.id];
     let h = "";
@@ -1188,6 +1217,7 @@
                        [["aioff", "AI is off", "Turn it on in Settings → AI"]]),
       ...(media ? [["who", "Who spoke?", "Label each line with a speaker"], ["txt", "Save as text…", ""], ["srt", "Save as subtitles…", ""]]
                 : [["fix", "Fix a word…", "Teach indite a word it got wrong"]]),
+      ...((r.segments || []).some(x => x.speaker) ? [] : [["edit", "Edit text", "Correct it yourself; Undo is offered after saving"]]),
       ...(r.audio ? [["play", "Play recording", r.audio > 1 ? "Opens both tracks: you, and the others" : ""],
                      ["reveal", "Show recording in Finder", ""]] : []),
       ["sep"], ["del", "Delete", ""],
@@ -1205,6 +1235,7 @@
       if (k === "who") whoMenu(btn, r);
       if (k === "txt" || k === "srt") send({ action: "export", id: r.id, fmt: k });
       if (k === "fix") openFixer(btn, r);
+      if (k === "edit") openEditor(btn, r);
       if (k === "play" || k === "reveal") send({ action: k, id: r.id });
       if (k === "del") { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); }
     });
@@ -1394,6 +1425,9 @@
     on(".exp", (r, b) => send({ action: "export", id: r.id, fmt: b.dataset.fmt }));
     root.querySelectorAll(".more:not(.exp)").forEach(b => b.onclick = () => {
       b.previousElementSibling.classList.toggle("clamp"); b.textContent = b.textContent === "Show all" ? "Show less" : "Show all"; });
+    root.querySelectorAll("[data-flag]").forEach(b => b.onclick = () => {
+      send({ action: "flag", id: b.dataset.id, i: +b.dataset.flag, how: b.dataset.how });
+      toast(b.dataset.how === "dismiss" ? "Kept as it is" : b.dataset.how === "always" ? "Fixed, and in future dictations" : "Fixed"); });
     on(".cp", (r, b) => {
       // what the row shows: a meeting's lines with the speakers as renamed, not the stored "Person 1"
       const nm = r.names || {}, segs = r.segments || [];
@@ -1422,6 +1456,23 @@
   const reEsc = w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const fixRe = h => new RegExp("(?<![\\p{L}\\p{N}_])" + h.trim().split(/\s+/).map(reEsc).join("\\s+")
                                   + "(?![\\p{L}\\p{N}_])", "iu");
+  // Edit a note's text in place: Save keeps it (with Undo), Cancel or Esc leaves it as it was
+  function openEditor(btn, r) {
+    const el = btn.closest(".row").querySelector(".text");
+    if (!el || el.parentElement.querySelector(".editor")) return;
+    const box = document.createElement("div"); box.className = "editor";
+    box.innerHTML = `<textarea spellcheck="false"></textarea><div class="ed-acts"><button class="btn go">Save</button><button class="btn">Cancel</button><span class="fine">⌘↩ saves · Esc cancels</span></div>`;
+    const ta = box.querySelector("textarea"); ta.value = r.text;
+    el.hidden = true; el.after(box);
+    const grow = () => { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + 2 + "px"; }; grow(); ta.oninput = grow;
+    const close = () => { box.remove(); el.hidden = false; };
+    const save = () => { const t = ta.value.trim(); close();
+      if (t && t !== r.text) { send({ action: "edit", id: r.id, text: t }); toast("Saved", () => send({ action: "undo_edit" })); } };
+    const [go, cancel] = box.querySelectorAll("button"); go.onclick = save; cancel.onclick = close;
+    ta.onkeydown = e => { if (e.key === "Enter" && e.metaKey) { e.preventDefault(); save(); } if (e.key === "Escape") { e.stopPropagation(); close(); } };
+    ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+  }
+
   function openFixer(btn, r) {
     const host = btn.closest(".row").querySelector(".text").parentElement;
     const open = host.querySelector(".fixer");
@@ -1573,7 +1624,11 @@
       kpi(d.length, "", `dictations · ${d.length ? Math.round(copied / d.length * 100) : 0}% went to the clipboard`) + `</div>`;
     h += sec("Meetings, files &amp; AI") + `<div class="kpis">` +
       kpi(meets.length, "", `meetings · ${Math.round(sum(meets, r => r.seconds || 0) / 60)} min`) +
-      kpi(files.length, "", `files · ${Math.round(sum(files, r => r.seconds || 0) / 60)} min of audio`) + `</div>`;
+      kpi(files.length, "", `files · ${Math.round(sum(files, r => r.seconds || 0) / 60)} min of audio`) +
+      // likely mistakes you fixed (Mark likely mistakes); hidden until there is something to count
+      (() => { const fc = S.fix_counts || {}, fixed = (fc.fix || 0) + (fc.always || 0), all = fixed + (fc.dismiss || 0);
+        return all ? kpi(fixed, "", `likely mistakes fixed · ${(fixed / Math.max(1, total) * 100).toFixed(2)} per 100 words`,
+          `<div class="d" style="color:var(--ink2)">${fc.dismiss || 0} were not mistakes</div>`) : ""; })() + `</div>`;
     // AI usage: only what was asked for; computed from the notes, nothing new stored
     const A2 = S.ai_actions || {}, used = {};
     all.forEach(r => { if (r.improved) used["Improve the wording"] = (used["Improve the wording"] || 0) + 1;

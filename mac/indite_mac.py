@@ -317,9 +317,15 @@ class Engine:
                     raw = self._ask_server(path, window_for(len(piece) / RATE), detail=True)
                 for seg in json.loads(raw).get("segments", []):
                     for w in seg.get("words") or []:
-                        word = (w.get("word") or "").strip()
-                        if word:
-                            out.append((word, float(w.get("probability", 1.0))))
+                        # the server sends word PIECES (" chem" + "ist"): a leading space starts a word, no space joins
+                        # the one before. A word is only as sure as its least sure piece.
+                        piece, p = w.get("word") or "", float(w.get("probability", 1.0))
+                        if not piece.strip():
+                            continue
+                        if piece.startswith(" ") or not out:
+                            out.append((piece.strip(), p))
+                        else:
+                            out[-1] = (out[-1][0] + piece.strip(), min(out[-1][1], p))
             finally:
                 os.unlink(path)
         return out
@@ -1170,7 +1176,8 @@ class InditeApp(rumps.App):
         t0 = time.time()
         where, where_pid = front_app(), front_pid()              # asked before anything is typed, so the history says which app it went to
         try:
-            text = self.tidy(self.engine.transcribe(audio))
+            heard = self.engine.transcribe(audio)
+            text = self.tidy(heard)
             if junk(text, len(audio) / RATE):
                 text = ""
         except Exception as e:                            # noqa: BLE001 - whatever went wrong, say so and carry on
@@ -1197,6 +1204,8 @@ class InditeApp(rumps.App):
         mode = self.prefs["output"]
         if mode == "type" or (mode == "smart" and focused_is_text()):
             self.typer.type(self.last)
+            if self.prefs.get("also_copy", True):        # typed by key events, so the clipboard is free to hold it too
+                self.typer.copy(self.last)
             self.done_state = "done"
         else:
             self.typer.copy(self.last)
@@ -1204,7 +1213,11 @@ class InditeApp(rumps.App):
         self.done_until = time.time() + 1.6
         took = time.time() - t0
         # Spoken into indite's own window (the Ask AI box, search, a rename): that's input to indite, not a note.
-        note = None if where_pid == os.getpid() else store.add(text, len(audio) / RATE, took, self.done_state, where)
+        note = None if where_pid == os.getpid() else store.add(
+            text, len(audio) / RATE, took, self.done_state, where,
+            **({"raw": heard} if heard.strip() != text.strip() else {}))   # what the engine heard, so a fix can be undone
+        if note and self.prefs.get("review"):
+            threading.Thread(target=self.review, args=(note, audio, text), daemon=True).start()
         if note and self.prefs["keep_audio"]:            # off by default: a recording of everything said is a lot
             store.AUDIO.mkdir(parents=True, exist_ok=True)
             with wave.open(str(store.AUDIO / f"{note}.wav"), "wb") as w:
@@ -1344,6 +1357,26 @@ class InditeApp(rumps.App):
         threading.Thread(target=self._ai, args=(row, action, extra), daemon=True).start()
 
 
+    def review(self, note: str, audio: np.ndarray, text: str) -> None:
+        """
+        After the words are typed: look for Dictionary words the engine may have misheard (mac/review.py). Runs on its
+        own thread and asks the engine for per-word confidence, which costs about one more transcription - never on
+        the typing path. A flag is only kept if its words are still in the saved text.
+        """
+        import review
+        targets = [want for _, want in store.my_fixes()]
+        if not targets:
+            return
+        try:
+            found = review.on_text(text, self.engine.confidence(audio), targets)
+        except Exception as e:                           # noqa: BLE001 - a review must never cost the dictation
+            print("review failed:", e)
+            return
+        if found:
+            store.update(note, flags=[{"heard": f["heard"], "want": f["want"]} for f in found])
+            print(f"review: {len(found)} likely mistake(s) in {note}: " + ", ".join(f"{f['heard']} -> {f['want']}" for f in found))
+            self.refresh()
+
     def card_action(self, i: int) -> None:
         """
         A button on the text card (main thread). Ask AI opens that note's Ask AI panel; the other two run straight
@@ -1387,6 +1420,11 @@ class InditeApp(rumps.App):
                 store.update(row["id"], ai=answers + [{"action": action, "label": label, "text": answer,
                                                        "at": time.time()}])
             print(f"ai {action}: {time.time() - t0:.1f}s")
+            if self.prefs.get("also_copy", True) or self.card_job == (row["id"], action):
+                self.typer.copy(answer)                  # the answer is on the clipboard the moment it is shown
+                if self.window and self.card_job != (row["id"], action):
+                    from PyObjCTools import AppHelper
+                    AppHelper.callAfter(self.window.bridge.js, "toast('Answer copied - paste it anywhere')")
         except Exception as e:                           # noqa: BLE001 - not logged in, out of quota, offline...
             self.ai_error = str(e)
             print("ai failed:", e)
@@ -1396,8 +1434,8 @@ class InditeApp(rumps.App):
             if self.card_job == (row["id"], action):     # asked from the text card: the answer goes back there
                 self.card_job = None
                 if answer:
-                    subprocess.run("pbcopy", input=answer, text=True, check=False)
-                    self.preview.answer("Copied - paste it anywhere.\n\n" + answer)
+                    shown = re.sub(r"\*\*(.+?)\*\*", r"\1", answer)   # the card shows plain text; Copy keeps the original
+                    self.preview.answer("Copied - paste it anywhere.\n\n" + shown)
                 else:
                     self.preview.failed("The AI did not answer: " + (self.ai_error or "no reply") +
                                         "\nPress the button again to retry.")
@@ -1576,6 +1614,11 @@ class InditeApp(rumps.App):
                     self.card_note = row["id"]
                     self.preview.show(row["text"], buttons=True)
                     self.card_action(int(arg or 1))
+            elif verb == "dictate":                       # developer check: a WAV through the real path after release
+                with wave.open(arg) as w:
+                    audio = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
+                self.busy = True
+                threading.Thread(target=self.write_it, args=(audio,), daemon=True).start()
             elif verb == "pill":
                 self.pill.set_clear(int(arg))
                 self.done_state, self.done_until = "done", time.time() + 2.0

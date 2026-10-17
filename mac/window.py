@@ -149,6 +149,7 @@ class Bridge(NSObject):
             "hotkeys": HOTKEYS,
             "engine": self.app.engine_kind,
             "fixes_list": [list(f) for f in sorted(store.my_fixes(), key=lambda f: f[0].lower())],
+            "fix_counts": store.fix_counts(),
             "ai_providers": __import__("ai").PROVIDERS,
             "ai_models": __import__("ai").DEFAULT_MODEL,
             "ai_status": self.app.ai_who,
@@ -200,6 +201,16 @@ class Bridge(NSObject):
         elif act == "note":                              # star / to-do / title: only these fields may change
             fields = {k: v for k, v in (msg.get("set") or {}).items() if k in ("star", "todo", "title")}
             store.update(str(msg.get("id", "")), **fields)
+        elif act == "edit":                              # your own correction of a note's text; one step of undo
+            row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+            new = str(msg.get("text", "")).strip()
+            if row and new and new != row["text"]:
+                self.edit_undo = (row["id"], row["text"])
+                store.update(row["id"], text=new, edited=True)
+        elif act == "undo_edit":
+            if getattr(self, "edit_undo", None):
+                store.update(self.edit_undo[0], text=self.edit_undo[1], edited=None)
+                self.edit_undo = None
         elif act == "delete":
             self.undo = store.delete(str(msg.get("id", "")))
         elif act == "undo":
@@ -235,6 +246,27 @@ class Bridge(NSObject):
             import ai
             ai.claude_login()
             self.app.check_ai(later=True)
+        elif act == "flag":                              # a likely mistake: fix it here, always, or it was fine
+            row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+            i, how = int(msg.get("i", -1)), msg.get("how")
+            flags = list((row or {}).get("flags") or [])
+            if row and 0 <= i < len(flags):
+                f = flags.pop(i)
+                before = store.log_fix(f["heard"], f["want"], how)
+                text = row["text"]
+                if how in ("fix", "always"):
+                    import re as _re
+                    text = _re.sub(r"(?<!\w)" + _re.escape(f["heard"]) + r"(?!\w)", f["want"], text, count=1, flags=_re.I)
+                if how == "always":
+                    why = store.fix_problem(f["heard"], f["want"])
+                    if why:
+                        self.js(f"toast({why!r})")
+                    else:
+                        store.add_fix(f["heard"], f["want"])
+                store.update(row["id"], text=text, flags=flags or None)
+                if how == "fix" and before >= 1:         # the 2nd identical fix: offer to make it permanent
+                    self.js(f"toast({'You fixed this before. Always fix ' + f['heard'] + ' → ' + f['want'] + '? Use Always fix next time.'!r})")
+            self.push()
         elif act in ("play", "reveal"):                  # a note's kept recording: play it, or show it in Finder
             row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
             files = [str(f) for f in store.audio_files(row)] if row else []

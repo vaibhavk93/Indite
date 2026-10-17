@@ -28,6 +28,8 @@ CAP = 500                       # roughly a month of heavy use; older lines are 
 DEFAULTS = {
     "hotkey": "alt_r",          # alt_r · alt_l · cmd_r · fn - rebound live, no restart
     "output": "smart",          # smart (type when there is a text box, else clipboard) · type · copy
+    "review": False,            # mark likely mistakes after a dictation (being tested: on for the founder, off for others)
+    "also_copy": True,          # typed words ALSO go on the clipboard, and so does every AI answer (founder, 17 Oct)
     "spelling": True,           # the shared Hinglish spelling list
     "keep_history": True,       # off means nothing is written, and the list below empties
     "sounds": True,             # a soft tick when listening starts, a pop when it stops
@@ -169,6 +171,32 @@ def audio_of(row: dict) -> Path | None:
         return own
     src = Path(row.get("source", "")) if row.get("kind") == "file" else None
     return src if src and src.is_file() else None
+
+
+FIXLOG = DIR / "fixlog.jsonl"    # every Fix / Always fix / Not a mistake on a flagged word: the proof the review helps
+
+
+def log_fix(heard: str, want: str, how: str) -> int:
+    """Notes one decision on a flag; returns how many times this same fix has been made before (for "Always fix?")."""
+    seen = 0
+    if FIXLOG.exists():
+        for line in FIXLOG.read_text(encoding="utf-8").splitlines():
+            e = json.loads(line)
+            seen += e["heard"].lower() == heard.lower() and e["want"] == want and e["how"] != "dismiss"
+    with FIXLOG.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"at": time.time(), "heard": heard, "want": want, "how": how}, ensure_ascii=False) + "\n")
+    return seen
+
+
+def fix_counts() -> dict:
+    """How the flagged words were decided: the proof AI review helps (roadmap Mac next #4)."""
+    out = {"fix": 0, "always": 0, "dismiss": 0}
+    if FIXLOG.exists():
+        for line in FIXLOG.read_text(encoding="utf-8").splitlines():
+            how = json.loads(line).get("how")
+            if how in out:
+                out[how] += 1
+    return out
 
 
 def named_segments(row: dict) -> list[dict]:

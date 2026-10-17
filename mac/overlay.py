@@ -447,7 +447,7 @@ class Preview:
         AppHelper.callAfter(self._show, text, False)
 
     def answer(self, text: str) -> None:
-        """The answer has landed: show it, then leave on the normal clock."""
+        """The answer has landed (and is on the clipboard): show it, then leave on the normal clock."""
         from PyObjCTools import AppHelper
         self.busy = False
         AppHelper.callAfter(self._show, text, False, True)
@@ -465,10 +465,16 @@ class Preview:
             b.setHidden_(not self.with_buttons or (buttons == "todo" and i != 3))
         extra = self.BH if self.with_buttons else 0.0
         self.label.setStringValue_(text)
-        need = self.label.cell().cellSizeForBounds_(NSMakeRect(0, 0, self.PW - 32, 10_000)).height
+        tw = self.PW - 32
+        self.label.setPreferredMaxLayoutWidth_(tw)
+        need = self.label.cell().cellSizeForBounds_(NSMakeRect(0, 0, tw, 10_000)).height
         h = min(self.MAX_H, max(self.PH, need + 22)) + extra
-        if need + 22 > self.MAX_H:                               # very long: keep the end, which is newest
-            self.label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail if head else AppKit.NSLineBreakByTruncatingHead)
+        if need + 22 > self.MAX_H and head:                      # a long answer: wrap, keep its start, cut the end
+            self.label.setLineBreakMode_(AppKit.NSLineBreakByWordWrapping)
+            self.label.cell().setTruncatesLastVisibleLine_(True)
+            self.label.setMaximumNumberOfLines_(int((self.MAX_H - 22) // 17))
+        elif need + 22 > self.MAX_H:                             # a long dictation: keep the end, which is newest
+            self.label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingHead)
             self.label.setMaximumNumberOfLines_(int((self.MAX_H - 22) // 17))
         else:
             self.label.setLineBreakMode_(AppKit.NSLineBreakByWordWrapping)
@@ -477,7 +483,7 @@ class Preview:
         self.panel.setFrame_display_(NSMakeRect(f.origin.x, self.base_y, self.PW, h), True)   # grows upward
         for v in (self.box, self.glass):
             v.setFrame_(NSMakeRect(0, 0, self.PW, h))
-        self.label.setFrame_(NSMakeRect(16, 11 + extra, self.PW - 32, h - 22 - extra))
+        self.label.setFrame_(NSMakeRect(16, 11 + extra, tw, h - 22 - extra))
         self.panel.setAlphaValue_(1.0)
         self.panel.setIgnoresMouseEvents_(True)
         self.panel.orderFrontRegardless()
