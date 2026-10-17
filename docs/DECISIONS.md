@@ -26,6 +26,7 @@ to "Decided", and update the roadmap item it touches.
 | D17 | Live clean-up while dictating with a local model | Needs 30 real dictations compared side by side (your judgement) | After D15 |
 | D18 | ₹ / lakh-crore formatting ("2 lakh" → "₹2,00,000"?) | Unproven: no real note shows the need yet | Want it / wait for examples |
 | D19 | Check the new things on your screen: Listen look, Both tracks on your next call, "Record this call?" card, card buttons in Settings | Built 17 Oct, tested off-screen only | Yes / what's wrong |
+| D20 | **One real call with headphones on** (5 min is enough), after today's fix | The call's sound now reconnects if it drops (16 Oct it died after 7 s). Also check: Settings → General → Microphone is your headphone mic, else indite hears you only faintly | Do it / tell me what you saw |
 
 ## Decided
 
