@@ -61,6 +61,7 @@ from meeting import Meeting  # noqa: E402
 import digits as numbers  # noqa: E402 - mac/digits.py ("numbers" is a stdlib module name)
 import store              # noqa: E402
 from overlay import Pill, Preview   # noqa: E402 - needs the path above
+from player import Player           # noqa: E402
 from window import Activation, Window, front_app, front_pid   # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -791,6 +792,7 @@ class InditeApp(rumps.App):
         self.file_error = ""
         self.pill = Pill()
         self.preview = Preview()
+        self.player = Player()           # a note's recording, played inside the window (Listen)
         for r in store.history():                        # nothing is recording yet: a LIVE left by a crash is stale
             if r.get("live"):
                 store.update(r["id"], live=None)
@@ -897,6 +899,11 @@ class InditeApp(rumps.App):
     def paint(self, _) -> None:                          # noqa: ANN001 - rumps' signature
         """Shows what is happening, in the place the eye already is: just above the Dock."""
         self.snap_tick = getattr(self, "snap_tick", 0) + 1
+        if self.snap_tick % 5 == 0 and self.player.p and self.window:   # the playing time, 4 times a second
+            st = self.player.state()
+            if st["playing"] or getattr(self, "player_was", None) != st:
+                self.player_was = st
+                self.window.bridge.js(f"playerTick({json.dumps(st)})")
         if self.snap_tick % 200 == 0:                    # every 10 s at full speed; far less if macOS throttles us
             now = time.time()
             was = getattr(self, "_rate_at", now)
@@ -1029,6 +1036,8 @@ class InditeApp(rumps.App):
 
     def start_listening(self) -> bool:
         """Listening starts now as far as the keys are concerned; the mic itself opens on the worker."""
+        if getattr(self, "player", None) and self.player.p:   # the mic would hear the speakers: playback waits
+            self.player.pause()
         self.started_at = time.time()
         self.set_title("🔴")
 
@@ -1495,6 +1504,7 @@ class InditeApp(rumps.App):
             return
         if self.started_at or self.busy:
             return
+        self.player.stop()                               # the meeting's mic must not record the playback
         try:
             self.meeting.start()
         except Exception as e:                           # noqa: BLE001 - usually no microphone

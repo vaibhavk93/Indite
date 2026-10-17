@@ -28,6 +28,7 @@ def app():
     a.taps, a.hf_down = 0, 0.0
     a.meeting = type("M", (), {"running": False})()
     a.preview = type("P", (), {"hide_now": lambda s: None})()   # the text card is cleared when listening starts
+    a.player = m.Player()                                         # nothing loaded: pressing the key must not fail
     a.ops = None                                            # mic steps run at once in tests
     a.prefs = {"hotkey": "alt_r", "sounds": False, "hf_key": "", "hf_taps": 2}
     a.written = []
@@ -105,3 +106,11 @@ if __name__ == "__main__":
         if name.startswith("test_"):
             f()
     print("ok")
+
+
+def test_pressing_the_key_pauses_a_recording_that_is_playing():
+    a = app()
+    paused = []
+    a.player.p = type("AV", (), {"pause": lambda s: paused.append(1)})()   # something is playing
+    a.on_press(K)
+    assert paused, "the mic would hear the speakers: playback must pause when dictation starts"

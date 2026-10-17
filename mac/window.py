@@ -267,11 +267,47 @@ class Bridge(NSObject):
                 if how == "fix" and before >= 1:         # the 2nd identical fix: offer to make it permanent
                     self.js(f"toast({'You fixed this before. Always fix ' + f['heard'] + ' → ' + f['want'] + '? Use Always fix next time.'!r})")
             self.push()
-        elif act in ("play", "reveal"):                  # a note's kept recording: play it, or show it in Finder
+        elif act == "listen":                            # load a note's recording into the in-window player
+            row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+            files = store.audio_files(row) if row else []
+            track = min(int(msg.get("track", 0) or 0), max(0, len(files) - 1))
+            if self.app.meeting.running:
+                self.js("toast('Playback waits while a meeting is recording - the microphone would hear it')")
+            elif row and row.get("live"):
+                self.js("toast('This meeting is still recording')")
+            elif files:
+                try:
+                    self.app.player.load(row["id"], files[track], track)
+                    if msg.get("t"):
+                        self.app.player.seek(float(msg["t"]))
+                    if msg.get("autoplay", True):
+                        self.app.player.play()
+                except Exception as e:                   # noqa: BLE001 - a broken file must not take the window down
+                    self.js(f"toast({('Could not play this recording: ' + str(e))!r})")
+        elif act == "pctl":                              # the player's buttons and keys
+            pl, cmd = self.app.player, msg.get("cmd")
+            if cmd == "play" and not self.app.meeting.running:
+                pl.play()
+            elif cmd == "pause":
+                pl.pause()
+            elif cmd == "seek":
+                pl.seek(float(msg.get("t", 0)))
+            elif cmd == "skip" and pl.p:
+                pl.seek(pl.state()["t"] + float(msg.get("d", 0)))
+            elif cmd == "rate":
+                pl.rate(float(msg.get("r", 1)))
+            elif cmd == "volume":                        # 0..1; developer checks run silent
+                pl.vol = max(0.0, min(1.0, float(msg.get("v", 1))))
+                if pl.p:
+                    pl.p.setVolume_(pl.vol)
+            elif cmd == "stop":
+                pl.stop()
+                self.js(f"playerTick({json.dumps(pl.state())})")
+        elif act == "reveal":                            # a note's kept recording, shown in Finder
             row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
             files = [str(f) for f in store.audio_files(row)] if row else []
             if files:
-                subprocess.run(["open", *files] if act == "play" else ["open", "-R", files[0]], check=False)
+                subprocess.run(["open", "-R", files[0]], check=False)
         elif act == "who":
             self.app.who_spoke(str(msg.get("id", "")), int(msg.get("k", 0) or 0))
         elif act == "meeting":

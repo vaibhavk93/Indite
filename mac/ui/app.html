@@ -190,6 +190,16 @@
   .dhead > div { flex: 1; min-width: 0; }
   .dhead h2 { font-size: 16px; font-weight: 650; display: flex; gap: 8px; align-items: center; color: var(--ink); }
   .dhead h2 svg { color: var(--ink2); }
+  .dtabs { display: flex; gap: 4px; } .dtabs button { appearance: none; border: 0; background: none; font: inherit; font-size: 15px;
+    font-weight: 650; color: var(--ink2); padding: 4px 10px; border-radius: 8px; display: flex; gap: 6px; align-items: center; cursor: default; }
+  .dtabs button[aria-current="true"] { background: var(--well); color: var(--ink); }
+  .pctl { display: flex; gap: 10px; align-items: center; margin: 4px 0 12px; } .pctl .pplay { min-width: 44px; }
+  .pctl input[type=range] { flex: 1; accent-color: var(--brand); } .ptime { font-size: 12px; color: var(--ink2); min-width: 84px; }
+  .ptrack { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink2); margin-bottom: 10px; }
+  .pline { display: flex; gap: 10px; padding: 7px 8px; border-radius: 8px; font-size: 13.5px; line-height: 1.5; cursor: default; }
+  .pline:hover { background: var(--well); } .pline.now { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--brand); }
+  .pline .pt { color: var(--ink3); font-size: 11.5px; min-width: 36px; padding-top: 2px; } .pline b { flex: none; }
+  .phint { margin-top: 10px; text-align: left; }
   .dnote { font-size: 12.5px; color: var(--ink2); margin-top: 6px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3;
            -webkit-box-orient: vertical; overflow: hidden; }
   .dbody { flex: 1; overflow-y: auto; }
@@ -1217,8 +1227,9 @@
                        [["aioff", "AI is off", "Turn it on in Settings → AI"]]),
       ...(media ? [["who", "Who spoke?", "Label each line with a speaker"], ["txt", "Save as text…", ""], ["srt", "Save as subtitles…", ""]]
                 : [["fix", "Fix a word…", "Teach indite a word it got wrong"]]),
-      ...((r.segments || []).some(x => x.speaker) ? [] : [["edit", "Edit text", "Correct it yourself; Undo is offered after saving"]]),
-      ...(r.audio ? [["play", "Play recording", r.audio > 1 ? "Opens both tracks: you, and the others" : ""],
+      // notes with timed lines (meetings, files) are edited line by line instead, so the lines and the text never disagree
+      ...((r.segments || []).length ? [] : [["edit", "Edit text", "Correct it yourself; Undo is offered after saving"]]),
+      ...(r.audio ? [["play", "Play recording", "Plays here; the line being spoken lights up"],
                      ["reveal", "Show recording in Finder", ""]] : []),
       ["sep"], ["del", "Delete", ""],
     ];
@@ -1236,7 +1247,8 @@
       if (k === "txt" || k === "srt") send({ action: "export", id: r.id, fmt: k });
       if (k === "fix") openFixer(btn, r);
       if (k === "edit") openEditor(btn, r);
-      if (k === "play" || k === "reveal") send({ action: k, id: r.id });
+      if (k === "play") { go(r.kind === "meeting" ? "meetings" : r.kind === "file" ? "files" : "home"); openDrawer(r.id, "listen"); send({ action: "listen", id: r.id }); }
+      if (k === "reveal") send({ action: k, id: r.id });
       if (k === "del") { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); }
     });
     m.querySelector("button").focus();
@@ -1245,14 +1257,89 @@
   // ---- Ask AI: a focused panel for one note -----------------------------------------------------------------
   var drawerId = null, drawerView = {}, drawerHtml = "", drawerFrom = null;   // var: the list (rowHtml) reads drawerId before this line runs
   function aiMenu(_btn, r) { openDrawer(r.id); }
-  function openDrawer(id) {
+  var drawerMode = "ai", P = { note: "", playing: false, t: 0, dur: 0 }, seeking = false;   // the panel's view; the player
+  function openDrawer(id, mode) {
+    if (drawerId && drawerId !== id && P.note) send({ action: "pctl", cmd: "stop" });   // one recording at a time
+    drawerMode = mode || "ai";
     drawerFrom = document.activeElement;
     drawerId = id; drawerHtml = ""; $("#drawer").hidden = false; document.body.classList.add("ai-open"); drawDrawer(); drawList();
     const row = document.querySelector(`.row[data-row="${CSS.escape(id)}"]`);
     if (row) row.scrollIntoView({ block: "nearest" });
     setTimeout(() => $("#drawer").focus(), 0);
   }
+  // Ask AI | Listen: two views of the same note in the one panel
+  const dtabs = r => `<div class="dtabs"><button data-mode="ai" aria-current="${drawerMode === "ai"}"><svg width="14" height="14"><use href="#i-spark"/></svg>Ask AI</button>` +
+    `<button data-mode="listen" aria-current="${drawerMode === "listen"}"><svg width="14" height="14"><use href="#i-mic"/></svg>Listen</button></div>`;
+  document.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest("#drawer [data-mode]");
+    if (!b || !drawerId || b.dataset.mode === drawerMode) return;
+    drawerMode = b.dataset.mode; drawerHtml = ""; drawDrawer();
+    if (drawerMode === "listen" && P.note !== drawerId) send({ action: "listen", id: drawerId, autoplay: false });
+  });
+  const tclock = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+  // Listen: the recording plays in the app (mac/player.py); the line being spoken lights up; click a line to go there
+  function drawListen(r) {
+    const segs = r.segments || [], nm = r.names || {}, meet = r.kind === "meeting";
+    let h = `<div class="dhead"><div>${dtabs(r)}<p class="dnote">${esc(r.title ? r.title + " — " : "")}${esc(r.text.slice(0, 120))}${r.text.length > 120 ? "…" : ""}</p></div>
+      <button class="dx" id="dclose" aria-label="Close" title="Close (Esc)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div><div class="dbody">`;
+    if (!r.audio) {
+      h += `<div class="dempty"><b>No recording kept for this note</b><p>${(r.kind || "dictation") === "dictation"
+        ? "Dictations keep their sound only when Settings → Privacy → “Keep the audio of each dictation” is on."
+        : "The recording was moved or deleted."}</p></div></div>`;
+    } else {
+      h += `<div class="pctl"><button class="btn go pplay" id="pplay" aria-label="Play">▶</button>
+        <span class="num ptime" id="ptime">0:00 / 0:00</span><input type="range" id="pseek" min="0" max="1000" value="0" aria-label="Position">
+        <div class="seg mini" id="prate">${[1, 1.5, 2].map(x => `<button data-r="${x}">${x}×</button>`).join("")}</div></div>` +
+        (meet && r.audio > 1 ? `<div class="ptrack">Track <div class="seg mini" id="ptrack"><button data-t="0">You</button><button data-t="1">The others</button></div></div>` : "") +
+        (segs.length ? `<div class="plines">${segs.map(x => `<div class="pline" data-s="${x.start}" data-e="${x.end}" data-k="${meet && x.speaker !== "You" ? 1 : 0}">
+            <span class="pt num">${tclock(x.start || 0)}</span>${x.speaker ? `<b>${esc(nm[x.speaker] || x.speaker)}</b>` : ""}<span class="px">${esc(x.text)}</span></div>`).join("")}</div>`
+          : `<div class="plines"><div class="pline whole"><span class="px">${esc(r.text)}</span></div></div>`) +
+        `<p class="fine phint">Space plays or pauses · ← → move 5 s · click a line to go there</p></div>`;
+    }
+    if (!putDrawer(h)) return playerTick(P);
+    $("#dclose").onclick = closeDrawer;
+    if (!r.audio) return;
+    $("#pplay").onclick = () => send({ action: "pctl", cmd: P.playing && P.note === r.id ? "pause" : "play" });
+    const sk = $("#pseek");
+    sk.oninput = () => { seeking = true; $("#ptime").textContent = `${tclock(sk.value / 1000 * P.dur)} / ${tclock(P.dur)}`; };
+    sk.onchange = () => { seeking = false; send({ action: "pctl", cmd: "seek", t: sk.value / 1000 * P.dur }); };
+    $("#prate").querySelectorAll("button").forEach(b => b.onclick = () => send({ action: "pctl", cmd: "rate", r: +b.dataset.r }));
+    if ($("#ptrack")) $("#ptrack").querySelectorAll("button").forEach(b => b.onclick = () =>
+      send({ action: "listen", id: r.id, track: +b.dataset.t, t: 0, autoplay: P.playing }));
+    $("#drawer").querySelectorAll(".pline[data-s]").forEach(l => l.onclick = () => {
+      const k = +l.dataset.k, t = +l.dataset.s;
+      if (P.note === r.id && (P.track || 0) === k) { send({ action: "pctl", cmd: "seek", t }); send({ action: "pctl", cmd: "play" }); }
+      else send({ action: "listen", id: r.id, track: k, t, autoplay: true });
+    });
+    playerTick(P);
+  }
+  // 4 times a second from the app: time, the seek bar, and which line is being spoken
+  function playerTick(st) {
+    P = st;
+    if (drawerMode !== "listen" || !$("#pplay") || st.note !== drawerId) return;
+    $("#pplay").textContent = st.playing ? "❚❚" : "▶"; $("#pplay").setAttribute("aria-label", st.playing ? "Pause" : "Play");
+    if (!seeking) { $("#ptime").textContent = `${tclock(st.t)} / ${tclock(st.dur)}`; $("#pseek").value = st.dur ? st.t / st.dur * 1000 : 0; }
+    $("#prate").querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", +b.dataset.r === (st.rate || 1)));
+    if ($("#ptrack")) $("#ptrack").querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", +b.dataset.t === (st.track || 0)));
+    const body = $("#drawer .dbody"), was = $("#drawer .pline.now");
+    let now = null;
+    $("#drawer").querySelectorAll(".pline[data-s]").forEach(l => {
+      const on = +l.dataset.k === (st.track || 0) && st.t >= +l.dataset.s && st.t < +l.dataset.e;
+      l.classList.toggle("now", on); if (on) now = l; });
+    const w = $("#drawer .pline.whole"); if (w) w.classList.toggle("now", !!st.playing);
+    if (now && now !== was && body) {                       // follow along, unless you scrolled away from the playing line
+      const b = body.getBoundingClientRect(), r2 = was ? was.getBoundingClientRect() : null;
+      if (!r2 || (r2.bottom > b.top && r2.top < b.bottom)) now.scrollIntoView({ block: "nearest" });
+    }
+  }
+  document.addEventListener("keydown", e => {
+    if (!drawerId || drawerMode !== "listen" || !P.note || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || "")) return;
+    if (e.key === " ") { e.preventDefault(); send({ action: "pctl", cmd: P.playing ? "pause" : "play" }); }
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); send({ action: "pctl", cmd: "skip", d: e.key === "ArrowLeft" ? -5 : 5 }); }
+  });
+
   function closeDrawer() {
+    if (P.note) send({ action: "pctl", cmd: "stop" });
     drawerId = null; $("#drawer").hidden = true; document.body.classList.remove("ai-open"); drawList();
     if (drawerFrom && document.contains(drawerFrom)) drawerFrom.focus();
   }
@@ -1294,8 +1381,9 @@
     const A = S.ai_actions || {}, busy = S.ai_busy && S.ai_busy[r.id];
     const who = S.prefs.ai_provider === "claude" ? `Claude${S.ai_status && S.ai_status.email ? " (" + esc(S.ai_status.email) + ")" : ""}`
       : esc((S.ai_providers || {})[S.prefs.ai_provider] || "your API key");
+    if (drawerMode === "listen") return drawListen(r);
     const answers = [...(r.ai || [])].sort((a, b) => (b.at || 0) - (a.at || 0));
-    let h = `<div class="dhead"><div><h2><svg width="16" height="16"><use href="#i-spark"/></svg>Ask AI</h2>
+    let h = `<div class="dhead"><div>${dtabs(r)}
         <p class="dnote">${esc(r.title ? r.title + " — " : "")}${esc(r.text.slice(0, 160))}${r.text.length > 160 ? "…" : ""}</p></div>
         <button class="dx" id="dclose" aria-label="Close" title="Close (Esc)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div><div class="dbody">`;
     if (!S.prefs.ai) {
