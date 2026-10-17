@@ -29,6 +29,9 @@ class FakeSys(FakeMic):
     def start(self):
         return True
 
+    def stop(self):
+        return []                                   # [(arrival time, samples)], like SystemAudio
+
 
 class Engine:
     def __init__(self):
@@ -73,3 +76,26 @@ def test_next_meeting_starts_while_the_last_one_finishes(tmp_path, monkeypatch):
     assert len(a.you.buf) == 0 and a.you.at == 3.0                       # A kept all of its own 3 s, and wrote them
     assert a.note not in app.ai_busy
     b.running = False
+
+
+def test_the_others_keep_the_meetings_clock_through_silence(tmp_path, monkeypatch):
+    # the Mac sends nothing while nobody plays sound: 1 s of talk at 0 s, then 1 s at 10 s must be stamped 10 s
+    monkeypatch.setattr(store, "HISTORY", tmp_path / "h.jsonl")
+    monkeypatch.setattr(store, "AUDIO", tmp_path / "audio")
+    monkeypatch.setattr(meeting, "SystemAudio", FakeSys)
+    app = App()
+    app.engine.gate.set()
+    m = meeting.Meeting(app)
+    m.start()
+    m.running = False                                                    # no background loop: pumped by hand below
+    t0, s = m.t0, np.full(meeting.RATE, 0.2, np.float32)
+    m.sys.q.put((t0 + 1.0, s))
+    m.sys.q.put((t0 + 11.0, s))
+    while not m.sys.q.empty():
+        m.others(*m.sys.q.get())
+    m.pump(force=True)
+    starts = [x["start"] for x in m.segments if x["speaker"] == "Others"]
+    assert starts == [0.0, 10.0], starts
+    m.them.wav.close()
+    with __import__("wave").open(str(store.AUDIO / f"{m.note}-others.wav")) as w:
+        assert abs(w.getnframes() / meeting.RATE - 11.0) < 0.01          # the file is as long as the meeting

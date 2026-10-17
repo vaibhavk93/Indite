@@ -1343,7 +1343,7 @@
       h += `<div class="plisten"><div class="pctl"><button class="pplay" id="pplay" aria-label="Play"><svg width="14" height="14"><use href="#i-play"/></svg></button>
         <span class="num ptime" id="ptime">0:00 / 0:00</span><input type="range" id="pseek" min="0" max="1000" value="0" aria-label="Position">
         <div class="seg mini" id="prate">${[1, 1.5, 2].map(x => `<button data-r="${x}">${x}×</button>`).join("")}</div></div>` +
-        (meet && r.audio > 1 ? `<div class="ptrack">Track <div class="seg mini" id="ptrack"><button data-t="0">You</button><button data-t="1">The others</button></div></div>` : "") +
+        (meet && r.audio > 1 ? `<div class="ptrack">Track <div class="seg mini" id="ptrack">${r.clock ? `<button data-t="2">Both</button>` : ""}<button data-t="0">You</button><button data-t="1">The others</button></div></div>` : "") +
         (segs.length ? `<div class="plines">${segs.map(x => `<div class="pline" data-s="${x.start}" data-e="${x.end}" data-k="${meet && x.speaker !== "You" ? 1 : 0}">
             <span class="pt num">${tclock(x.start || 0)}</span>${x.speaker ? `<span class="pwho ${x.speaker === "You" ? "you" : "them"}" title="${esc(nm[x.speaker] || x.speaker)}">${esc(nm[x.speaker] || x.speaker)}</span>` : ""}<span class="px">${timedWords(r, x.text, x.start || 0, meet && x.speaker !== "You" ? 1 : 0)}</span>
             <span class="pacts"><button class="copy pp" title="Play just this line" aria-label="Play just this line"><svg width="13" height="13"><use href="#i-play"/></svg></button><button class="copy pc" title="Copy this line" aria-label="Copy this line"><svg width="14" height="14"><use href="#i-copy"/></svg></button><button class="copy pe" title="Edit this line" aria-label="Edit this line"><svg width="14" height="14"><use href="#i-pen"/></svg></button></span></div>`).join("")}</div>`
@@ -1364,7 +1364,7 @@
       send({ action: "listen", id: r.id, track: +b.dataset.t, t: 0, autoplay: P.playing }));
     const segOf = l => (r.segments || []).find(x => Math.abs((x.start || 0) - +l.dataset.s) < 0.01 && (meet ? (x.speaker !== "You" ? 1 : 0) === +l.dataset.k : true));
     const go = (l, stop) => { const k = +l.dataset.k, t = +l.dataset.s; stopAt = stop ? +l.dataset.e : null;
-      if (P.note === r.id && (P.track || 0) === k) { send({ action: "pctl", cmd: "seek", t }); send({ action: "pctl", cmd: "play" }); }
+      if (P.note === r.id && ((P.track || 0) === k || P.track === 2)) { send({ action: "pctl", cmd: "seek", t }); send({ action: "pctl", cmd: "play" }); }
       else send({ action: "listen", id: r.id, track: k, t, autoplay: true }); };
     $("#drawer").querySelectorAll(".pline[data-s] .pacts button").forEach(b => b.onclick = e => {
       e.stopPropagation();
@@ -1388,7 +1388,7 @@
     $("#drawer").querySelectorAll(".pline[data-s]").forEach(l => l.onclick = () => go(l, false));
     $("#drawer").querySelectorAll(".pline .w").forEach(w => w.onclick = e => {      // click a word: play from there
       e.stopPropagation(); const l = w.closest(".pline"), t = +w.dataset.w, k = l.dataset.k ? +l.dataset.k : 0; stopAt = null;
-      if (P.note === r.id && (P.track || 0) === k) { send({ action: "pctl", cmd: "seek", t }); send({ action: "pctl", cmd: "play" }); }
+      if (P.note === r.id && ((P.track || 0) === k || P.track === 2)) { send({ action: "pctl", cmd: "seek", t }); send({ action: "pctl", cmd: "play" }); }
       else send({ action: "listen", id: r.id, track: k, t, autoplay: true }); });
     playerTick(P);
   }
@@ -1405,7 +1405,7 @@
     const body = $("#drawer .dbody"), was = $("#drawer .pline.now");
     let now = null;
     $("#drawer").querySelectorAll(".pline[data-s]").forEach(l => {
-      const on = +l.dataset.k === (st.track || 0) && st.t >= +l.dataset.s && st.t < +l.dataset.e;
+      const on = (st.track === 2 || +l.dataset.k === (st.track || 0)) && st.t >= +l.dataset.s && st.t < +l.dataset.e;
       l.classList.toggle("now", on); if (on) now = l; });
     const w = $("#drawer .pline.whole"); if (w) { w.classList.toggle("now", !!st.playing); if (st.playing) now = now || w; }
     // the word being spoken, inside the lit line

@@ -290,14 +290,16 @@ class Bridge(NSObject):
         elif act == "listen":                            # load a note's recording into the in-window player
             row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
             files = store.audio_files(row) if row else []
-            track = min(int(msg.get("track", 0) or 0), max(0, len(files) - 1))
+            both = bool(row and row.get("clock") and len(files) == 2)   # recorded on one clock: play together
+            track = int(msg["track"]) if msg.get("track") is not None else (2 if both else 0)
+            track = 2 if track == 2 and both else min(track, max(0, len(files) - 1))
             if self.app.meeting.running:
                 self.js("toast('Playback waits while a meeting is recording - the microphone would hear it')")
             elif row and row.get("live"):
                 self.js("toast('This meeting is still recording')")
             elif files:
                 try:
-                    self.app.player.load(row["id"], files[track], track)
+                    self.app.player.load(row["id"], files if track == 2 else files[track], track)
                     if msg.get("t"):
                         self.app.player.seek(float(msg["t"]))
                     if msg.get("autoplay", True):

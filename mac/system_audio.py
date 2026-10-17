@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import queue
 import threading
+import time
 
 import numpy as np
 
@@ -42,7 +43,7 @@ def _output_class():
                 if err == 0 and data:
                     x = np.frombuffer(bytes(data), dtype=np.float32)
                     x = x[: len(x) // 3 * 3].reshape(-1, 3).mean(axis=1)       # 48 kHz -> 16 kHz
-                    self.me.q.put(x.astype(np.float32))
+                    self.me.q.put((time.time(), x.astype(np.float32)))   # when it came: silence sends nothing
                     self.me.level = float(np.sqrt(np.mean(x ** 2)) * 12) if len(x) else 0.0
 
             def stream_didStopWithError_(self, _stream, error):                 # noqa: N802
@@ -111,7 +112,7 @@ class SystemAudio:
         chunks = []
         while not self.q.empty():
             chunks.append(self.q.get())
-        return np.concatenate(chunks) if chunks else np.zeros(0, dtype=np.float32)
+        return chunks                                            # [(arrival time, samples)], like the queue
 
 
 if __name__ == "__main__":       # play a sound, capture it: python mac/system_audio.py
@@ -121,5 +122,5 @@ if __name__ == "__main__":       # play a sound, capture it: python mac/system_a
     print("start:", s.start(), s.error)
     subprocess.Popen(["afplay", "/System/Library/Sounds/Glass.aiff"])
     time.sleep(2.5)
-    a = s.stop()
+    a = np.concatenate([x for _, x in s.stop()] or [np.zeros(0, np.float32)])
     print(f"captured {len(a) / RATE:.1f} s, peak {float(np.abs(a).max()) if len(a) else 0:.3f}")
