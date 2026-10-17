@@ -128,6 +128,7 @@ class Meeting:
             "Recording your microphone only. To hear the other people in a call, allow indite under System "
             "Settings → Privacy & Security → Screen & System Audio Recording, then start again.")
         self.started = time.time()
+        self.sys_tried, self.sys_restarts = 0.0, 0
         self.segments = []                                      # else the second meeting in a session keeps the first's lines
         self.note = store.add("…", 0, 0, "meeting", "", kind="meeting", title=time.strftime("Meeting %-d %b, %-I:%M ") + time.strftime("%p").lower(),
                               segments=[], live=True)
@@ -141,6 +142,33 @@ class Meeting:
         while self.running:
             time.sleep(0.5)
             self.pump()
+            self.watch_others()
+
+    def watch_others(self, quiet_for: float = 4.0, every: float = 10.0) -> None:
+        """
+        macOS sends the call's sound all the time, silence included - until its capture dies. On 16 Oct it died 7 s into
+        a 13-minute call (headphones switching into call mode, most likely) and indite never noticed: 6.8 s of "others"
+        for 864 s of you. So: an error, or nothing for 4 s, means start the capture again (at most every 10 s); the
+        gap is written as silence (Track.catch_up) and the meeting says so.
+        """
+        if not self.others_ok or not self.running:
+            return
+        if not (self.sys.error or time.time() - self.sys.last > quiet_for) or time.time() - self.sys_tried < every:
+            return
+        self.sys_tried = time.time()
+        print("meeting: the call's sound stopped" + (f" ({self.sys.error})" if self.sys.error else "") + " - reconnecting")
+        fresh = SystemAudio()
+        ok = fresh.start()
+        with self.lock:
+            for at, x in self.sys.stop():                       # whatever the dead capture still held
+                self.others(at, x)
+            if ok:
+                self.sys = fresh
+        self.sys_restarts += ok
+        self.problem = (f"The call’s sound dropped and was reconnected ({self.sys_restarts}×). A few seconds may be "
+                        "missing." if ok else f"Lost the call’s sound: {fresh.error}. Trying again…")
+        print("meeting:", "reconnected" if ok else f"could not reconnect ({fresh.error})")
+        self.app.refresh()
 
     def pump(self, force: bool = False) -> None:
         with self.lock:

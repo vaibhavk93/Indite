@@ -43,11 +43,13 @@ def _output_class():
                 if err == 0 and data:
                     x = np.frombuffer(bytes(data), dtype=np.float32)
                     x = x[: len(x) // 3 * 3].reshape(-1, 3).mean(axis=1)       # 48 kHz -> 16 kHz
-                    self.me.q.put((time.time(), x.astype(np.float32)))   # when it came: silence sends nothing
+                    self.me.last = time.time()
+                    self.me.q.put((self.me.last, x.astype(np.float32)))  # stamped: a restart leaves a gap to fill
                     self.me.level = float(np.sqrt(np.mean(x ** 2)) * 12) if len(x) else 0.0
 
             def stream_didStopWithError_(self, _stream, error):                 # noqa: N802
                 self.me.error = str(error)
+                print("system audio stopped:", error, flush=True)
 
         _Out = Out
     return _Out
@@ -59,6 +61,7 @@ class SystemAudio:
         self.stream = None
         self.error = ""
         self.level = 0.0
+        self.last = time.time()       # when the last sound arrived (silence arrives too, as long as capture runs)
 
     def start(self, timeout: float = 5.0) -> bool:
         """True once audio is flowing; False with self.error set (usually: permission not given)."""

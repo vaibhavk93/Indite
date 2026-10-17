@@ -26,6 +26,13 @@ class FakeMic:
 
 
 class FakeSys(FakeMic):
+    made = 0
+
+    def __init__(self):
+        super().__init__()
+        FakeSys.made += 1
+        self.error, self.last = "", __import__("time").time()
+
     def start(self):
         return True
 
@@ -99,3 +106,26 @@ def test_the_others_keep_the_meetings_clock_through_silence(tmp_path, monkeypatc
     m.them.wav.close()
     with __import__("wave").open(str(store.AUDIO / f"{m.note}-others.wav")) as w:
         assert abs(w.getnframes() / meeting.RATE - 11.0) < 0.01          # the file is as long as the meeting
+
+
+def test_a_dead_call_capture_is_restarted_once_per_10_seconds(tmp_path, monkeypatch):
+    # 16 Oct: the call's sound stopped 7 s into a 13-minute call and nothing noticed
+    monkeypatch.setattr(store, "HISTORY", tmp_path / "h.jsonl")
+    monkeypatch.setattr(store, "AUDIO", tmp_path / "audio")
+    monkeypatch.setattr(meeting, "SystemAudio", FakeSys)
+    app = App()
+    m = meeting.Meeting(app)
+    m.start()
+    first = m.sys
+    m.watch_others()
+    assert m.sys is first                                   # sound is arriving: leave it alone
+    first.last -= 5                                         # nothing for 5 s: the capture is dead
+    m.watch_others()
+    assert m.sys is not first and m.sys_restarts == 1 and "reconnected" in m.problem
+    m.sys.error = "stream stopped"
+    m.watch_others()
+    assert m.sys_restarts == 1                              # not again within 10 s
+    m.sys_tried -= 11
+    m.watch_others()
+    assert m.sys_restarts == 2                              # an error: restarted again
+    m.running = False

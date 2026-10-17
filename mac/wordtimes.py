@@ -37,6 +37,42 @@ def align(lines: list[list[str]], timed: list[tuple[str, float, float]], floor: 
     return out
 
 
+def matched(lines: list[list[str]], timed: list[tuple[str, float, float]]) -> float:
+    """How many of the shown words the engine's timed words cover (0-1)."""
+    a, b = [norm(w) for ws in lines for w in ws], [norm(w) for w, _, _ in timed]
+    hit = sum(blk.size for blk in difflib.SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks())
+    return hit / len(a) if a else 1.0
+
+
+def usable(times: list[list[float]]) -> bool:
+    """False when too many words share one time (the engine's timestamps bunched up: 10 words at 9.49 s, 17 Oct)."""
+    flat = [t for ts in times for t in ts]
+    return len(flat) < 4 or len(set(flat)) >= 0.6 * len(flat)
+
+
+def spread(lines: list[list[str]], starts: list[float], ends: list[float], audio=None, rate: int = 16_000) -> list[list[float]]:
+    """
+    A fallback when the engine gives no usable times: each line's words spread over that line's span (a line with
+    no end: the part of the recording with sound), longer words taking longer. Approximate, but the lit word moves
+    with the voice instead of sitting on the first word.
+    """
+    import numpy as np
+    out = []
+    for ws, a, b in zip(lines, starts, ends):
+        if b <= a and audio is not None and len(audio):
+            frame = rate // 10
+            n = len(audio) // frame * frame
+            loud = np.flatnonzero(np.abs(audio[:n]).reshape(-1, frame).max(axis=1) > 0.02) if n else []
+            a, b = (a + loud[0] / 10, a + (loud[-1] + 1) / 10) if len(loud) else (a, a + len(audio) / rate)
+        weight = [len(w) + 1 for w in ws]
+        total, t = sum(weight) or 1, 0
+        out.append([])
+        for x in weight:
+            out[-1].append(round(float(a + (b - a) * t / total), 2))
+            t += x
+    return out
+
+
 if __name__ == "__main__":        # the rules: python mac/wordtimes.py
     timed = [("Haan", 0.1, 0.2), ("chemist", 0.5, 0.7), ("crossin", 2.7, 3.2), ("le", 3.2, 3.3), ("aana", 3.4, 3.6)]
     got = align([["Haan,", "chemist", "Crocin", "le", "aana."]], timed, [0.0])
@@ -44,4 +80,10 @@ if __name__ == "__main__":        # the rules: python mac/wordtimes.py
     two = align([["Haan", "chemist"], ["le", "aana"]], timed, [0.0, 3.0])
     assert two == [[0.1, 0.5], [3.2, 3.4]], two
     assert align([["kuch", "aur"]], [], [5.0]) == [[5.0, 5.0]]       # nothing heard: the line's own start
+    assert matched([["Haan,", "chemist", "Crocin"]], timed) == 2 / 3 and matched([["a", "b"]], [("nan", 0, 1)]) == 0
+    assert usable([[0.0, 0.3, 0.9, 1.4, 1.4]]) and not usable([[0.0, 0.3, 9.5, 9.5, 9.5, 9.5, 9.5]])
+    assert spread([["ab", "cd"]], [2.0], [4.0]) == [[2.0, 3.0]]                 # two equal words: half each
+    import numpy as np
+    sound = np.concatenate([np.zeros(16_000), np.full(32_000, 0.3), np.zeros(16_000)]).astype(np.float32)
+    assert spread([["ab", "cd"]], [0.0], [0.0], sound) == [[1.0, 2.0]]           # only where there is sound
     print("ok")

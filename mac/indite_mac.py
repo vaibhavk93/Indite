@@ -340,26 +340,39 @@ class Engine:
         out: list[tuple[str, float, float]] = []
         at = 0.0
         for piece in pieces(audio):
-            path = self._wav(piece)
-            try:
-                with self.lock:
-                    if not (self.proc and self.proc.poll() is None):
-                        return out
-                    raw = self._ask_server(path, 0, detail=True, times=True)
-                for seg in json.loads(raw).get("segments", []):
-                    for w in seg.get("words") or []:
-                        piece_text = w.get("word") or ""
-                        if not piece_text.strip():
-                            continue
-                        a, b = at + float(w.get("start", 0)), at + float(w.get("end", 0))
-                        if piece_text.startswith(" ") or not out:
-                            out.append((piece_text.strip(), a, b))
-                        else:                            # a word piece joins the word before ("chem" + "ist")
-                            out[-1] = (out[-1][0] + piece_text.strip(), out[-1][1], b)
-            finally:
-                os.unlink(path)
+            got = self._timed(piece, 0.0)
+            if not got and float(np.sqrt(np.mean(piece ** 2))) > 0.004:
+                # with timestamps on, this model sometimes answers just "nan" (17 Oct: a 9.5 s dictation); half a
+                # second of silence in front gets a real answer
+                got = self._timed(np.concatenate([np.zeros(RATE // 2, np.float32), piece]), 0.5)
+            if got is None:                                  # the engine is not running
+                return out
+            out += [(w, at + a, at + b) for w, a, b in got]
             at += len(piece) / RATE
         return out
+
+    def _timed(self, piece: np.ndarray, lead: float) -> list[tuple[str, float, float]] | None:
+        """One piece's words with times (minus `lead` seconds of added silence); [] for a junk answer."""
+        path = self._wav(piece)
+        try:
+            with self.lock:
+                if not (self.proc and self.proc.poll() is None):
+                    return None
+                raw = self._ask_server(path, 0, detail=True, times=True)
+        finally:
+            os.unlink(path)
+        out: list[tuple[str, float, float]] = []
+        for seg in json.loads(raw).get("segments", []):
+            for w in seg.get("words") or []:
+                piece_text = w.get("word") or ""
+                if not piece_text.strip():
+                    continue
+                a, b = max(0.0, float(w.get("start", 0)) - lead), max(0.0, float(w.get("end", 0)) - lead)
+                if piece_text.startswith(" ") or not out:
+                    out.append((piece_text.strip(), a, b))
+                else:                                    # a word piece joins the word before ("chem" + "ist")
+                    out[-1] = (out[-1][0] + piece_text.strip(), out[-1][1], b)
+        return [] if all(w.strip(".,").lower() in ("nan", "") for w, _, _ in out) else out
 
     def _ask_server(self, path: str, audio_ctx: int, detail: bool = False, times: bool = False) -> str:
         """A plain multipart POST, so there is no HTTP library to add."""
@@ -1484,10 +1497,14 @@ class InditeApp(rumps.App):
                     continue
                 audio, _ = load_audio(path)
                 timed = self.engine.word_times(audio)
-                if not timed:                            # engine busy or restarting: save nothing, try next time
-                    raise RuntimeError("the engine gave no words")
-                times = wordtimes.align([l["text"].split() for l in lines], timed,
-                                        [float(l.get("start", 0)) for l in lines])
+                if self.engine.proc is None or self.engine.proc.poll() is not None:
+                    raise RuntimeError("the engine is not running")   # save nothing, try next time
+                words = [l["text"].split() for l in lines]
+                floor = [float(l.get("start", 0)) for l in lines]
+                times = wordtimes.align(words, timed, floor)
+                if wordtimes.matched(words, timed) < 0.5 or not wordtimes.usable(times):   # estimate from the sound
+                    print(f"word times: estimated for {note_id} (the engine matched too few words)")
+                    times = wordtimes.spread(words, floor, [float(l.get("end", 0)) for l in lines], audio)
                 wt += [{"s": float(l.get("start", 0)), "k": k, "t": t} for l, t in zip(lines, times)]
             store.update(note_id, wt=wt)
             print(f"word times: {sum(len(x['t']) for x in wt)} words lined up for {note_id}")
