@@ -292,14 +292,9 @@ class Pill:
         self.view.setNeedsDisplay_(True)
 
     def show(self, state: str) -> None:
-        if state != self.view.state:
+        changed, was = state != self.view.state, self.view.state
+        if changed:
             self.view.since = time.time()
-            # Say it out loud, every time. The founder has reported "the pill is not there" four times, and each
-            # guess cost a round trip; a forced snapshot proves it can draw, not that it drew when he was looking.
-            f = self.panel.frame()
-            print(f"pill: {self.view.state or 'hidden'} -> {state} | on screen={bool(self.panel.isVisible())} "
-                  f"alpha={self.panel.alphaValue():.2f} at ({f.origin.x:.0f},{f.origin.y:.0f}) "
-                  f"{f.size.width:.0f}x{f.size.height:.0f} clear={getattr(self.view, 'clear', '?')}", flush=True)
         self.view.state = state
         # Ask the window, not our own flag: hiding or minimising indite takes the panel off screen behind our back,
         # and the flag then said "showing" forever - the pill never came back (founder, 15 Oct)
@@ -309,6 +304,14 @@ class Pill:
         if self.panel.alphaValue() < 1.0:             # ~120 ms fade in, called from the 20 Hz timer
             self.panel.setAlphaValue_(min(1.0, self.panel.alphaValue() + 0.18))
         self.view.setNeedsDisplay_(True)
+        if changed:
+            # Reported after the window work, not before: measured first, every line said alpha 0 and not on screen,
+            # which is simply what is true a microsecond before it is ordered front. The founder has said "the pill
+            # is not there" four times and a forced snapshot cannot answer it - this can.
+            f = self.panel.frame()
+            print(f"pill: {was or 'hidden'} -> {state} | on screen={bool(self.panel.isVisible())} "
+                  f"alpha={self.panel.alphaValue():.2f} at ({f.origin.x:.0f},{f.origin.y:.0f}) "
+                  f"{f.size.width:.0f}x{f.size.height:.0f} level={self.panel.level()}", flush=True)
 
     def hide(self) -> None:                               # logged only when it was actually up, to keep the log quiet
         if not self.visible:
