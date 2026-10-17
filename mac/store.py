@@ -263,10 +263,45 @@ def apply_my_fixes(text: str, pairs: list[tuple[str, str]]) -> str:
     return text
 
 
-def add_fix(heard: str, want: str) -> bool:
-    """Appends one fix from the window. Refuses anything that would not read back as that same fix."""
+MAX_FIX_WORDS = 6          # a whole sentence is not a word fix; it would match almost nothing and cost every pass
+MAX_FIX_CHARS = 80
+MAX_FIXES = 500            # the list is applied to every dictation: past this it is a speed problem, not a feature
+
+
+def fix_problem(heard: str, want: str) -> str:
+    """
+    Why this fix cannot be added, in a sentence a person can act on - or "" if it is fine.
+
+    The list runs over every dictation, every file and every meeting, so a bad entry is not a bad row in a table: it
+    is a wrong word in everything typed from now on. Checked here, in one place, because the window, the note row and
+    anything that later adds fixes by itself must all obey the same rules (roadmap Mac 6).
+    """
     heard, want = " ".join(heard.split()), " ".join(want.split())
-    if not heard or not want or "=" in heard or heard.startswith("#") or heard.lower() == want.lower():
+    if not heard or not want:
+        return "Both boxes need something in them."
+    if "=" in heard or heard.startswith("#"):
+        return "A fix cannot contain = or start with #, because that is how the list is written down."
+    if heard.lower() == want.lower():
+        return "Those are the same word."
+    if len(heard) > MAX_FIX_CHARS or len(want) > MAX_FIX_CHARS:
+        return f"Keep each side under {MAX_FIX_CHARS} characters - this is for words, not sentences."
+    if len(heard.split()) > MAX_FIX_WORDS:
+        return f"That is {len(heard.split())} words. A fix matches up to {MAX_FIX_WORDS}."
+    if len(heard) < 2:
+        return "One letter would match far too much."
+    pairs = my_fixes()
+    for h, w in pairs:
+        if h.lower() == heard.lower():
+            return f"Already there: {h} → {w}. Remove it first if you want to change it."
+    if len(pairs) >= MAX_FIXES:
+        return f"The list is full ({MAX_FIXES}). Remove something you no longer need."
+    return ""
+
+
+def add_fix(heard: str, want: str) -> bool:
+    """Appends one fix from the window. Refuses anything fix_problem objects to."""
+    heard, want = " ".join(heard.split()), " ".join(want.split())
+    if fix_problem(heard, want):
         return False
     path = fixes_file()
     raw = path.read_text(encoding="utf-8")
@@ -320,6 +355,12 @@ def masked(row: dict) -> dict:
 
 
 if __name__ == "__main__":     # the one check: uv run python mac/store.py
+    assert fix_problem("", "Paytm")
+    assert fix_problem("ptm", "ptm")                                  # same word
+    assert fix_problem("a", "Paytm")                                  # one letter matches everything
+    assert fix_problem("one two three four five six seven", "x")      # too many words
+    assert fix_problem("x" * 90, "y")                                 # too long
+    assert not fix_problem("pay tm", "Paytm")                         # a normal two-word fix is fine
     assert mask_swears("Yeh BC kya hai, chutiya mat bana") == "Yeh B* kya hai, c****** mat bana"
     assert mask_swears("saala hell dickens bcc") == "saala hell dickens bcc"          # everyday words untouched
     note = {"text": "chutiya", "segments": [{"speaker": "You", "text": "bc yaar"}], "ai": [{"text": "shit"}]}

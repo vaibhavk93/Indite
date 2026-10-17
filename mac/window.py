@@ -268,7 +268,12 @@ class Bridge(NSObject):
             elif row:
                 store.update(row["id"], ai=[a for a in row.get("ai", []) if a["label"] != msg.get("label")] or None)
         elif act == "add_fix":
-            store.add_fix(msg.get("heard", ""), msg.get("want", ""))
+            heard, want = msg.get("heard", ""), msg.get("want", "")
+            why = store.fix_problem(heard, want)         # a refusal has to say why; it used to fail in silence
+            if why:
+                self.bridge.js(f"toast({why!r})")
+            else:
+                store.add_fix(heard, want)
         elif act == "files":
             self.app.open_files(None)
         elif act == "fixes":
