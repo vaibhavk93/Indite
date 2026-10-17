@@ -46,6 +46,7 @@ Docs that matter, in order:
 - The `personal` flavour is founder-only: internet, Mac route, OpenRouter key, accessibility auto-paste.
 
 **Repo rules:**
+- **Never quote speech-set sentences, references or results in docs or commits** (they may hold work names; the repo is public). They live in `~/Library/Application Support/indite/speechset/`.
 - **The GitHub repo is PUBLIC** (github.com/vaibhavk93/Indite). Never commit `.env`, `data/`, `clips/`, `phonetest/`,
   `test_recordings/`, APKs, models, or any recording of real people. Never put tokens or keys in docs.
 - Commit as `vaibhavk93@users.noreply.github.com` (`git -c user.email=... commit`), never a work email.
