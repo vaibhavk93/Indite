@@ -236,6 +236,10 @@ class Bridge(NSObject):
                     self.js(f"toast({what!r}, () => send({{action:'undo_lines'}}))")
                 elif act == "merge_line":
                     self.js("toast('Nothing to join: the next line is another speaker, or there is none')")
+        elif act == "said":                              # speech test: this note's text is exactly what was said
+            row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+            if row:
+                store.update(row["id"], said=row["text"] if msg.get("on") else None)   # the stored words, never masked
         elif act == "undo_lines":
             u = getattr(self, "lines_undo", None)
             if u:

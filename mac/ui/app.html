@@ -784,6 +784,12 @@
                 <button class="sw" id="set-keep_audio" role="switch" aria-label="Keep audio"></button>
               </div>
               <div class="item">
+                <div class="body"><b>Speech test</b><p>Measure how well indite hears you. On Dictations, fix a note's text,
+                  then ⋯ → “This is exactly what I said”. The filter “To check” lists the rest. Needs “Keep the audio” on;
+                  everything stays on this Mac.</p></div>
+                <button class="sw" id="set-speech_test" role="switch" aria-label="Speech test"></button>
+              </div>
+              <div class="item">
                 <div class="body"><b>Clear dictations</b><p id="count-line"></p></div>
                 <button class="btn danger" id="clear">Clear…</button>
               </div>
@@ -1078,6 +1084,7 @@
     sw("#set-auto_speakers", "auto_speakers");
     sw("#set-ask_calls", "ask_calls");
     sw("#set-keep_audio", "keep_audio");
+    sw("#set-speech_test", "speech_test");
     sw("#set-also_copy", "also_copy");
     sw("#set-review", "review");
     sw("#set-backup_audio", "backup_audio");
@@ -1134,7 +1141,10 @@
         <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>`;
     meetButton();
     $("#meet-perm").textContent = S.meeting && S.meeting.problem ? S.meeting.problem : "";
-    $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["ai", "With AI"]].map(([v, l]) =>
+    const dic = S.history.filter(r => (r.kind || "dictation") === "dictation" && r.audio), left = dic.filter(r => !r.said).length;
+    if (!S.prefs.speech_test && filter === "check") filter = "all";
+    $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["ai", "With AI"],
+      ...(S.prefs.speech_test ? [["check", `To check · ${left} left, ${dic.length - left} done`]] : [])].map(([v, l]) =>
       `<button class="chip" aria-pressed="${filter === v}" data-f="${v}">${l}</button>`).join("");
     $("#chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); });
     drawTodo();
@@ -1175,7 +1185,7 @@
   function drawList() {
     const q = $("#q").value.trim().toLowerCase();
     const rows = S.history.filter(r => (r.kind || "dictation") === "dictation"
-      && (!q || r.text.toLowerCase().includes(q)) && (filter === "all" || (filter === "ai" ? (r.ai || []).length || r.improved : r.star)));
+      && (!q || r.text.toLowerCase().includes(q)) && (filter === "all" || (filter === "check" ? r.audio && !r.said : filter === "ai" ? (r.ai || []).length || r.improved : r.star)));
 
     if (!S.history.some(r => (r.kind || "dictation") === "dictation")) {
       $("#list").innerHTML = `<div class="empty">
@@ -1229,7 +1239,7 @@
         ${todoView ? "" : flagParts(r) + aiParts(r)}
         ${file && !(r.segments || []).some(x => x.speaker) && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
         <div class="meta">${r.star ? `<svg width="12" height="12" class="starred"><use href="#i-star-on"/></svg>` : ""}
-          ${r.todo === "open" && !todoView ? `<span class="tag">To do</span>` : ""}${copied ? `<span class="tag copied">Copied</span>` : ""}
+          ${r.todo === "open" && !todoView ? `<span class="tag">To do</span>` : ""}${r.said && S.prefs.speech_test ? `<span class="tag">Checked</span>` : ""}${copied ? `<span class="tag copied">Copied</span>` : ""}
           ${todoView ? `<span>${dayLabel(r.at)} · ${clock(r.at)}</span>·` : ""}
           ${file ? `<span>${mins(r.seconds || 0)} of audio</span>·
             <button class="more exp" data-id="${id}" data-fmt="txt">Text</button>·
@@ -1298,6 +1308,8 @@
                 : [["fix", "Fix a word…", "Teach indite a word it got wrong"]]),
       // notes with timed lines (meetings, files) are edited line by line instead, so the lines and the text never disagree
       ...((r.segments || []).length ? [] : [["edit", "Edit text", "Correct it yourself; Undo is offered after saving"]]),
+      ...(S.prefs.speech_test && r.audio && !media ? [r.said ? ["said", "Not exactly what I said", "Take it out of the speech test"]
+                                                    : ["said", "This is exactly what I said", "After fixing the text; used to measure accuracy"]] : []),
       ...(r.audio ? [["play", "Play recording", "Plays here; the line being spoken lights up"],
                      ["reveal", "Show recording in Finder", ""]] : []),
       ["sep"], ["del", "Delete", ""],
@@ -1316,6 +1328,7 @@
       if (k === "txt" || k === "srt") send({ action: "export", id: r.id, fmt: k });
       if (k === "fix") openFixer(btn, r);
       if (k === "edit") openEditor(btn, r);
+      if (k === "said") { send({ action: "said", id: r.id, on: !r.said }); toast(r.said ? "Taken out of the speech test" : "Marked as exactly what you said"); }
       if (k === "play") { go(r.kind === "meeting" ? "meetings" : r.kind === "file" ? "files" : "home"); openDrawer(r.id, "listen"); send({ action: "listen", id: r.id }); }
       if (k === "reveal") send({ action: k, id: r.id });
       if (k === "del") { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); }

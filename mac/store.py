@@ -57,6 +57,7 @@ DEFAULTS = {
     "card_buttons": ["", ""],   # the text card's 2nd and 3rd buttons: "action|extra" you picked, or "" = your most used
     "mask_swears": False,       # common swear words written as b**** (founder asked; off by default)
     "my_swears": [],            # your own extra words to hide the same way
+    "speech_test": False,       # Dictations: "This is exactly what I said" + a To check filter (mac/speechset.py)
     "ask_calls": True,          # a call app starts using the mic: the card asks "Record this call?" (never records itself)
     "digits": True,             # number words as digits: "chaar baje" -> "4 baje"
     "setup_done": False,
