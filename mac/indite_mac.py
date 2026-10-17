@@ -1450,7 +1450,10 @@ class InditeApp(rumps.App):
                 if not lines:
                     continue
                 audio, _ = load_audio(path)
-                times = wordtimes.align([l["text"].split() for l in lines], self.engine.word_times(audio),
+                timed = self.engine.word_times(audio)
+                if not timed:                            # engine busy or restarting: save nothing, try next time
+                    raise RuntimeError("the engine gave no words")
+                times = wordtimes.align([l["text"].split() for l in lines], timed,
                                         [float(l.get("start", 0)) for l in lines])
                 wt += [{"s": float(l.get("start", 0)), "k": k, "t": t} for l, t in zip(lines, times)]
             store.update(note_id, wt=wt)

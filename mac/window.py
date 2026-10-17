@@ -143,7 +143,7 @@ class Bridge(NSObject):
         from indite_mac import can_listen, HOTKEYS
         return {
             "prefs": store.prefs(),
-            "history": [dict(r, audio=len(store.audio_files(r))) for r in
+            "history": [dict(r, audio=len(store.audio_files(r)), wt=r.get("wt") if store.wt_fits(r) else None) for r in
                         ([store.masked(r) for r in store.history()] if self.app.prefs.get("mask_swears")
                          else store.history())],
             "listening": bool(can_listen()),

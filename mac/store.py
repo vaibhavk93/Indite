@@ -129,7 +129,26 @@ def update(note_id: str, **fields) -> None:
                     r.pop(k, None)
                 else:
                     r[k] = v
+            if ("text" in fields or "segments" in fields) and "wt" not in fields and r.get("wt") and not wt_fits(r):
+                r.pop("wt")                  # a fix or edit changed the words: the Listen view lines them up again
     _write(rows)
+
+
+def wt_fits(row: dict) -> bool:
+    """Each line's word times ("wt") still have one time per shown word (the Listen view needs exactly that)."""
+    segs, meet = row.get("segments") or [], row.get("kind") == "meeting"
+    for w in row.get("wt") or []:
+        if segs:
+            line = next((x for x in segs if abs(float(x.get("start", 0)) - w["s"]) < 0.01
+                         and (not meet or (x.get("speaker") != "You") == bool(w["k"]))), None)
+            if not line:
+                return False
+            text = line["text"]
+        else:
+            text = row.get("text", "")
+        if len(text.split()) != len(w["t"]) or (len(w["t"]) > 2 and len(set(w["t"])) == 1):
+            return False             # wrong count, or every word at one time: the engine heard nothing that time
+    return True
 
 
 def delete(note_id: str) -> dict | None:
@@ -440,6 +459,12 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert edit_line(history()[0], 2.0, "", "kal zaroor aana") == "kal aana"
     r = history()[0]
     assert r["text"] == "kal zaroor aana" and len(r["wt"][0]["t"]) == 3                 # word times kept for the new words
+    update(r["id"], star=True)
+    assert history()[0].get("wt")                                                       # a star leaves the times alone
+    update(r["id"], segments=[{**r["segments"][0], "text": "kal Crocin le aana"}])
+    assert "wt" not in history()[0]                                                     # a fix changed the words: redone
+    assert not wt_fits({"text": "a b c", "wt": [{"s": 0, "k": 0, "t": [0.0, 0.0, 0.0]}]})       # nothing matched
+    assert wt_fits({"text": "a b c", "wt": [{"s": 0, "k": 0, "t": [0.0, 0.4, 0.9]}]})
     meet = {"text": "Person 1: haan", "names": {"Person 1": "Rohit"},
             "segments": [{"speaker": "Person 1", "text": "haan"}, {"speaker": "You", "text": "theek hai"}]}
     assert named_text(meet) == "Rohit: haan\nYou: theek hai" and named_text({"text": "plain"}) == "plain"
