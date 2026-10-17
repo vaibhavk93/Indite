@@ -61,6 +61,10 @@ pill, card, menu icon, sound or focus; what it would have typed or shown goes to
   picture, render `mac/ui/app.html` in headless Chrome with made-up notes.
 - Still on the real screen, only with his OK: typing into other apps, the pill, the card's look.
 - Never kill engines with `pkill -f "whisper-server...8712"` from a shell command line: the pattern matches the shell.
+- **⚠ Never run `dist/indite.app/Contents/Resources/python/bin/python3` directly** (use `.venv/bin/python`). It writes
+  `.pyc` files into the app, which breaks its signature: the app then warns "app file has been changed" on the
+  founder's screen and Accessibility can stop working (17 Oct). Fix: delete `.pyc` files newer than `Contents/Info.plist`,
+  then `codesign --verify --deep --strict dist/indite.app`.
 
 **Repo rules:**
 - **Never quote speech-set sentences, references or results in docs or commits** (they may hold work names; the repo is public). They live in `~/Library/Application Support/indite/speechset/`.
