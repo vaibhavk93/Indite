@@ -869,11 +869,11 @@ class InditeApp(rumps.App):
         rumps.Timer(self.paint, 0.05).start()
         self.menu = [
             rumps.MenuItem(f"Hold {HOTKEYS.get(self.prefs['hotkey'], 'Right ⌥')} and speak" if can_listen()
-                           else "⚠ No permission to see the hotkey - click About", callback=None),
+                           else "⚠ indite can’t notice your talk key. Open indite to fix it", callback=None),
             None,
             rumps.MenuItem("Open indite", callback=self.open_window, key="o"),
-            rumps.MenuItem("Copy last text", callback=self.copy_last),
-            rumps.MenuItem("Edit my word fixes\u2026", callback=self.edit_fixes),
+            rumps.MenuItem("Copy the last dictation", callback=self.copy_last),
+            rumps.MenuItem("Edit Dictionary as a file\u2026", callback=self.edit_fixes),
             rumps.MenuItem("Transcribe a file\u2026", callback=self.open_files),
             self.meeting_item,
             None,
@@ -881,13 +881,13 @@ class InditeApp(rumps.App):
         ]
         problem = self.engine.ready()
         if problem:
-            rumps.alert("indite can't start", problem)
+            rumps.alert("indite can’t start", problem)
             sys.exit(1)
         bad_seal = signature_broken()
         if bad_seal:
             print("SIGNATURE BROKEN:", bad_seal)
             rumps.alert(
-                "indite's app file has been changed",
+                "indite’s app file has been changed",
                 "macOS checks indite's signature before it trusts it with the keyboard. That signature is no "
                 "longer valid, so Accessibility will stop working - usually in the middle of a session, with no "
                 "warning.\n\n"
@@ -1245,7 +1245,7 @@ class InditeApp(rumps.App):
         print("mic: restarting indite to get the microphone back")
         # A detached shell, so the old process is gone before the new one opens (two copies would both hear the keys).
         subprocess.Popen(["/bin/sh", "-c", 'osascript -e "display notification \\"The microphone got stuck in macOS. '
-                          'indite is restarting - try again in a few seconds.\\" with title \\"indite\\""; '
+                          'indite is restarting. Try again in a few seconds.\\" with title \\"indite\\""; '
                           f'sleep 1; open -n "{bundle}"'], start_new_session=True)
         os._exit(0)                  # not sys.exit: sounddevice's exit hook calls Pa_Terminate, which waits on the lock
 
@@ -1335,8 +1335,8 @@ class InditeApp(rumps.App):
         """Pick an audio or video file and transcribe it here (main thread: the open panel is AppKit)."""
         from AppKit import NSOpenPanel
         if self.job:
-            rumps.alert("indite is still on another file", f"{self.job['name']} is {self.job['done']} of "
-                        f"{self.job['total']} parts in. It will be in Home when it is done.")
+            rumps.alert("indite is still on another file", f"{self.job['name']}: {self.job['done']} of "
+                        f"{self.job['total']} parts done. It will appear in Files when it finishes.")
             return
         panel = NSOpenPanel.openPanel()
         panel.setTitle_("Transcribe a file")
@@ -1399,10 +1399,10 @@ class InditeApp(rumps.App):
         if not self.prefs.get("ai_ok"):
             alert = NSAlert.alloc().init()
             alert.setMessageText_("Send this note to an AI?")
-            where = ai.PROVIDERS.get(self.prefs["ai_provider"], "Claude")
+            where = ai.NAMES.get(self.prefs["ai_provider"], "Claude")
             alert.setInformativeText_(
-                f"AI answers come from: {where}. The note's text leaves this Mac to get the answer; nothing else "
-                "does. If the note is about work, check your company's rules first.\n\nYou will not be asked "
+                f"AI answers come from {where}. The note’s text leaves this Mac to get the answer; nothing else "
+                "does. If the note is about work, check your company’s rules first.\n\nYou will not be asked "
                 "again; change or turn off AI in Settings → AI.")
             alert.addButtonWithTitle_("Send")
             alert.addButtonWithTitle_("Cancel")
@@ -1415,17 +1415,17 @@ class InditeApp(rumps.App):
             return
         if row.get("kind") in ("meeting", "file") and not self.prefs.get("ai_ok_meetings"):
             # other people's voices: ask every time, unless the person said not to (founder, 15 Oct)
-            where = ai.PROVIDERS.get(self.prefs["ai_provider"], "Claude")
+            where = ai.NAMES.get(self.prefs["ai_provider"], "Claude")
             alert = NSAlert.alloc().init()
-            alert.setMessageText_(f"Send a recording of other people to {where}?")
+            alert.setMessageText_(f"Send what other people said to {where}?")
             alert.setInformativeText_(
-                f"It includes what others said. Check they're OK with it first.\n\n{where} gets the full text. "
+                f"It includes what others said. Check they’re OK with it first.\n\n{where} gets the full text. "
                 "Whether it is kept or used to train their AI depends on your account settings with them, not on "
                 "indite.")
             alert.addButtonWithTitle_("Send")
             alert.addButtonWithTitle_("Cancel")
             alert.setShowsSuppressionButton_(True)
-            alert.suppressionButton().setTitle_("Don't ask again for meetings and files")
+            alert.suppressionButton().setTitle_("Don’t ask again for meetings and files")
             if alert.runModal() != NSAlertFirstButtonReturn:
                 return
             if alert.suppressionButton().state():
@@ -1544,7 +1544,7 @@ class InditeApp(rumps.App):
                 self.typer.copy(answer)                  # the answer is on the clipboard the moment it is shown
                 if self.window and self.card_job != (row["id"], action):
                     from PyObjCTools import AppHelper
-                    AppHelper.callAfter(self.window.bridge.js, "toast('Answer copied - paste it anywhere')")
+                    AppHelper.callAfter(self.window.bridge.js, "toast('Answer copied. Paste it anywhere.')")
         except Exception as e:                           # noqa: BLE001 - not logged in, out of quota, offline...
             self.ai_error = str(e)
             print("ai failed:", e)
@@ -1555,7 +1555,7 @@ class InditeApp(rumps.App):
                 self.card_job = None
                 if answer:
                     shown = re.sub(r"\*\*(.+?)\*\*", r"\1", answer)   # the card shows plain text; Copy keeps the original
-                    self.preview.answer("Copied - paste it anywhere.\n\n" + shown)
+                    self.preview.answer("Copied. Paste it anywhere.\n\n" + shown)
                 else:
                     self.preview.failed("The AI did not answer: " + (self.ai_error or "no reply") +
                                         "\nPress the button again to retry.")
@@ -1589,7 +1589,9 @@ class InditeApp(rumps.App):
                 n = store.restore_zip(Path(str(panel.URLs()[0].path())))
                 self.notice = f"Restored {n} note{'s' if n != 1 else ''}." if n else "Nothing new: every note in that backup is already here."
             except Exception as e:                       # noqa: BLE001 - not a backup, damaged, or too new
-                self.notice = f"Could not restore: {e}"
+                import zipfile
+                self.notice = ("Could not restore: that file is not an indite backup." if isinstance(e, zipfile.BadZipFile)
+                               else f"Could not restore: {e}")
             self.refresh()
 
     def tidy(self, text: str) -> str:

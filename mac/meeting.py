@@ -129,7 +129,7 @@ class Meeting:
             "Settings → Privacy & Security → Screen & System Audio Recording, then start again.")
         self.started = time.time()
         self.segments = []                                      # else the second meeting in a session keeps the first's lines
-        self.note = store.add("…", 0, 0, "meeting", "", kind="meeting", title=time.strftime("Meeting %d %b, %H:%M"),
+        self.note = store.add("…", 0, 0, "meeting", "", kind="meeting", title=time.strftime("Meeting %-d %b, %-I:%M ") + time.strftime("%p").lower(),
                               segments=[], live=True)
         store.AUDIO.mkdir(parents=True, exist_ok=True)
         self.you = Track("You", store.AUDIO / f"{self.note}-you.wav")

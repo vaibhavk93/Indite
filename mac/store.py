@@ -423,7 +423,7 @@ def fix_problem(heard: str, want: str) -> str:
     if heard.lower() == want.lower():
         return "Those are the same word."
     if len(heard) > MAX_FIX_CHARS or len(want) > MAX_FIX_CHARS:
-        return f"Keep each side under {MAX_FIX_CHARS} characters - this is for words, not sentences."
+        return f"Keep each side under {MAX_FIX_CHARS} characters. This is for words, not sentences."
     if len(heard.split()) > MAX_FIX_WORDS:
         return f"That is {len(heard.split())} words. A fix matches up to {MAX_FIX_WORDS}."
     if len(heard) < 2:

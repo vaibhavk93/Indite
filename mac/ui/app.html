@@ -564,7 +564,7 @@
       <div class="hero">
         <div class="hero-ic"><svg width="22" height="22"><use href="#i-mic"/></svg></div>
         <div class="hero-t"><b>Record a meeting</b>
-          <p>Your microphone and the call’s sound, written down as people talk — with who said what.</p>
+          <p>Your microphone and the call’s sound, written down as people talk, with who said what. Stays on this Mac.</p>
           <p class="perm" id="meet-perm"></p></div>
         <button class="btn big" id="meet">● Record</button>
       </div>
@@ -583,20 +583,20 @@
     </section>
 
     <section class="pane" id="pane-todo" hidden>
-      <div class="addrow"><input class="pick wide" id="todo-add" placeholder="Add a to-do and press Return" spellcheck="false"></div>
+      <div class="addrow"><input class="pick wide" id="todo-add" aria-label="New to-do" placeholder="Add a to-do and press Return" spellcheck="false"></div>
       <div id="todo-list"></div>
     </section>
 
     <section class="pane" id="pane-dict" hidden>
-      <p class="lead2">When indite keeps writing a word wrong, teach it once. Whole words, any capitals, several words
-        allowed. Used on every dictation, file and meeting.</p>
+      <p class="lead2">When indite keeps writing a word wrong, teach it once. It matches whole words, in any
+        capitals, and a fix can be several words. Used on every dictation, file and meeting.</p>
       <p class="lead2">It also works the other way: put a short word on the left and anything you like on the right,
-        and saying the word types the lot — <b>addr</b> → <i>12 MG Road, Bengaluru 560001</i>, or
-        <b>my mail</b> → <i>vaibhav@example.com</i>.</p>
+        and saying the short word types the whole thing (up to 80 characters): <b>addr</b> → <i>12 MG Road, Bengaluru 560001</i>, or
+        <b>my mail</b> → <i>naam@example.com</i>.</p>
       <div class="addrow">
-        <input class="pick" id="dh" placeholder="indite writes… e.g. ptm" spellcheck="false">
+        <input class="pick" id="dh" aria-label="Word indite writes" placeholder="indite writes… e.g. ptm" spellcheck="false">
         <span class="arrow">→</span>
-        <input class="pick" id="dw" placeholder="you meant… e.g. Paytm" spellcheck="false">
+        <input class="pick" id="dw" aria-label="Word you meant" placeholder="you meant… e.g. Paytm" spellcheck="false">
         <button class="btn go" id="dadd">Add</button>
       </div>
       <div class="card" id="dict-list"></div>
@@ -652,7 +652,7 @@
           <div class="sgroup" data-g="pill"><h2>Look &amp; sounds</h2>
             <div class="card">
               <div class="item">
-                <div class="body"><b>Appearance</b><p>Light is white all day. “Like the Mac” follows dark mode in the evening.</p></div>
+                <div class="body"><b>Appearance</b><p>Light is white all day. “Like the Mac” follows your Mac’s light or dark setting.</p></div>
                 <div class="seg" id="set-theme" role="radiogroup" aria-label="Appearance"></div>
               </div>
               <div class="item">
@@ -688,7 +688,7 @@
                 <button class="sw" id="set-spelling" role="switch" aria-label="Hinglish spelling"></button>
               </div>
               <div class="item">
-                <div class="body"><b>Numbers as digits</b><p>“chaar baje” becomes “4 baje”, “do hazaar rupaye” “₹2000”.
+                <div class="body"><b>Numbers as digits</b><p>“chaar baje” becomes “4 baje” and “do hazaar rupaye” becomes “₹2000”.
                   Words that are also ordinary words (ek, do, saath) change only next to baje, percent, rupaye…</p></div>
                 <button class="sw" id="set-digits" role="switch" aria-label="Numbers as digits"></button>
               </div>
@@ -704,19 +704,19 @@
               </div>
               <div class="item">
                 <div class="body"><b>Mark likely mistakes (being tested)</b><p>After a dictation, indite looks for your
-                  Dictionary words it may have misheard ("cross in" → Crocin) and asks you. Nothing changes until you
-                  tap Fix. Runs on this Mac.</p></div>
+                  Dictionary words it may have misheard (“cross in” → Crocin) and asks you. Nothing changes until you
+                  click Fix. Runs on this Mac.</p></div>
                 <button class="sw" id="set-review" role="switch" aria-label="Mark likely mistakes"></button>
               </div>
               <div class="item">
                 <div class="body"><b>Find who spoke</b><p>In every meeting and file, automatically. Lines get Person 1,
-                  Person 2… which you can rename. One voice only: no labels.</p></div>
+                  Person 2… which you can rename. If only one person speaks, lines get no name.</p></div>
                 <button class="sw" id="set-auto_speakers" role="switch" aria-label="Find who spoke"></button>
               </div>
               <div class="item">
-                <div class="body"><b>Ask to record calls</b><p>When Zoom, Teams, Slack, FaceTime, WhatsApp or Webex starts
-                  using the microphone, the card above the pill asks “Record this call?”. indite never records without
-                  your click. Calls in a browser (Google Meet) are not noticed.</p></div>
+                <div class="body"><b>Ask to record calls</b><p>When a call app (Zoom, Teams, Slack, FaceTime, WhatsApp, Webex,
+                  Discord, Skype) starts using the microphone, the card above the pill asks: Record this call? indite
+                  never records without your click. Calls in a browser (Google Meet) are not noticed.</p></div>
                 <button class="sw" id="set-ask_calls" role="switch" aria-label="Ask to record calls"></button>
               </div>
               <div class="item">
@@ -728,12 +728,12 @@
           <div class="sgroup" data-g="ai"><h2>AI</h2>
             <div class="card">
               <div class="item">
-                <div class="body"><b>AI on notes</b><p>On: the Ask AI panel below works on any note. Off: nothing ever leaves this Mac.</p></div>
+                <div class="body"><b>AI on notes</b><p>On: Ask AI works on any note, with the service you pick below. Off: nothing ever leaves this Mac.</p></div>
                 <button class="sw" id="set-ai" role="switch" aria-label="AI on notes"></button>
               </div>
               <div class="item">
                 <div class="aiwhat">
-                  <div><b>✦ With an AI login or key</b><ul>
+                  <div><b>With an AI login or key</b><ul>
                     <li>The <b style="display:inline">Ask AI</b> panel on any note (“…” → Ask AI)</li>
                     <li>Improve the wording · Clean it up</li>
                     <li>Summary · Action items (one click adds them to To do)</li>
@@ -744,12 +744,12 @@
                     <li>Dictation into any app, hands-free, Esc to cancel</li>
                     <li>Meetings: recording and who spoke</li>
                     <li>Files: audio and video to text</li>
-                    <li>Dictionary and word fixes · To do · Insights</li>
+                    <li>Dictionary · To do · Insights</li>
                     <li>Backup and restore</li></ul></div>
                 </div>
               </div>
               <div class="item"><div class="body"><p><b style="display:inline">Login or key: the same features.</b>
-                A Claude login uses your Claude plan. An API key is charged by that company per use. Either way only
+                A Claude login uses your Claude plan. An API key (from Anthropic, OpenAI or OpenRouter) is billed by that company each time you use it. Either way only
                 the note you ask about is sent, and only when you ask.</p></div></div>
               <div class="item aiopt">
                 <div class="body"><b>Answers come from</b><p>The note’s text is sent there, and only when you ask.</p></div>
@@ -761,7 +761,7 @@
               </div>
               <div class="item aiopt" id="ai-key-row">
                 <div class="body"><b>API key</b><p id="ai-key-why"></p>
-                  <input class="pick wide" id="ai-key" type="password" placeholder="Paste the key" spellcheck="false" style="margin-top:8px"></div>
+                  <input class="pick wide" id="ai-key" aria-label="API key" type="password" placeholder="Paste the key" spellcheck="false" style="margin-top:8px"></div>
                 <button class="btn" id="ai-key-clear">Remove</button><button class="btn go" id="ai-key-save">Save</button>
               </div>
               <div class="item aiopt" id="ai-model-row">
@@ -775,11 +775,11 @@
               <div class="item">
                 <div class="body"><b>Save my dictations</b>
                   <p>In a plain file on this Mac. Starred notes, to-dos, files and meetings are kept until you delete
-                  them; other dictations, the last 500. Off: new dictations are not written down.</p></div>
+                  them. Of other dictations, the newest 500 are kept. Off: new dictations are not written down.</p></div>
                 <button class="sw" id="set-keep_history" role="switch" aria-label="Save my dictations"></button>
               </div>
               <div class="item">
-                <div class="body"><b>Keep the audio of each dictation</b><p>So a backup can carry it. About 0.3 MB for
+                <div class="body"><b>Keep the audio of each dictation</b><p>So you can play it back, and a backup can carry it. About 0.3 MB for
                   10 seconds. Off: only the words are kept.</p></div>
                 <button class="sw" id="set-keep_audio" role="switch" aria-label="Keep audio"></button>
               </div>
@@ -830,7 +830,7 @@
           <div class="item"><div class="body"><b>Hands-free</b></div><span id="hf-keys"></span></div>
           <div class="item"><div class="body"><b>Cancel</b></div><span><kbd>Esc</kbd> while listening</span></div>
           <div class="item"><div class="body"><b>Type the last dictation again</b></div><span><kbd>⌃⌘V</kbd></span></div>
-          <div class="item"><div class="body"><b>Search dictations / Settings</b></div><span><kbd>⌘F</kbd> · <kbd>⌘,</kbd></span></div>
+          <div class="item"><div class="body"><b>Search dictations · Open Settings</b></div><span><kbd>⌘F</kbd> · <kbd>⌘,</kbd></span></div>
         </div>
       </div>
       <div class="section"><h2>If something is off</h2>
@@ -860,13 +860,13 @@
         <div class="card faq">
           <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-lock"/></svg></div>
             <div class="body"><b>Everything is transcribed on this Mac</b>
-              <p>No account, no server. Only “AI” on a note sends that note’s text out, and only if you turn AI on.</p></div></div>
+              <p>No account, no server. Only Ask AI sends a note’s text out, and only if you turn AI on.</p></div></div>
           <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-folder"/></svg></div>
             <div class="body"><b>Your files</b>
               <p>Notes, dictionary and audio live in <span class="path">~/Library/Application Support/indite</span></p></div></div>
         </div>
       </div>
-      <p class="fine">indite for Mac 0.2 · speaker model TitaNet © NVIDIA (CC BY 4.0) · whisper.cpp (MIT) · Hinglish model by Oriserve (Apache 2.0)</p>
+      <p class="fine">indite for Mac 0.1 · speaker model TitaNet © NVIDIA (CC BY 4.0) · whisper.cpp (MIT) · Hinglish model by Oriserve (Apache 2.0)</p>
     </section>
   </div>
 </main>
@@ -875,7 +875,7 @@
   <div class="sbox">
     <svg width="56" height="56" viewBox="100 100 824 824" style="margin-bottom:16px"><use href="#brandmark"/></svg>
     <h1>Set up indite</h1>
-    <p class="lead">Four steps and one choice, about a minute. Everything stays on this Mac.</p>
+    <p class="lead">Four steps and one optional choice, about a minute. Everything stays on this Mac.</p>
     <ol class="ssteps">
       <li id="st-ax"><span class="sn">1</span><div><b>Let indite notice the key and type for you</b>
         <p>System Settings → Privacy &amp; Security → Accessibility → switch on <b>indite</b>. Then quit and reopen
@@ -884,10 +884,10 @@
         <p>macOS asks once. If you said no before, turn indite on under Privacy &amp; Security → Microphone.</p></div>
         <span class="ok"></span><button class="btn" id="go-mic">Allow microphone</button></li>
       <li><span class="sn">3</span><div><b>Pick the key you hold to talk</b>
-        <p>One you do not use for anything else.</p></div><div class="seg" id="setup-key"></div></li>
+        <p>One you do not use for anything else.</p></div><div class="seg" id="setup-key" role="radiogroup" aria-label="Hold-to-talk key"></div></li>
       <li id="st-try"><span class="sn">4</span><div><b>Try it</b>
         <p>Click in the box, hold <kbd class="hk-name"></kbd>, say “Hello indite, yeh mera pehla test hai”, and let go.</p>
-        <textarea id="try" placeholder="Your words appear here" spellcheck="false"></textarea></div><span class="ok"></span></li>
+        <textarea id="try" aria-label="Test box" placeholder="Your words appear here" spellcheck="false"></textarea></div><span class="ok"></span></li>
       <li><span class="sn">5</span><div><b>Show your words after you speak? <span class="fine" style="display:inline">optional</span></b>
         <p>A small card above the pill shows what was written for a few seconds, with Ask AI and To do. It sits over
         the bottom of the screen, so a click there can land on the card instead of a chat box. Change it any time in
@@ -1017,7 +1017,8 @@
     const el = $("#toast"); el.textContent = msg; el.classList.add("on");
     el.classList.toggle("act", !!undo);
     if (undo) { const b = document.createElement("button"); b.textContent = label; b.onclick = () => { undo(); el.classList.remove("on"); }; el.appendChild(b); }
-    clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), undo ? 5000 : 1400);
+    // long enough to read: ~60 ms a character, 1.8-8 s (a 1.4 s toast hid backup results and refusals)
+    clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), undo ? 5000 : Math.min(8000, Math.max(1800, 60 * msg.length)));
   }
 
   function header() {
@@ -1038,7 +1039,7 @@
     engineReady = /ready/i.test(S.engine);
     $("#warn").innerHTML = S.listening ? "" : `<div class="banner">
       <svg width="18" height="18" style="color:var(--accent);margin-top:1px"><use href="#i-key"/></svg>
-      <div><b>indite can’t see the hotkey yet</b>
+      <div><b>indite can’t notice your talk key yet</b>
       <p>Allow it in System Settings → Privacy &amp; Security → Accessibility, then reopen indite.</p></div>
       <button class="btn" id="perm">Open settings</button></div>`;
     if (!S.listening) $("#perm").onclick = () => send({ action: "permission" });
@@ -1051,7 +1052,7 @@
         v => send({ action: "pref", key: "output", value: v }));
     $("#out-why").textContent = {
       smart: "Typed where your cursor is. Copied to the clipboard when there is no text box.",
-      type: "Always typed. If no text box is selected, the words are lost.",
+      type: "Always typed. If no text box is selected, nothing is typed; the words are still in Dictations.",
       copy: "Always copied to the clipboard. Paste with ⌘V.",
     }[S.prefs.output] || "";
     sw("#set-spelling", "spelling");
@@ -1096,7 +1097,7 @@
     if (!$("#setup").hidden) drawSetup();
     if (S.notice) { toast(S.notice); send({ action: "notice_seen" }); }
     const hk2 = $("#set-hf_key");
-    hk2.innerHTML = `<option value="">Same as the talk key</option>` + Object.entries(S.hotkeys)
+    hk2.innerHTML = `<option value="">Same as the hold-to-talk key</option>` + Object.entries(S.hotkeys)
       .map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("");
     hk2.value = S.prefs.hf_key || "";
     hk2.onchange = () => send({ action: "pref", key: "hf_key", value: hk2.value });
@@ -1121,7 +1122,7 @@
     pickMic.onchange = () => send({ action: "pref", key: "mic", value: pickMic.value });
     $("#mic-why").textContent = chosen
       ? `Uses ${chosen} when it is connected; otherwise the next one that works.`
-      : `The Mac's default, then the built-in one, then any other.${S.using ? " Last used: " + S.using + "." : ""}`;
+      : `The Mac’s default, then the built-in one, then any other.${S.using ? " Last used: " + S.using + "." : ""}`;
     sw("#set-keep_history", "keep_history");
     const plainN = S.history.filter(r => !(r.star || r.todo || (r.kind || "dictation") !== "dictation")).length;
     $("#count-line").textContent = plainN ? `${plainN} plain dictation${plainN > 1 ? "s" : ""}. Starred, to-do, files and meetings are kept.`
@@ -1134,9 +1135,9 @@
     $("#job").innerHTML = j ? `<div class="jobcard"><svg width="16" height="16" style="color:var(--accent)"><use href="#i-file"/></svg>
       <div style="flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>${esc(j.name)}</b></div>
       <div class="bar2"><i style="width:${j.total ? Math.round(100 * j.done / j.total) : 3}%"></i></div>
-      <span class="num" style="color:var(--ink2);font-size:12px">${j.total ? `${j.done} of ${j.total}` : "reading…"}</span></div>`
+      <span class="num" style="color:var(--ink2);font-size:12px">${j.total ? `${j.done} of ${j.total}` : "Reading the file…"}</span></div>`
       : "";
-    const err = S.ai_error ? [/^Could not tell who spoke/.test(S.ai_error) ? "Who spoke didn’t work" : "The AI couldn’t answer", S.ai_error] : S.file_error ? ["That file didn’t work", S.file_error] : null;
+    const err = S.ai_error ? [/^Could not tell who spoke/.test(S.ai_error) ? "Couldn’t find who spoke" : "The AI couldn’t answer", S.ai_error] : S.file_error ? ["That file didn’t work", S.file_error] : null;
     if (err) $("#warn").innerHTML += `<div class="banner"><div><b>${err[0]}</b><p>${esc(err[1])}</p></div>
         <button class="btn" onclick="send({action:'dismiss'})">OK</button></div>`;
     meetButton();
@@ -1155,7 +1156,7 @@
     drawAI();
     drawList();
     feed($("#meet-list"), S.history.filter(r => r.kind === "meeting"),
-      `<div class="empty"><h3>No meetings yet</h3>Press Record when a call or conversation starts. Text appears after each pause.</div>`);
+      `<div class="empty"><h3>No meetings yet</h3>Click Record when a call or conversation starts. Text appears after each pause.</div>`);
     feed($("#file-list"), S.history.filter(r => r.kind === "file"),
       `<div class="empty"><h3>No files yet</h3>Choose an audio or video file. It is written down here, on this Mac.</div>`);
   }
@@ -1190,8 +1191,8 @@
     if (!S.history.some(r => (r.kind || "dictation") === "dictation")) {
       $("#list").innerHTML = `<div class="empty">
         <div class="art"><svg width="28" height="28"><use href="#i-mic"/></svg></div>
-        <h3>${S.prefs.keep_history === false ? "History is off" : "Nothing dictated yet"}</h3>
-        ${S.prefs.keep_history === false ? "Turn it on in Settings to see what you say here." : "Your words will show up here."}
+        <h3>${S.prefs.keep_history === false ? "Saving is off" : "Nothing dictated yet"}</h3>
+        ${S.prefs.keep_history === false ? "Turn on “Save my dictations” in Settings → Privacy to see what you say here." : "Your words will show up here."}
         <div class="steps">
           <div class="step"><b>1</b>Click into any text box</div>
           <div class="step"><b>2</b>Hold <kbd>${esc(hk())}</kbd> and say a sentence</div>
@@ -1201,6 +1202,8 @@
     }
     if (!rows.length) {
       $("#list").innerHTML = `<div class="empty"><h3>Nothing here</h3>${q ? `Nothing you said contains “${esc(q)}”.`
+        : filter === "ai" ? "No dictation has AI answers yet. Open one with “…” → Ask AI."
+        : filter === "check" ? "Every dictation with its audio kept is checked."
         : "Star a dictation (“…” → Star) to keep it here, and in every backup."}</div>`;
       return;
     }
@@ -1234,7 +1237,7 @@
       <div class="when num">${todoView ? `<button class="copy tick" data-id="${id}" aria-label="${done ? "Mark not done" : "Mark done"}" title="${done ? "Not done" : "Done"}" style="${done ? "color:var(--accent)" : ""}">
         <svg width="16" height="16"><use href="#${done ? "i-done" : "i-todo"}"/></svg></button>` : clock(r.at)}</div>
       <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${esc(r.title || "File")}
-          ${r.live ? `<span class="live">LIVE</span>` : ""}</div>` : ""}
+          ${r.live ? `<span class="live">Live</span>` : ""}</div>` : ""}
         ${(r.segments || []).some(x => x.speaker) ? meetingLines(r) : `<div class="text${file ? " clamp" : ""}">${esc(r.text)}</div>`}
         ${todoView ? "" : flagParts(r) + aiParts(r)}
         ${file && !(r.segments || []).some(x => x.speaker) && r.text.length > 240 ? `<button class="more" data-id="${id}">Show all</button>` : ""}
@@ -1249,7 +1252,7 @@
           <span class="num">${words(r)} words</span></div></div>
       <div class="acts">
         ${ic("cp", "i-copy", "Copy")}
-        <button class="copy moreb" data-id="${id}" aria-label="More actions" title="More: to do, AI, fix a word, star, delete">•••</button>
+        <button class="copy moreb" data-id="${id}" aria-label="More actions" title="More actions">•••</button>
       </div></div>`;
   }
 
@@ -1258,7 +1261,7 @@
     if (!segs.length) return `<div class="text" style="color:var(--ink2)">${r.live ? "Listening… text appears after each pause." : esc(r.text)}</div>`;
     const lines = segs.map((s, i) => `<div class="line${i >= 6 && !r._open ? " hide" : ""}">
       <button class="who ${s.speaker === "You" ? "you" : "them"}" data-id="${esc(r.id)}" data-who="${esc(s.speaker)}"
-        title="Rename" style="${/^(Speaker|Person) [2468]/.test(s.speaker) ? "color:#7a4fb3" : ""}">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${esc(s.text)}</div></div>`).join("");
+        title="Rename this speaker" style="${/^(Speaker|Person) [2468]/.test(s.speaker) ? "color:#7a4fb3" : ""}">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${esc(s.text)}</div></div>`).join("");
     return `<div class="lines">${lines}</div>` + (segs.length > 6 ? `<button class="more mshow" data-id="${esc(r.id)}">Show all ${segs.length} lines</button>` : "");
   }
 
@@ -1270,7 +1273,7 @@
       const elsewhere = S.history.filter(x => x.id !== r.id && re.test(x.text || "")).length;   // self-contained: rows draw early
       return `<div class="flag">Did you mean <b>${esc(f.want)}</b>? indite wrote “${esc(f.heard)}”.
         <button class="lnk" data-flag="${i}" data-id="${esc(r.id)}" data-how="fix">Fix</button>
-        <button class="lnk" data-flag="${i}" data-id="${esc(r.id)}" data-how="always" title="${elsewhere ? `“${esc(f.heard)}” is also in ${elsewhere} other note${elsewhere > 1 ? "s" : ""} you left alone - it may be a real word` : "Fix it in every future dictation"}">Always fix${elsewhere ? ` (in ${elsewhere} other note${elsewhere > 1 ? "s" : ""})` : ""}</button>
+        <button class="lnk" data-flag="${i}" data-id="${esc(r.id)}" data-how="always" title="${elsewhere ? `“${esc(f.heard)}” also appears, unchanged, in ${elsewhere} other note${elsewhere > 1 ? "s" : ""}. It may be a real word.` : "Fix it in every future dictation"}">Always fix${elsewhere ? ` (careful: also in ${elsewhere} other note${elsewhere > 1 ? "s" : ""})` : ""}</button>
         <button class="lnk mute" data-flag="${i}" data-id="${esc(r.id)}" data-how="dismiss">Not a mistake</button></div>`;
     }).join("");
   }
@@ -1301,7 +1304,7 @@
     const media = r.kind === "file" || r.kind === "meeting";
     const items = [
       ["todo", r.todo ? "Remove from To do" : "Add to To do", r.todo ? "" : "Find it again on the To do page"],
-      ["star", r.star ? "Unstar" : "Star", r.star ? "" : "Keep it forever, and in starred backups"],
+      ["star", r.star ? "Unstar" : "Star", r.star ? "" : "Kept until you delete it, and in starred backups"],
       ...(S.prefs.ai ? [["ai", "Ask AI…", "Improve, summarise, action items, rewrite, translate, ask anything"]] :
                        [["aioff", "AI is off", "Turn it on in Settings → AI"]]),
       ...(media ? [["who", "Who spoke?", "Label each line with a speaker"], ["txt", "Save as text…", ""], ["srt", "Save as subtitles…", ""]]
@@ -1386,7 +1389,7 @@
             <span class="pt num">${tclock(x.start || 0)}</span>${x.speaker ? `<button class="pwho ${x.speaker === "You" ? "you" : "them"}" title="${esc(nm[x.speaker] || x.speaker)} · click to change who said this">${esc(nm[x.speaker] || x.speaker)}</button>` : ""}<span class="px">${timedWords(r, x.text, x.start || 0, kOf(x, meet))}</span>
             <span class="pacts"><button class="copy pp" title="Play just this line" aria-label="Play just this line"><svg width="13" height="13"><use href="#i-play"/></svg></button><button class="copy pc" title="Copy this line" aria-label="Copy this line"><svg width="14" height="14"><use href="#i-copy"/></svg></button><button class="copy pe" title="Edit this line" aria-label="Edit this line"><svg width="14" height="14"><use href="#i-pen"/></svg></button></span></div>`).join("")}</div>`
           : `<div class="plines"><div class="pline whole"><span class="px">${timedWords(r, r.text, 0, 0)}</span></div></div>`) +
-        (lining ? `<p class="fine phint">Lining up each word with the sound - only the first time, about a minute per 5 minutes of audio…</p>` : "") +
+        (lining ? `<p class="fine phint">Lining up each word with the sound. Only the first time: about a minute per 5 minutes of audio…</p>` : "") +
         `<p class="fine phint">Space plays or pauses · ← → move 5 s · click a word or line to go there</p></div></div>`;
     }
     if ($("#drawer .pedit")) return playerTick(P);            // never rebuild over a line you are editing
@@ -1405,7 +1408,7 @@
     $("#drawer").querySelectorAll(".pline .pwho").forEach(b => b.onclick = e => {
       e.stopPropagation();
       const seg = segOf(b.closest(".pline")); if (!seg) return;
-      const who = [...new Set(["You", ...(r.segments || []).map(x => x.speaker).filter(Boolean)])].filter(x => x !== seg.speaker);
+      const who = [...new Set([...(meet ? ["You"] : []), ...(r.segments || []).map(x => x.speaker).filter(Boolean)])].filter(x => x !== seg.speaker);
       const rect = b.getBoundingClientRect();
       const m = popup(`<div class="mh">Who said this line?</div>` + who.map(x => `<button data-to="${esc(x)}"><b>${esc(nm[x] || x)}</b></button>`).join("") +
         `<div class="sep"></div><button data-join="1"><b>Join with the next line</b><span>When one turn was cut in two</span></button>`, rect.left, rect.bottom + 4);
@@ -1505,8 +1508,10 @@
   let aiWas = {};
   function aiWatch() {
     const now = S.ai_busy || {};
-    for (const [id, what] of Object.entries(aiWas)) if (!now[id] && id !== drawerId && what !== "finding who spoke")
-      toast(S.ai_error ? `${what} didn’t work` : `${what} is ready`, () => { go("home"); openDrawer(id); }, "View");
+    // only AI answers get a "ready" toast; finishing a meeting and lining up words are not something to open
+    for (const [id, what] of Object.entries(aiWas)) if (!now[id] && id !== drawerId && !["finding who spoke", "finishing", "lining up the words"].includes(what))
+      toast(S.ai_error ? `${what} didn’t work` : `${what} is ready`, () => {
+        const k = (byId(id) || {}).kind; go(k === "meeting" ? "meetings" : k === "file" ? "files" : "home"); openDrawer(id); }, "View");
     aiWas = { ...now };
   }
   function drawDrawer() {
@@ -1515,7 +1520,7 @@
     if (!r) return closeDrawer();
     const A = S.ai_actions || {}, busy = S.ai_busy && S.ai_busy[r.id];
     const who = S.prefs.ai_provider === "claude" ? `Claude${S.ai_status && S.ai_status.email ? " (" + esc(S.ai_status.email) + ")" : ""}`
-      : esc((S.ai_providers || {})[S.prefs.ai_provider] || "your API key");
+      : esc(((S.ai_names || {})[S.prefs.ai_provider] || "your AI") + ", using your key");
     if (drawerMode === "listen") return drawListen(r);
     const answers = [...(r.ai || [])].sort((a, b) => (b.at || 0) - (a.at || 0));
     let h = `<div class="dhead"><div>${dtabs(r)}
@@ -1533,7 +1538,7 @@
     // Answers: plain documents (no boxes), newest first. Options below, on a sunken surface, so the two never look alike.
     const nAns = answers.length + (r.improved ? 1 : 0), more = k => drawerView["more:" + r.id + k];
     if (busy || nAns) h += `<div class="dhd">Answers${nAns ? ` <span>${nAns}</span>` : ""}<button class="lnk" id="d-jump">New request ↓</button></div>`;
-    if (busy) h += `<div class="dpend"><b>${busy === "finding who spoke" ? "Finding who spoke" : "Working on: " + esc(busy)}…</b>
+    if (busy) h += `<div class="dpend"><b>${busy === "finding who spoke" ? "Finding who spoke" : busy === "lining up the words" ? "Lining up words with the sound" : busy === "finishing" ? "Finishing the last words" : "Working on: " + esc(busy)}…</b>
         <div class="dbar"><i></i></div><p>You can close this and keep working. The answer is saved on the note.</p></div>`;
     const doc = (key, title, when, body, extra) => `<div class="doc"><div class="dh"><h4>${title}</h4>${when}<button class="copy dcp" data-copy="${esc(key)}" aria-label="Copy" title="Copy"><svg width="14" height="14"><use href="#i-copy"/></svg></button></div>
         ${long(body) ? `<div class="md${more(key) ? "" : " clamp"}">${md(body)}</div>
@@ -1563,7 +1568,7 @@
         `<div class="dline"><span>${esc(g)}</span><div>${chips(vals, "rewrite")}</div></div>`).join("") + `
         <div class="dline"><span>Translate</span><div>${chips(all ? langs : top, "translate")}${rest.length ? `<button class="dpill ghost" id="d-langs">${all ? "Fewer" : `${rest.length} more…`}</button>` : ""}</div></div>
       </div></div>`;
-    h += `</div><div class="dask"><div class="drow ask"><textarea class="pick wide" id="d-ask" rows="1" placeholder="Ask anything about this note…" spellcheck="false"></textarea>
+    h += `</div><div class="dask"><div class="drow ask"><textarea class="pick wide" id="d-ask" aria-label="Ask about this note" rows="1" placeholder="Ask anything about this note…" spellcheck="false"></textarea>
         <button class="btn go" data-k="custom" ${off}>Ask</button></div></div>
       <div class="dfoot">Answers come from ${who}. Only this note’s text is sent, and only when you ask.</div>`;
     if (!putDrawer(h)) return;
@@ -1650,7 +1655,7 @@
       b.previousElementSibling.classList.toggle("clamp"); b.textContent = b.textContent === "Show all" ? "Show less" : "Show all"; });
     root.querySelectorAll("[data-flag]").forEach(b => b.onclick = () => {
       send({ action: "flag", id: b.dataset.id, i: +b.dataset.flag, how: b.dataset.how });
-      toast(b.dataset.how === "dismiss" ? "Kept as it is" : b.dataset.how === "always" ? "Fixed, and in future dictations" : "Fixed"); });
+      toast(b.dataset.how === "dismiss" ? "Kept as it is" : b.dataset.how === "always" ? "Fixed here and in future dictations" : "Fixed"); });
     on(".cp", (r, b) => {
       // what the row shows: a meeting's lines with the speakers as renamed, not the stored "Person 1"
       const nm = r.names || {}, segs = r.segments || [];
@@ -1665,7 +1670,7 @@
     const open = S.history.filter(r => r.todo === "open"), done = S.history.filter(r => r.todo === "done");
     if (!open.length && !done.length) {
       $("#todo-list").innerHTML = `<div class="empty"><div class="art"><svg width="28" height="28"><use href="#i-todo-on"/></svg></div>
-        <h3>Nothing to do</h3>On any note, “…” → Add to To do, or press To do on the card after you dictate.</div>`;
+        <h3>Nothing to do</h3>On any note, “…” → Add to To do, or click To do on the card after you dictate.</div>`;
       return;
     }
     $("#todo-list").innerHTML = open.map(r => rowHtml(r, true)).join("") +
@@ -1703,8 +1708,8 @@
     const sel = String(window.getSelection()).trim();
     const f = document.createElement("div");
     f.className = "fixer";
-    f.innerHTML = `indite wrote <input class="h" placeholder="ptm" spellcheck="false" value="${esc(sel)}">
-      you meant <input class="w" placeholder="Paytm" spellcheck="false">
+    f.innerHTML = `indite wrote <input class="h" aria-label="Word indite wrote" placeholder="ptm" spellcheck="false" value="${esc(sel)}">
+      you meant <input class="w" aria-label="Word you meant" placeholder="Paytm" spellcheck="false">
       <button class="btn go">Add fix</button><button class="btn">Cancel</button><div class="why"></div>`;
     host.appendChild(f);
     const h = f.querySelector(".h"), w = f.querySelector(".w"), why = f.querySelector(".why");
@@ -1757,7 +1762,7 @@
   // ---- AI settings ----------------------------------------------------------------------------------------
   $("#set-ai_provider").onchange = e => send({ action: "pref", key: "ai_provider", value: e.target.value });
   $("#set-ai_model").onchange = e => send({ action: "pref", key: "ai_model", value: e.target.value.trim() });
-  $("#ai-login").onclick = () => { send({ action: "ai_login" }); toast("Sign in in the Terminal window, then come back"); };
+  $("#ai-login").onclick = () => { send({ action: "ai_login" }); toast("A Terminal window opened. Sign in there, then come back."); };
   $("#ai-key-save").onclick = () => { const k = $("#ai-key").value.trim(); if (!k) return;
     send({ action: "ai_key", provider: S.prefs.ai_provider, key: k }); $("#ai-key").value = ""; toast("Key saved in your Keychain"); };
   $("#ai-key-clear").onclick = () => { send({ action: "ai_key", provider: S.prefs.ai_provider, key: "" }); toast("Key removed"); };
@@ -1816,7 +1821,7 @@
     let cells = "";
     for (let t = start; t <= today; t += DAY) { const v = byDay[t] || 0, l = v ? Math.min(4, 1 + Math.floor(v / mx * 3.999)) : 0;
       cells += `<i class="${l ? "l" + l : ""}" title="${new Date(t).toDateString()}: ${v} words"></i>`; }
-    h += `<div class="igrid"><div class="ibox"><h3>Activity<span>${streak} day${streak === 1 ? "" : "s"} in a row · best ${best}</span></h3><div class="heat">${cells}</div>
+    h += `<div class="igrid"><div class="ibox"><h3>Activity<span>${streak} day${streak === 1 ? "" : "s"} in a row · best: ${best}</span></h3><div class="heat">${cells}</div>
       <div class="axis"><span>12 weeks ago</span><span>today</span></div></div>`;
     // last 14 days
     const days = [...Array(14)].map((_, i) => today - (13 - i) * DAY), dm = Math.max(1, ...days.map(t => byDay[t] || 0));
@@ -1827,7 +1832,7 @@
     const waits = d.map(r => r.took || 0).filter(x => x > 0).sort((a, b) => a - b);
     const pct = f => waits[Math.min(waits.length - 1, Math.floor(f * waits.length))];
     h += sec("Speed") + `<div class="kpis">` +
-      kpi(wpm || "–", wpm ? "wpm" : "", "speaking speed", `<div class="d" style="color:var(--ink2)">typing is ~40</div>`) +
+      kpi(wpm || "–", wpm ? "wpm" : "", "speaking speed", `<div class="d" style="color:var(--ink2)">typing: about 40</div>`) +
       kpi(saved >= 60 ? (saved / 60).toFixed(1) : Math.round(saved), saved >= 60 ? "h" : "min", "time saved vs typing") +
       (waits.length ? kpi(pct(.5).toFixed(1), "s", "typical wait after you let go") : "") +
       (waits.length >= 20 ? kpi(pct(.9).toFixed(1), "s", "slow wait (1 in 10 is slower)") : "") + `</div>`;
@@ -1871,7 +1876,7 @@
 
   // ---- Dictionary ------------------------------------------------------------------------------------------
   $("#dadd").onclick = () => { const h = $("#dh").value.trim(), w = $("#dw").value.trim(); if (!h || !w) return;
-    send({ action: "add_fix", heard: h, want: w }); $("#dh").value = $("#dw").value = ""; $("#dh").focus(); toast(`Added: ${h} → ${w}`); };
+    send({ action: "add_fix", heard: h, want: w }); $("#dh").value = $("#dw").value = ""; $("#dh").focus(); };   // the app says "Fix added" or why not
   $("#dw").onkeydown = e => { if (e.key === "Enter") $("#dadd").onclick(); };
   $("#goto-dict").onclick = () => go("dict");
   function drawDict() {

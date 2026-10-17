@@ -134,7 +134,7 @@ class PillView(NSView):
                 "done": "✓ typed in",
                 "copied": "✓ copied",
                 "nothing": "nothing heard",
-                "failed": "didn't work",
+                "failed": "didn’t work",
                 "cancelled": "cancelled",
                 "secret": "password box",
             }.get(self.state, "✓ copied"))

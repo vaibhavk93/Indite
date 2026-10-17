@@ -168,6 +168,7 @@ class Bridge(NSObject):
             "ai_styles": __import__("ai").STYLES,
             "ai_style_groups": __import__("ai").STYLE_GROUPS,
             "ai_langs": __import__("ai").LANGUAGES,
+            "ai_names": __import__("ai").NAMES,
             "file_error": self.app.file_error,
         }
 
@@ -215,7 +216,7 @@ class Bridge(NSObject):
             row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
             new = " ".join(str(msg.get("text", "")).split())
             if row and self.app.ai_busy.get(row["id"]) == "finding who spoke":
-                self.js("toast('Wait until Who spoke has finished - it rewrites the lines')")
+                self.js("toast(\"Wait until Who spoke has finished. It rewrites the lines.\")")
             elif row and new:
                 old = store.edit_line(row, float(msg.get("start", 0)), str(msg.get("speaker", "")), new)
                 if old is not None and old != new:
@@ -225,7 +226,7 @@ class Bridge(NSObject):
             row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
             start, who = float(msg.get("start", 0)), str(msg.get("speaker", ""))
             if row and self.app.ai_busy.get(row["id"]) == "finding who spoke":
-                self.js("toast('Wait until Who spoke has finished - it rewrites the lines')")
+                self.js("toast(\"Wait until Who spoke has finished. It rewrites the lines.\")")
             elif row:
                 keep = {k: row.get(k) for k in ("segments", "text", "wt", "edited")}
                 done = store.set_speaker(row, start, who, str(msg.get("to", ""))) if act == "line_speaker" \
@@ -329,7 +330,8 @@ class Bridge(NSObject):
                     if msg.get("autoplay", True):
                         self.app.player.play()
                 except Exception as e:                   # noqa: BLE001 - a broken file must not take the window down
-                    self.js(f"toast({('Could not play this recording: ' + str(e))!r})")
+                    why = "" if "cannot be played" in str(e) else f" ({e})"
+                    self.js(f"toast({('This recording cannot be played.' + why)!r})")
         elif act == "pctl":                              # the player's buttons and keys
             pl, cmd = self.app.player, msg.get("cmd")
             if cmd == "play" and not self.app.meeting.running:
@@ -402,7 +404,7 @@ class Bridge(NSObject):
             n = sum(1 for r in store.history() if not store.keep(r))
             alert = NSAlert.alloc().init()
             alert.setMessageText_(f"Delete {n} dictation{'s' if n != 1 else ''}?")
-            alert.setInformativeText_("Starred notes, to-dos and transcribed files are kept. "
+            alert.setInformativeText_("Starred notes, to-dos, files and meetings are kept. "
                                       "The rest is removed from this Mac and cannot be undone.")
             alert.addButtonWithTitle_("Delete")
             alert.addButtonWithTitle_("Cancel")

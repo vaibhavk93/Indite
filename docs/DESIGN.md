@@ -95,7 +95,7 @@ Dynamic colour (Material You) is **off**: our colours on every phone.
 | Main action | `.btn.go` | Ink fill. One per view |
 | Other actions | `.btn`, `.btn.danger` | Hairline border |
 | Quiet action | `.lnk` | Grey text, underline on hover |
-| Tell once, then go | `.toast` | Bottom centre; name what happened |
+| Tell once, then go | `.toast` | Bottom centre; name what happened. Stays ~60 ms per character (1.8-8 s); 5 s with Undo |
 | Needs attention | `.banner` | `--accent-soft`, one line + one button |
 | Nothing here yet | `.empty` | Icon in a well, a heading, a next step |
 | Work on one note | `.drawer` | Right side, tabs **Ask AI \| Listen** (`.dtabs`) |
@@ -136,6 +136,10 @@ Dynamic colour (Material You) is **off**: our colours on every phone.
 - Be honest about privacy: "stays on this phone" only when that is true.
 - No hype words. No "magic". No exclamation marks.
 - Hinglish examples come from real speech, not made-up English.
+- One name per thing (copy review, 17 Oct): **Dictionary** (never "word fixes"), **talk key** in sentences
+  ("Hold-to-talk key" only as the setting), **Ask AI**, **Save my dictations**, **card** (never "text box" for it).
+- Mac words: click, not tap. Curly quotes and apostrophes (“ ” ’). Two short sentences instead of a " - " dash.
+- Name the AI service in sentences as Claude / Anthropic / OpenAI / OpenRouter (`ai.NAMES`), not the menu label.
 
 ---
 
