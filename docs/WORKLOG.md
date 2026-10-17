@@ -4,6 +4,16 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-17 (22:30) · Claude Code (Opus 5.5) · Listen view restyled to indite's own look (#283)
+
+- Listen panel now matches the note list: gutter, `.who` speaker colours, 14 px text, hairline rows, icon actions on
+  hover, a grey player strip with SVG play/pause and a thin orange-fill slider. Playing line = `--well` (no orange box
+  or bar); spoken word = `--accent-soft`. Hint text was centred by a CSS clash: fixed. New pattern in `docs/DESIGN.md`.
+- Off-screen check: headless Chrome render of `app.html` with made-up notes (light + dark, dictation + meeting), no
+  page errors. Live page reloaded in the background via `js:location.reload()` (no restart, no focus).
+- Test fix: `test_mac_handsfree.py` replaced `threading.Thread` for the whole run, so 2 later tests failed when the
+  files ran together. Now restored after each test. 13 pass (`uv run --with pytest pytest tests/test_mac_*.py`).
+
 ## 2026-10-17 (15:00-17:15) · Claude Code (Opus 5.5) · Card, clipboard, Insights, Mark likely mistakes, one roadmap
 
 **Next step:** Mac next #4 (fixes count), #5 (engine-hint test), #7 (edit + undo); founder's 30-min checks (Mac next #2).

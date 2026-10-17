@@ -46,7 +46,7 @@ Keep gold for that one meaning. Do not spread it to buttons or headings.
 |---|---|---|---|
 | `--brand` | `#e27619` | same | Dots, switches, bars, focus ring. **Never small text** |
 | `--accent` | `#b85a0c` | `#f0903f` | Orange text, picked nav icon (4.6:1 on white) |
-| `--accent-soft` | `#fdf1e6` | orange 16 % | Banners, "now playing" line, Copied tag |
+| `--accent-soft` | `#fdf1e6` | orange 16 % | Banners, the word being spoken in Listen, Copied tag |
 | `--gold` / `--gold-soft` | `#a8812a` / 10 % | `#d4b062` / 12 % | The AI chip only |
 | `--paper` | `#ffffff` | `#1e1e20` | The page |
 | `--ink` / `--ink2` / `--ink3` | `#1d1d1f` / `#5f5f66` / `#737379` | `#f2f2f4` / `#a8a8b0` / `#8e8e95` | Text: main, secondary, faint. All pass WCAG AA (the contrast standard) |
@@ -99,6 +99,7 @@ Dynamic colour (Material You) is **off**: our colours on every phone.
 | Needs attention | `.banner` | `--accent-soft`, one line + one button |
 | Nothing here yet | `.empty` | Icon in a well, a heading, a next step |
 | Work on one note | `.drawer` | Right side, tabs **Ask AI \| Listen** (`.dtabs`) |
+| Play a recording | `.plisten` | Looks like the note list: 22 px gutter, `.who` speaker colours, 14 px text, hairline rows. Player = one `--well` strip (round ink play button, thin orange-fill slider). Line being spoken = `--well`; word being spoken = `--accent-soft` + `--accent`. Line actions = `.copy` icons on hover (play, copy, pen). No orange box or bar (founder, 17 Oct) |
 | Settings | `.card` + `.item` | Grouped, label left, control right |
 
 ### Copy (founder #269, #270)

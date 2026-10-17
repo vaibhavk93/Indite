@@ -1,5 +1,7 @@
 """The hotkey state machine: hold, tap, double-tap to lock, tap to finish, Esc to cancel."""
 import sys
+
+import pytest
 import time
 from pathlib import Path
 
@@ -20,6 +22,15 @@ class FakeMic:
     def stop(self):
         self.open = False
         return np.zeros(m.RATE * 2, dtype=np.float32)       # 2 s of "speech"
+
+
+_THREAD = m.threading.Thread
+
+
+@pytest.fixture(autouse=True)
+def _real_threads():
+    yield
+    m.threading.Thread = _THREAD                            # app() swaps it for a run-at-once fake; the other test files need the real one
 
 
 def app():
