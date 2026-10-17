@@ -454,6 +454,8 @@ class WindowEvents(NSObject):
         NSApp.setActivationPolicy_(1)                 # accessory: menu bar only, no Dock icon
 
     def windowDidBecomeKey_(self, _note):           # noqa: N802
+        if store.TEST:
+            return
         NSApp.setActivationPolicy_(0)                 # in front: a normal app, so the green button gives a Space
 
     # (Going back to menu-bar-only when another app comes to the front is in Activation.resigned_. Doing it here, on
@@ -559,6 +561,13 @@ class Window:
     def show(self) -> None:
         if str(self.web.URL() or "").startswith("about:") or self.web.URL() is None:
             self.load()                                     # never show an empty window
+        if store.TEST:                                      # the test copy: drawn, never seen, never in front
+            self.win.setAlphaValue_(0.0)
+            self.win.setIgnoresMouseEvents_(True)
+            self.win.orderBack_(None)
+            self.win.setFrameOrigin_((-30000.0, -30000.0))   # after ordering: macOS pulls a window on screen as it shows
+            self.bridge.push()
+            return
         NSApp.setActivationPolicy_(0)                       # a normal app while the window is open (see WindowEvents)
         NSApp.activateIgnoringOtherApps_(True)              # a menu-bar app has to ask for focus
         self.win.makeKeyAndOrderFront_(None)

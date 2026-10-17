@@ -67,7 +67,7 @@ from window import Activation, Window, front_app, front_pid   # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 WHISPER = ROOT / ".tools/whisper.cpp/build/bin/whisper-cli"
 SERVER = ROOT / ".tools/whisper.cpp/build/bin/whisper-server"
-PORT = 8711                   # localhost only; nothing listens outside this Mac
+PORT = 8712 if store.TEST else 8711   # localhost only; the test copy has its own engine
 DEMO_FEED = store.DIR / "demo_feed.wav"          # demo video only (mac/demo.py)
 DEMO_CMD = store.DIR / "demo.cmd"                 # demo video only: one instruction per line for the window
 SNAP_REQUEST = store.DIR / "snapshot.request"   # write a tab name into it; the window saves a picture of itself
@@ -243,7 +243,7 @@ class Engine:
         subprocess.run(["pkill", "-f", f"whisper-server.*--port {PORT}"], check=False)
         time.sleep(0.3)
         self.proc = subprocess.Popen(
-            [str(SERVER), "-m", str(MODEL), "--port", str(PORT), "--host", "127.0.0.1", "-t", "6", "-nt"],
+            [str(SERVER), "-m", str(MODEL), "--port", str(PORT), "--host", "127.0.0.1", "-t", "2" if store.TEST else "6", "-nt"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         # The very first start on a Mac compiles the GPU code for the model: measured 63 s on a fresh copy of the
@@ -655,6 +655,8 @@ class Mic:
 
 
 def NSApp_activate() -> None:
+    if store.TEST:                                       # the test copy never comes to the front
+        return
     from AppKit import NSApp
     NSApp.activateIgnoringOtherApps_(True)
 
@@ -670,6 +672,8 @@ def mic_names() -> list[str]:
 
 def chime(name: str) -> None:
     """A short system sound. Off with Settings → Sounds."""
+    if store.TEST:
+        return
     try:
         from AppKit import NSSound
         s = NSSound.soundNamed_(name)
@@ -795,6 +799,25 @@ class Typer:
         subprocess.run("pbcopy", input=text, text=True, check=False)
 
 
+class Offstage:
+    """
+    The test copy's stand-in for the pill, the text card and the typer: nothing on screen, nothing typed or copied.
+    Every call is written to <data>/offstage.jsonl, so a test can check what would have been shown or typed.
+    """
+
+    def __init__(self, who: str) -> None:
+        import types
+        self.who, self.view, self.on_action = who, types.SimpleNamespace(), None
+
+    def __getattr__(self, name: str):
+        def call(*args, **kw):
+            if self.who == "pill":                       # 20 calls a second: not worth a line each
+                return
+            with open(store.DIR / "offstage.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"who": self.who, "call": name, "args": args, "kw": kw}, default=str) + "\n")
+        return call
+
+
 class InditeApp(rumps.App):
     def __init__(self) -> None:
         super().__init__("indite", title="🎙", quit_button=None)
@@ -827,9 +850,11 @@ class InditeApp(rumps.App):
         self.notice = ""                 # one line for the window: backup done, restore result
         self.job: dict | None = None     # a file being transcribed: name, parts done, parts in all
         self.file_error = ""
-        self.pill = Pill()
-        self.preview = Preview()
+        self.pill = Offstage("pill") if store.TEST else Pill()           # the test copy: nothing on screen
+        self.preview = Offstage("card") if store.TEST else Preview()
         self.player = Player()           # a note's recording, played inside the window (Listen)
+        if store.TEST:
+            self.typer, self.player.vol = Offstage("typer"), 0.0
         for r in store.history():                        # nothing is recording yet: a LIVE left by a crash is stale
             if r.get("live"):
                 store.update(r["id"], live=None)
@@ -889,7 +914,8 @@ class InditeApp(rumps.App):
                 NSActivityUserInitiated, "dictation overlay must animate while another app is in front")
         except Exception as e:                           # noqa: BLE001 - a slower pill is better than no app
             print("could not switch off App Nap:", e)
-        threading.Thread(target=self.listen, daemon=True).start()
+        if not store.TEST:               # the test copy never listens to the keyboard
+            threading.Thread(target=self.listen, daemon=True).start()
         threading.Thread(target=self.warm_up, daemon=True).start()
         # Opening the app shows its window, like any Mac app; a timer, so it is built on the main thread once the
         # run loop is going. ponytail: a second `open` while running does nothing; handle reopen if that annoys.
@@ -900,6 +926,10 @@ class InditeApp(rumps.App):
     def _show_on_launch(self, timer) -> None:            # noqa: ANN001
         timer.stop()
         self.open_window(None)
+        if store.TEST:                   # no menu-bar icon, and nothing that brings it to the front
+            from AppKit import NSStatusBar
+            NSStatusBar.systemStatusBar().removeStatusItem_(self._nsapp.nsstatusitem)
+            return
         # Opening indite again (Finder, Spotlight, Dock) only activates the running copy; nothing appeared, so it
         # looked as if it was not running (founder, 15 Oct). Show the window whenever the app is activated.
         from AppKit import NSNotificationCenter
@@ -916,7 +946,7 @@ class InditeApp(rumps.App):
             print("key access (Accessibility) allowed:", can_listen())
         except Exception:                                # noqa: BLE001
             pass
-        if not self.prefs.get("asked_screen"):           # once: lets the meeting recorder hear the other people
+        if not self.prefs.get("asked_screen") and not store.TEST:           # once: lets the meeting recorder hear the other people
             try:
                 import Quartz
                 if not Quartz.CGPreflightScreenCaptureAccess():
@@ -1197,6 +1227,8 @@ class InditeApp(rumps.App):
         not a restart loop.
         """
         print("mic:", err)
+        if store.TEST:                   # the test copy never opens the mic, and never restarts by itself
+            return
         bundle = next((p for p in Path(sys.executable).parents if p.suffix == ".app"), None)
         if bundle is None or not restart_allowed(store.DIR / "mic-restart.last"):
             self.pill.show("error")
@@ -1675,6 +1707,8 @@ class InditeApp(rumps.App):
             verb, _, arg = line.partition(":")
             if verb == "open":
                 self.open_window(None)
+            elif verb == "quit" and store.TEST:                # the test copy: mac/testcopy.py stop
+                self.quit_all(None)
             elif verb == "place" and self.window:            # x,y,w,h in screen points, from the top-left
                 from AppKit import NSScreen, NSMakeRect
                 x, y, w, h = (float(v) for v in arg.split(","))
@@ -1853,4 +1887,7 @@ if __name__ == "__main__":
             assert all(len(p.encode("utf-16-le")) // 2 <= max(n, 2) for p in parts), (n, parts)
         print("ok")
         sys.exit(0)
+    if store.TEST:                                       # own log; a modal alert would appear on the founder's screen
+        sys.stdout = sys.stderr = open(store.DIR / "indite.log", "a", buffering=1, encoding="utf-8")
+        rumps.alert = lambda *a, **k: print("alert (not shown):", a, k)
     InditeApp().run()

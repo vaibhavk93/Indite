@@ -1407,7 +1407,8 @@
     $("#drawer").querySelectorAll(".pline[data-s]").forEach(l => {
       const on = (st.track === 2 || +l.dataset.k === (st.track || 0)) && st.t >= +l.dataset.s && st.t < +l.dataset.e;
       l.classList.toggle("now", on); if (on) now = l; });
-    const w = $("#drawer .pline.whole"); if (w) { w.classList.toggle("now", !!st.playing); if (st.playing) now = now || w; }
+    const w = $("#drawer .pline.whole"), on = !!st.playing || st.t > 0;   // paused mid-way: still show where you are
+    if (w) { w.classList.toggle("now", on); if (on) now = now || w; }
     // the word being spoken, inside the lit line
     $("#drawer").querySelectorAll(".w.w-now").forEach(x => x.classList.remove("w-now"));
     if (now) { const ws = [...now.querySelectorAll(".w")].filter(x => +x.dataset.w <= st.t); if (ws.length) ws[ws.length - 1].classList.add("w-now"); }

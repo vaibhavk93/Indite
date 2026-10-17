@@ -18,6 +18,12 @@ from pathlib import Path
 # INDITE_DATA points a second copy at another folder - used for the demo video, so a recording never shows a
 # person's real notes.
 DIR = Path(os.environ["INDITE_DATA"]) if os.environ.get("INDITE_DATA") else Path.home() / "Library/Application Support/indite"
+# INDITE_TEST=1: the hidden test copy (mac/testcopy.py, founder rule 17 Oct "never test on my screen"). It has its own
+# data folder and engine, and never listens to keys, opens the mic, types, copies, shows a pill / card / menu icon, or
+# comes to the front. Refuses to run on the real data folder.
+TEST = os.environ.get("INDITE_TEST") == "1"
+if TEST and not os.environ.get("INDITE_DATA"):
+    raise SystemExit("INDITE_TEST needs its own INDITE_DATA folder")
 HISTORY = DIR / "history.jsonl"
 PREFS = DIR / "prefs.json"
 MY_FIXES = DIR / "my_fixes.txt"
