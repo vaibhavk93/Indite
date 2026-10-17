@@ -914,8 +914,9 @@ class InditeApp(rumps.App):
                 NSActivityUserInitiated, "dictation overlay must animate while another app is in front")
         except Exception as e:                           # noqa: BLE001 - a slower pill is better than no app
             print("could not switch off App Nap:", e)
-        if not store.TEST:               # the test copy never listens to the keyboard
+        if not store.TEST:               # the test copy never listens to the keyboard, nor watches for calls
             threading.Thread(target=self.listen, daemon=True).start()
+            threading.Thread(target=self.watch_calls, daemon=True).start()
         threading.Thread(target=self.warm_up, daemon=True).start()
         # Opening the app shows its window, like any Mac app; a timer, so it is built on the main thread once the
         # run loop is going. ponytail: a second `open` while running does nothing; handle reopen if that annoys.
@@ -1603,6 +1604,30 @@ class InditeApp(rumps.App):
     def out(self, text: str) -> str:
         """Text as it leaves indite - typed, copied, previewed, exported - with swears masked if that is switched on."""
         return store.mask_swears(text, self.prefs.get("my_swears")) if self.prefs.get("mask_swears") else text
+
+    def watch_calls(self) -> None:
+        """Every 3 s: has a call app started using the mic? Then ask once (Settings → Ask to record calls)."""
+        import calls
+        while True:
+            time.sleep(3)
+            try:
+                self.call_tick(calls.call_app())
+            except Exception as e:                       # noqa: BLE001 - a missed question beats a dead watcher
+                print("call watch:", e)
+                time.sleep(60)
+
+    def call_tick(self, app: str) -> None:
+        """app: the call app on the mic now, or "". Asks at most once per call; never while recording or dictating."""
+        if not app:
+            self.call_asked = ""                         # the call ended: the next one may be asked about
+            return
+        if app == getattr(self, "call_asked", "") or self.meeting.running or self.started_at or self.busy \
+                or not self.prefs.get("ask_calls", True):
+            return
+        self.call_asked = app
+        print("call watch:", app, "is using the mic - asking")
+        self.preview.ask(f"{app} is using the microphone. Record this call?", ["Record", "Not now"],
+                         lambda i: i == 0 and not self.meeting.running and self.toggle_meeting())
 
     def toggle_meeting(self, _=None) -> None:            # noqa: ANN001
         """Start or stop a meeting recording (main thread)."""

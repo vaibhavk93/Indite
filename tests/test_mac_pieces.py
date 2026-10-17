@@ -70,3 +70,56 @@ def test_a_card_button_picked_in_settings_shows_at_once(tmp_path, monkeypatch):
     assert titles[-1][0] == "Summary" and len(titles) == 2
     a.reload_prefs()                                       # nothing changed: the buttons stay as they are
     assert len(titles) == 2
+
+
+def test_a_call_is_asked_about_once_and_never_while_recording():
+    import indite_mac as m
+    a = m.InditeApp.__new__(m.InditeApp)
+    asked = []
+    a.preview = type("P", (), {"ask": lambda s, text, choices, cb: asked.append((text, choices, cb))})()
+    a.meeting = type("M", (), {"running": False})()
+    a.started_at, a.busy, a.prefs = 0.0, False, {"ask_calls": True}
+    a.call_tick("Zoom")
+    a.call_tick("Zoom")                                    # the same call: asked once
+    assert len(asked) == 1 and asked[0][1] == ["Record", "Not now"]
+    a.call_tick("")                                        # it ended; the next call is asked about again
+    a.started_at = 5.0
+    a.call_tick("Teams")                                   # mid-dictation: wait
+    a.started_at = 0.0
+    a.meeting.running = True
+    a.call_tick("Teams")                                   # already recording: nothing to ask
+    a.meeting.running = False
+    a.prefs["ask_calls"] = False
+    a.call_tick("Teams")                                   # switched off
+    assert len(asked) == 1
+    a.prefs["ask_calls"] = True
+    started = []
+    a.toggle_meeting = lambda *_: started.append(1)
+    a.call_tick("Teams")
+    asked[-1][2](1)                                        # Not now
+    asked[-1][2](0)                                        # Record
+    assert len(asked) == 2 and started == [1]
+
+
+def test_the_card_can_ask_a_question_and_then_go_back_to_its_own_buttons():
+    import overlay
+    from AppKit import NSMakeRect
+    c = overlay.Preview()
+
+    class Offscreen:                                       # the real panel would appear on the screen
+        def frame(self): return NSMakeRect(0, 0, c.PW, c.PH)
+        def __getattr__(self, name): return lambda *a: None
+    c.panel = Offscreen()
+    c.on_action = lambda i: None
+    c.set_titles(["Make it a prompt", "Rewrite · Formal"])
+    got = []
+    c.asking = lambda i: got.append(i)
+    c._lay(["Record", "Not now", "Rewrite · Formal", "To do"])
+    c._show("Zoom is using the microphone. Record this call?", 2)
+    shown = [str(b.title()) for b in c.buttons if not b.isHidden()]
+    assert shown == ["Record", "Not now"], shown
+    c.target.handler(1)
+    assert got == [1]
+    c._show("Kal 3 baje meeting hai", True)                 # the next dictation: its own four buttons again
+    assert c.asking is None
+    assert [str(b.title()) for b in c.buttons if not b.isHidden()] == ["Ask AI", "Make it a prompt", "Rewrite · Formal", "To do"]

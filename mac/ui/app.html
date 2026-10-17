@@ -711,6 +711,12 @@
                 <button class="sw" id="set-auto_speakers" role="switch" aria-label="Find who spoke"></button>
               </div>
               <div class="item">
+                <div class="body"><b>Ask to record calls</b><p>When Zoom, Teams, Slack, FaceTime, WhatsApp or Webex starts
+                  using the microphone, the card above the pill asks “Record this call?”. indite never records without
+                  your click. Calls in a browser (Google Meet) are not noticed.</p></div>
+                <button class="sw" id="set-ask_calls" role="switch" aria-label="Ask to record calls"></button>
+              </div>
+              <div class="item">
                 <div class="body"><b>Dictionary</b><p id="fixes-line"></p></div>
                 <button class="btn" id="goto-dict">Open Dictionary</button>
               </div>
@@ -1067,6 +1073,7 @@
     if (document.activeElement !== ms) ms.value = (S.prefs.my_swears || []).join(", ");    // never under your cursor
     ms.onchange = () => send({ action: "pref", key: "my_swears", value: ms.value.split(",").map(w => w.trim()).filter(Boolean) });
     sw("#set-auto_speakers", "auto_speakers");
+    sw("#set-ask_calls", "ask_calls");
     sw("#set-keep_audio", "keep_audio");
     sw("#set-also_copy", "also_copy");
     sw("#set-review", "review");

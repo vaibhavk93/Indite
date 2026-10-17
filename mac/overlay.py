@@ -410,7 +410,9 @@ class Preview:
         self.busy = False             # an AI answer is on its way: the card stays until it lands
         self.armed_from = None        # pointer position when the card appeared; clicks wait until it moves
         self.target = CardTarget.alloc().init()
-        self.target.handler = lambda i: self.on_action and self.on_action(i)
+        self.asking = None            # ask(): a one-off question ("Record this call?") owns the buttons until answered
+        self.titles = list(self.ACTIONS)
+        self.target.handler = lambda i: self.asking(i) if self.asking else (self.on_action and self.on_action(i))
         self.buttons = []
         x = 16.0
         for i, title in enumerate(self.ACTIONS):
@@ -428,8 +430,12 @@ class Preview:
 
     def set_titles(self, titles: list[str]) -> None:
         """Names the 2nd and 3rd buttons and lays the row out again (main thread, at start-up)."""
+        self.titles = [self.ACTIONS[0], *titles, self.ACTIONS[3]]
+        self._lay(self.titles)
+
+    def _lay(self, titles: list[str]) -> None:
         x = 16.0
-        for b, title in zip(self.buttons, [self.ACTIONS[0], *titles, self.ACTIONS[3]]):
+        for b, title in zip(self.buttons, titles):
             b.setTitle_(title)
             b.sizeToFit()
             b.setFrameOrigin_((x, 6))
@@ -439,6 +445,16 @@ class Preview:
         """buttons: True = the AI actions and To do; "todo" = To do only (AI off); False = none (not a saved note)."""
         from PyObjCTools import AppHelper
         AppHelper.callAfter(self._show, text, buttons)
+
+    def ask(self, text: str, choices: list[str], on_choice) -> None:
+        """A question with its own buttons (at most 4), e.g. "Record this call?" [Record] [Not now]."""
+        from PyObjCTools import AppHelper
+
+        def go():
+            self.asking = lambda i: (setattr(self, "asking", None), self._lay(self.titles), self.hide_now(), on_choice(i))
+            self._lay(choices + self.titles[len(choices):])
+            self._show(text, len(choices))
+        AppHelper.callAfter(go)
 
     def working(self, text: str) -> None:
         """An AI answer is on its way: say so, drop the buttons, and stay up until answer() or failed()."""
@@ -460,9 +476,13 @@ class Preview:
 
     def _show(self, text: str, buttons: bool | str = False, head: bool = False) -> None:
         """head: when too long, keep the start (an answer: its "copied" line), not the end (a dictation: newest)."""
-        self.with_buttons = bool(buttons and self.on_action)
+        asked = buttons if isinstance(buttons, int) and not isinstance(buttons, bool) else 0   # ask(): how many
+        if self.asking and not asked:                             # anything else replaces an unanswered question
+            self.asking = None
+            self._lay(self.titles)
+        self.with_buttons = bool(asked or (buttons and self.on_action))
         for i, b in enumerate(self.buttons):
-            b.setHidden_(not self.with_buttons or (buttons == "todo" and i != 3))
+            b.setHidden_(not self.with_buttons or (buttons == "todo" and i != 3) or (asked and i >= asked))
         extra = self.BH if self.with_buttons else 0.0
         self.label.setStringValue_(text)
         tw = self.PW - 32
