@@ -246,6 +246,7 @@
   .md .mh { font-weight: 650; margin: 10px 0 2px; } .md .mh:first-child { margin-top: 0; }
   .md .mli { padding-left: 14px; position: relative; } .md .mli::before { content: "•"; position: absolute; left: 2px; color: var(--ink3); }
   .md .mgap { height: 6px; }
+  .todo-add { font-size: 13px; padding: 7px 10px; background: var(--well); border-color: transparent; border-radius: 8px; }
   .md .mrow { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); }
   .md .mrow span:not(:first-child) { color: var(--ink2); }
   .dpend { margin: 6px 22px 10px; padding: 12px 14px; border-radius: 10px; background: var(--well); }
@@ -591,7 +592,7 @@
     </section>
 
     <section class="pane" id="pane-todo" hidden>
-      <div class="addrow"><input class="pick wide" id="todo-add" aria-label="New to-do" placeholder="Add a to-do and press Return" spellcheck="false"></div>
+      <div class="addrow"><input class="pick wide todo-add" id="todo-add" aria-label="New to-do" placeholder="Add a to-do and press Return" spellcheck="false"></div>
       <div id="todo-list"></div>
     </section>
 
@@ -745,6 +746,23 @@
                 <div class="body"><b>AI on notes</b><p>On: Ask AI works on any note, with the service you pick below. Off: nothing ever leaves this Mac.</p></div>
                 <button class="sw" id="set-ai" role="switch" aria-label="AI on notes"></button>
               </div>
+              <div class="item aiopt">
+                <div class="body"><b>Answers come from</b><p>The note’s text is sent there, and only when you ask.</p></div>
+                <select class="pick" id="set-ai_provider" aria-label="AI provider"></select>
+              </div>
+              <div class="item aiopt" id="ai-claude-row">
+                <div class="body"><b>Claude login</b><p id="ai-claude"></p></div>
+                <button class="btn" id="ai-login">Sign in…</button>
+              </div>
+              <div class="item aiopt" id="ai-key-row">
+                <div class="body"><b>API key</b><p id="ai-key-why"></p>
+                  <input class="pick wide" id="ai-key" aria-label="API key" type="password" placeholder="Paste the key" spellcheck="false" style="margin-top:8px"></div>
+                <button class="btn" id="ai-key-clear">Remove</button><button class="btn go" id="ai-key-save">Save</button>
+              </div>
+              <div class="item aiopt" id="ai-model-row">
+                <div class="body"><b>Model</b><p id="ai-model-why"></p></div>
+                <input class="pick" id="set-ai_model" spellcheck="false" aria-label="Model">
+              </div>
               <div class="item">
                 <div class="aiwhat">
                   <div><b>With an AI login or key</b><ul>
@@ -765,23 +783,6 @@
               <div class="item"><div class="body"><p><b style="display:inline">Login or key: the same features.</b>
                 A Claude login uses your Claude plan. An API key (from Anthropic, OpenAI or OpenRouter) is billed by that company each time you use it. Either way only
                 the note you ask about is sent, and only when you ask.</p></div></div>
-              <div class="item aiopt">
-                <div class="body"><b>Answers come from</b><p>The note’s text is sent there, and only when you ask.</p></div>
-                <select class="pick" id="set-ai_provider" aria-label="AI provider"></select>
-              </div>
-              <div class="item aiopt" id="ai-claude-row">
-                <div class="body"><b>Claude login</b><p id="ai-claude"></p></div>
-                <button class="btn" id="ai-login">Sign in…</button>
-              </div>
-              <div class="item aiopt" id="ai-key-row">
-                <div class="body"><b>API key</b><p id="ai-key-why"></p>
-                  <input class="pick wide" id="ai-key" aria-label="API key" type="password" placeholder="Paste the key" spellcheck="false" style="margin-top:8px"></div>
-                <button class="btn" id="ai-key-clear">Remove</button><button class="btn go" id="ai-key-save">Save</button>
-              </div>
-              <div class="item aiopt" id="ai-model-row">
-                <div class="body"><b>Model</b><p id="ai-model-why"></p></div>
-                <input class="pick" id="set-ai_model" spellcheck="false" aria-label="Model">
-              </div>
             </div>
           </div>
           <div class="sgroup" data-g="privacy"><h2>Privacy</h2>
@@ -1613,10 +1614,11 @@
     if (busy || nAns) h += `<div class="dhd">Answers${nAns ? ` <span>${nAns}</span>` : ""}<button class="lnk" id="d-jump">New request ↓</button></div>`;
     if (busy) h += `<div class="dpend"><b>${busy === "finding who spoke" ? "Finding who spoke" : busy === "lining up the words" ? "Lining up words with the sound" : busy === "finishing" ? "Finishing the last words" : "Working on: " + esc(busy)}…</b>
         <div class="dbar"><i></i></div><p>${aiWait(r)}You can close this and keep working. The answer is saved on the note.</p></div>`;
-    const doc = (key, title, when, body, extra) => `<div class="doc"><div class="dh"><h4>${title}</h4>${when}<button class="copy dcp" data-copy="${esc(key)}" aria-label="Copy" title="Copy"><svg width="14" height="14"><use href="#i-copy"/></svg></button></div>
+    const noRepeat = (title, body) => body.replace(new RegExp("^\\s*#{1,4}\\s*" + title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\n", "i"), "");
+    const doc = (key, title, when, body, extra) => (body = noRepeat(title, body), `<div class="doc"><div class="dh"><h4>${title}</h4>${when}<button class="copy dcp" data-copy="${esc(key)}" aria-label="Copy" title="Copy"><svg width="14" height="14"><use href="#i-copy"/></svg></button></div>
         ${long(body) ? `<div class="md${more(key) ? "" : " clamp"}">${md(body)}</div>
           <button class="lnk" data-more="${esc(key)}">${more(key) ? "Show less" : "Show more"}</button>` : `<div class="md">${md(body)}</div>`}
-        <div class="df">${extra || ""}<button class="lnk mute" data-del="${esc(key)}">Remove</button></div></div>`;
+        <div class="df">${extra || ""}<button class="lnk mute" data-del="${esc(key)}">Remove</button></div></div>`);
     if (r.improved) {
       const v = drawerView[r.id] || "improved";
       h += doc("improved", "Improved wording", `<div class="seg mini"><button aria-checked="${v === "improved"}" data-v="improved">Improved</button><button aria-checked="${v === "original"}" data-v="original">Original</button></div>`,
@@ -1918,16 +1920,14 @@
     const apps = {}; d.forEach(r => { const a = r.app || "Unknown"; apps[a] = (apps[a] || 0) + W(r); });
     const top = Object.entries(apps).sort((a, b) => b[1] - a[1]).slice(0, 7), am = Math.max(1, ...top.map(x => x[1]));
     const hours = Array(24).fill(0); d.forEach(r => { hours[new Date(r.at * 1000).getHours()] += W(r); }), hm = Math.max(1, ...hours);
+    const copied = d.filter(r => r.where === "copied").length;   // was a lone tile between sections (UI review I2)
     h += sec("Where &amp; when") + `<div class="igrid"><div class="ibox"><h3>Where you dictate<span>words</span></h3>${top.map(([a, v]) =>
-      `<div class="hbar"><span>${esc(a)}</span><span class="t"><i style="width:${v / am * 100}%"></i></span><span class="num">${k(v)}</span></div>`).join("") || "<p class='fine'>No dictations yet.</p>"}</div>
+      `<div class="hbar"><span>${esc(a)}</span><span class="t"><i style="width:${v / am * 100}%"></i></span><span class="num">${k(v)}</span></div>`).join("") || "<p class='fine'>No dictations yet.</p>"}${d.length ? `<p class="fine" style="text-align:left">${Math.round(copied / d.length * 100)}% went to the clipboard (no text box to type into)</p>` : ""}</div>
       <div class="ibox"><h3>When you dictate<span>by hour</span></h3><div class="bars">${hours.map((v, i) =>
       `<div class="${v ? "" : "z"}" style="height:${Math.max(2, v / hm * 100)}%" title="${i}:00 - ${v} words"></div>`).join("")}</div>
       <div class="axis"><span>midnight</span><span>noon</span><span>11 pm</span></div></div></div>`;
     // meetings, files, quality
     const meets = all.filter(r => r.kind === "meeting"), files = all.filter(r => r.kind === "file");
-    const copied = d.filter(r => r.where === "copied").length;
-    h += `<div class="kpis">` +
-      kpi(d.length, "", `dictations · ${d.length ? Math.round(copied / d.length * 100) : 0}% went to the clipboard`) + `</div>`;
     h += sec("Meetings, files &amp; AI") + `<div class="kpis">` +
       kpi(meets.length, "", `${meets.length === 1 ? "meeting" : "meetings"} · ${Math.round(sum(meets, r => r.seconds || 0) / 60)} min`) +
       kpi(files.length, "", `${files.length === 1 ? "file" : "files"} · ${Math.round(sum(files, r => r.seconds || 0) / 60)} min of audio`) +

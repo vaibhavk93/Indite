@@ -387,7 +387,10 @@ class Bridge(NSObject):
             self.app.toggle_meeting()
         elif act == "rename":                            # a speaker's name in one note: {"Others": "Rohit"}
             row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
-            old, new = str(msg.get("who", "")), " ".join(str(msg.get("name", "")).split())[:40]
+            old, new = str(msg.get("who", "")), " ".join(str(msg.get("name", "")).split())
+            if len(new) > 40:                            # cut at a word, never mid-word, and say so
+                new = new[:41].rsplit(" ", 1)[0] if " " in new[:41] else new[:40]
+                self.js(f"toast({('Names are kept to 40 letters: ' + new)!r})")
             if row and old and new:
                 names = dict(row.get("names") or {})
                 names[old] = new
