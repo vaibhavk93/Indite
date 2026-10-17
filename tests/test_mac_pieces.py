@@ -123,3 +123,10 @@ def test_the_card_can_ask_a_question_and_then_go_back_to_its_own_buttons():
     c._show("Kal 3 baje meeting hai", True)                 # the next dictation: its own four buttons again
     assert c.asking is None
     assert [str(b.title()) for b in c.buttons if not b.isHidden()] == ["Ask AI", "Make it a prompt", "Rewrite · Formal", "To do"]
+
+
+def test_the_pill_is_placed_on_a_real_screen_at_the_bottom():
+    import overlay
+    from AppKit import NSScreen, NSMakeRect, NSIntersectsRect
+    x, y = overlay.bottom_centre(116, 96)
+    assert any(NSIntersectsRect(NSMakeRect(x, y, 116, 30), s.frame()) for s in NSScreen.screens())

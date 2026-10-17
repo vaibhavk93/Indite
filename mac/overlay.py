@@ -208,6 +208,16 @@ class PillView(NSView):
         rest.drawAtPoint_withAttributes_((x + tw, y), attrs)
 
 
+def bottom_centre(width: float, lift: float) -> tuple[float, float]:
+    """Where a panel goes: centred at the bottom of the screen the pointer is on (two monitors: not always the main
+    one, which was fixed once at start-up - UI review P3), `lift` points above the bottom edge."""
+    from AppKit import NSEvent, NSMouseInRect
+    at = NSEvent.mouseLocation()
+    screen = next((sc.frame() for sc in NSScreen.screens() if NSMouseInRect(at, sc.frame(), False)),
+                  NSScreen.mainScreen().frame())
+    return screen.origin.x + (screen.size.width - width) / 2, screen.origin.y + lift
+
+
 class Pill:
     """The window around the view. Created once, shown and hidden as the state changes."""
 
@@ -300,6 +310,7 @@ class Pill:
         # Ask the window, not our own flag: hiding or minimising indite takes the panel off screen behind our back,
         # and the flag then said "showing" forever - the pill never came back (founder, 15 Oct)
         if not self.visible or not self.panel.isVisible():
+            self.panel.setFrameOrigin_(bottom_centre(W, 96))   # on the screen you are working on
             self.panel.orderFrontRegardless()         # front, but never focused
             self.visible = True
         # Full strength at once, not a fade. The fade added 0.18 an frame and assumed 20 frames a second, which is
@@ -500,6 +511,9 @@ class Preview:
             self.label.setLineBreakMode_(AppKit.NSLineBreakByWordWrapping)
             self.label.setMaximumNumberOfLines_(0)
         f = self.panel.frame()
+        if not self.panel.isVisible() or self.panel.alphaValue() <= 0.0:   # appearing: on the screen you are on
+            x, self.base_y = bottom_centre(self.PW, 96 + H + 10)
+            f.origin.x = x
         self.panel.setFrame_display_(NSMakeRect(f.origin.x, self.base_y, self.PW, h), True)   # grows upward
         for v in (self.box, self.glass):
             v.setFrame_(NSMakeRect(0, 0, self.PW, h))
