@@ -823,6 +823,36 @@ class Typer:
         subprocess.run("pbcopy", input=text, text=True, check=False)
 
 
+# The logo's five voice bars (mac/brand/logo.svg: the middle bar is the "i", stem + dot), in SVG units
+LOGO_BARS = [(262, 452, 64, 200), (370, 392, 64, 320), (480, 440, 64, 372), (590, 392, 64, 320), (698, 452, 64, 200)]
+
+
+def menubar_icon():
+    """indite's own mark for the menu bar, drawn here (no image file), as a template image: macOS colours it for a
+    light or dark menu bar. Replaces the 🎙 emoji (DESIGN.md: our own line icons, never emoji)."""
+    from AppKit import NSBezierPath, NSColor, NSImage, NSMakeRect, NSMakeSize
+    size, top, scale = 18.0, 294.0, 15.0 / 518.0               # the bars span 518 units: ~15 pt tall
+    left = (size - 500 * scale) / 2
+
+    def draw(_rect):
+        NSColor.blackColor().set()
+        for x, y, w, h in LOGO_BARS:
+            NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
+                NSMakeRect(left + (x - 262) * scale, 1.5 + (y - top) * scale, w * scale, h * scale),
+                w * scale / 2, w * scale / 2).fill()
+        NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(left + (466 - 262) * scale, 1.5 + (294 - top) * scale,
+                                                          92 * scale, 92 * scale)).fill()   # the dot of the i
+        return True
+    img = NSImage.imageWithSize_flipped_drawingHandler_(NSMakeSize(size, size), True, draw)
+    img.setTemplate_(True)
+    return img
+
+
+def status_text(title: str) -> str:
+    """What sits next to the icon: the old emoji titles become short text (⚠ permission, … busy, ● recording, 3/10)."""
+    return {"🎙": "", "🔴": "●", "⏳": "…"}.get(title, title.replace("🎙", "").replace("📄 ", "").strip())
+
+
 class Offstage:
     """
     The test copy's stand-in for the pill, the text card and the typer: nothing on screen, nothing typed or copied.
@@ -844,7 +874,7 @@ class Offstage:
 
 class InditeApp(rumps.App):
     def __init__(self) -> None:
-        super().__init__("indite", title="🎙", quit_button=None)
+        super().__init__("indite", title="", quit_button=None)   # the icon is set once the menu bar exists
         self.engine = Engine()
         self.mic = Mic()
         self.typer = Typer()
@@ -957,6 +987,13 @@ class InditeApp(rumps.App):
             from AppKit import NSStatusBar
             NSStatusBar.systemStatusBar().removeStatusItem_(self._nsapp.nsstatusitem)
             return
+        try:
+            button = self._nsapp.nsstatusitem.button()
+            button.setImage_(menubar_icon())
+            button.setImagePosition_(2)                  # NSImageLeft: the icon, then any status text
+        except Exception as e:                           # noqa: BLE001 - a text title is better than no menu
+            print("menu-bar icon:", e)
+            self.title = "indite"
         # Opening indite again (Finder, Spotlight, Dock) only activates the running copy; nothing appeared, so it
         # looked as if it was not running (founder, 15 Oct). Show the window whenever the app is activated.
         from AppKit import NSNotificationCenter
@@ -1582,6 +1619,9 @@ class InditeApp(rumps.App):
                 store.update(row["id"], ai=answers + [{"action": action, "label": label, "text": answer,
                                                        "at": time.time()}])
             print(f"ai {action}: {time.time() - t0:.1f}s")
+            secs = (list(self.prefs.get("ai_secs") or []) + [round(time.time() - t0, 1)])[-30:]
+            store.set_pref("ai_secs", secs)              # the typical wait, shown while the next answer is coming
+            self.prefs["ai_secs"] = secs
             if self.prefs.get("also_copy", True) or self.card_job == (row["id"], action):
                 self.typer.copy(self.out(answer))        # on the clipboard the moment it is shown; masked like all output
                 if self.window and self.card_job != (row["id"], action):
@@ -1894,6 +1934,7 @@ class InditeApp(rumps.App):
         it from a worker killed the whole start-up thread once the main thread had drawn anything (16 Oct: warm_up
         died with NSInternalInconsistencyException, and the app sat there with no engine and a frozen pill).
         """
+        text = status_text(text)
         if threading.current_thread() is threading.main_thread():
             self.title = text
             return
@@ -1945,6 +1986,8 @@ if __name__ == "__main__":
     if "--selftest" in sys.argv:                         # uv run python mac/indite_mac.py --selftest
         assert apply_fixes("Thik hai. thik", {"thik": "theek"}) == "Theek hai. theek"   # a capital stays
         assert apply_fixes("PTM", {"ptm": "Paytm"}) == "Paytm"
+        assert [status_text(t) for t in ("🎙", "🎙⚠", "🎙…", "🔴", "⏳", "📄 3/10")] == ["", "⚠", "…", "●", "…", "3/10"]
+        assert menubar_icon().isTemplate() and menubar_icon().size().width == 18
         assert utf16_chunks("", 20) == []
         assert utf16_chunks("hello", 20) == ["hello"]
         assert utf16_chunks("abcdef", 2) == ["ab", "cd", "ef"]

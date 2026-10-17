@@ -99,6 +99,7 @@ Dynamic colour (Material You) is **off**: our colours on every phone.
 | Tell once, then go | `.toast` | Bottom centre; name what happened. Stays ~60 ms per character (1.8-8 s); 5 s with Undo |
 | Needs attention | `.banner` | `--accent-soft`, one line + one button |
 | Nothing here yet | `.empty` | Icon in a well, a heading, a next step |
+| Menu-bar icon | `menubar_icon()` | indite's five bars as a template image (macOS colours it); status as short text beside it: ⚠ … ● 3/10. Never emoji |
 | Work on one note | `.drawer` | Right side, tabs **Ask AI \| Listen** (`.dtabs`) |
 | Play a recording | `.plisten` | Looks like the note list: 22 px gutter, `.who` speaker colours, 14 px text, hairline rows. Player = one `--well` strip (round ink play button, thin orange-fill slider). Line being spoken = `--well`; word being spoken = `--accent-soft` + `--accent`. Line actions = `.copy` icons on hover (play, copy, pen). No orange box or bar (founder, 17 Oct) |
 | Settings | `.card` + `.item` | Grouped, label left, control right; with no room the control drops under the label (label ≥ 220 px) |

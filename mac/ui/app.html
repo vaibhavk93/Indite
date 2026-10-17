@@ -1582,6 +1582,10 @@
         const k = (byId(id) || {}).kind; go(k === "meeting" ? "meetings" : k === "file" ? "files" : "home"); openDrawer(id); }, "View");
     aiWas = { ...now };
   }
+  // "Usually about 8 s": the middle of the last 30 real answers; nothing until there are 3 (no guessing)
+  const aiWait = r => { const t = [...(S.prefs.ai_secs || [])].sort((a, b) => a - b); if (t.length < 3) return "";
+    const mid = Math.round(t[Math.floor(t.length / 2)]), long = (r.text || "").length > 6000;
+    return `Usually about ${mid} s${long ? ", longer for a note this long" : ""}. `; };
   function drawDrawer() {
     $("#drawer").setAttribute("aria-label", drawerMode === "listen" ? "Listen" : "Ask AI");   // say which tab is open
     if (!drawerId) return;
@@ -1608,7 +1612,7 @@
     const nAns = answers.length + (r.improved ? 1 : 0), more = k => drawerView["more:" + r.id + k];
     if (busy || nAns) h += `<div class="dhd">Answers${nAns ? ` <span>${nAns}</span>` : ""}<button class="lnk" id="d-jump">New request ↓</button></div>`;
     if (busy) h += `<div class="dpend"><b>${busy === "finding who spoke" ? "Finding who spoke" : busy === "lining up the words" ? "Lining up words with the sound" : busy === "finishing" ? "Finishing the last words" : "Working on: " + esc(busy)}…</b>
-        <div class="dbar"><i></i></div><p>You can close this and keep working. The answer is saved on the note.</p></div>`;
+        <div class="dbar"><i></i></div><p>${aiWait(r)}You can close this and keep working. The answer is saved on the note.</p></div>`;
     const doc = (key, title, when, body, extra) => `<div class="doc"><div class="dh"><h4>${title}</h4>${when}<button class="copy dcp" data-copy="${esc(key)}" aria-label="Copy" title="Copy"><svg width="14" height="14"><use href="#i-copy"/></svg></button></div>
         ${long(body) ? `<div class="md${more(key) ? "" : " clamp"}">${md(body)}</div>
           <button class="lnk" data-more="${esc(key)}">${more(key) ? "Show less" : "Show more"}</button>` : `<div class="md">${md(body)}</div>`}
