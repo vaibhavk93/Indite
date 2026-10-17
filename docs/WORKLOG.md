@@ -4,6 +4,20 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-17 (22:35-23:05) · Claude Code (Opus 5.5) · Rest of the Mac roadmap, copy review
+
+- Built and tested (unit tests, self-checks, headless Chrome renders, the new hidden test copy): card buttons in
+  Settings; meeting clock + Both tracks; word-time healing; paused dictations keep the lit word; test copy;
+  Record this call?; own hidden words; setup step 5; line speaker fix + join with Undo; speech-test tools.
+- Bugs found and fixed: card-button reload code had landed inside start-up (would not apply until restart);
+  word times saved as all-zero when the engine was busy; word times kept after a fix changed the word count;
+  a test leaked a fake thread maker into later tests; "Nothing to join" wording.
+- Mistakes of mine, fixed: a plain `open` reached the test copy (founder's indite down ~30 s; now `open -n -g`);
+  running the bundled Python wrote .pyc files into the app and broke its signature (warning shown once; removed,
+  signature valid, app restarted). Both are in HANDOFF.
+- Copy: independent agent reviewed every UI string; 12 must-fixes and most should/nice items applied. 17 tests pass.
+- Answered: Wispr cleanup levels without AI (None yes, filler words yes, grammar/clarity/polish need a model).
+
 ## 2026-10-17 (22:30) · Claude Code (Opus 5.5) · Listen view restyled to indite's own look (#283)
 
 - Listen panel now matches the note list: gutter, `.who` speaker colours, 14 px text, hairline rows, icon actions on

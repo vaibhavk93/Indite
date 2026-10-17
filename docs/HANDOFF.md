@@ -147,6 +147,19 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+**17 Oct 23:05 — Mac roadmap: everything buildable without the founder is built; copy reviewed.**
+- New: Listen view in indite's look; card buttons picked in Settings (`card_buttons`); meeting tracks on one clock
+  (`Track.catch_up`, arrival-stamped system audio) + "Both" playback (`clock` on the note); word times rebuilt when
+  words change (`store.wt_fits`) or the engine heard nothing; lines remember their track (`k`, `store.track_of`);
+  per-line speaker fix + join (Listen → click the name); "Record this call?" (`mac/calls.py`, CoreAudio process
+  list, `ask_calls`); own hidden words (`my_swears`); setup step 5 (card); speech test (`speech_test`, ⋯ → "This is
+  exactly what I said", To check filter, `python mac/speechset.py score` on a private 8712 engine).
+- Hidden test copy: `mac/testcopy.py` (see "Testing without disturbing the founder"). Stop it after use.
+- Copy: independent review (63 rows) applied; naming rules in DESIGN.md §5. Left: menu-bar emoji icon, an AI
+  wait-time hint (needs real timings).
+- Waiting on the founder: DECISIONS D14-D19 (Dictionary names, 35 checked dictations, AI order test, live clean-up,
+  ₹/lakh, on-screen checks). Not pushed yet.
+
 **17 Oct 17:15 — Mac: text card AI buttons + To do, clipboard rules, Mark likely mistakes, Insights grouped.**
 - Every dictation is typed AND copied (`also_copy`); every AI answer is copied when it lands; the card shows it.
 - Mark likely mistakes (`mac/review.py`, setting `review`, on for the founder): after typing, a second listen with
