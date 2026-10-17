@@ -402,18 +402,26 @@ class MicStuck(MicProblem):
 CARD_DEFAULTS = [("prompt", ""), ("rewrite", "Formal English")]   # most dictations go to Claude; Formal was most used
 
 
-def card_slots(uses: dict) -> list[tuple[str, str]]:
+def card_slots(uses: dict, pins: list | None = None) -> list[tuple[str, str]]:
     """
-    The text card's 2nd and 3rd buttons: the two AI actions asked most often (each with the style or language it was
-    last asked with), topped up from CARD_DEFAULTS. One tap, no settings page (critic, 17 Oct).
+    The text card's 2nd and 3rd buttons. A button you picked in Settings ("action|extra") stays put; an "Automatic"
+    one is filled with the AI actions asked most often (each with the style or language it was last asked with),
+    topped up from CARD_DEFAULTS. One button per action.
     """
-    ranked = [tuple(k.split("|", 1)) for k, _ in sorted(uses.items(), key=lambda kv: -kv[1])
-              if "|" in k and k.split("|", 1)[0] in ai.ACTIONS]
+    ok = lambda k: isinstance(k, str) and "|" in k and k.split("|", 1)[0] in ai.ACTIONS and not k.startswith("custom|")
+    pins = [tuple(k.split("|", 1)) if ok(k) else None for k in (list(pins or []) + [None, None])[:2]]
+    ranked = [tuple(k.split("|", 1)) for k, _ in sorted(uses.items(), key=lambda kv: -kv[1]) if ok(k)]
+    fill = iter(x for x in ranked + CARD_DEFAULTS if x[0] not in [p[0] for p in pins if p])
     out: list[tuple[str, str]] = []
-    for a, x in ranked + CARD_DEFAULTS:
-        if a not in [o[0] for o in out]:              # one button per action
-            out.append((a, x))
-    return out[:2]
+    for pin in pins:
+        if pin and pin[0] not in [o[0] for o in out]:
+            out.append(pin)
+            continue
+        for x in fill:
+            if x[0] not in [o[0] for o in out]:
+                out.append(x)
+                break
+    return out
 
 
 def slot_title(action: str, extra: str) -> str:
@@ -826,11 +834,17 @@ class InditeApp(rumps.App):
             if r.get("live"):
                 store.update(r["id"], live=None)
         self.preview.on_action = self.card_action
-        self.card_slots = card_slots(self.prefs.get("ai_uses") or {})   # fixed until the next start: no button
-        self.preview.set_titles([slot_title(a, x) for a, x in self.card_slots])   # moves under your finger
+        self.set_card_buttons()          # fixed until the next start or a Settings change: no button moves under your finger
         self.card_note = None            # the note the text card is showing, for its AI buttons
         self.card_job = None             # (note id, action) asked from the card: its answer goes back to the card
         self.pill.set_clear(self.prefs["pill_clear"])
+        if getattr(self, "card_pins", None) != self.prefs.get("card_buttons"):
+            self.set_card_buttons()                      # picked in Settings: show it at once
+
+    def set_card_buttons(self) -> None:
+        self.card_pins = list(self.prefs.get("card_buttons") or [])
+        self.card_slots = card_slots(self.prefs.get("ai_uses") or {}, self.card_pins)
+        self.preview.set_titles([slot_title(a, x) for a, x in self.card_slots])
         self.done_until = 0.0
         self.done_state = "done"
         # 20 times a second, on the main thread: the only place the pill is ever touched.

@@ -47,6 +47,7 @@ DEFAULTS = {
     "backup_audio": False,      # include recordings and transcribed files in a backup
     "auto_speakers": True,      # find who spoke in every file and meeting, without a click
     "ai_uses": {},              # "action|extra" -> times asked; picks the text card's two AI buttons
+    "card_buttons": ["", ""],   # the text card's 2nd and 3rd buttons: "action|extra" you picked, or "" = your most used
     "mask_swears": False,       # common swear words written as b**** (founder asked; off by default)
     "digits": True,             # number words as digits: "chaar baje" -> "4 baje"
     "setup_done": False,

@@ -46,5 +46,10 @@ def test_the_text_cards_two_ai_buttons_follow_use():
     assert card_slots({"translate|Hindi (Devanagari)": 3, "summary|": 2, "prompt|": 1}) == [
         ("translate", "Hindi (Devanagari)"), ("summary", "")]                                # most asked first
     assert card_slots({"rewrite|Polite": 2, "rewrite|Formal English": 1}) == [("rewrite", "Polite"), ("prompt", "")]
+    used = {"summary|": 5, "prompt|": 3}
+    assert card_slots(used, ["translate|Hindi (Devanagari)", ""]) == [("translate", "Hindi (Devanagari)"), ("summary", "")]
+    assert card_slots(used, ["", "summary|"]) == [("prompt", ""), ("summary", "")]                 # a pin keeps its own place
+    assert card_slots(used, ["summary|", "summary|"]) == [("summary", ""), ("prompt", "")]         # never the same twice
+    assert card_slots(used, ["gone|x", "custom|hi"]) == [("summary", ""), ("prompt", "")]          # a bad pin = automatic
     assert slot_title("translate", "Hindi (Devanagari)") == "Translate · Hindi"
     assert slot_title("prompt", "") == "Make it a prompt"

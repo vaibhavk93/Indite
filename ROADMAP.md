@@ -52,7 +52,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 - **Dictation anywhere:** hold a key (or tap twice for hands-free), speak, text typed in ~0.8 s; Esc cancels; smart
   output (typed into a text box, else copied); typed words **also on the clipboard** (setting, 17 Oct); long holds cut
   at quiet points; password boxes never typed into; long text ~40x fewer key events (16 Oct); pill with live levels.
-- **Text card after a dictation:** your words, then **Ask AI · your two most-used AI actions · To do** (17 Oct); takes
+- **Text card after a dictation:** your words, then **Ask AI · two AI buttons (your most used, or picked in Settings) · To do** (17 Oct); takes
   clicks only after the pointer moves onto it; answers wrap and are copied the moment they land.
 - **Notes window:** Dictations, Meetings, Files, To do, Dictionary, Insights, Settings, Help; stars, search, backup and
   restore; play or show a kept recording (17 Oct); one copy icon everywhere (17 Oct); swear masking keeps the real

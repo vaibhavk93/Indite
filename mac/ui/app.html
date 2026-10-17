@@ -270,6 +270,7 @@
         color: var(--ink2); display: grid; place-items: center; cursor: default; margin-top: -4px; }
   .dx:hover { color: var(--ink); border-color: var(--ink3); }
   .drow { display: flex; gap: 8px; align-items: center; } .drow .pick { flex: 1; max-width: none; }
+  #cardbtns .drow { flex: none; } #cardbtns .pick { flex: none; width: 170px; }
   .seg.mini button { font-size: 11.5px; padding: 2px 9px; }
   .dempty { padding: 30px 22px; } .dempty p { color: var(--ink2); margin: 6px 0 14px; }
   .dask textarea { resize: none; line-height: 1.45; min-height: 30px; max-height: 9.5em; overflow-y: auto; padding: 6px 9px; }
@@ -657,6 +658,12 @@
                   the clipboard.</p></div>
                 <button class="sw" id="set-preview" role="switch" aria-label="Show text after dictating"></button>
               </div>
+              <div class="item" id="cardbtns">
+                <div class="body"><b>Card buttons</b><p>The two AI buttons between Ask AI and To do. Automatic uses the
+                  two you ask for most.</p></div>
+                <div class="drow"><select class="pick" id="set-cb0" aria-label="Second card button"></select>
+                  <select class="pick" id="set-cb1" aria-label="Third card button"></select></div>
+              </div>
               <div class="item">
                 <div class="body"><b>Pill transparency</b><p>100% is clear glass; lower adds a tint behind the text.
                   The pill shows for a moment as you change it.</p></div>
@@ -1028,6 +1035,20 @@
     seg("#set-theme", { light: "Light", dark: "Dark", system: "Like the Mac" }, S.prefs.theme || "light",
         v => send({ action: "pref", key: "theme", value: v }));
     sw("#set-preview", "preview");
+    // the card's two AI buttons: Automatic, or an action (Rewrite and Translate with their style or language)
+    $("#cardbtns").hidden = !S.prefs.preview || !S.prefs.ai;
+    const cb = S.prefs.card_buttons || ["", ""], A = S.ai_actions || {};
+    const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
+    const cbOpts = opt("", "Automatic") +
+      `<optgroup label="Actions">${Object.keys(A).filter(k => !["custom", "rewrite", "translate"].includes(k)).map(k => opt(k + "|", A[k][0])).join("")}</optgroup>` +
+      `<optgroup label="Rewrite to send">${Object.values(S.ai_style_groups || {}).flat().map(x => opt("rewrite|" + x, "Rewrite · " + x)).join("")}</optgroup>` +
+      `<optgroup label="Translate">${(S.ai_langs || []).map(x => opt("translate|" + x, "Translate · " + x)).join("")}</optgroup>`;
+    [0, 1].forEach(i => {
+      const el = $("#set-cb" + i);
+      if (el.dataset.o !== cbOpts) { el.innerHTML = cbOpts; el.dataset.o = cbOpts; }
+      el.value = cb[i] || "";
+      el.onchange = () => { const v = [...cb]; v[i] = el.value; send({ action: "pref", key: "card_buttons", value: v }); };
+    });
     sw("#set-ai", "ai");
     sw("#set-digits", "digits");
     sw("#set-mask_swears", "mask_swears");
