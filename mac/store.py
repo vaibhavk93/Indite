@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import functools
 import re
 import time
 from pathlib import Path
@@ -55,6 +56,7 @@ DEFAULTS = {
     "ai_uses": {},              # "action|extra" -> times asked; picks the text card's two AI buttons
     "card_buttons": ["", ""],   # the text card's 2nd and 3rd buttons: "action|extra" you picked, or "" = your most used
     "mask_swears": False,       # common swear words written as b**** (founder asked; off by default)
+    "my_swears": [],            # your own extra words to hide the same way
     "digits": True,             # number words as digits: "chaar baje" -> "4 baje"
     "setup_done": False,
     "asked_screen": False,      # the Screen & System Audio Recording prompt was shown once        # the first-run setup was finished (Help → Run setup again)
@@ -419,19 +421,22 @@ def my_fixes() -> list[tuple[str, str]]:
 
 # Clear-cut swear words only, in their common Roman spellings. Words with an everyday meaning ("saala" =
 # brother-in-law, "kamina", "hell") are left out on purpose: masking them would damage normal sentences.
-# ponytail: a fixed list misses new spellings; let people add their own if they ask.
+# A fixed list misses new spellings: people add their own in Settings ("my_swears").
 SWEARS = ("fuck fucking fucked fucker motherfucker shit bullshit bitch bastard asshole dick cunt "
           "chutiya chutiye chutiyapa chut bhenchod behenchod bhenchodd benchod bc madarchod maderchod mc "
           "bhosdike bhosdi bhosadike gandu gaandu lauda lavda lund randi harami haramkhor bhadwa").split()
-_SWEAR_RE = re.compile(r"\b(" + "|".join(sorted(map(re.escape, SWEARS), key=len, reverse=True)) + r")\b", re.I)
+@functools.lru_cache(maxsize=4)
+def _swear_re(mine: tuple = ()) -> re.Pattern:
+    words = {w.strip().lower() for w in SWEARS + list(mine) if w.strip()}
+    return re.compile(r"\b(" + "|".join(sorted(map(re.escape, words), key=len, reverse=True)) + r")\b", re.I)
 
 
-def mask_swears(text: str) -> str:
-    """"chutiya" -> "c******": the first letter stays, so the sentence still reads."""
-    return _SWEAR_RE.sub(lambda m: m.group(0)[0] + "*" * (len(m.group(0)) - 1), text)
+def mask_swears(text: str, mine=()) -> str:
+    """"chutiya" -> "c******": the first letter stays, so the sentence still reads. mine: your own extra words."""
+    return _swear_re(tuple(mine or ())).sub(lambda m: m.group(0)[0] + "*" * (len(m.group(0)) - 1), text)
 
 
-def masked(row: dict) -> dict:
+def masked(row: dict, mine=()) -> dict:
     """
     A copy of a note for showing, with swears masked. The note on disk keeps the real words (R5: nothing is deleted
     silently) - masking is only ever applied where text is shown, typed, copied or exported.
@@ -439,11 +444,11 @@ def masked(row: dict) -> dict:
     r = dict(row)
     for k in ("text", "improved"):
         if r.get(k):
-            r[k] = mask_swears(r[k])
+            r[k] = mask_swears(r[k], mine)
     if r.get("segments"):
-        r["segments"] = [{**s, "text": mask_swears(s.get("text", ""))} for s in r["segments"]]
+        r["segments"] = [{**s, "text": mask_swears(s.get("text", ""), mine)} for s in r["segments"]]
     if r.get("ai"):
-        r["ai"] = [{**a, "text": mask_swears(a.get("text", ""))} if isinstance(a, dict) else a for a in r["ai"]]
+        r["ai"] = [{**a, "text": mask_swears(a.get("text", ""), mine)} if isinstance(a, dict) else a for a in r["ai"]]
     return r
 
 
@@ -456,6 +461,8 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert not fix_problem("pay tm", "Paytm")                         # a normal two-word fix is fine
     assert mask_swears("Yeh BC kya hai, chutiya mat bana") == "Yeh B* kya hai, c****** mat bana"
     assert mask_swears("saala hell dickens bcc") == "saala hell dickens bcc"          # everyday words untouched
+    assert mask_swears("Kya bakwaas hai, BC", ["bakwaas", " "]) == "Kya b****** hai, B*"   # your own words too
+    assert mask_swears("bakwaas") == "bakwaas"                                          # only when you added it
     assert text_of([{"speaker": "You", "text": "a"}, {"speaker": "Others", "text": "b"}]) == "You: a\nOthers: b"
     assert text_of([{"text": "a"}, {"text": "b"}]) == "a\n\nb"
     import tempfile

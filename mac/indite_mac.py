@@ -1602,7 +1602,7 @@ class InditeApp(rumps.App):
 
     def out(self, text: str) -> str:
         """Text as it leaves indite - typed, copied, previewed, exported - with swears masked if that is switched on."""
-        return store.mask_swears(text) if self.prefs.get("mask_swears") else text
+        return store.mask_swears(text, self.prefs.get("my_swears")) if self.prefs.get("mask_swears") else text
 
     def toggle_meeting(self, _=None) -> None:            # noqa: ANN001
         """Start or stop a meeting recording (main thread)."""

@@ -694,6 +694,11 @@
                   stars wherever text is shown, typed, copied or exported. The saved note keeps the real word. Off by default.</p></div>
                 <button class="sw" id="set-mask_swears" role="switch" aria-label="Hide swear words"></button>
               </div>
+              <div class="item" id="myswears-row">
+                <div class="body"><b>Also hide these words</b><p>Your own, separated by commas. Hidden the same way;
+                  the saved note keeps them.</p></div>
+                <input class="pick" id="set-my_swears" placeholder="bakwaas, …" aria-label="Your own words to hide" spellcheck="false">
+              </div>
               <div class="item">
                 <div class="body"><b>Mark likely mistakes (being tested)</b><p>After a dictation, indite looks for your
                   Dictionary words it may have misheard ("cross in" → Crocin) and asks you. Nothing changes until you
@@ -1057,6 +1062,10 @@
     sw("#set-ai", "ai");
     sw("#set-digits", "digits");
     sw("#set-mask_swears", "mask_swears");
+    $("#myswears-row").hidden = !S.prefs.mask_swears;
+    const ms = $("#set-my_swears");
+    if (document.activeElement !== ms) ms.value = (S.prefs.my_swears || []).join(", ");    // never under your cursor
+    ms.onchange = () => send({ action: "pref", key: "my_swears", value: ms.value.split(",").map(w => w.trim()).filter(Boolean) });
     sw("#set-auto_speakers", "auto_speakers");
     sw("#set-keep_audio", "keep_audio");
     sw("#set-also_copy", "also_copy");
