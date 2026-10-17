@@ -32,6 +32,7 @@ from AppKit import (
     NSGraphicsContext,
     NSForegroundColorAttributeName,
     NSMakeRect,
+    NSObject,
     NSPanel,
     NSScreen,
     NSString,
@@ -339,6 +340,13 @@ class Pill:
         self.view.setNeedsDisplay_(True)
 
 
+class CardTarget(NSObject):
+    """Receives the card's button clicks (an Objective-C target has to be an NSObject) and hands them to Python."""
+
+    def click_(self, sender):                                    # noqa: N802
+        self.handler(sender.tag())
+
+
 class Preview:
     """
     The words just written, in a small glass card above the pill, for a few seconds (Settings → Show the words).
@@ -350,6 +358,8 @@ class Preview:
     PW, PH = 460.0, 66.0              # width fixed; the height grows with the text (founder: one line + "…" hid it)
     MAX_H = 320.0                     # about 14 lines; text longer than this keeps its END and loses its start
     CAP = 6.0                         # never on screen longer than this, however long the text (founder, 16 Oct)
+    ACTIONS = ("Ask AI", "", "", "To do")   # Ask AI fixed; the app names 2 and 3 (set_titles); on_action(index)
+    BH = 34.0                         # the strip the buttons sit in
 
     def __init__(self) -> None:
         screen = NSScreen.mainScreen().frame()
@@ -395,17 +405,70 @@ class Preview:
         box.layer().setBorderColor_(NSColor.colorWithCalibratedWhite_alpha_(0.0, 0.18).CGColor())
         self.panel.setContentView_(box)
         self.shown_at = 0.0
+        self.on_action = None         # set by the app: on_action(index); None = no buttons at all
+        self.with_buttons = False
+        self.busy = False             # an AI answer is on its way: the card stays until it lands
+        self.armed_from = None        # pointer position when the card appeared; clicks wait until it moves
+        self.target = CardTarget.alloc().init()
+        self.target.handler = lambda i: self.on_action and self.on_action(i)
+        self.buttons = []
+        x = 16.0
+        for i, title in enumerate(self.ACTIONS):
+            b = AppKit.NSButton.buttonWithTitle_target_action_(title, self.target, "click:")
+            b.setBezelStyle_(AppKit.NSBezelStyleRounded)
+            b.setControlSize_(AppKit.NSControlSizeSmall)
+            b.setFont_(NSFont.systemFontOfSize_(11.0))
+            b.setTag_(i)
+            b.sizeToFit()
+            b.setFrameOrigin_((x, 6))
+            x += b.frame().size.width + 6
+            b.setHidden_(True)
+            box.addSubview_(b)
+            self.buttons.append(b)
 
-    def show(self, text: str) -> None:
+    def set_titles(self, titles: list[str]) -> None:
+        """Names the 2nd and 3rd buttons and lays the row out again (main thread, at start-up)."""
+        x = 16.0
+        for b, title in zip(self.buttons, [self.ACTIONS[0], *titles, self.ACTIONS[3]]):
+            b.setTitle_(title)
+            b.sizeToFit()
+            b.setFrameOrigin_((x, 6))
+            x += b.frame().size.width + 6
+
+    def show(self, text: str, buttons: bool | str = False) -> None:
+        """buttons: True = the AI actions and To do; "todo" = To do only (AI off); False = none (not a saved note)."""
         from PyObjCTools import AppHelper
-        AppHelper.callAfter(self._show, text)
+        AppHelper.callAfter(self._show, text, buttons)
 
-    def _show(self, text: str) -> None:
+    def working(self, text: str) -> None:
+        """An AI answer is on its way: say so, drop the buttons, and stay up until answer() or failed()."""
+        from PyObjCTools import AppHelper
+        self.busy = True
+        AppHelper.callAfter(self._show, text, False)
+
+    def answer(self, text: str) -> None:
+        """The answer has landed: show it, then leave on the normal clock."""
+        from PyObjCTools import AppHelper
+        self.busy = False
+        AppHelper.callAfter(self._show, text, False, True)
+
+    def failed(self, text: str) -> None:
+        """The answer did not come: say why, and put the buttons back so the same one is the retry."""
+        from PyObjCTools import AppHelper
+        self.busy = False
+        AppHelper.callAfter(self._show, text, True, True)
+
+    def _show(self, text: str, buttons: bool | str = False, head: bool = False) -> None:
+        """head: when too long, keep the start (an answer: its "copied" line), not the end (a dictation: newest)."""
+        self.with_buttons = bool(buttons and self.on_action)
+        for i, b in enumerate(self.buttons):
+            b.setHidden_(not self.with_buttons or (buttons == "todo" and i != 3))
+        extra = self.BH if self.with_buttons else 0.0
         self.label.setStringValue_(text)
         need = self.label.cell().cellSizeForBounds_(NSMakeRect(0, 0, self.PW - 32, 10_000)).height
-        h = min(self.MAX_H, max(self.PH, need + 22))
+        h = min(self.MAX_H, max(self.PH, need + 22)) + extra
         if need + 22 > self.MAX_H:                               # very long: keep the end, which is newest
-            self.label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingHead)
+            self.label.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail if head else AppKit.NSLineBreakByTruncatingHead)
             self.label.setMaximumNumberOfLines_(int((self.MAX_H - 22) // 17))
         else:
             self.label.setLineBreakMode_(AppKit.NSLineBreakByWordWrapping)
@@ -414,11 +477,16 @@ class Preview:
         self.panel.setFrame_display_(NSMakeRect(f.origin.x, self.base_y, self.PW, h), True)   # grows upward
         for v in (self.box, self.glass):
             v.setFrame_(NSMakeRect(0, 0, self.PW, h))
-        self.label.setFrame_(NSMakeRect(16, 11, self.PW - 32, h - 22))
+        self.label.setFrame_(NSMakeRect(16, 11 + extra, self.PW - 32, h - 22 - extra))
         self.panel.setAlphaValue_(1.0)
+        self.panel.setIgnoresMouseEvents_(True)
         self.panel.orderFrontRegardless()
         self.shown_at = t = time.time()
         from PyObjCTools import AppHelper
+        if self.with_buttons:
+            import AppKit as AK
+            self.armed_from = AK.NSEvent.mouseLocation()     # where the pointer was when the card appeared
+            self._track(t)
         # Long enough to read: 4 s plus about a quarter second a word - but never more than CAP, because a card that
         # sits over your work is worse than one that leaves too early (founder, 16 Oct). If you want longer, keep the
         # pointer on it: _maybe_hide puts the timer back for as long as the mouse is inside the card.
@@ -437,9 +505,24 @@ class Preview:
         import AppKit as AK
         return AK.NSMouseInRect(AK.NSEvent.mouseLocation(), self.panel.frame(), False)
 
+    def _track(self, t: float) -> None:
+        """
+        The card takes clicks only while the pointer rests on it. Everywhere else it stays click-through, so a click
+        meant for the app underneath is never swallowed (overlay rule 2) - the buttons work because you are on them.
+        """
+        if t != self.shown_at:
+            return
+        import AppKit as AK
+        here = AK.NSEvent.mouseLocation()
+        if self.armed_from and (abs(here.x - self.armed_from.x) > 3 or abs(here.y - self.armed_from.y) > 3):
+            self.armed_from = None                          # it moved: from now on, being on the card means you came to it
+        self.panel.setIgnoresMouseEvents_(self.armed_from is not None or not self.hovered())
+        from PyObjCTools import AppHelper
+        AppHelper.callLater(0.1, self._track, t)
+
     def _maybe_hide(self, t: float) -> None:
-        """Hide, unless the pointer is on the card - then ask again shortly."""
-        if self.hovered():
+        """Hide, unless the pointer is on the card or an answer is on its way - then ask again shortly."""
+        if self.hovered() or self.busy:
             from PyObjCTools import AppHelper
             AppHelper.callLater(0.3, self._maybe_hide, t)
             return
@@ -455,7 +538,7 @@ class Preview:
         import Quartz
         text = request.read_text()[len("preview:"):].strip()
         request.unlink(missing_ok=True)
-        self._show(text)
+        self._show(text.lstrip("+"), buttons=text.startswith("+"))     # "preview:+…" shows the AI buttons too
 
         def shoot():
             img = Quartz.CGWindowListCreateImage(Quartz.CGRectNull, Quartz.kCGWindowListOptionIncludingWindow,
@@ -469,4 +552,5 @@ class Preview:
 
     def _hide(self, t: float) -> None:
         if t == self.shown_at:                            # a newer dictation restarts the clock
+            self.panel.setIgnoresMouseEvents_(True)
             self.panel.orderOut_(None)

@@ -363,6 +363,29 @@ class MicStuck(MicProblem):
     """
 
 
+CARD_DEFAULTS = [("prompt", ""), ("rewrite", "Formal English")]   # most dictations go to Claude; Formal was most used
+
+
+def card_slots(uses: dict) -> list[tuple[str, str]]:
+    """
+    The text card's 2nd and 3rd buttons: the two AI actions asked most often (each with the style or language it was
+    last asked with), topped up from CARD_DEFAULTS. One tap, no settings page (critic, 17 Oct).
+    """
+    ranked = [tuple(k.split("|", 1)) for k, _ in sorted(uses.items(), key=lambda kv: -kv[1])
+              if "|" in k and k.split("|", 1)[0] in ai.ACTIONS]
+    out: list[tuple[str, str]] = []
+    for a, x in ranked + CARD_DEFAULTS:
+        if a not in [o[0] for o in out]:              # one button per action
+            out.append((a, x))
+    return out[:2]
+
+
+def slot_title(action: str, extra: str) -> str:
+    """"Make it a prompt", "Rewrite · Formal", "Translate · Hindi" - short enough for a button."""
+    name = {"rewrite": "Rewrite", "translate": "Translate"}.get(action, ai.ACTIONS[action][0])
+    return f"{name} · {extra.split()[0]}" if extra else name
+
+
 def restart_allowed(mark: Path, every: float = 600.0) -> bool:
     """True at most once per `every` seconds; touching `mark` records the restart. Stops a restart loop."""
     if mark.exists() and time.time() - mark.stat().st_mtime < every:
@@ -762,6 +785,14 @@ class InditeApp(rumps.App):
         self.file_error = ""
         self.pill = Pill()
         self.preview = Preview()
+        for r in store.history():                        # nothing is recording yet: a LIVE left by a crash is stale
+            if r.get("live"):
+                store.update(r["id"], live=None)
+        self.preview.on_action = self.card_action
+        self.card_slots = card_slots(self.prefs.get("ai_uses") or {})   # fixed until the next start: no button
+        self.preview.set_titles([slot_title(a, x) for a, x in self.card_slots])   # moves under your finger
+        self.card_note = None            # the note the text card is showing, for its AI buttons
+        self.card_job = None             # (note id, action) asked from the card: its answer goes back to the card
         self.pill.set_clear(self.prefs["pill_clear"])
         self.done_until = 0.0
         self.done_state = "done"
@@ -794,7 +825,9 @@ class InditeApp(rumps.App):
                 f"What changed: {bad_seal}\n\n"
                 "Fix: run ./mac/build_app.sh again, then grant Accessibility and Screen Recording once more.",
             )
-        if not can_listen():
+        if not can_listen() and not self.prefs.get("setup_done"):
+            self.set_title("🎙⚠")                       # the setup sheet opens on its own and explains Accessibility
+        elif not can_listen():
             self.set_title("🎙⚠")
             ask_to_listen()
             rumps.alert(
@@ -1008,6 +1041,8 @@ class InditeApp(rumps.App):
 
     def on_press(self, key) -> None:                     # noqa: ANN001 - pynput's signature
         if self.meeting.running:                          # the mic belongs to the meeting until it stops
+            if key == self.hotkey() and self.prefs["sounds"]:
+                chime("Funk")                            # heard, not shown: the pill already shows the meeting
             return
         if key == keyboard.Key.esc and self.started_at:   # cancel: nothing is written, the audio is dropped
             # ponytail: pynput cannot swallow the key on macOS, so Esc also reaches the app underneath
@@ -1179,7 +1214,8 @@ class InditeApp(rumps.App):
                 w.writeframes((np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes())
         self.refresh()                   # the list grows while it is open, so a dictation shows up as it lands
         if self.prefs["preview"]:
-            self.preview.show(self.last)
+            self.card_note = note
+            self.preview.show(self.last, buttons=(True if self.prefs.get("ai") else "todo") if note else False)
         print(f"{len(audio) / RATE:.1f}s of speech -> {took:.2f}s -> {text}")
 
     # ---- menu ----------------------------------------------------------------------------------------------
@@ -1298,12 +1334,48 @@ class InditeApp(rumps.App):
                 store.set_pref("ai_ok_meetings", True)
                 self.reload_prefs()
         self.ai_error = ""                               # one app-wide error: an old one must not sit in a new answer
+        if action != "custom":                           # counted, to pick the text card's two buttons
+            uses = dict(self.prefs.get("ai_uses") or {})
+            uses[f"{action}|{extra}"] = uses.get(f"{action}|{extra}", 0) + 1
+            store.set_pref("ai_uses", uses)
+            self.prefs["ai_uses"] = uses
         self.ai_busy[note_id] = ai.ACTIONS[action][0]
         self.refresh()
         threading.Thread(target=self._ai, args=(row, action, extra), daemon=True).start()
 
+
+    def card_action(self, i: int) -> None:
+        """
+        A button on the text card (main thread). Ask AI opens that note's Ask AI panel; the other two run straight
+        away, keep the card up while the AI works, then show the answer and put it on the clipboard (founder, 17 Oct).
+        """
+        note = self.card_note
+        if not note:
+            return
+        if i == 3:                                       # To do: one tap, no AI, nothing leaves the Mac
+            store.update(note, todo="open")
+            self.refresh()
+            self.preview.answer("✓ Added to To do")
+            return
+        if i == 0:
+            from PyObjCTools import AppHelper
+            fresh = self.window is None                  # a window built just now needs its page loaded first
+            self.open_window(None)
+            AppHelper.callLater(1.5 if fresh else 0.0, self.window.bridge.js,
+                                f"go('home'); openDrawer({json.dumps(note)})")
+            return
+        action, extra = self.card_slots[i - 1]
+        doing = f"{slot_title(action, extra)}…"
+        self.card_job = (note, action)
+        self.ask_ai(note, action, extra)                 # asks first if AI has never been used; may be cancelled
+        if note in self.ai_busy:
+            self.preview.working(doing)
+        else:
+            self.card_job = None
+
     def _ai(self, row: dict, action: str, extra: str) -> None:
         t0 = time.time()
+        answer = None
         try:
             answer = ai.run(action, row["text"], extra, self.prefs["ai_provider"], self.prefs["ai_model"])
             if action == "improve":
@@ -1321,6 +1393,14 @@ class InditeApp(rumps.App):
         finally:
             self.ai_busy.pop(row["id"], None)
             self.refresh()
+            if self.card_job == (row["id"], action):     # asked from the text card: the answer goes back there
+                self.card_job = None
+                if answer:
+                    subprocess.run("pbcopy", input=answer, text=True, check=False)
+                    self.preview.answer("Copied - paste it anywhere.\n\n" + answer)
+                else:
+                    self.preview.failed("The AI did not answer: " + (self.ai_error or "no reply") +
+                                        "\nPress the button again to retry.")
 
     def add_tasks(self, note_id: str, answer_label: str) -> None:
         """Every line of an Action items answer becomes its own To do, linked back to the note it came from."""
@@ -1490,6 +1570,12 @@ class InditeApp(rumps.App):
                 threading.Thread(target=self._mictest, args=(float(arg or 3),), daemon=True).start()
             elif verb == "type":                          # developer check: type into whatever is in front
                 self.typer.type(arg)
+            elif verb == "card":                          # developer check: card for the newest dictation, press button N
+                row = next((r for r in store.history() if (r.get("kind") or "dictation") == "dictation"), None)
+                if row:
+                    self.card_note = row["id"]
+                    self.preview.show(row["text"], buttons=True)
+                    self.card_action(int(arg or 1))
             elif verb == "pill":
                 self.pill.set_clear(int(arg))
                 self.done_state, self.done_until = "done", time.time() + 2.0
@@ -1596,9 +1682,9 @@ class InditeApp(rumps.App):
         from indite.styles import srt
         name = Path(row.get("title") or "indite note").stem
         if fmt == "srt" and row.get("segments"):
-            body, ext = srt({"segments": row["segments"]}), ".srt"
+            body, ext = srt({"segments": store.named_segments(row)}), ".srt"
         else:
-            body, ext = (row.get("improved") or row["text"]) if fmt == "improved" else row["text"], ".txt"
+            body, ext = (row.get("improved") or row["text"]) if fmt == "improved" else store.named_text(row), ".txt"
         body = self.out(body)
         panel = NSSavePanel.savePanel()
         panel.setNameFieldStringValue_(name + ext)

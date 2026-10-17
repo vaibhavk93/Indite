@@ -182,15 +182,31 @@ platform limit forces it, and the workaround is written down here. Every item be
 | 1 | **Leadership demo video.** Confirm narration + real-mistake scene (both built), pick the length (3:00-3:30 or ~9:30), freeze Mac code, dry run, record | Founder + me | ½ day | UI changes since the last take: tab dots, swear masking, Play recording |
 | 2 | **Real speech set:** audio on, use indite normally, hand-type what was really said for ~50 dictations, score | Founder + me | ~1 day | Start now, in parallel. Gates AI review steps 1-2, W5 and every accuracy claim (Android's too) |
 | 3 | **Founder checks:** two real calls back to back; dictation delay while who-spoke runs (priority line only if >1.5 s); stuck-mic log line | Founder | minutes | Built 16 Oct, never tried for real |
-| 4 | **W1** example phrase row on the Dictionary page | Me | 20 min | After the demo |
-| 5 | **Per-word confidence** (`verbose_json`) | Me | ~1 h | Without it step 1 measured 1.9 false flags per 100 words (limit 1) |
-| 6 | **Dictionary length cap + duplicate check** | Me | 20 min | Before anything writes to the Dictionary by itself |
-| 7 | **AI review step 1 (offline):** likely-wrong flags with the confidence gate, Wispr's skip list, 6+ letter targets, ▶ play that bit, Fix + "Always fix?" (W2), a fix log, and "Always fix?" offered after the 2nd identical fix | Me | ~2 days, unproven | Ships only if ≤1 false flag per 100 words on the real set. Replaces Mac "auto-learn from edits" |
+| 4 | ✅ **W1** example phrase row on the Dictionary page (17 Oct, `3c9ba16`) | Me | 20 min | No AI |
+| 5 | ✅ **Per-word confidence** (`verbose_json`; 17 Oct, `6dd6be6`; fetched only when needed - always on costs 0.8 → 1.4 s) | Me | ~1 h | Without it step 1 measured 1.9 false flags per 100 words (limit 1) |
+| 6 | ✅ **Dictionary length cap + duplicate check** (17 Oct, `3c9ba16`) | Me | 20 min | Before anything writes to the Dictionary by itself |
+| 7 | **AI review step 1 (offline):** likely-wrong flags with the confidence gate, Wispr's skip list, 6+ letter targets, ▶ play that bit, Fix + "Always fix?" (W2), a fix log, and "Always fix?" offered after the 2nd identical fix. **Context safety (founder's worry, 17 Oct, critic-reviewed):** before offering "Always fix?", count how often the wrong words appear un-fixed in other notes and say so ("'in diet' is in 4 notes you left alone"); and store the engine's original text in every note so a bad rule can be undone | Me | ~2 days, unproven | Ships only if ≤1 false flag per 100 words on the real set. Replaces Mac "auto-learn from edits" |
 | 8 | **W3** fixes-made count on Insights | Me | ~1 h | Built on the fix log; also the personalisation number |
 | 9 | **W4 experiment:** Dictionary words as the engine's starting prompt | Me | 2 h | Expected to drop (risk: invented names) |
 | 10 | **After the real set is scored:** decide step 1 → **step 2** (one detect-only AI call, nothing changes without a tap, ≥70% right, note before instructions) → C3 review insights → **W5** filler strip (raw kept) | Me | 2-3 days | Each with its own pass/fail |
 | 11 | **Parity:** edit a paragraph + undo; per-paragraph speaker fix + merge (meetings, files) | Me | M | — |
-| 12 | **AI actions on the text card** (founder, 16 Oct): two or three actions - Rewrite to send, Summary, Improve - on the card that appears after dictating, so a note can be acted on without opening the window. | Me | ~1 day | **After the demo.** Two hard parts: the card ignores clicks on purpose so it never steals one meant for the app underneath (fix: accept clicks only while the pointer rests inside - `Preview.hovered` already exists); and an AI answer takes ~6 s while the card now lives 6 s, so it needs a working-then-answer state, not just a button |
+| 12 | 🧪 **AI actions on the text card** (built 17 Oct; not yet clicked through on a real dictation): **Ask AI** fixed, then the two AI actions you ask most (with their last style or language), starting as **Make it a prompt** and **Rewrite · Formal**; they change only at restart. Founder dropped "Translate to English"; a pin setting waits until asked after a week of use - on the card that appears after dictating, so a note can be acted on without opening the window. | Me | ~1 day | **After the demo.** Two hard parts: the card ignores clicks on purpose so it never steals one meant for the app underneath (fix: accept clicks only while the pointer rests inside - `Preview.hovered` already exists); and an AI answer takes ~6 s while the card now lives 6 s, so it needs a working-then-answer state, not just a button |
+
+**Mac UX pass (founder, 17 Oct; audit of 11 flows + critic):** built - the same copy icon on notes and on every AI answer
+(top-right, turns into ✓; copy and export of a meeting use the renamed speakers); card keeps its "copied" line on long answers; card takes clicks only after the pointer moves;
+on an AI failure the card's buttons come back as the retry; To do button on the card; "Fix a word" fixes this note
+too (past notes never rewritten in bulk); a sound when the hotkey is pressed during a meeting; no Python-path alert
+before setup is done; stale LIVE cleared; who-spoke errors titled correctly. **Insights:** the original page kept
+(a rebuild was rolled back - founder), now grouped as Usage / Speed / Where & when / Meetings, files & AI, with dictations
+today, words in a typical dictation, typical + slow wait (the average misled: 3.4 s vs typical 1.7 s) and AI by action.
+Later, when the data exists: weekday pattern (~4 weeks), speakers found, an honest accuracy measure.
+**Next:** offer the text card in setup (off by default - it can catch a click in chat boxes), after the founder has
+used the card for a while. **Dropped by the critic:** card on screen longer, a second copy button on the row, search
+across everything (no ask yet), replacing error dialogs, "replace what I typed", queueing files.
+
+**Mac later, from the Wispr comparison:** flags from low confidence alone, without a Dictionary match ("A2", ~3 h,
+second flag type) · a two-call AI review, only if step 2 scores under 70% · Topics in Insights · regional name and
+place packs (gated on step 1's false-flag rate) · a whispered-speech test (10 whispered clips; optional).
 
 **Mac next:** detect a call and *ask* "Record this call?" · editable swear list (D1, ~2 h) · Indian formatting (₹,
 lakh/crore; unproven) · 7-day assistant test (#252, founder's yes) · note-before-instructions order on the other AI
@@ -209,7 +225,7 @@ questions (until they are checked on Android).
 | 1 | **No build needed:** a new OpenRouter key *or* Tailscale for the Mac route (either gives the phone its first AI answer); the 1-hour model test (3 free models × 5 real notes vs Claude, run on the Mac); record part of the real speech set on the phone | Founder (+ me for the test) | ~2 h | — |
 | 2 | **Un-park: hand-check build 29**, above all that backup → restore works; plus the reminders 3-day check | Founder | ~1 h | Must pass before the key switch: a key change forces an uninstall, which deletes the phone's notes |
 | 3 | **Release key:** 1 h research on key rotation (may avoid the uninstall; unproven), then the real key, backed up in two places | Me + founder | ~2 h | Unlocks every build below |
-| 4 | **One parity build:** Improve, Ask anything, Make it a prompt; swear masking (real word stored); Dictionary length cap (duplicates already handled) | Me | M | — |
+| 4 | **One parity build:** Improve, Ask anything, Make it a prompt; swear masking (real word stored); Dictionary length cap (duplicates already handled); **auto-learn refuses one-letter wrong words** (today two identical edits of "bhi" → "B" would rewrite every later "B") | Me | M | — |
 | 5 | **AI review step 1 on Android:** add per-word confidence to the whisper.cpp bridge (native rebuild), then the same flags as the Mac | Me | M | Only after it passes on the Mac |
 | 6 | **Batch A** (Show only [name], recovery banner, find & replace, WhatsApp date titles, permissions checklist) + **look-and-feel top 10** | Me | M | Batch A's old "after build 10" gate is replaced by item 2 |
 | 7 | **Before testers:** ₹15k phone → Play internal testing → model download via Play asset packs (smaller install; the public build has no internet, so asset packs are the only route) → try-it onboarding, newer Android target, battery check, restore on a new phone, strip personal-only features | Me + founder | L | Then 10-20 testers with interviews |
@@ -281,6 +297,8 @@ bigger title with Today / Yesterday · custom icons · all of it respects "Remov
 | Wispr: scratchpad with its own hotkey | The window is already one (Dictations, To do, stars, search) |
 | Wispr: read the IDE's open file for code variable names | Continuously reading another app's document; the free 80% is ~20 identifiers in the Dictionary |
 | Wispr: team dictionary, cloud sync, referrals | Breaks audio-never-leaves, zero-cost and no-account |
+| Saying "to do …" to send a dictation straight to To do (founder idea, 17 Oct) | Fires on normal sentences ("I want you to do…", "To do this…" are in the founder's own dictations to Claude) and has no undo - the same reason command mode is out. Existing routes take 2 taps. Revisit after 2 weeks if real to-dos pass ~30; smaller option: a "To do" button on the text card |
+| To do tags: Office / Personal / Daily / Rules (founder idea, 17 Oct) | 2 to-dos exist today. Revisit at ~30 real to-dos; search the To do page first. "My rules" fits notes better than to-dos |
 | Personal-assistant layer (send to Slack / Gmail / Drive, notify people, chase ETAs) | Claude and Gemini already do the actions through their own connectors; it needs sign-ins, an online AI and breaks the no-internet phone rule. Sharing to Claude already exists. Revisit: WhatsApp pre-fill if testers ask (founder question, 16 Oct, critic-reviewed) |
 
 ## Competitors noted

@@ -44,6 +44,7 @@ DEFAULTS = {
     "backup_scope": "all",      # all · star · keep (starred + to-do)
     "backup_audio": False,      # include recordings and transcribed files in a backup
     "auto_speakers": True,      # find who spoke in every file and meeting, without a click
+    "ai_uses": {},              # "action|extra" -> times asked; picks the text card's two AI buttons
     "mask_swears": False,       # common swear words written as b**** (founder asked; off by default)
     "digits": True,             # number words as digits: "chaar baje" -> "4 baje"
     "setup_done": False,
@@ -168,6 +169,18 @@ def audio_of(row: dict) -> Path | None:
         return own
     src = Path(row.get("source", "")) if row.get("kind") == "file" else None
     return src if src and src.is_file() else None
+
+
+def named_segments(row: dict) -> list[dict]:
+    """A meeting's lines with the speakers' names as renamed by the user ("Person 1" -> "Rohit")."""
+    names = row.get("names") or {}
+    return [{**s, "speaker": names.get(s.get("speaker"), s.get("speaker"))} for s in row.get("segments") or []]
+
+
+def named_text(row: dict) -> str:
+    """What the note shows: for a meeting, its lines with the renamed speakers - copied and exported the same way."""
+    segs = named_segments(row)
+    return "\n".join(f"{s['speaker']}: {s['text']}" for s in segs) if segs else row.get("text", "")
 
 
 def audio_files(row: dict) -> list[Path]:
@@ -363,6 +376,9 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert not fix_problem("pay tm", "Paytm")                         # a normal two-word fix is fine
     assert mask_swears("Yeh BC kya hai, chutiya mat bana") == "Yeh B* kya hai, c****** mat bana"
     assert mask_swears("saala hell dickens bcc") == "saala hell dickens bcc"          # everyday words untouched
+    meet = {"text": "Person 1: haan", "names": {"Person 1": "Rohit"},
+            "segments": [{"speaker": "Person 1", "text": "haan"}, {"speaker": "You", "text": "theek hai"}]}
+    assert named_text(meet) == "Rohit: haan\nYou: theek hai" and named_text({"text": "plain"}) == "plain"
     note = {"text": "chutiya", "segments": [{"speaker": "You", "text": "bc yaar"}], "ai": [{"text": "shit"}]}
     shown = masked(note)
     assert (shown["text"], shown["segments"][0]["text"], shown["ai"][0]["text"]) == ("c******", "b* yaar", "s***")

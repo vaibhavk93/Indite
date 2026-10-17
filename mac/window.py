@@ -271,9 +271,14 @@ class Bridge(NSObject):
             heard, want = msg.get("heard", ""), msg.get("want", "")
             why = store.fix_problem(heard, want)         # a refusal has to say why; it used to fail in silence
             if why:
-                self.bridge.js(f"toast({why!r})")
+                self.js(f"toast({why!r})")
             else:
                 store.add_fix(heard, want)
+                row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
+                fixed = store.apply_my_fixes(row["text"], [(heard.strip(), want.strip())]) if row else ""
+                if row and fixed != row["text"]:             # this note only: past notes are never rewritten in bulk
+                    store.update(row["id"], text=fixed)
+                self.js(f"toast({('Fixed here and in future dictations: ' if row and fixed != row['text'] else 'Fix added: ') + heard.strip() + ' → ' + want.strip()!r})")
         elif act == "files":
             self.app.open_files(None)
         elif act == "fixes":

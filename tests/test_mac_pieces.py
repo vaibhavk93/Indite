@@ -38,3 +38,13 @@ def test_a_stuck_coreaudio_is_noticed_and_restarts_at_most_once_in_10_minutes(tm
     assert m.stuck
     mark = tmp_path / "mic-restart.last"
     assert restart_allowed(mark) and not restart_allowed(mark)
+
+
+def test_the_text_cards_two_ai_buttons_follow_use():
+    from indite_mac import card_slots, slot_title
+    assert card_slots({}) == [("prompt", ""), ("rewrite", "Formal English")]                 # nothing asked yet
+    assert card_slots({"translate|Hindi (Devanagari)": 3, "summary|": 2, "prompt|": 1}) == [
+        ("translate", "Hindi (Devanagari)"), ("summary", "")]                                # most asked first
+    assert card_slots({"rewrite|Polite": 2, "rewrite|Formal English": 1}) == [("rewrite", "Polite"), ("prompt", "")]
+    assert slot_title("translate", "Hindi (Devanagari)") == "Translate · Hindi"
+    assert slot_title("prompt", "") == "Make it a prompt"

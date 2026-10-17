@@ -4,6 +4,18 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-17 (14:40) · Claude Code (Opus 5.5) · Text card AI buttons; crash fix; context-safe fixes planned
+
+**Next step:** founder dictates, hovers the card, clicks Make it a prompt - confirms the click-through works.
+
+- Crash fixed: `window.py` add_fix refusal called `self.bridge.js` inside Bridge (from `3c9ba16`); now `self.js`.
+- Text card (`overlay.Preview`): 3 buttons, clicks only while hovered (`_track`), `working()` / `answer()` states;
+  `App.card_action`; `_ai` sends the answer back to the card and the clipboard. Snapshot: `preview:+text`.
+- `tests/test_mac_handsfree.py` was failing since `9b0c4a8` (no `preview` on the fake app); fixed.
+- Critic on the founder's "same word, different context" worry -> ROADMAP Mac #7 and Android #4.
+
+---
+
 ## 2026-10-16 (10:20) · Claude Code (Opus 5.5) · Two roadmaps, personalisation plan, recordings reachable
 
 **Next step:** founder: demo decisions (length) and the real speech set; Android item 1 (key or Tailscale).
