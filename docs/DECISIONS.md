@@ -20,6 +20,12 @@ to "Decided", and update the roadmap item it touches.
 | D11 | The accessibility add-on in the public Android build (#33) | Auto-typing and "bubble only with a keyboard" for everyone | In / out (Play review risk) |
 | D12 | Two unclear 10 Oct messages ("…prompt and transcript…", "double long-press") | Unknown | Say what was meant, or drop |
 | D13 | Pill vs window: what "dragging is not working" means (17 Oct) | A bug (window strip) or a new feature (move the pill) | Window / pill |
+| D14 | **Grow the Dictionary to ~20 names of 6+ letters** (people, brands, medicines you say) | The speech test proves nothing without them; Mark likely mistakes has nothing to look for | Add them in Dictionary |
+| D15 | **Mark ~35 dictations "This is exactly what I said"** (Settings → Privacy → Speech test is on for you; fix the text first) | The first real accuracy number; then `python mac/speechset.py score` | ~30 min of your time |
+| D16 | Note-before-instructions order test for the AI actions | Uses your Claude account: ~10 AI requests | Yes / no |
+| D17 | Live clean-up while dictating with a local model | Needs 30 real dictations compared side by side (your judgement) | After D15 |
+| D18 | ₹ / lakh-crore formatting ("2 lakh" → "₹2,00,000"?) | Unproven: no real note shows the need yet | Want it / wait for examples |
+| D19 | Check the new things on your screen: Listen look, Both tracks on your next call, "Record this call?" card, card buttons in Settings | Built 17 Oct, tested off-screen only | Yes / what's wrong |
 
 ## Decided
 
