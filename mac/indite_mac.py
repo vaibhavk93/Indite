@@ -295,16 +295,46 @@ class Engine:
         finally:
             os.unlink(path)       # the recording never outlives the transcription
 
-    def _ask_server(self, path: str, audio_ctx: int) -> str:
+    def confidence(self, audio: np.ndarray) -> list[tuple[str, float]]:
+        """
+        Every word with how sure the engine was, for the offline review of a dictation (roadmap Mac 5/7).
+
+        NOT used on the live path, and that is the whole point of measuring it: asking the server for the detail
+        costs about 600 ms on a four-second clip - 0.8 s became 1.4 s, measured 16 Oct on this Mac - and the speed
+        of a dictation is the thing indite is actually good at. So the words are fetched when something wants to
+        look at them, not on every press.
+
+        The signal itself is strong. On the founder's own recording of "CleverTap", which the engine gets wrong:
+        C 0.35, le 0.32, var 0.14 - and every word it got right scored 1.00.
+        """
+        out: list[tuple[str, float]] = []
+        for piece in pieces(audio):
+            path = self._wav(piece)
+            try:
+                with self.lock:
+                    if not (self.proc and self.proc.poll() is None):
+                        return out                       # no resident server: the slow binary has no word detail
+                    raw = self._ask_server(path, window_for(len(piece) / RATE), detail=True)
+                for seg in json.loads(raw).get("segments", []):
+                    for w in seg.get("words") or []:
+                        word = (w.get("word") or "").strip()
+                        if word:
+                            out.append((word, float(w.get("probability", 1.0))))
+            finally:
+                os.unlink(path)
+        return out
+
+    def _ask_server(self, path: str, audio_ctx: int, detail: bool = False) -> str:
         """A plain multipart POST, so there is no HTTP library to add."""
         import uuid
         boundary = uuid.uuid4().hex
         with open(path, "rb") as f:
             wav = f.read()
+        fmt = "verbose_json" if detail else "text"
         body = (
             f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.wav\"\r\n"
             f"Content-Type: audio/wav\r\n\r\n".encode() + wav +
-            f"\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"response_format\"\r\n\r\ntext\r\n"
+            f"\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"response_format\"\r\n\r\n{fmt}\r\n"
             # Without this the server pads every sentence to 30 s and takes 2.2 s instead of 0.5 s (measured 15 Oct).
             f"--{boundary}\r\nContent-Disposition: form-data; name=\"audio_ctx\"\r\n\r\n{audio_ctx}\r\n"
             f"--{boundary}--\r\n".encode()
@@ -315,7 +345,8 @@ class Engine:
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
         )
         with urllib.request.urlopen(req, timeout=120) as r:
-            return " ".join(r.read().decode("utf-8", "replace").split())
+            text = r.read().decode("utf-8", "replace")
+        return text if detail else " ".join(text.split())
 
 
 class MicProblem(Exception):
@@ -1453,6 +1484,8 @@ class InditeApp(rumps.App):
                     self.ai_busy[row["id"]] = ai.ACTIONS[arg][0]
                     self.refresh()
                     threading.Thread(target=self._ai, args=(row, arg, ""), daemon=True).start()
+            elif verb == "confidence":                    # developer check: per-word confidence for a note's audio
+                threading.Thread(target=self._confidence_check, args=(arg,), daemon=True).start()
             elif verb == "mictest":                       # developer check: the real Mic, for N seconds
                 threading.Thread(target=self._mictest, args=(float(arg or 3),), daemon=True).start()
             elif verb == "type":                          # developer check: type into whatever is in front
@@ -1478,6 +1511,28 @@ class InditeApp(rumps.App):
             elif verb == "run":                               # the runner, started from here so it has indite's
                 subprocess.Popen([sys.executable, "-u", str(Path(__file__).parent / "demo.py")] + arg.split(),
                                  stdout=open(store.DIR / "demo.log", "a"), stderr=subprocess.STDOUT)
+
+    def _confidence_check(self, note_id: str) -> None:
+        """Writes every word and how sure the engine was, for the newest note or the one named."""
+        sys.path.insert(0, str(ROOT))
+        from indite.core import load_audio
+        rows = store.history()
+        row = next((r for r in rows if r["id"] == note_id), None) or next((r for r in rows if store.audio_of(r)), None)
+        out = store.DIR / "confidence.json"
+        try:
+            path = store.audio_of(row) if row else None
+            if not path:
+                out.write_text(json.dumps({"error": "no note with audio kept"}))
+                return
+            audio, _ = load_audio(Path(path))
+            t0 = time.time()
+            words = self.engine.confidence(audio)
+            out.write_text(json.dumps({"note": row["id"], "seconds": round(len(audio) / RATE, 1),
+                                       "took": round(time.time() - t0, 2),
+                                       "unsure": [[w, round(p, 2)] for w, p in words if p < 0.9],
+                                       "words": [[w, round(p, 3)] for w, p in words]}, indent=1))
+        except Exception as e:                            # noqa: BLE001
+            out.write_text(json.dumps({"error": f"{type(e).__name__}: {e}"}))
 
     def _mictest(self, seconds: float) -> None:
         """Opens the microphone exactly as a key press does, and writes down what came back."""
