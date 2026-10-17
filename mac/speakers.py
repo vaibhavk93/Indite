@@ -13,15 +13,23 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import threading
+
 import numpy as np
 
 RATE = 16_000
 WIN, HOP = 1.5, 0.75
 MODEL = Path(__file__).resolve().parent / "models/titanet_small.onnx"
 _extractor = None
+_one_at_a_time = threading.Lock()   # one shared model: two Who spoke jobs at once broke it (17 Oct)
 
 
 def _fingerprints(audio: np.ndarray) -> tuple[np.ndarray, list[float]]:
+    with _one_at_a_time:
+        return _fingerprints_now(audio)
+
+
+def _fingerprints_now(audio: np.ndarray) -> tuple[np.ndarray, list[float]]:
     """One unit-length voice fingerprint per 1.5 s window that has sound in it, and where each window starts."""
     global _extractor
     import sherpa_onnx

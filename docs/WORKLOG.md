@@ -4,6 +4,19 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 2026-10-18 (00:00-01:30) · Claude Code (Opus 5.5) · Portable app, bug sweep, UI review, critic-passed changes
+
+- Portable app for other Macs (`mac/build_portable.sh`, `mac/portable_check.py`): the old app needed this project
+  folder, macOS 26 and an old engine folder - that is why the boss's M2 "did nothing". Now 822 MB / 630 MB zip,
+  macOS 14+, any Apple Silicon, start-up failures shown as a message, READ ME FIRST + Help inside. Tested hidden.
+- ⚠ The disk filled up during the first build (1 GB free); build now refuses with < 4 GB and keeps no second copy.
+- Calls: the call's sound capture died 7 s into a 13-min headphone call; it now reconnects. Listen: engine "nan"
+  answers retried / estimated. Meetings log and show the mic in use.
+- End-to-end test (agent, test copy): 17 bugs; all high/medium and most low fixed (crash on any window error,
+  masked text saved over real words, meeting audio missing from backups, orphan recordings, ...).
+- UI review (agent, 41 screens): items 1-23 done; critic on items 24-37: 13 built (some smaller), 2 dropped.
+- Open: Who spoke failed once in the test copy ("GetElementType is not implemented"), not reproduced; lock added.
+
 ## 2026-10-17 (22:35-23:05) · Claude Code (Opus 5.5) · Rest of the Mac roadmap, copy review
 
 - Built and tested (unit tests, self-checks, headless Chrome renders, the new hidden test copy): card buttons in

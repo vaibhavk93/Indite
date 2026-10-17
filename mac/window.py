@@ -87,6 +87,13 @@ class Activation(NSObject):
     def quitIndite_(self, _sender):                      # noqa: N802
         self.app.quit_all(None)
 
+    def openSettings_(self, _sender):                    # noqa: N802 - indite menu → Settings… ⌘,
+        self.app.open_window(None)
+        self.app.window.bridge.js("go('settings')")
+
+    def openFile_(self, _sender):                        # noqa: N802 - File → Transcribe a file… ⌘O
+        self.app.open_files(None)
+
     def fire_(self, _note):                              # noqa: N802
         w = self.app.window
         if w is None or not w.win.isVisible():
@@ -117,9 +124,12 @@ def main_menu(app) -> None:
         bar.addItem_(top)
 
     menu("indite", [("About indite", "orderFrontStandardAboutPanel:", ""), None,
+                    ("Settings…", "openSettings:", ","), None,
                     ("Hide indite", "hide:", "h"), None, ("Quit indite", "quitIndite:", "q")])
-    quit_item = bar.itemAtIndex_(0).submenu().itemWithTitle_("Quit indite")
-    quit_item.setTarget_(app._activation)               # through indite's own quit, so the engine stops too
+    menu("File", [("Transcribe a file…", "openFile:", "o")])
+    for title in ("Quit indite", "Settings…"):             # through indite itself (quit also stops the engine)
+        bar.itemAtIndex_(0).submenu().itemWithTitle_(title).setTarget_(app._activation)
+    bar.itemAtIndex_(1).submenu().itemWithTitle_("Transcribe a file…").setTarget_(app._activation)
     menu("Edit", [("Undo", "undo:", "z"), ("Redo", "redo:", "Z"), None, ("Cut", "cut:", "x"),
                   ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")])
     menu("Window", [("Minimize", "performMiniaturize:", "m"), ("Zoom", "performZoom:", ""),
@@ -406,12 +416,12 @@ class Bridge(NSObject):
                 store.update(u[0], improved=u[1], ai=u[2])
                 self.ai_undo = None
         elif act == "add_fix":
-            heard, want = msg.get("heard", ""), msg.get("want", "")
-            why = store.fix_problem(heard, want)         # a refusal has to say why; it used to fail in silence
+            heard, want, editing = msg.get("heard", ""), msg.get("want", ""), bool(msg.get("edit"))   # edit: Dictionary page
+            why = store.fix_problem(heard, want, editing)  # a refusal has to say why; it used to fail in silence
             if why:
                 self.js(f"toast({why!r})")
             else:
-                store.add_fix(heard, want)
+                store.add_fix(heard, want, replace=editing)
                 row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
                 fixed = store.apply_my_fixes(row["text"], [(heard.strip(), want.strip())]) if row else ""
                 if row and fixed != row["text"]:             # this note only: past notes are never rewritten in bulk

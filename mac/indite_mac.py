@@ -1332,7 +1332,8 @@ class InditeApp(rumps.App):
         self.refresh()                   # the list grows while it is open, so a dictation shows up as it lands
         if self.prefs["preview"]:
             self.card_note = note
-            self.preview.show(self.last, buttons=(True if self.prefs.get("ai") else "todo") if note else False)
+            told = "Copied. Paste with ⌘V.\n" if self.done_state == "copied" else ""   # no text box: say where it went
+            self.preview.show(told + self.last, buttons=(True if self.prefs.get("ai") else "todo") if note else False)
         print(f"{len(audio) / RATE:.1f}s of speech -> {took:.2f}s -> {text}")
 
     # ---- menu ----------------------------------------------------------------------------------------------

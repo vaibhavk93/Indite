@@ -437,7 +437,7 @@ MAX_FIX_CHARS = 80
 MAX_FIXES = 500            # the list is applied to every dictation: past this it is a speed problem, not a feature
 
 
-def fix_problem(heard: str, want: str) -> str:
+def fix_problem(heard: str, want: str, editing: bool = False) -> str:
     """
     Why this fix cannot be added, in a sentence a person can act on - or "" if it is fine.
 
@@ -460,18 +460,21 @@ def fix_problem(heard: str, want: str) -> str:
         return "One letter would match far too much."
     pairs = my_fixes()
     for h, w in pairs:
-        if h.lower() == heard.lower():
+        if h.lower() == heard.lower() and not editing:   # automatic paths never overwrite a word you set
             return f"Already there: {h} → {w}. Remove it first if you want to change it."
     if len(pairs) >= MAX_FIXES:
         return f"The list is full ({MAX_FIXES}). Remove something you no longer need."
     return ""
 
 
-def add_fix(heard: str, want: str) -> bool:
-    """Appends one fix from the window. Refuses anything fix_problem objects to."""
+def add_fix(heard: str, want: str, replace: bool = False) -> bool:
+    """Appends one fix from the window. Refuses anything fix_problem objects to. replace: the Dictionary page's Add,
+    where the same word again is an edit (one line per word)."""
     heard, want = " ".join(heard.split()), " ".join(want.split())
-    if fix_problem(heard, want):
+    if fix_problem(heard, want, editing=replace):
         return False
+    if replace:
+        remove_fix(heard)
     path = fixes_file()
     raw = path.read_text(encoding="utf-8")
     path.write_text(raw + ("" if raw.endswith("\n") else "\n") + f"{heard} = {want}\n", encoding="utf-8")
