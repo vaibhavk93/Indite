@@ -53,3 +53,20 @@ def test_the_text_cards_two_ai_buttons_follow_use():
     assert card_slots(used, ["gone|x", "custom|hi"]) == [("summary", ""), ("prompt", "")]          # a bad pin = automatic
     assert slot_title("translate", "Hindi (Devanagari)") == "Translate · Hindi"
     assert slot_title("prompt", "") == "Make it a prompt"
+
+
+def test_a_card_button_picked_in_settings_shows_at_once(tmp_path, monkeypatch):
+    import indite_mac as m
+    monkeypatch.setattr(m.store, "PREFS", tmp_path / "prefs.json")
+    a = m.InditeApp.__new__(m.InditeApp)
+    titles = []
+    a.preview = type("P", (), {"set_titles": lambda s, t: titles.append(t)})()
+    a.mic = type("M", (), {"chosen": ""})()
+    a.pill = type("Pi", (), {"set_clear": lambda s, v: None})()
+    a.prefs = m.store.prefs()
+    a.set_card_buttons()
+    m.store.set_pref("card_buttons", ["summary|", ""])
+    a.reload_prefs()
+    assert titles[-1][0] == "Summary" and len(titles) == 2
+    a.reload_prefs()                                       # nothing changed: the buttons stay as they are
+    assert len(titles) == 2

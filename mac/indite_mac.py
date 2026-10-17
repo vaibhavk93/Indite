@@ -838,13 +838,6 @@ class InditeApp(rumps.App):
         self.card_note = None            # the note the text card is showing, for its AI buttons
         self.card_job = None             # (note id, action) asked from the card: its answer goes back to the card
         self.pill.set_clear(self.prefs["pill_clear"])
-        if getattr(self, "card_pins", None) != self.prefs.get("card_buttons"):
-            self.set_card_buttons()                      # picked in Settings: show it at once
-
-    def set_card_buttons(self) -> None:
-        self.card_pins = list(self.prefs.get("card_buttons") or [])
-        self.card_slots = card_slots(self.prefs.get("ai_uses") or {}, self.card_pins)
-        self.preview.set_titles([slot_title(a, x) for a, x in self.card_slots])
         self.done_until = 0.0
         self.done_state = "done"
         # 20 times a second, on the main thread: the only place the pill is ever touched.
@@ -1289,6 +1282,13 @@ class InditeApp(rumps.App):
         self.prefs = store.prefs()
         self.mic.chosen = self.prefs["mic"]
         self.pill.set_clear(self.prefs["pill_clear"])
+        if self.card_pins != list(self.prefs.get("card_buttons") or []):
+            self.set_card_buttons()                      # picked in Settings: show it at once
+
+    def set_card_buttons(self) -> None:
+        self.card_pins = list(self.prefs.get("card_buttons") or [])
+        self.card_slots = card_slots(self.prefs.get("ai_uses") or {}, self.card_pins)
+        self.preview.set_titles([slot_title(a, x) for a, x in self.card_slots])
 
     def open_window(self, _) -> None:                    # noqa: ANN001
         if self.window is None:                          # built on first use: AppKit, so main thread only
