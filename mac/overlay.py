@@ -301,8 +301,12 @@ class Pill:
         if not self.visible or not self.panel.isVisible():
             self.panel.orderFrontRegardless()         # front, but never focused
             self.visible = True
-        if self.panel.alphaValue() < 1.0:             # ~120 ms fade in, called from the 20 Hz timer
-            self.panel.setAlphaValue_(min(1.0, self.panel.alphaValue() + 0.18))
+        # Full strength at once, not a fade. The fade added 0.18 an frame and assumed 20 frames a second, which is
+        # true only while indite is the app in front. In real use - the founder in Chrome, holding the key - macOS
+        # throttles a background app's timers, and the log showed the pill still at alpha 0.40 after a SIX SECOND
+        # dictation: on screen, and all but invisible. That is every "the pill is not there" report (16 Oct).
+        if self.panel.alphaValue() < 1.0:
+            self.panel.setAlphaValue_(1.0)
         self.view.setNeedsDisplay_(True)
         if changed:
             # Reported after the window work, not before: measured first, every line said alpha 0 and not on screen,

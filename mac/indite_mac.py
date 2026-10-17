@@ -773,6 +773,14 @@ class InditeApp(rumps.App):
                 f"{sys.executable}\n\n"
                 "Tick it, then quit indite and start it again.",
             )
+        # macOS slows a background app's timers down (App Nap). indite spends its whole working life in the
+        # background, so the pill's animation and the level bars were being starved exactly when they matter.
+        try:
+            from Foundation import NSActivityUserInitiated, NSProcessInfo
+            self._awake = NSProcessInfo.processInfo().beginActivityWithOptions_reason_(
+                NSActivityUserInitiated, "dictation overlay must animate while another app is in front")
+        except Exception as e:                           # noqa: BLE001 - a slower pill is better than no app
+            print("could not switch off App Nap:", e)
         threading.Thread(target=self.listen, daemon=True).start()
         threading.Thread(target=self.warm_up, daemon=True).start()
         # Opening the app shows its window, like any Mac app; a timer, so it is built on the main thread once the
@@ -819,6 +827,12 @@ class InditeApp(rumps.App):
     def paint(self, _) -> None:                          # noqa: ANN001 - rumps' signature
         """Shows what is happening, in the place the eye already is: just above the Dock."""
         self.snap_tick = getattr(self, "snap_tick", 0) + 1
+        if self.snap_tick % 200 == 0:                    # every 10 s at full speed; far less if macOS throttles us
+            now = time.time()
+            was = getattr(self, "_rate_at", now)
+            self._rate_at = now
+            if now > was:
+                print(f"paint: {200 / (now - was):.1f} ticks a second (asked for 20)", flush=True)
         if self.snap_tick % 5 == 0 and DEMO_CMD.exists():
             self.demo_cmd()
         if self.snap_tick % 20 == 0 and SNAP_REQUEST.exists():
