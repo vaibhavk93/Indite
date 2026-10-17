@@ -152,6 +152,17 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+**18 Oct 01:45 — Mac: portable app, bug sweep, UI review and critic-passed changes done; roadmap page republished.**
+- Give indite to others ONLY as `dist/portable/indite-mac.zip` (`./mac/build_portable.sh`; see Repo rules).
+- Meetings: the call's sound reconnects if its capture dies (16 Oct it died after 7 s on headphones); the mic in use
+  is shown and logged. Listen: engine "nan" answers retried, else word times estimated from the sound.
+- End-to-end bugs fixed (window actions can no longer crash the app; masked text never saved over real words;
+  meeting tracks in backups; orphan recordings removed at start). UI review items done; critic dropped 2.
+- New: own menu-bar mark (`menubar_icon()`), Ask AI typical wait (`ai_secs`), pill/card on the pointer's screen,
+  Stop for files, search on Meetings/Files, ⌘Z after delete, Settings ⌘, / Transcribe ⌘O.
+- Open: one Who spoke error in the test copy ("GetElementType is not implemented"), not reproduced; a lock was added.
+- Waiting on the founder: D21 (boss's macOS), D20 (headphone call), D14/D15 (speech test), D19 (on-screen look).
+
 **17 Oct 23:05 — Mac roadmap: everything buildable without the founder is built; copy reviewed.**
 - New: Listen view in indite's look; card buttons picked in Settings (`card_buttons`); meeting tracks on one clock
   (`Track.catch_up`, arrival-stamped system audio) + "Both" playback (`clock` on the note); word times rebuilt when

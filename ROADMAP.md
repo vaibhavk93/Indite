@@ -1,12 +1,12 @@
 # indite roadmap
 
-Last updated: 2026-10-17. **This is the one roadmap.** Design rule: every screen follows `docs/DESIGN.md`. Order and status live only here. Other planning files hold
+Last updated: 2026-10-18. **This is the one roadmap.** Design rule: every screen follows `docs/DESIGN.md`. Order and status live only here. Other planning files hold
 detail and are not roadmaps: `docs/ROADMAP_DETAIL.md` (AI review design), `docs/MAC_PLAN.md` (Mac vs Android vs Wispr),
 `docs/WISPR_DEEPDIVE.md` (measurements), `docs/AI_MODES.md` (AI spec), `PLAN.md` (decisions and test results),
 `docs/FOUNDER_REQUESTS.md` (every request and its status), `docs/ROADMAP_ARCHIVE.md` (the old 10 Oct snapshot).
 **If any of them disagrees with this file, this file wins - fix the other one.** Every item passed an independent
-critic, or is the founder's own decision. The published page (https://claude.ai/artifact/GuCGtX4TJeASaS2RpGFS4q) is
-the 10 Oct version until it is republished from this file.
+critic, or is the founder's own decision. The published page (https://claude.ai/artifact/GuCGtX4TJeASaS2RpGFS4q) was
+republished from this file on 18 Oct.
 
 **Goal:** speak the way India talks, mixing Hindi and English, and get correct Roman-script text, privately and offline.
 Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr, Sarvam) are faster and more accurate today.
