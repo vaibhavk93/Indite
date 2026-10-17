@@ -250,6 +250,8 @@ class Bridge(NSObject):
                     self.js(f"toast({what!r}, () => send({{action:'undo_lines'}}))")
                 elif act == "merge_line":
                     self.js("toast('Nothing to join: the next line is another speaker, or there is none')")
+        elif act == "stop_job":                          # the file job card's Stop: the parts done so far are kept
+            self.app.job_stop = True
         elif act == "said":                              # speech test: this note's text is exactly what was said
             row = next((r for r in store.history() if r["id"] == msg.get("id")), None)
             if row:

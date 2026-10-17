@@ -1163,7 +1163,8 @@
     $("#job").innerHTML = j ? `<div class="jobcard"><svg width="16" height="16" style="color:var(--accent)"><use href="#i-file"/></svg>
       <div style="flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>${esc(j.name)}</b></div>
       <div class="bar2"><i style="width:${j.total ? Math.round(100 * j.done / j.total) : 3}%"></i></div>
-      <span class="num" style="color:var(--ink2);font-size:12px">${j.total ? `${j.done} of ${j.total}` : "Reading the file…"}</span></div>`
+      <span class="num" style="color:var(--ink2);font-size:12px">${j.total ? `Part ${Math.min(j.done + 1, j.total)} of ${j.total}` : "Reading the file…"}</span>
+      <button class="btn" onclick="send({action:'stop_job'}); this.disabled = true; this.textContent = 'Stopping…'" title="Keeps the parts done so far">Stop</button></div>`
       : "";
     const err = S.ai_error && !(drawerId && drawerMode === "ai") ? [/^Could not tell who spoke/.test(S.ai_error) ? "Couldn’t find who spoke" : "The AI couldn’t answer", S.ai_error] : S.file_error ? ["That file didn’t work", S.file_error] : null;
     if (err) $("#warn").innerHTML += `<div class="banner"><div><b>${err[0]}</b><p>${esc(err[1])}</p></div>

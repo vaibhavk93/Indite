@@ -1384,6 +1384,7 @@ class InditeApp(rumps.App):
         from indite.core import load_audio
         t0 = time.time()
         self.job = {"name": path.name, "done": 0, "total": 0}
+        self.job_stop = False                            # Stop on the job card: keep what is done so far
         self.refresh()
         try:
             audio, _damaged = load_audio(path)
@@ -1391,6 +1392,8 @@ class InditeApp(rumps.App):
             self.job["total"] = len(parts)
             segments, at = [], 0.0
             for p in parts:
+                if self.job_stop:
+                    break
                 text = self.tidy(self.engine.transcribe(p))
                 if text:
                     segments.append({"start": round(at, 2), "end": round(at + len(p) / RATE, 2), "text": text})
@@ -1400,7 +1403,9 @@ class InditeApp(rumps.App):
                 self.refresh()
             body = "\n\n".join(s["text"] for s in segments)
             if body:
-                note = store.add(body, at, time.time() - t0, "file", "", kind="file", title=path.name,
+                stopped = self.job_stop and self.job["done"] < self.job["total"]
+                note = store.add(body, at, time.time() - t0, "file", "", kind="file",
+                                 title=path.name + (" (stopped)" if stopped else ""),
                           segments=segments, source=str(path))
             print(f"file {path.name}: {at:.0f}s of audio -> {time.time() - t0:.0f}s, {len(segments)} parts")
             if body and note and self.prefs["auto_speakers"] and at >= 20:
