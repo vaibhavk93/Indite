@@ -1801,6 +1801,15 @@ class InditeApp(rumps.App):
         self.refresh()
         threading.Thread(target=self._who, args=(row, k), daemon=True).start()
 
+    @staticmethod
+    def _silent(path: Path, share: float = 0.03) -> bool:
+        """True when a track has sound in under 3% of its tenths of a second (or does not exist)."""
+        if not path.exists():
+            return True
+        x = np.fromfile(path, dtype=np.int16, offset=44).astype(np.float32) / 32768
+        n = len(x) // 1600 * 1600
+        return not n or float((np.abs(x[:n]).reshape(-1, 1600).max(axis=1) > 0.02).mean()) < share
+
     def _who(self, row: dict, k: int) -> None:
         import speakers
         t0 = time.time()
@@ -1809,6 +1818,11 @@ class InditeApp(rumps.App):
             from indite.core import load_audio
             meet = row.get("kind") == "meeting"
             others = meet and row.get("others")              # the call's sound was captured: split only that track
+            if others and self._silent(store.AUDIO / f"{row['id']}-others.wav"):
+                # captured, but nobody spoke through it: an in-person conversation (18 Oct: everyone in the room came
+                # out as "You"). Then the people are all on the mic, so split the mic track instead.
+                print("speakers: the call's track is silent - splitting the microphone")
+                others = False
             path = (store.AUDIO / f"{row['id']}-{'others' if others else 'you'}.wav") if meet else store.audio_of(row)
             if not path or not Path(path).exists():
                 raise RuntimeError("the audio for this note is not on this Mac any more")
