@@ -894,6 +894,10 @@ class InditeApp(rumps.App):
         self.web_proc: subprocess.Popen | None = None
         self.meeting = Meeting(self)
         self.meeting_item = rumps.MenuItem("Record a meeting", callback=self.toggle_meeting)
+        # One private dictation: typed as usual, but never written to disk (note, audio, log, clipboard copy). It
+        # switches itself off after one dictation (critic 18 Oct, D22: never a setting that silently stays on).
+        self.no_save_next = False
+        self.no_save_item = rumps.MenuItem("Don't save the next dictation", callback=self.toggle_no_save)
         self.ops: queue.Queue = queue.Queue()
         threading.Thread(target=self._worker, daemon=True).start()
         self.relisten = False
@@ -929,6 +933,7 @@ class InditeApp(rumps.App):
             None,
             rumps.MenuItem("Open indite", callback=self.open_window, key="o"),
             rumps.MenuItem("Copy the last dictation", callback=self.copy_last),
+            self.no_save_item,
             rumps.MenuItem("Edit Dictionary as a file\u2026", callback=self.edit_fixes),
             rumps.MenuItem("Transcribe a file\u2026", callback=self.open_files),
             self.meeting_item,
@@ -1342,10 +1347,11 @@ class InditeApp(rumps.App):
         self.last = self.out(text)                      # what is typed, copied and previewed; the note keeps the real words
         # The pill says what happened. A notification was tried here and crashed the thread that had just produced
         # the text (rumps needs a bundle identifier it could not find), so the words landed with nothing said.
+        private = self.no_save_next                     # "Don't save the next dictation": this one only
         mode = self.prefs["output"]
         if mode == "type" or (mode == "smart" and focused_is_text()):
             self.typer.type(self.last)
-            if self.prefs.get("also_copy", True):        # typed by key events, so the clipboard is free to hold it too
+            if self.prefs.get("also_copy", True) and not private:   # typed by key events: the clipboard may hold it too
                 self.typer.copy(self.last)
             self.done_state = "done"
         else:
@@ -1354,7 +1360,11 @@ class InditeApp(rumps.App):
         self.done_until = time.time() + 1.6
         took = time.time() - t0
         # Spoken into indite's own window (the Ask AI box, search, a rename): that's input to indite, not a note.
-        note = None if where_pid == os.getpid() else store.add(
+        if private:                                      # used once, then off again
+            self.no_save_next = False
+            self.no_save_item.state = 0
+            self.set_title("")
+        note = None if where_pid == os.getpid() or private else store.add(
             text, len(audio) / RATE, took, self.done_state, where,
             **({"raw": heard} if heard.strip() != text.strip() else {}))   # what the engine heard, so a fix can be undone
         if note and self.prefs.get("review"):
@@ -1369,9 +1379,9 @@ class InditeApp(rumps.App):
         self.refresh()                   # the list grows while it is open, so a dictation shows up as it lands
         if self.prefs["preview"]:
             self.card_note = note
-            told = "Copied. Paste with ⌘V.\n" if self.done_state == "copied" else ""   # no text box: say where it went
+            told = ("Not saved.\n" if private else "") + ("Copied. Paste with ⌘V.\n" if self.done_state == "copied" else "")
             self.preview.show(told + self.last, buttons=(True if self.prefs.get("ai") else "todo") if note else False)
-        print(f"{len(audio) / RATE:.1f}s of speech -> {took:.2f}s -> {text}")
+        print(f"{len(audio) / RATE:.1f}s of speech -> {took:.2f}s -> " + ("(private: not saved, not logged)" if private else text))
 
     # ---- menu ----------------------------------------------------------------------------------------------
     def reload_prefs(self) -> None:
@@ -1689,6 +1699,11 @@ class InditeApp(rumps.App):
         """Text as it leaves indite - typed, copied, previewed, exported - with swears masked if that is switched on."""
         return store.mask_swears(text, self.prefs.get("my_swears")) if self.prefs.get("mask_swears") else text
 
+    def toggle_no_save(self, _=None) -> None:            # noqa: ANN001
+        self.no_save_next = not self.no_save_next
+        self.no_save_item.state = int(self.no_save_next)   # a tick in the menu
+        self.set_title("private" if self.no_save_next else "")
+
     def watch_calls(self) -> None:
         """Every 3 s: has a call app started using the mic? Then ask once (Settings → Ask to record calls)."""
         import calls
@@ -1816,6 +1831,8 @@ class InditeApp(rumps.App):
             verb, _, arg = line.partition(":")
             if verb == "open":
                 self.open_window(None)
+            elif verb == "private":                            # developer check: same as the menu item
+                self.toggle_no_save()
             elif verb == "quit" and store.TEST:                # the test copy: mac/testcopy.py stop
                 self.quit_all(None)
             elif verb == "place" and self.window:            # x,y,w,h in screen points, from the top-left
@@ -1934,7 +1951,7 @@ class InditeApp(rumps.App):
         it from a worker killed the whole start-up thread once the main thread had drawn anything (16 Oct: warm_up
         died with NSInternalInconsistencyException, and the app sat there with no engine and a frozen pill).
         """
-        text = status_text(text)
+        text = status_text(text) or ("private" if getattr(self, "no_save_next", False) else "")   # the mark stays until used
         if threading.current_thread() is threading.main_thread():
             self.title = text
             return
