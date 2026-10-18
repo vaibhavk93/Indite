@@ -49,6 +49,27 @@ def _layout_on_main_thread() -> None:
 
 _layout_on_main_thread()
 
+
+def _skip_media_keys() -> None:
+    """
+    Volume, brightness and play/pause keys arrive as "system defined" events, and pynput turns each into an AppKit
+    NSEvent on its listener thread (keyboard/_darwin.py:303). On macOS 26 that off-main-thread AppKit call aborts the
+    whole app (18 Oct: indite died mid-morning; the crash stack ended on that line). indite never uses those keys, so
+    they are dropped before pynput looks at them. The hotkeys are ordinary key and modifier events, untouched.
+    """
+    from pynput.keyboard import _darwin as kb
+    system_defined = getattr(kb, "NSSystemDefined", 14)
+    handle = kb.Listener._handle_message
+
+    def handle_except_media(self, proxy, event_type, event, refcon, injected):
+        if event_type == system_defined:
+            return
+        return handle(self, proxy, event_type, event, refcon, injected)
+    kb.Listener._handle_message = handle_except_media
+
+
+_skip_media_keys()
+
 # A crash inside macOS code kills Python with no word in the log (15 Oct: it looked like a permission problem for
 # hours). This writes the Python stack of every thread into the log first. SIGTRAP is what macOS's own checks raise.
 import faulthandler   # noqa: E402
@@ -2003,6 +2024,9 @@ if __name__ == "__main__":
     if "--selftest" in sys.argv:                         # uv run python mac/indite_mac.py --selftest
         assert apply_fixes("Thik hai. thik", {"thik": "theek"}) == "Theek hai. theek"   # a capital stays
         assert apply_fixes("PTM", {"ptm": "Paytm"}) == "Paytm"
+        from pynput.keyboard import _darwin as kbd
+        assert kbd.Listener._handle_message.__name__ == "handle_except_media"            # media keys never reach pynput
+        assert kbd.Listener._handle_message(None, None, kbd.NSSystemDefined, None, None, False) is None
         assert [status_text(t) for t in ("🎙", "🎙⚠", "🎙…", "🔴", "⏳", "📄 3/10")] == ["", "⚠", "…", "●", "…", "3/10"]
         assert menubar_icon().isTemplate() and menubar_icon().size().width == 18
         assert utf16_chunks("", 20) == []

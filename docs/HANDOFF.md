@@ -368,6 +368,8 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
   indite, pynput read the keyboard layout from its listener thread; macOS 26 demands the main thread and killed the
   app silently (SIGTRAP, `dispatch_assert_queue`). Fix: `_layout_on_main_thread()` in `indite_mac.py` reads it once at
   start-up and hands pynput that copy, so **pynput is pinned to 1.8.2** (the patch reaches into its internals).
+- **⚠ Media keys crashed indite (18 Oct):** pynput turns volume/brightness/play keys into an NSEvent on its own thread
+  (`keyboard/_darwin.py:303`), which macOS 26 aborts. `_skip_media_keys()` drops those events first; keep it with the pin.
   The log's old "Accessibility" line was checking **Input Monitoring** (`CGPreflightListenEventAccess`), so it read
   False even with Accessibility on. `can_listen()` (log, menu ⚠, window banner, prompt) now checks Accessibility, plus `faulthandler` writes a Python stack into the log on
   any crash. Rules: after a crash, read `~/Library/Logs/DiagnosticReports/python3.12-*.ips` before blaming a
