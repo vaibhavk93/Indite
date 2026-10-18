@@ -322,10 +322,10 @@ The call is a starting suggestion, not a decision.
 | Idea | Seen at | User value | Offline? | Call | Why |
 |---|---|---|---|---|---|
 | Run the 15-sentence test on Samsung, OnePlus, Kivi, Wispr, Apple | All | Turns desk claims into numbers | Yes (our side) | **Test (do first)** | Every "unverified" above depends on it |
-| "Don't save this one" toggle (incognito dictation) | Kivi | Privacy for one sensitive message | Yes | Test | Small; check it is not already covered by deleting from history |
-| Tell the user plainly "this ran on your device" | Apple | Trust; our main edge made visible | Yes | Test | Cheap message; risk of clutter |
-| Underline unsure words, click for other guesses | Apple | Faster fixes | Yes | Test | Needs word confidence; WISPR_DEEPDIVE found confidence useful for near-miss check |
-| Bubble that restarts itself if Android kills it | Wispr | Floating mic stays alive | Yes | Test | Only if testers report the floating mic vanishing |
+| "Don't save this one" toggle (incognito dictation) | Kivi | Privacy for one sensitive message | Yes | **Critic 18 Oct: build smaller, only if the founder wants it (D22)** | One menu-bar item "Don't save the next dictation", off again after one use. Passwords, "Save my dictations" off, and Delete + Undo already cover most of it |
+| Tell the user plainly "this ran on your device" | Apple | Trust; our main edge made visible | Yes | **Critic: don't build** | Already said in ~5 places ("Stays on this Mac"); indite is always local, so a notice per dictation is noise |
+| Underline unsure words, click for other guesses | Apple | Faster fixes | Yes | **Critic: wait for evidence** | Confidence alone caught 31% of mistakes with 49% false flags (WISPR_DEEPDIVE). Build only if the real speech set (D15) shows ≤ 1 false flag per 100 words, and whisper can give other guesses |
+| Bubble that restarts itself if Android kills it | Wispr | Floating mic stays alive | Yes | **Critic: already done** | BubbleService returns START_STICKY, runs in the foreground, comes back after a reboot. Testers check battery-saver kills on Samsung/Xiaomi once D2 clears |
 | Two Hinglish outputs: all-Roman, or English-Latin + Hindi-Devanagari | Saaras | Choice for Hindi-script readers | Yes | Skip for now | No tester has asked; doubles test work |
 | Per-stage local/cloud switch | Superwhisper | Clear privacy control | Partly | Skip (mostly have it) | Speech is always local in indite; AI is already opt-in via the user's AI account |
 | Hold-to-delete that speeds up to whole words | Wispr | Fast clean-up on phone | Yes | Skip | Normal keyboard already does this |
