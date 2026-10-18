@@ -175,7 +175,8 @@ class Bridge(NSObject):
             "ai_busy": self.app.ai_busy,
             "notice": self.app.notice,
             "ai_error": self.app.ai_error,
-            "ai_actions": {k: v[:3] for k, v in __import__("ai").ACTIONS.items()},
+            "ai_actions": {k: v[:3] for k, v in __import__("ai").ACTIONS.items()
+                           if k != "review" or self.app.prefs.get("ai_review")},   # step 2: only while being tested
             "ai_styles": __import__("ai").STYLES,
             "ai_style_groups": __import__("ai").STYLE_GROUPS,
             "ai_langs": __import__("ai").LANGUAGES,

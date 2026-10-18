@@ -445,7 +445,8 @@ def card_slots(uses: dict, pins: list | None = None) -> list[tuple[str, str]]:
     one is filled with the AI actions asked most often (each with the style or language it was last asked with),
     topped up from CARD_DEFAULTS. One button per action.
     """
-    ok = lambda k: isinstance(k, str) and "|" in k and k.split("|", 1)[0] in ai.ACTIONS and not k.startswith("custom|")
+    ok = lambda k: isinstance(k, str) and "|" in k and k.split("|", 1)[0] in ai.ACTIONS \
+        and not k.startswith(("custom|", "review|"))     # review answers on the note, not on the card
     pins = [tuple(k.split("|", 1)) if ok(k) else None for k in (list(pins or []) + [None, None])[:2]]
     ranked = [tuple(k.split("|", 1)) for k, _ in sorted(uses.items(), key=lambda kv: -kv[1]) if ok(k)]
     fill = iter(x for x in ranked + CARD_DEFAULTS if x[0] not in [p[0] for p in pins if p])
@@ -1640,6 +1641,21 @@ class InditeApp(rumps.App):
         t0 = time.time()
         answer = None
         try:
+            if action == "review":                       # AI review step 2: likely mistakes, never a rewrite
+                if row.get("segments"):                  # a Fix edits the text; timed lines would no longer match
+                    raise RuntimeError("Review with AI works on dictations for now, not on meetings or files")
+                targets = [want for _, want in store.my_fixes()]
+                mine = [f for f in row.get("flags") or [] if f.get("by") != "ai"]
+                found = ai.review(row["text"], targets, mine, self.prefs["ai_provider"], self.prefs["ai_model"])
+                found = [f for f in found if not any(f["heard"] == m["heard"] for m in mine)]
+                store.update(row["id"], flags=mine + found or None)
+                print(f"ai review: {len(found)} suggestion(s) for {row['id']} in {time.time() - t0:.1f}s")
+                answer = ""
+                if self.window:
+                    from PyObjCTools import AppHelper
+                    said = f"{len(found)} likely mistake{'s' if len(found) != 1 else ''} to check" if found else "Nothing looks wrong"
+                    AppHelper.callAfter(self.window.bridge.js, f"toast({said!r})")
+                return
             answer = ai.run(action, row["text"], extra, self.prefs["ai_provider"], self.prefs["ai_model"])
             if action == "improve":
                 store.update(row["id"], improved=answer)          # beside the original, never instead of it

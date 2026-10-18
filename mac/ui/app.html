@@ -1113,7 +1113,7 @@
     const cb = S.prefs.card_buttons || ["", ""], A = S.ai_actions || {};
     const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
     const cbOpts = opt("", "Automatic") +
-      `<optgroup label="Actions">${Object.keys(A).filter(k => !["custom", "rewrite", "translate"].includes(k)).map(k => opt(k + "|", A[k][0])).join("")}</optgroup>` +
+      `<optgroup label="Actions">${Object.keys(A).filter(k => !["custom", "rewrite", "translate", "review"].includes(k)).map(k => opt(k + "|", A[k][0])).join("")}</optgroup>` +
       `<optgroup label="Rewrite to send">${Object.values(S.ai_style_groups || {}).flat().map(x => opt("rewrite|" + x, "Rewrite · " + x)).join("")}</optgroup>` +
       `<optgroup label="Translate">${(S.ai_langs || []).map(x => opt("translate|" + x, "Translate · " + x)).join("")}</optgroup>`;
     [0, 1].forEach(i => {
@@ -1326,7 +1326,7 @@
     return (r.flags || []).map((f, i) => {
       const re = new RegExp("(?<![\\p{L}\\p{N}_])" + f.heard.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").split(/\s+/).join("\\s+") + "(?![\\p{L}\\p{N}_])", "iu");
       const elsewhere = S.history.filter(x => x.id !== r.id && re.test(x.text || "")).length;   // self-contained: rows draw early
-      return `<div class="flag">Did you mean <b>${esc(f.want)}</b>? indite wrote “${esc(f.heard)}”.
+      return `<div class="flag"${f.why ? ` title="AI: ${esc(f.why)}${f.sure ? ` (${esc(f.sure)})` : ""}"` : ""}>${f.by === "ai" ? `<span class="tag">AI</span> ` : ""}Did you mean <b>${esc(f.want)}</b>? indite wrote “${esc(f.heard)}”.
         <button class="lnk" data-flag="${i}" data-id="${esc(r.id)}" data-how="fix">Fix</button>
         <button class="lnk" data-flag="${i}" data-id="${esc(r.id)}" data-how="always" title="${elsewhere ? `“${esc(f.heard)}” also appears, unchanged, in ${elsewhere} other note${elsewhere > 1 ? "s" : ""}. It may be a real word.` : "Fix it in every future dictation"}">Always fix${elsewhere ? ` (careful: also in ${elsewhere} other note${elsewhere > 1 ? "s" : ""})` : ""}</button>
         <button class="lnk mute" data-flag="${i}" data-id="${esc(r.id)}" data-how="dismiss">Not a mistake</button></div>`;
@@ -1639,7 +1639,7 @@
     const chips = (vals, act) => vals.map(v => `<button class="dpill" data-act="${act}" data-v="${esc(v)}" ${off}>${esc(v.replace(" with subject", "").replace(" or Teams", "/Teams"))}</button>`).join("");
     const langs = S.ai_langs || [], top = langs.slice(0, 3), rest = langs.slice(3), all = drawerView.langs;
     h += `<div class="dopts${nAns || busy ? "" : " first"}">
-      <h3>Make it better</h3><p class="dgs">Fix the words, keep the meaning. Your original always stays.</p>${list(["improve", "cleanup"])}
+      <h3>Make it better</h3><p class="dgs">Fix the words, keep the meaning. Your original always stays.</p>${list(["improve", "cleanup", ...(A.review && !(r.segments || []).length ? ["review"] : [])])}
       <h3>Turn it into</h3><p class="dgs">Something new to read, made from this note.</p>${list(["summary", "actions", "notes", "lecture", "braindump"])}
       <h3>For another AI</h3><p class="dgs">Turn what you said into a clear request for ChatGPT, Claude or Gemini.</p>${list(["prompt"])}
       <h3>Rewrite or translate</h3><p class="dgs">Pick one and it starts. The answer appears above.</p>

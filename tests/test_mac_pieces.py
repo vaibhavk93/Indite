@@ -130,3 +130,8 @@ def test_the_pill_is_placed_on_a_real_screen_at_the_bottom():
     from AppKit import NSScreen, NSMakeRect, NSIntersectsRect
     x, y = overlay.bottom_centre(116, 96)
     assert any(NSIntersectsRect(NSMakeRect(x, y, 116, 30), s.frame()) for s in NSScreen.screens())
+
+
+def test_review_never_becomes_a_card_button():
+    from indite_mac import card_slots
+    assert all(a != "review" for a, _ in card_slots({"review|": 9, "summary|": 1}, ["review|", ""]))

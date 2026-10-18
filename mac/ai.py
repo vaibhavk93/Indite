@@ -69,6 +69,8 @@ ACTIONS = {
                "Constraints\nEnglish only. Firm but not rude. Under 150 words.\n\n"
                "Output format\nSubject line, then the email body, then a sign-off.\n"
                "</example>"),
+    "review": ("Review with AI", "Likely mistakes to check, one by one. Nothing changes until you click Fix", "Check",
+               ""),                              # its prompt is REVIEW below; handled by review(), not run()
     "cleanup": ("Clean it up", "Punctuation fixed, the umms removed", "Change the words",
                 HINGLISH + "Fix punctuation and remove filler words (umm, matlab, basically, you know) only. Change "
                 "nothing else. Reply with the text only."),
@@ -210,6 +212,72 @@ def run(action: str, text: str, extra: str = "", provider: str = "claude", model
         raise RuntimeError(str(e)) from None
 
 
+REVIEW = """This is a voice note typed by an offline speech engine that gets about 1 word in 7 wrong, writing
+Hinglish (Hindi and English) in Roman letters. You cannot hear the audio, so you are guessing from the sentence -
+which is why you must say how sure you are, and why you must never rewrite the note.
+
+<dictionary>
+{dictionary}
+</dictionary>
+<suspected>
+{suspected}
+</suspected>
+
+List only the places you suspect the engine misheard. One line each:
+heard | suggest | why | sure
+- "heard" must be copied from the note character for character, so the app can find it.
+- Prefer suggestions from <dictionary> (the speaker's own names and words).
+- Skip anything you would merely word differently. Spelling variants of the same Hinglish word (nahi/nahin,
+  acha/achha) are not errors. Do not fix grammar or style.
+- "sure" is high, medium or low.
+- At most 10 lines. Reply "none" if nothing looks wrong.
+
+<example>
+note: ...Tat vaala dashboard abhi tak load nahin ho raha...
+Tat vaala | CleverTap | "Tat vaala" is not a product; CleverTap is in the dictionary and a dashboard fits | high
+</example>
+
+The note follows."""
+
+
+def review(text: str, targets: list[str], suspected: list[dict], provider: str = "claude", model: str = "") -> list[dict]:
+    """
+    AI review step 2 (docs/WISPR_DEEPDIVE.md §2.4): the AI lists suspected mishearings; it never changes the note.
+    Returns flags {heard, want, why, sure, by: "ai"} that passed the guards in review_lines().
+    """
+    prompt = REVIEW.replace("{dictionary}", "\n".join(targets) or "(empty)").replace(
+        "{suspected}", "\n".join(f"{f['heard']} -> maybe {f['want']}" for f in suspected) or "(none)")
+    if provider != "claude":
+        answer = _api(provider, model, prompt, text)
+    else:
+        _path()
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from indite.notes import ask
+        try:
+            answer = ask(prompt, text)
+        except SystemExit as e:
+            raise RuntimeError(str(e)) from None
+    return review_lines(answer, text)
+
+
+def review_lines(answer: str, text: str) -> list[dict]:
+    """The guards that must ship with step 2: "heard" must be in the note word for word, a real change, at most 10,
+    and "low" sureness is dropped. Anything else in the reply (a preamble, a rewrite) is ignored."""
+    out = []
+    for line in answer.splitlines():
+        cells = [c.strip().strip("`*\"“”") for c in line.strip().strip("|").split("|")]
+        if len(cells) < 4 or cells[0].lower() in ("heard", "none", ""):
+            continue
+        heard, want, why, sure = cells[:4]
+        if heard not in text or not want or want.lower() == heard.lower() or sure.lower().startswith("low"):
+            continue
+        if any(f["heard"] == heard for f in out):
+            continue
+        out.append({"heard": heard, "want": want, "why": why[:160], "sure": sure.lower(), "by": "ai"})
+    return out[:10]
+
+
 def tasks(answer: str) -> list[str]:
     """'task | who | by when' lines from an Action items answer, as one readable line each."""
     out = []
@@ -224,6 +292,12 @@ def tasks(answer: str) -> list[str]:
 
 
 if __name__ == "__main__":       # the one check: python mac/ai.py
+    note = "Maine Tat vaala dashboard khola, Crocin bhi li"
+    got = review_lines("Here is what I found:\nheard | suggest | why | sure\nTat vaala | CleverTap | a product | high\n"
+                       "Crocin | Crocine | spelling | low\nnot in note | X | made up | high\nkhola | khola | same | high\n"
+                       "Maine | Mainne | spelling | medium", note)
+    assert [f["heard"] for f in got] == ["Tat vaala", "Maine"], got                # invented and low-sure lines dropped
+    assert review_lines("none", note) == [] and len(review_lines("\n".join(f"Maine | M{i} | x | high" for i in range(20)), note)) == 1
     assert tasks("task | who | by when\n|---|---|---|\nSend deck | Rohit | Friday\nBook room | - | -\nnone") == \
         ["Send deck · who: Rohit · by: Friday", "Book room"]
     assert re.search("Roman", ACTIONS["improve"][3])
