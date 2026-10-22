@@ -28,6 +28,24 @@ from pathlib import Path
 
 import numpy as np
 import rumps
+# Set before PortAudio loads: it prints AUHAL warnings of its own even when the microphone is fine, and they hide
+# ours. Done here rather than in the launcher because anything inside the .app bundle breaks its signature, and a
+# broken signature is what costs the Accessibility permission (22 Oct, four times over).
+os.environ.setdefault("PA_SUPPRESS_STARTUP_MESSAGES", "1")
+
+
+def _rotate_log() -> None:
+    """Keep the log under 5 MB, with one old copy. It is the only record there is of a crash."""
+    try:
+        log = Path.home() / "Library/Logs/indite-mac.log"
+        if log.exists() and log.stat().st_size > 5_000_000:
+            log.replace(log.with_suffix(".log.1"))
+    except Exception:                                    # noqa: BLE001 - a log that will not rotate is not fatal
+        pass
+
+
+_rotate_log()
+
 import sounddevice as sd
 from pynput import keyboard
 
