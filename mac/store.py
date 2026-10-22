@@ -341,6 +341,48 @@ def drop_orphan_audio(older_than: float = 3600.0) -> int:
     return gone
 
 
+AUDIO_CAP_MB = 500         # how much kept audio to hold before the oldest is let go
+
+
+def audio_size_mb() -> float:
+    """How much disk the kept recordings are using."""
+    if not AUDIO.exists():
+        return 0.0
+    return sum(f.stat().st_size for f in AUDIO.iterdir() if f.is_file()) / 1e6
+
+
+def trim_audio(cap_mb: float | None = None) -> tuple[int, float]:
+    """
+    Delete the oldest recordings until the kept audio fits under the cap. Returns (files deleted, MB freed).
+
+    Keeping every recording grows about 31 MB a day and had no limit at all - 202 MB after a week, with nothing to
+    stop it (22 Oct). The audio is a convenience: the text of every note is kept whatever happens here, and so is
+    the audio of anything starred or on the to-do list, because those were marked as worth keeping.
+    """
+    cap = (cap_mb if cap_mb is not None else AUDIO_CAP_MB) * 1e6
+    if not AUDIO.exists():
+        return 0, 0.0
+    try:
+        protect = {r["id"] for r in _read() if keep(r)}   # starred or on the to-do list: never dropped for space
+    except Exception:                                    # noqa: BLE001 - an unreadable history must never cost audio
+        return 0, 0.0
+    files = sorted((f for f in AUDIO.iterdir() if f.is_file()), key=lambda f: f.stat().st_mtime)
+    total = sum(f.stat().st_size for f in files)
+    gone = freed = 0
+    for f in files:
+        if total <= cap:
+            break
+        note = re.match(r"^(\d+\.\d+)(?:-you|-others)?\.\w+$", f.name)
+        if note and note.group(1) in protect:
+            continue
+        size = f.stat().st_size
+        f.unlink()
+        total -= size
+        freed += size
+        gone += 1
+    return gone, freed / 1e6
+
+
 def backup(path: Path, scope: str = "all", with_audio: bool = False) -> int:
     import zipfile
     rows = [r for r in _read() if scope == "all" or (scope == "star" and r.get("star"))
@@ -532,6 +574,7 @@ def masked(row: dict, mine=()) -> dict:
 
 
 if __name__ == "__main__":     # the one check: uv run python mac/store.py
+    assert AUDIO_CAP_MB > 0 and audio_size_mb() >= 0
     assert fix_problem("", "Paytm")
     assert fix_problem("ptm", "ptm")                                  # same word
     assert fix_problem("a", "Paytm")                                  # one letter matches everything

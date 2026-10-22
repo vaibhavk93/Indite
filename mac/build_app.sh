@@ -45,6 +45,9 @@ export PYTHONNOUSERSITE=1
 # seal, and macOS then stops trusting the app - which is how Accessibility kept switching itself off mid-session
 # (16 Oct: "key access allowed: True" ... "This process is not trusted!"). Never write bytecode into the bundle.
 export PYTHONDONTWRITEBYTECODE=1
+# PortAudio prints AUHAL warnings of its own even when the microphone is fine; they hide ours.
+export PA_SUPPRESS_STARTUP_MESSAGES=1
+# rotate the log at 5 MB (see below); it is the only record of a crash
 HERE="\$(cd "\$(dirname "\$0")" && pwd)"
 exec "\$HERE/python/bin/python3" -u "$ROOT/mac/indite_mac.py" >> "\$HOME/Library/Logs/indite-mac.log" 2>&1
 LAUNCH

@@ -422,6 +422,31 @@ class Engine:
         return text if detail else " ".join(text.split())
 
 
+CRASH = store.DIR / "crash.txt"                   # the last crash, so the next start can own up to it
+
+
+def _remember_crash(kind: str, value, tb) -> None:   # noqa: ANN001
+    """
+    Write an uncaught error down where the next start will find it.
+
+    indite crashed four times in a week and nobody knew: the only record was a log file nobody reads, and each
+    crash was found by grepping it after the fact (22 Oct). A crash that says nothing is a crash that gets
+    reported as "the app stopped working" and costs a diagnosis round trip.
+    """
+    import traceback
+    try:
+        CRASH.parent.mkdir(parents=True, exist_ok=True)
+        CRASH.write_text(time.strftime("%d %b %H:%M") + "\n"
+                         + "".join(traceback.format_exception(kind, value, tb)), encoding="utf-8")
+    except Exception:                                # noqa: BLE001 - never crash while recording a crash
+        pass
+    traceback.print_exception(kind, value, tb)
+
+
+sys.excepthook = _remember_crash
+threading.excepthook = lambda a: _remember_crash(a.exc_type, a.exc_value, a.exc_traceback)
+
+
 class MicProblem(Exception):
     """The microphone could not be opened, with a reason worth showing someone."""
 
@@ -997,6 +1022,17 @@ class InditeApp(rumps.App):
                 NSActivityUserInitiated, "dictation overlay must animate while another app is in front")
         except Exception as e:                           # noqa: BLE001 - a slower pill is better than no app
             print("could not switch off App Nap:", e)
+        if CRASH.exists() and not store.TEST:            # own up to the last crash rather than let it go unnoticed
+            try:
+                what = CRASH.read_text(encoding="utf-8")
+                CRASH.unlink()
+                last = [l for l in what.strip().splitlines() if l.strip()][-1][:200]
+                print("last run ended in a crash:", last)
+                rumps.alert("indite stopped unexpectedly last time",
+                            f"{what.splitlines()[0]}\n\n{last}\n\nIt is written to the log. "
+                            "Nothing you had saved is affected.")
+            except Exception as e:                       # noqa: BLE001 - never crash reporting a crash
+                print("could not read the crash note:", e)
         if not store.TEST:               # the test copy never listens to the keyboard, nor watches for calls
             threading.Thread(target=self.listen, daemon=True).start()
             threading.Thread(target=self.watch_calls, daemon=True).start()
@@ -1404,6 +1440,10 @@ class InditeApp(rumps.App):
                 w.setsampwidth(2)
                 w.setframerate(RATE)
                 w.writeframes((np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes())
+        if note and self.prefs["keep_audio"]:
+            gone, freed = store.trim_audio()             # kept audio had no limit at all and grew ~31 MB a day
+            if gone:
+                print(f"kept audio was over {store.AUDIO_CAP_MB} MB: dropped the {gone} oldest, freed {freed:.0f} MB")
         self.refresh()                   # the list grows while it is open, so a dictation shows up as it lands
         if self.prefs["preview"] or getattr(self, "surprise_copy", False):
             self.card_note = note
