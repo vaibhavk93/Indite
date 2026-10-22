@@ -504,7 +504,7 @@ def show_short() -> None:
 # mac/narrate.py is used as it is; anything not recorded yet falls back to a synthetic voice, which is fine for a
 # rehearsal and NOT fine for the real take (take 1: the engine wrote "Tier cloist amok p acting" for a sentence it
 # gets right every time from a person).
-VOICES = Path("/tmp/indite-demo-voice")
+VOICES = Path.home() / "Documents/indite-demo-voice"
 
 # Which lines are spoken hands-free, and how long the screen holds after a line before anything moves. The founder's
 # note on take 1: "everything is running so fast that the user is not able to track it" - so results sit still.
@@ -612,7 +612,7 @@ def before(name: str, call: Path) -> None:
 # The word indite gets wrong in section 3, and what it should be. Filled in after testing the founder's own S03
 # recording - never guessed, because a demo that fakes its own mistake is worse than one that has none. Written by
 # tools/check_fix.py into this file's sibling so the take and the test cannot drift apart.
-FIX_FILE = Path("/tmp/indite-demo-voice/fix.txt")
+FIX_FILE = VOICES / "fix.txt"
 
 
 def teach_the_word() -> None:

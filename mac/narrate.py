@@ -6,7 +6,7 @@ Records the demo narration in a person's own voice, one line at a time.
     .venv/bin/python mac/narrate.py --list     # what is done and what is left
 
 The lines come from docs/DEMO_SCRIPT.md, so editing the script changes what you are asked to read - there is no
-second copy of the words to keep in step. Recordings go to /tmp/indite-demo-voice, never into the repo: the founder's
+second copy of the words to keep in step. Recordings go to ~/Documents/indite-demo-voice, never into the repo: the founder's
 voice is not something to push to a public GitHub.
 
 Why this exists: take 1 of the demo used a synthetic voice in place of the microphone, and the engine - which is
@@ -29,7 +29,9 @@ import sounddevice as sd
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "docs/DEMO_SCRIPT.md"
-OUT = Path("/tmp/indite-demo-voice")
+# Documents, not /tmp: macOS empties /tmp at every boot, and it took 8.1 minutes of the founder's
+# own voice with it (22 Oct). Outside the repo too - the repo is public and his voice is not going in it.
+OUT = Path.home() / "Documents/indite-demo-voice"
 RATE, LOW = 44100, 16000
 
 

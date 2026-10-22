@@ -4,14 +4,14 @@ Finds out what indite really hears for the company name in section 3, and writes
     .venv/bin/python tools/check_fix.py CleverTap
 
 Runs the founder's own S03 recording through the engine that is already loaded, compares what came back with the
-name, and writes "<what it heard> = <the real name>" to /tmp/indite-demo-voice/fix.txt. If the engine gets the name
+name, and writes "<what it heard> = <the real name>" to ~/Documents/indite-demo-voice/fix.txt. If the engine gets the name
 right, it says so and writes nothing - then the script needs a different name, because the mistake shown on camera
 has to be a real one.
 """
 import json, pathlib, subprocess, sys, time
 
 D = pathlib.Path.home() / "Library/Application Support/indite"
-VOICES = pathlib.Path("/tmp/indite-demo-voice")
+VOICES = pathlib.Path.home() / "Documents/indite-demo-voice"
 name = sys.argv[1] if len(sys.argv) > 1 else "CleverTap"
 src = VOICES / "S03-16k.wav"
 if not src.exists():
@@ -39,5 +39,5 @@ if name.lower().replace(" ", "") in heard.lower().replace(" ", ""):
 words = heard.split()
 guess = " ".join(words[:2]) if words else ""
 print(f"\n  Wrong, as hoped. Suggested fix:  {guess} = {name}")
-print("  Edit /tmp/indite-demo-voice/fix.txt if the wrong words are different from the first two.")
+print("  Edit ~/Documents/indite-demo-voice/fix.txt if the wrong words are different from the first two.")
 (VOICES / "fix.txt").write_text(f"{guess} = {name}\n")
