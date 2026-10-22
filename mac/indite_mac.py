@@ -1379,6 +1379,12 @@ class InditeApp(rumps.App):
         else:
             self.typer.copy(self.last)
             self.done_state = "copied"
+            # A fallback nobody asked for: smart mode could not find a text box, so the words are on the clipboard
+            # instead of where the cursor is. 7% of the founder's dictations ended this way (22 Oct). The card that
+            # explains it is off by default, so this one case turns it on for itself - the only moment when the words
+            # are not where the person is looking. Choosing "copy" in Settings is a different thing: that was asked
+            # for, and it stays quiet.
+            self.surprise_copy = mode == "smart"
         self.done_until = time.time() + 1.6
         took = time.time() - t0
         # Spoken into indite's own window (the Ask AI box, search, a rename): that's input to indite, not a note.
@@ -1399,10 +1405,14 @@ class InditeApp(rumps.App):
                 w.setframerate(RATE)
                 w.writeframes((np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes())
         self.refresh()                   # the list grows while it is open, so a dictation shows up as it lands
-        if self.prefs["preview"]:
+        if self.prefs["preview"] or getattr(self, "surprise_copy", False):
             self.card_note = note
-            told = ("Not saved.\n" if private else "") + ("Copied. Paste with ⌘V.\n" if self.done_state == "copied" else "")
+            told = (("Not saved.\n" if private else "")
+                    + ("No text box here, so it is on the clipboard — paste with ⌘V.\n"
+                       if getattr(self, "surprise_copy", False) else
+                       "Copied. Paste with ⌘V.\n" if self.done_state == "copied" else ""))
             self.preview.show(told + self.last, buttons=(True if self.prefs.get("ai") else "todo") if note else False)
+        self.surprise_copy = False
         print(f"{len(audio) / RATE:.1f}s of speech -> {took:.2f}s -> " + ("(private: not saved, not logged)" if private else text))
 
     # ---- menu ----------------------------------------------------------------------------------------------

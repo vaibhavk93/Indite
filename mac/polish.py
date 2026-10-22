@@ -54,9 +54,18 @@ def high_pass(a: np.ndarray, rate: int, hz: float = 80.0) -> np.ndarray:
 
 
 def speech_mask(a: np.ndarray, rate: int) -> np.ndarray:
-    """True where there is speech, judged on 20 ms blocks against this recording's own quiet level."""
-    win = int(0.02 * rate)
+    """
+    True where there is speech, judged on 20 ms blocks against this recording's own quiet level.
+
+    A take shorter than one block has nothing to judge - an empty array, or a stray Enter that caught a few
+    samples - and the maths below raised IndexError on it, which killed a whole --all run part-way through and left
+    the founder re-recording blind (22 Oct). Something that short is all speech or all nothing; either way, keeping
+    it whole is right and costs nothing.
+    """
+    win = max(1, int(0.02 * rate))
     n = len(a) // win
+    if n < 1:
+        return np.ones(len(a), dtype=bool)
     level = np.abs(a[: n * win].reshape(n, win)).max(axis=1)
     floor = float(np.percentile(level, 20))
     peak = float(np.percentile(level, 95))
@@ -113,6 +122,8 @@ def tighten(a: np.ndarray, speech: np.ndarray, rate: int) -> tuple[np.ndarray, i
     copied whole or not at all, so the number is exact.
     """
     out, gap, keep, kept = [], int(GAP * rate), int(KEEP * rate), 0
+    if not len(a):                                       # nothing to walk: empty in, empty out, nothing kept
+        return a, 0
     # np.diff marks the sample BEFORE a change, so the boundary is one later. Without the +1 a run was labelled by
     # its neighbour's state, and whole words were trimmed as if they were silence (16 Oct).
     edges = np.flatnonzero(np.diff(speech.astype(np.int8))) + 1
@@ -169,17 +180,26 @@ def main() -> None:
     if not names:
         sys.exit("which one? e.g. mac/polish.py N06   (or --all)")
     total_before = total_after = 0.0
+    bad: list[str] = []
     for name in names:
         src = VOICES / f"{name}.wav"
         if not src.exists():
             print(f"  {name}: not recorded")
             continue
-        out, before, after = polish(src)
+        try:
+            out, before, after = polish(src)
+        except Exception as e:                           # noqa: BLE001 - one bad take must not end the run
+            bad.append(name)
+            print(f"  {name:5} SKIPPED - {type(e).__name__}: {e}")
+            continue
         total_before += before
         total_after += after
         print(f"  {name:5} {before:6.1f}s -> {after:6.1f}s  ({before - after:4.1f}s of dead air removed)")
     if len(names) > 1:
         print(f"\n  total {total_before/60:.1f} min -> {total_after/60:.1f} min")
+    if bad:                                              # said once, at the end, where it cannot be scrolled past
+        print(f"  ⚠ {len(bad)} could not be tidied and still have their raw take: {' '.join(bad)}")
+        print(f"    record them again:  .venv/bin/python mac/narrate.py --blocks {' '.join(bad)}")
 
 
 if __name__ == "__main__":
@@ -196,6 +216,12 @@ if __name__ == "__main__":
         # the boundary bug: a run must be labelled by its own state, not its neighbour's
         flips = np.flatnonzero(np.diff(mask.astype(np.int8))) + 1
         assert all(mask[i] != mask[i - 1] for i in flips), "run boundaries are off by one"
-        print(f"ok - {len(a)/rate:.1f}s -> {len(out)/rate:.1f}s, no speech touched")
+        for tiny in (np.zeros(0, dtype=np.float32), np.array([0.5], dtype=np.float32),
+                     np.zeros(int(0.005 * rate), dtype=np.float32)):
+            m = speech_mask(tiny, rate)                  # used to raise IndexError and end a whole --all run
+            assert len(m) == len(tiny), (len(m), len(tiny))
+            got, kept = tighten(tiny, m, rate)
+            assert len(got) == len(tiny) and kept == int(m.sum())
+        print(f"ok - {len(a)/rate:.1f}s -> {len(out)/rate:.1f}s, no speech touched; short takes survive")
         sys.exit(0)
     main()

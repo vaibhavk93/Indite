@@ -38,12 +38,12 @@ reference 1`) and now comes through as literal text. That one is already fixed.
 
 | # | Bug | How bad | Evidence |
 |---|---|---|---|
-| **B1** | `polish.speech_mask` **crashes on empty or very short audio** (`IndexError`) | **High for the demo.** One mis-pressed take under 20 ms makes `polish --all` die part-way, and the founder re-records blind | Reproduced: empty array and a 1-sample array both raise |
+| **B1** | ✅ **FIXED 22 Oct.** `polish.speech_mask` crashed on empty or very short audio (`IndexError`) | **High for the demo.** One mis-pressed take under 20 ms makes `polish --all` die part-way, and the founder re-records blind | Reproduced: empty array and a 1-sample array both raise |
 | **B2** | `tests/test_mac_handsfree.py` **cannot run** - it imports pytest, which is not installed and is in no dependency file | Medium. 1 of 5 test files is dead weight, and nobody would know | `ModuleNotFoundError: No module named 'pytest'` |
 | **B3** | **There is no dependency file at all** - no `pyproject.toml`, no `requirements.txt` | Medium. The environment cannot be rebuilt on another machine, which blocks the Windows port and any second developer | `ls` finds neither |
 | **B4** | **The app has crashed 4 times in a week and nothing reports it** | Medium. Found only by grepping a log nobody reads | 4 distinct `libc++abi: terminating` entries: a missing `bridge` attribute, an `UnboundLocalError` on `subprocess`, a duplicate Objective-C class, and the `re.error` above. Three look already fixed; none has reproduced today |
 | **B5** | **Kept audio grows without limit** - 202 MB already, about **31 MB a day** | Medium, and rising. There is no cap and no cleanup | 194 files over 6.9 days |
-| **B6** | **7% of dictations silently go to the clipboard** instead of being typed | Medium UX. The pill says "copied", but if it is missed the words are only on the clipboard | 8 of the last 120 dictations ended `copied` |
+| **B6** | ✅ **FIXED 22 Oct.** 7% of dictations silently went to the clipboard instead of being typed | Medium UX. The pill says "copied", but if it is missed the words are only on the clipboard | 8 of the last 120 dictations ended `copied` |
 | **B7** | The log **never rotates** - 9,378 lines, 492 KB | Low, but it is the only record of a crash | - |
 | **B8** | PortAudio prints warnings and errors even when the microphone works | Low. Noise that hides real faults | 10 AUHAL warnings, 5 "Invalid Property Value", 2 `-9986` |
 
@@ -67,3 +67,22 @@ Ordered by what actually hurts, not by what is easy.
 founder's judgement, not a bug, and changing it the day before a recording is the wrong moment.
 
 **Total: about 4.5 hours.** Items 1 and 2 are the ones worth doing before the demo.
+
+
+---
+
+## Fixed before the demo (22 Oct)
+
+**B1 - polishing no longer dies on a bad take.** Two crashes, not one: `speech_mask` raised on anything shorter
+than a 20 ms block, and `tighten` raised on an empty array - the second only showed up once the self-check
+actually ran the short cases. A take that short is all speech or all nothing, so it is now kept whole. On top of
+that, `--all` catches a failure per file, carries on, and says at the end which takes still have only their raw
+version and the exact command to record them again. Proven with a deliberately broken run: a good file, an empty
+one, a 4 ms one and another good one - both good files were tidied, both bad ones were named, and the run
+finished.
+
+**B6 - the clipboard fallback says so.** The explaining card existed but only appeared if "Show the words" was on,
+and it is off by default - so in the one case where the words are *not* where the person is looking, nothing was
+said. Smart mode falling back to the clipboard now opens the card for itself, whatever the setting, reading "No
+text box here, so it is on the clipboard - paste with ⌘V." Choosing "copy" in Settings stays quiet, because that
+was asked for. Checked on screen.
