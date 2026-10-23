@@ -231,14 +231,17 @@ def combine(ids: list[str]) -> str | None:
               and (r.get("kind", "dictation") in ("dictation", "combined", "file", "meeting"))]
     if len(picked) < 2:
         return None
-    picked.sort(key=lambda r: r.get("at", 0))                                 # oldest-first, so Clip 1 is the earliest
+    picked.sort(key=lambda r: r.get("at", 0))                                 # oldest-first
     labels = []
     chunks = []
     for i, r in enumerate(picked, start=1):
         when = time.strftime("%d %b, %I:%M %p", time.localtime(r.get("at", 0))).lstrip("0")
         title = (r.get("title") or "").strip() or f"Dictation {i}"
         labels.append(f"{title} · {when}")
-        chunks.append(f"— Clip {i}: {labels[-1]} —\n{(r.get('real_text') or r.get('text') or '').strip()}")
+        chunks.append((r.get("real_text") or r.get("text") or "").strip())
+    # No "— Clip N: … —" headers: those made the AI treat each piece as a separate thing to rewrite / summarise.
+    # The user picked these BECAUSE they belong together, so the AI should see one piece. Which clips they came from
+    # is kept in `sources` + `sourceLabels` for display (e.g. "Combined from 4 clips" on the row).
     text = "\n\n".join(chunks)
     now = time.time()
     day = time.strftime("%d %b", time.localtime(now)).lstrip("0")
@@ -701,7 +704,9 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert nid is not None
     r = next(x for x in history() if x["id"] == nid)
     assert r["kind"] == "combined" and r["sources"] == [d1, d2] and len(r["sourceLabels"]) == 2
-    assert "— Clip 1:" in r["text"] and "Priya" in r["text"] and "Friday" in r["text"]
+    # The text the AI sees must NOT carry "Clip N:" headers (that was making it rewrite each clip separately,
+    # founder, 23 Oct). It's just the concatenated transcripts with blank-line breaks.
+    assert "Clip 1" not in r["text"] and "Priya" in r["text"] and "Friday" in r["text"]
     assert combine([d1]) is None                                   # needs 2+
     assert combine([d1, "no-such-id"]) is None                     # only one valid id → still refuses
     # a combined row is NOT a plain dictation, so clear() must not touch it

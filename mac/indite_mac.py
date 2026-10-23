@@ -799,9 +799,21 @@ def focused_is_text() -> bool:
         err, role = AXUIElementCopyAttributeValue(element, kAXRoleAttribute, None)
         if err != 0 or role is None:
             return True
-        return str(role) in {
-            "AXTextField", "AXTextArea", "AXComboBox", "AXSearchField", "AXWebArea", "AXStaticText",
-        }
+        role = str(role)
+        if role in {"AXTextField", "AXTextArea", "AXComboBox", "AXSearchField", "AXWebArea", "AXStaticText"}:
+            return True
+        # Chromium / Electron apps (Chrome, Slack, Claude, VS Code, Cursor, Discord) mark the focused web input as
+        # AXGroup / AXGenericElement / AXUnknown but still expose kAXValueAttribute (what you'd set to type into it).
+        # Fall through to that check so these apps aren't silently routed to clipboard-only. 23 Oct, founder: "the app
+        # knows which app I'm in but doesn't know I'm in a text box".
+        try:
+            from ApplicationServices import kAXValueAttribute
+            err, _ = AXUIElementCopyAttributeValue(element, kAXValueAttribute, None)
+            if err == 0:
+                return True
+        except Exception:                     # noqa: BLE001
+            pass
+        return False
     except Exception:                         # noqa: BLE001 - never block a dictation on a permission or API quirk
         return True
 
@@ -1341,6 +1353,10 @@ class InditeApp(rumps.App):
         A microphone that will not open is either a permission macOS has not granted, or a device that is not there.
         Both are fixable by the user, and neither should be a silent nothing-happens (the lesson from the alarm
         switch, the API key and the hotkey: a thing that cannot work has to say so).
+
+        Runs on the mic worker thread. The alerts MUST hop to the main thread: NSAlert → NSWindow._doOrderWindow,
+        which asserts main-thread. Without the hop the alert never displays and the worker crashes with
+        NSInternalInconsistencyException (seen 23 Oct). set_title / pill.show / threading.Timer are already safe.
         """
         print("mic: could not start:", repr(err))
         if isinstance(err, MicStuck):
@@ -1348,15 +1364,16 @@ class InditeApp(rumps.App):
             return
         self.pill.show("error")
         allowed = mic_allowed()
+        from PyObjCTools import AppHelper
         if allowed is False:
             ask_mic()
-            rumps.alert(
+            AppHelper.callAfter(rumps.alert,
                 "indite cannot hear the microphone",
                 "macOS has not given indite permission to use the microphone.\n\n"
                 "System Settings → Privacy & Security → Microphone → turn on indite, then quit and open it again.",
             )
         else:
-            rumps.alert(
+            AppHelper.callAfter(rumps.alert,
                 "indite could not open any microphone",
                 "Tried every input on this Mac and none of them opened.\n\n"
                 "The usual cause is a Bluetooth headset that is switched off, or an iPhone microphone that is not "
@@ -1377,7 +1394,9 @@ class InditeApp(rumps.App):
         bundle = next((p for p in Path(sys.executable).parents if p.suffix == ".app"), None)
         if bundle is None or not restart_allowed(store.DIR / "mic-restart.last"):
             self.pill.show("error")
-            rumps.alert("The microphone is stuck in macOS",
+            # Also runs on the mic worker thread; see mic_trouble - the alert must hop to the main thread.
+            from PyObjCTools import AppHelper
+            AppHelper.callAfter(rumps.alert, "The microphone is stuck in macOS",
                         "macOS stopped answering indite about the microphone. Quit indite and open it again.\n\n"
                         "If it is stuck again straight away, restart the Mac.")
             threading.Timer(2.0, self.pill.hide).start()

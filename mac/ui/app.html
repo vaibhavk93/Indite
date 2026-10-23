@@ -136,23 +136,34 @@
   }
   .row { position: relative; }
   .row.sel { background: var(--well); border-radius: 10px; box-shadow: 0 0 0 1px var(--line2); }
-  .row.picked { background: color-mix(in oklab, var(--brand) 10%, var(--paper)); border-radius: 10px;
-                box-shadow: 0 0 0 1.5px var(--brand); }
-  .selmark { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ink3); margin-top: 2px; cursor: default; }
-  .selmark.on { background: var(--brand); border-color: var(--brand); position: relative; }
-  .selmark.on::after { content: ""; position: absolute; left: 5px; top: 2px; width: 5px; height: 9px;
-                       border: solid var(--paper); border-width: 0 2px 2px 0; transform: rotate(45deg); }
-  /* bottom bar while picking */
-  .selbar { position: fixed; left: 240px; right: 24px; bottom: 18px; background: var(--paper); border: 1px solid var(--line);
-            border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.12); padding: 10px 14px; display: flex; gap: 12px;
-            align-items: center; z-index: 50; }
+  /* While picking: picked rows get a soft well wash + a thin brand bar INSIDE the row (box-shadow inset, so no
+     overflow-clip surprise on the parent); non-picked rows dim slightly so the picked ones lead the eye. */
+  body.picking .row { opacity: .55; transition: opacity .12s; }
+  body.picking .row.picked { opacity: 1; background: var(--well); border-radius: 10px;
+                             box-shadow: inset 3px 0 0 var(--brand); }
+  /* The mark shows on hover and on the picked row only (less visual noise). Smaller and quieter in both themes: the
+     unpicked outline is var(--line2) not var(--ink3), and the picked tick lives on var(--ink) rather than var(--brand)
+     so the orange isn't repeated 4 times on dark backgrounds. */
+  .selmark { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--line2); margin-top: 3px;
+             cursor: default; opacity: 0; transition: opacity .1s; flex: none; }
+  .row:hover .selmark, .row.picked .selmark { opacity: 1; }
+  .selmark.on { background: var(--ink); border-color: var(--ink); position: relative; opacity: 1; }
+  .selmark.on::after { content: ""; position: absolute; left: 4px; top: 1.5px; width: 5px; height: 9px;
+                       border: solid var(--paper); border-width: 0 1.75px 1.75px 0; transform: rotate(45deg); }
+  /* Bar: docks to the full content width at the bottom, with a divider line above. Not a floating card. */
+  .selbar { position: fixed; left: 240px; right: 0; bottom: 0; background: var(--paper); border-top: 1px solid var(--line);
+            padding: 10px 24px; display: flex; gap: 12px; align-items: center; z-index: 50; }
+  body.ai-open .selbar { right: min(460px, 92vw); }   /* don't slide under the Ask AI drawer when it's open */
   .selbar .msg { flex: 1; font-size: 13px; color: var(--ink); }
   .selbar .msg.big { color: var(--err, #c0392b); }
   .selbar .fine { font-size: 11px; color: var(--ink2); }
-  .selbar button { appearance: none; border: 0; background: var(--ink); color: var(--paper); font: inherit; font-weight: 600;
-                   font-size: 13px; padding: 7px 14px; border-radius: 10px; cursor: default; }
-  .selbar button.ghost { background: transparent; color: var(--ink2); }
+  .selbar button { appearance: none; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit;
+                   font-weight: 600; font-size: 13px; padding: 7px 14px; border-radius: 8px; cursor: default; }
+  .selbar button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .selbar button.ghost { background: transparent; color: var(--ink2); border-color: transparent; }
   .selbar button:disabled { opacity: .45; }
+  .selbar kbd { font: inherit; font-size: 11px; color: var(--ink2); background: var(--well); border: 1px solid var(--line);
+                border-radius: 4px; padding: 1px 5px; }
   /* Ask AI sits beside the list when there's room (critic: at the default 920px window that leaves a 240px list,
      so smaller windows keep it on top, but without dimming the list, which stays clickable) */
   @media (min-width: 1180px) { body.ai-open main { margin-right: min(460px, 92vw); } }
@@ -989,6 +1000,18 @@
   document.addEventListener("keydown", e => {
     if (e.metaKey && e.key === "f") { e.preventDefault(); if (!["home", "meetings", "files"].includes(tab)) go("home"); $("#q").focus(); }
     if (e.metaKey && e.key === ",") { e.preventDefault(); go("settings"); $("#sq").focus(); }
+    // Selection-mode shortcuts: ⌘A on the Dictations tab adds every shown row (up to 10); Esc clears the selection.
+    if (sel.size > 0 && tab === "home") {
+      if (e.metaKey && e.key.toLowerCase() === "a" && !e.target.closest("input, textarea")) {
+        e.preventDefault();
+        const shown = [...document.querySelectorAll('#list .row[data-row]')].map(r => r.dataset.row);
+        const allPicked = shown.length > 0 && shown.every(id => sel.has(id));
+        if (allPicked) sel.clear(); else for (const id of shown.slice(0, 10)) sel.add(id);
+        draw();
+      } else if (e.key === "Escape" && !e.target.closest("input, textarea, .menu, .drawer")) {
+        e.preventDefault(); sel.clear(); draw();
+      }
+    }
   });
   $("#edit-fixes").onclick = () => send({ action: "fixes" });
   $("#files").onclick = () => send({ action: "files" });
@@ -1293,6 +1316,7 @@
     for (const id of [...sel]) if (!alive.has(id)) sel.delete(id);
     const bar = $("#selbar");
     const show = sel.size > 0 && tab === "home";
+    document.body.classList.toggle("picking", show);           // row dim + left-bar marker come from this class
     bar.hidden = !show;
     if (!show) return;
     // Rough word count across the selection, so the user sees when the AI call is getting too big before firing it.
@@ -1301,21 +1325,28 @@
       return n + (r ? (r.text || "").trim().split(/\s+/).filter(Boolean).length : 0);
     }, 0);
     const big = words > 8000;
+    const shownIds = [...document.querySelectorAll('#list .row[data-row]')].map(r => r.dataset.row);
+    const allPicked = shownIds.length > 0 && shownIds.every(id => sel.has(id));
     bar.innerHTML = `
       <div class="msg ${big ? "big" : ""}">
-        ${sel.size < 2 ? "Pick at least 2 dictations to combine." : `${sel.size} selected  ·  about ${words.toLocaleString()} words`}
-        ${big ? `<div class="fine">Big AI call — the answer may wander or be cut short.</div>` : ""}
+        ${sel.size < 2 ? "Pick at least 2 dictations." : `${sel.size} selected  ·  about ${words.toLocaleString()} words`}
+        ${big ? `<div class="fine">That's a lot of text for one AI call — the answer may be cut short.</div>` : ""}
       </div>
+      <button class="ghost" data-x="all" title="Pick every dictation on screen">${allPicked ? "Unpick all" : "Pick all"} <kbd>⌘A</kbd></button>
       <button class="ghost" data-x="cancel">Cancel</button>
-      <button data-x="ask" ${sel.size < 2 ? "disabled" : ""}>
-        <svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-spark"/></svg>Ask AI combined
-      </button>`;
+      <button class="primary" data-x="ask" ${sel.size < 2 ? "disabled" : ""}>Combine & Ask AI</button>`;
     bar.querySelector('[data-x="cancel"]').onclick = () => { sel.clear(); draw(); };
+    bar.querySelector('[data-x="all"]').onclick = () => {
+      if (allPicked) { sel.clear(); }
+      else { for (const id of shownIds.slice(0, 10)) sel.add(id); }
+      draw();
+    };
     bar.querySelector('[data-x="ask"]').onclick = () => {
       if (sel.size < 2) return;
       const ids = [...sel];
       sel.clear();
-      send({ action: "combine", ids });    // Python makes the combined note, pushes new state, then openDrawer(newId)
+      document.body.classList.remove("picking");                // instant feedback; Python will push the new note next
+      send({ action: "combine", ids });
     };
   }
 

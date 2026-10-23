@@ -374,7 +374,10 @@ class Preview:
     MAX_H = 320.0                     # about 14 lines; text longer than this keeps its END and loses its start
     CAP = 6.0                         # never on screen longer than this, however long the text (founder, 16 Oct)
     ACTIONS = ("Ask AI", "", "", "To do")   # Ask AI fixed; the app names 2 and 3 (set_titles); on_action(index)
-    BH = 34.0                         # the strip the buttons sit in
+    BH = 42.0                         # the strip the buttons sit in (bumped from 34: breath + matches .pctl)
+    BTN_H = 26.0                      # each button's height
+    BTN_PAD_X = 11.0                  # left and right padding on each button
+    BTN_GAP = 6.0                     # between buttons
 
     def __init__(self) -> None:
         screen = NSScreen.mainScreen().frame()
@@ -430,32 +433,58 @@ class Preview:
         self.titles = list(self.ACTIONS)
         self.target.handler = lambda i: self.asking(i) if self.asking else (self.on_action and self.on_action(i))
         self.buttons = []
-        x = 16.0
         for i, title in enumerate(self.ACTIONS):
+            # Flat, hairline-bordered buttons - the old NSBezelStyleRounded was the single most dated thing on screen
+            # (founder, 23 Oct: "looks 10 to 20 years back"). isBordered=False keeps every native handler - click,
+            # action/target, VoiceOver role, keyboard focus - and the CALayer draws the look DESIGN.md §4 asks for.
             b = AppKit.NSButton.buttonWithTitle_target_action_(title, self.target, "click:")
-            b.setBezelStyle_(AppKit.NSBezelStyleRounded)
-            b.setControlSize_(AppKit.NSControlSizeSmall)
-            b.setFont_(NSFont.systemFontOfSize_(11.0))
+            b.setBordered_(False)
+            b.setBezelStyle_(0)                              # no bezel; the layer draws the background
             b.setTag_(i)
-            b.sizeToFit()
-            b.setFrameOrigin_((x, 6))
-            x += b.frame().size.width + 6
+            b.setWantsLayer_(True)
+            b.layer().setCornerRadius_(7.0)                  # DESIGN.md §3: 6-7 px small controls
+            b.layer().setMasksToBounds_(True)
             b.setHidden_(True)
             box.addSubview_(b)
             self.buttons.append(b)
+        self._style_buttons()                                # fonts and colours; _lay only moves them
+        self._lay(self.titles)                               # initial geometry
 
     def set_titles(self, titles: list[str]) -> None:
         """Names the 2nd and 3rd buttons and lays the row out again (main thread, at start-up)."""
         self.titles = [self.ACTIONS[0], *titles, self.ACTIONS[3]]
         self._lay(self.titles)
 
+    def _style_buttons(self) -> None:
+        """
+        All four as hairline-bordered ghosts. The first ink-filled version read as a stuck-pressed button on the
+        glass card (founder, 23 Oct): ink fill is right for a page-level primary (Record, Save), wrong for a HUD
+        where "dark = selected" is the macOS convention. Hierarchy here comes from position and from Ask AI's
+        semibold weight (set in _attr_title). Colours auto-swap for dark mode.
+        """
+        for b in self.buttons:
+            b.layer().setBackgroundColor_(NSColor.clearColor().CGColor())
+            b.layer().setBorderWidth_(0.5)
+            b.layer().setBorderColor_(NSColor.separatorColor().CGColor())
+
+    def _attr_title(self, i: int, title: str):
+        """SF Pro 13 pt. Ask AI (leftmost) is semibold so the eye finds it; the rest are medium. Ink text on all."""
+        import AppKit as AK
+        weight = AK.NSFontWeightSemibold if i == 0 else AK.NSFontWeightMedium
+        font = NSFont.systemFontOfSize_weight_(13.0, weight)
+        attrs = {AK.NSFontAttributeName: font, AK.NSForegroundColorAttributeName: NSColor.labelColor()}
+        return AK.NSAttributedString.alloc().initWithString_attributes_(title, attrs)
+
     def _lay(self, titles: list[str]) -> None:
+        import AppKit as AK
         x = 16.0
-        for b, title in zip(self.buttons, titles):
-            b.setTitle_(title)
-            b.sizeToFit()
-            b.setFrameOrigin_((x, 6))
-            x += b.frame().size.width + 6
+        y = (self.BH - self.BTN_H) / 2                       # vertical-centre inside the strip
+        for i, (b, title) in enumerate(zip(self.buttons, titles)):
+            b.setAttributedTitle_(self._attr_title(i, title))
+            text_w = b.attributedTitle().size().width
+            w = max(self.BTN_H, text_w + 2 * self.BTN_PAD_X)   # text + padding; floor so a 1-char title stays round
+            b.setFrame_(NSMakeRect(x, y, w, self.BTN_H))
+            x += w + self.BTN_GAP
 
     def show(self, text: str, buttons: bool | str = False) -> None:
         """buttons: True = the AI actions and To do; "todo" = To do only (AI off); False = none (not a saved note)."""
