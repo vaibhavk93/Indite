@@ -444,7 +444,7 @@
                  padding: 7px 8px; border-radius: 7px; cursor: default; }
   .menu button:hover, .menu button:focus-visible { background: var(--well); }
   .menu button b { display: block; font-weight: 550; font-size: 13px; }
-  .menu button span { font-size: 12px; color: var(--ink2); }
+  .menu button span { display: block; font-size: 11px; font-weight: 500; color: var(--ink-dim); margin-top: 2px; line-height: 1.35; }
   .menu select { margin: 2px 8px 6px; width: calc(100% - 16px); }
   .menu .fine { text-align: left; margin: 6px 8px 2px; }
   .aicard { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
@@ -1531,8 +1531,10 @@
       ["sep"], ["del", "Delete", ""],
     ];
     const b = btn.getBoundingClientRect();
+    // Theme pass commit 2 (24 Oct): subtitle lives inside the menu row, not in a browser `title=` tooltip (which
+    // macOS floated anywhere; the founder screenshotted it drifting over Star while hovering Add to To do).
     const m = popup(items.map(([k, l, d]) => k === "sep" ? `<div class="sep"></div>` :
-      `<button data-k="${k}" class="${k === "del" ? "danger" : ""}"${d ? ` title="${esc(d)}"` : ""}><b>${l}</b></button>`).join(""),   // short: Delete stays in view
+      `<button data-k="${k}" class="${k === "del" ? "danger" : ""}"><b>${esc(l)}</b>${d ? `<span>${esc(d)}</span>` : ""}</button>`).join(""),
       x ?? b.right - 290, y ?? b.bottom + 4);
     m.querySelectorAll("button").forEach(x2 => x2.onclick = () => {
       const k = x2.dataset.k; m.remove();
