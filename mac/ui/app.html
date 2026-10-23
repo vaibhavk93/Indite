@@ -18,6 +18,14 @@
     --sw-off: #d6d6db; --toast: #1d1d1f; --copied: #a14e09;
     --red: #c4372a; --who2: #2f6fb3; --who3: #7a4fb3;
     --shadow: 0 1px 2px rgba(16,16,20,.04), 0 2px 8px rgba(16,16,20,.04);
+    /* Theme-pass v2 commit 1 (24 Oct): added for the sweep. --ink-dim replaces `opacity: 0.6` on text (fails AA
+       on --well in dark); state-* name the busy/done/idle moments; --panel-edge replaces hard shadows that vanish
+       in dark; --tt-paper is the themed tooltip background. */
+    --ink-dim: #8e8e95;
+    --state-busy: #5f5f66; --state-done: #2e8b47; --state-idle: #737379;
+    --panel-edge: rgba(0,0,0,.14); --tt-paper: #0f0f10;
+    /* Icon size scale: use `width="var(--i-sm)"` etc. on SVG. Collapses 7 ad-hoc sizes (12-28) to three. */
+    --i-sm: 14px; --i-md: 18px; --i-lg: 28px;
   }
   /* Appearance (Settings → Look & sounds): light by default - the founder asked for white - or dark, or the Mac's. */
   @media (prefers-color-scheme: dark) {
@@ -30,6 +38,9 @@
       --sw-off: #48484c; --toast: #3a3a3d; --copied: #f0903f;
       --red: #ff6b5e; --who2: #6ea8e8; --who3: #b28be6;
       --shadow: none;
+      --ink-dim: #737379;
+      --state-busy: #a8a8b0; --state-done: #34a853; --state-idle: #5f5f66;
+      --panel-edge: #36363b; --tt-paper: #0a0a0b;
     }
   }
   :root[data-theme="dark"] {
@@ -41,7 +52,18 @@
       --sw-off: #48484c; --toast: #3a3a3d; --copied: #f0903f;
       --red: #ff6b5e; --who2: #6ea8e8; --who3: #b28be6;
       --shadow: none;
+      --ink-dim: #737379;
+      --state-busy: #a8a8b0; --state-done: #34a853; --state-idle: #5f5f66;
+      --panel-edge: #36363b; --tt-paper: #0a0a0b;
   }
+  /* Font utility classes. Later commits move ad-hoc `font: 11px...` etc. onto these. Names map to roles, not
+     sizes, so a future scale shift changes one block. Keep 11px uppercase labels at 0.08em tracking. */
+  .t-label { font: 600 11px/1 -apple-system, system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink2); }
+  .t-caption { font: 500 12px/1.4 -apple-system, system-ui, sans-serif; color: var(--ink2); }
+  .t-body { font: 13px/1.5 -apple-system, system-ui, sans-serif; color: var(--ink); }
+  .t-h3 { font: 600 15px/1.4 -apple-system, system-ui, sans-serif; letter-spacing: -0.1px; color: var(--ink); }
+  .t-h2 { font: 650 20px/1.3 -apple-system, system-ui, sans-serif; letter-spacing: -0.3px; color: var(--ink); }
+  .t-h1 { font: 650 24px/1.2 -apple-system, system-ui, sans-serif; letter-spacing: -0.5px; color: var(--ink); }
   * { box-sizing: border-box; margin: 0; }
   [hidden] { display: none !important; }   /* hidden always wins, even over a row's own display (UI review G1) */
   html, body { height: 100%; }
@@ -136,34 +158,57 @@
   }
   .row { position: relative; }
   .row.sel { background: var(--well); border-radius: 10px; box-shadow: 0 0 0 1px var(--line2); }
-  /* While picking: picked rows get a soft well wash + a thin brand bar INSIDE the row (box-shadow inset, so no
-     overflow-clip surprise on the parent); non-picked rows dim slightly so the picked ones lead the eye. */
-  body.picking .row { opacity: .55; transition: opacity .12s; }
-  body.picking .row.picked { opacity: 1; background: var(--well); border-radius: 10px;
-                             box-shadow: inset 3px 0 0 var(--brand); }
-  /* The mark shows on hover and on the picked row only (less visual noise). Smaller and quieter in both themes: the
-     unpicked outline is var(--line2) not var(--ink3), and the picked tick lives on var(--ink) rather than var(--brand)
-     so the orange isn't repeated 4 times on dark backgrounds. */
-  .selmark { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--line2); margin-top: 3px;
-             cursor: default; opacity: 0; transition: opacity .1s; flex: none; }
-  .row:hover .selmark, .row.picked .selmark { opacity: 1; }
-  .selmark.on { background: var(--ink); border-color: var(--ink); position: relative; opacity: 1; }
-  .selmark.on::after { content: ""; position: absolute; left: 4px; top: 1.5px; width: 5px; height: 9px;
-                       border: solid var(--paper); border-width: 0 1.75px 1.75px 0; transform: rotate(45deg); }
-  /* Bar: docks to the full content width at the bottom, with a divider line above. Not a floating card. */
-  .selbar { position: fixed; left: 240px; right: 0; bottom: 0; background: var(--paper); border-top: 1px solid var(--line);
-            padding: 10px 24px; display: flex; gap: 12px; align-items: center; z-index: 50; }
-  body.ai-open .selbar { right: min(460px, 92vw); }   /* don't slide under the Ask AI drawer when it's open */
-  .selbar .msg { flex: 1; font-size: 13px; color: var(--ink); }
-  .selbar .msg.big { color: var(--err, #c0392b); }
-  .selbar .fine { font-size: 11px; color: var(--ink2); }
-  .selbar button { appearance: none; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit;
-                   font-weight: 600; font-size: 13px; padding: 7px 14px; border-radius: 8px; cursor: default; }
-  .selbar button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-  .selbar button.ghost { background: transparent; color: var(--ink2); border-color: transparent; }
-  .selbar button:disabled { opacity: .45; }
-  .selbar kbd { font: inherit; font-size: 11px; color: var(--ink2); background: var(--well); border: 1px solid var(--line);
-                border-radius: 4px; padding: 1px 5px; }
+  /* Shelf model (23 Oct): a + button on hover of any row drops the clip onto a right-side shelf. The row visibly
+     dims while on the shelf so you can see what you've already picked. No "select mode" to enter or leave; no bar. */
+  .row .shelf-add { opacity: 0; width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center;
+                    color: var(--ink2); cursor: default; font-size: 16px; line-height: 1; border: 0;
+                    background: transparent; transition: opacity .1s, background .1s, color .1s; padding: 0; }
+  .row:hover .shelf-add, .row.in-shelf .shelf-add { opacity: 1; }
+  .row .shelf-add:hover { background: var(--hover); color: var(--ink); }
+  .row.in-shelf { opacity: 0.6; transition: opacity .12s; }
+  .row.in-shelf .shelf-add { opacity: 1; color: var(--brand); background: rgba(226,118,25,.12); }
+  .row.in-shelf .shelf-add:hover { background: rgba(226,118,25,.2); color: var(--brand); }
+  /* The shelf itself - a 300 px panel on the right that lives beside the Ask AI drawer (never both at once). */
+  .shelf { position: fixed; right: 0; top: 0; bottom: 0; width: 300px; background: var(--paper);
+           border-left: 1px solid var(--line); padding: 44px 16px 14px; display: flex; flex-direction: column;
+           z-index: 40; box-shadow: -8px 0 24px rgba(0,0,0,.14); }
+  .shelf .close { position: absolute; top: 10px; right: 10px; color: var(--ink3); cursor: default; font-size: 20px;
+                  width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px;
+                  background: transparent; border: 0; padding: 0; line-height: 1; }
+  .shelf .close:hover { background: var(--hover); color: var(--ink); }
+  .shelf h4 { font: 650 13px/1.1 -apple-system, system-ui, sans-serif; margin-bottom: 2px; letter-spacing: -0.1px; }
+  .shelf .count { font-size: 11px; color: var(--ink2); margin-bottom: 12px; }
+  .shelf .count.warn { color: var(--red); }
+  .shelf .clips { display: flex; flex-direction: column; gap: 5px; max-height: 40vh; overflow-y: auto; margin: 0 -4px;
+                  padding: 0 4px 2px; }
+  .shelf .clip { display: grid; grid-template-columns: 14px 1fr 22px; gap: 8px; padding: 9px 10px;
+                 border-radius: 8px; background: var(--well); border: 1px solid var(--line); align-items: center;
+                 font-size: 12px; cursor: grab; }
+  .shelf .clip.dragging { opacity: .4; cursor: grabbing; }
+  .shelf .clip.drop-above { box-shadow: 0 -2px 0 var(--brand); }
+  .shelf .clip.drop-below { box-shadow: 0 2px 0 var(--brand); }
+  .shelf .clip .drag-h { color: var(--ink3); font-weight: 700; letter-spacing: -1px; text-align: center; }
+  .shelf .clip .ct { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shelf .clip .rm { color: var(--ink3); cursor: default; font-size: 15px; line-height: 1; text-align: center;
+                     background: transparent; border: 0; padding: 0; }
+  .shelf .clip .rm:hover { color: var(--ink); }
+  .shelf .preview { margin-top: 14px; background: var(--well); border: 1px solid var(--line); border-radius: 8px;
+                    padding: 10px 12px; font-size: 11px; line-height: 1.55; color: var(--ink2); overflow: hidden;
+                    position: relative; flex: 1; min-height: 90px; }
+  .shelf .preview::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 32px;
+                           background: linear-gradient(to bottom, transparent, var(--well)); pointer-events: none; }
+  .shelf .preview h5 { font: 600 10px/1 -apple-system; color: var(--ink3); letter-spacing: 0.08em;
+                       text-transform: uppercase; margin-bottom: 6px; }
+  .shelf .empty { color: var(--ink3); font-size: 12px; padding: 22px 14px; text-align: center;
+                  border: 1px dashed var(--line2); border-radius: 8px; line-height: 1.5; }
+  .shelf footer { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .shelf footer button { font: 600 13px/1.1 -apple-system; padding: 10px 14px; border-radius: 8px;
+                         border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: default; }
+  .shelf footer button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .shelf footer button:disabled { opacity: .4; }
+  /* Push the content left when the shelf is open, so the list isn't hidden behind it. Collapses if the Ask AI
+     drawer is also open (shelf hides in that case; handled by drawShelf()). */
+  body.shelf-open main { margin-right: 300px; }
   /* Ask AI sits beside the list when there's room (critic: at the default 920px window that leaves a 240px list,
      so smaller windows keep it on top, but without dimming the list, which stays clickable) */
   @media (min-width: 1180px) { body.ai-open main { margin-right: min(460px, 92vw); } }
@@ -961,7 +1006,7 @@
 </div>
 
 <aside class="drawer" id="drawer" hidden tabindex="-1" role="complementary" aria-label="Ask AI"></aside>
-<div class="selbar" id="selbar" hidden role="region" aria-label="Combine selected dictations"></div>
+<aside class="shelf" id="shelf" hidden role="complementary" aria-label="Combine notes"></aside>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -1000,17 +1045,10 @@
   document.addEventListener("keydown", e => {
     if (e.metaKey && e.key === "f") { e.preventDefault(); if (!["home", "meetings", "files"].includes(tab)) go("home"); $("#q").focus(); }
     if (e.metaKey && e.key === ",") { e.preventDefault(); go("settings"); $("#sq").focus(); }
-    // Selection-mode shortcuts: ⌘A on the Dictations tab adds every shown row (up to 10); Esc clears the selection.
-    if (sel.size > 0 && tab === "home") {
-      if (e.metaKey && e.key.toLowerCase() === "a" && !e.target.closest("input, textarea")) {
-        e.preventDefault();
-        const shown = [...document.querySelectorAll('#list .row[data-row]')].map(r => r.dataset.row);
-        const allPicked = shown.length > 0 && shown.every(id => sel.has(id));
-        if (allPicked) sel.clear(); else for (const id of shown.slice(0, 10)) sel.add(id);
-        draw();
-      } else if (e.key === "Escape" && !e.target.closest("input, textarea, .menu, .drawer")) {
-        e.preventDefault(); sel.clear(); draw();
-      }
+    // Shelf shortcuts: Esc clears the shelf and closes it (unless something else wants Esc).
+    if (sel.size > 0 && tab === "home" && e.key === "Escape"
+        && !e.target.closest("input, textarea, .menu, .drawer, .shelf input")) {
+      e.preventDefault(); shelfClear();
     }
   });
   $("#edit-fixes").onclick = () => send({ action: "fixes" });
@@ -1249,7 +1287,7 @@
     drawDrawer();
     drawAI();
     drawList();
-    drawSelBar();
+    drawShelf();
     // one search box, moved to the list page you are on (critic: no second box): titles, text and speaker lines
     const qq = tab === "meetings" || tab === "files" ? $("#q").value.trim().toLowerCase() : "";
     const hit = r => !qq || [(r.title || ""), (r.real_text ?? r.text), ...(r.segments || []).map(x => `${(r.names || {})[x.speaker] || x.speaker || ""} ${x.real ?? x.text}`)]
@@ -1310,44 +1348,66 @@
     feed($("#list"), rows);
   }
 
-  function drawSelBar() {
-    // Prune ids that no longer exist in history (e.g. a selected note was deleted elsewhere).
+  // The shelf preserves pick order (not chronological), so it reflects the order the user built it in.
+  let shelfOrder = [];
+  function shelfSync() {
     const alive = new Set(S.history.map(r => r.id));
     for (const id of [...sel]) if (!alive.has(id)) sel.delete(id);
-    const bar = $("#selbar");
-    const show = sel.size > 0 && tab === "home";
-    document.body.classList.toggle("picking", show);           // row dim + left-bar marker come from this class
-    bar.hidden = !show;
+    shelfOrder = shelfOrder.filter(id => sel.has(id));
+    for (const id of sel) if (!shelfOrder.includes(id)) shelfOrder.push(id);
+  }
+  function shelfAdd(id) { if (sel.size >= 10) { toast("Up to 10 clips at a time."); return; } sel.add(id); shelfSync(); draw(); }
+  function shelfRemove(id) { sel.delete(id); shelfSync(); draw(); }
+  function shelfClear() { sel.clear(); shelfOrder = []; draw(); }
+
+  function drawShelf() {
+    shelfSync();
+    const el = $("#shelf");
+    const show = sel.size > 0 && tab === "home" && !drawerId;    // the Ask AI drawer and the shelf share the right slot
+    document.body.classList.toggle("shelf-open", show);
+    el.hidden = !show;
     if (!show) return;
-    // Rough word count across the selection, so the user sees when the AI call is getting too big before firing it.
-    const words = [...sel].reduce((n, id) => {
-      const r = S.history.find(x => x.id === id);
-      return n + (r ? (r.text || "").trim().split(/\s+/).filter(Boolean).length : 0);
-    }, 0);
+    const items = shelfOrder.map(id => S.history.find(r => r.id === id)).filter(Boolean);
+    const words = items.reduce((n, r) => n + (r.text || "").trim().split(/\s+/).filter(Boolean).length, 0);
     const big = words > 8000;
-    const shownIds = [...document.querySelectorAll('#list .row[data-row]')].map(r => r.dataset.row);
-    const allPicked = shownIds.length > 0 && shownIds.every(id => sel.has(id));
-    bar.innerHTML = `
-      <div class="msg ${big ? "big" : ""}">
-        ${sel.size < 2 ? "Pick at least 2 dictations." : `${sel.size} selected  ·  about ${words.toLocaleString()} words`}
-        ${big ? `<div class="fine">That's a lot of text for one AI call — the answer may be cut short.</div>` : ""}
+    const line = items.map(r => (r.real_text ?? r.text ?? "").trim()).join(" ").slice(0, 500);
+    el.innerHTML = `
+      <button class="close" data-x="close" aria-label="Close shelf">×</button>
+      <h4>Combine notes</h4>
+      <div class="count${big ? " warn" : ""}">${items.length} clip${items.length === 1 ? "" : "s"} · about ${words.toLocaleString()} words${big ? " · a lot for one AI call" : ""}</div>
+      <div class="clips">
+        ${items.map((r, i) => `<div class="clip" draggable="true" data-i="${i}" data-id="${esc(r.id)}">
+            <span class="drag-h" title="Drag to reorder">⋮⋮</span>
+            <span class="ct" title="${esc(r.text || "")}">${esc((r.text || "").slice(0, 60))}${r.text && r.text.length > 60 ? "…" : ""}</span>
+            <button class="rm" data-rm="${esc(r.id)}" aria-label="Remove">×</button>
+          </div>`).join("")}
       </div>
-      <button class="ghost" data-x="all" title="Pick every dictation on screen">${allPicked ? "Unpick all" : "Pick all"} <kbd>⌘A</kbd></button>
-      <button class="ghost" data-x="cancel">Cancel</button>
-      <button class="primary" data-x="ask" ${sel.size < 2 ? "disabled" : ""}>Combine & Ask AI</button>`;
-    bar.querySelector('[data-x="cancel"]').onclick = () => { sel.clear(); draw(); };
-    bar.querySelector('[data-x="all"]').onclick = () => {
-      if (allPicked) { sel.clear(); }
-      else { for (const id of shownIds.slice(0, 10)) sel.add(id); }
-      draw();
-    };
-    bar.querySelector('[data-x="ask"]').onclick = () => {
-      if (sel.size < 2) return;
-      const ids = [...sel];
-      sel.clear();
-      document.body.classList.remove("picking");                // instant feedback; Python will push the new note next
-      send({ action: "combine", ids });
-    };
+      ${items.length === 0 ? `<div class="empty" style="margin-top:14px">Nothing on the shelf yet.<br>Click the <b>+</b> on any dictation to add it here.</div>` :
+        `<div class="preview"><h5>How it will read</h5>${esc(line)}${line.length === 500 ? "…" : ""}</div>`}
+      <footer>
+        <button class="primary" data-x="ask" ${items.length < 2 ? "disabled" : ""}>Save & Ask AI</button>
+        <button data-x="save" ${items.length < 2 ? "disabled" : ""}>Save as a note</button>
+      </footer>`;
+    el.querySelector('[data-x="close"]').onclick = shelfClear;
+    el.querySelector('[data-x="ask"]').onclick = () => commitShelf(true);
+    el.querySelector('[data-x="save"]').onclick = () => commitShelf(false);
+    el.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => shelfRemove(b.dataset.rm));
+    // Drag-and-drop reorder within the shelf. HTML5 D&D, no library. The drop indicator is a thin brand underline/overline.
+    const clips = el.querySelectorAll('.clip');
+    clips.forEach(c => {
+      c.addEventListener('dragstart', e => { c.classList.add('dragging'); e.dataTransfer.setData('text/plain', c.dataset.i); e.dataTransfer.effectAllowed = 'move'; });
+      c.addEventListener('dragend', () => { clips.forEach(x => x.classList.remove('dragging', 'drop-above', 'drop-below')); });
+      c.addEventListener('dragover', e => { e.preventDefault(); const rect = c.getBoundingClientRect(); const below = e.clientY > rect.top + rect.height / 2; clips.forEach(x => x.classList.remove('drop-above', 'drop-below')); c.classList.add(below ? 'drop-below' : 'drop-above'); });
+      c.addEventListener('drop', e => { e.preventDefault(); const from = +e.dataTransfer.getData('text/plain'); const rect = c.getBoundingClientRect(); const below = e.clientY > rect.top + rect.height / 2; let to = +c.dataset.i + (below ? 1 : 0); if (from < to) to -= 1; if (from === to) return; const moved = shelfOrder.splice(from, 1)[0]; shelfOrder.splice(to, 0, moved); draw(); });
+    });
+  }
+
+  function commitShelf(askAi) {
+    if (sel.size < 2) return;
+    const ids = [...shelfOrder];
+    sel.clear(); shelfOrder = [];
+    document.body.classList.remove("shelf-open");
+    send({ action: "combine", ids, then: askAi ? "ai" : "open" });
   }
 
   function feed(el, rows, empty) {
@@ -1373,11 +1433,12 @@
     const done = r.todo === "done";
     const ic = (cls, icon, label, on) => `<button class="copy ${cls}${on ? " on" : ""}" data-id="${id}" aria-label="${label}" title="${label}">
         <svg width="14" height="14"><use href="#${icon}"/></svg></button>`;
-    const picked = sel.has(r.id), picking = sel.size > 0;
+    const onShelf = sel.has(r.id);
     const combined = r.kind === "combined";
-    return `<div class="row${done && todoView ? " done-row" : ""}${r.id === drawerId ? " sel" : ""}${picked ? " picked" : ""}" data-row="${id}">
-      <div class="when num">${picking ? `<div class="selmark${picked ? " on" : ""}" data-pick="${id}" title="${picked ? "Unselect" : "Select"}"></div>`
-          : todoView ? `<button class="copy tick" data-id="${id}" aria-label="${done ? "Mark not done" : "Mark done"}" title="${done ? "Not done" : "Done"}" style="${done ? "color:var(--accent)" : ""}">
+    // The + button is per-row, hover-visible; dictations only (not meetings / files / combined), not todo view.
+    const canShelf = !meet && !file && !combined && !todoView;
+    return `<div class="row${done && todoView ? " done-row" : ""}${r.id === drawerId ? " sel" : ""}${onShelf ? " in-shelf" : ""}" data-row="${id}">
+      <div class="when num">${todoView ? `<button class="copy tick" data-id="${id}" aria-label="${done ? "Mark not done" : "Mark done"}" title="${done ? "Not done" : "Done"}" style="${done ? "color:var(--accent)" : ""}">
         <svg width="16" height="16"><use href="#${done ? "i-done" : "i-todo"}"/></svg></button>` : clock(r.at)}</div>
       <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${esc(r.title || "File")}
           ${r.live ? `<span class="live">Live</span>` : ""}</div>` :
@@ -1395,6 +1456,7 @@
             : r.app ? `<span>${esc(r.app)}</span>·` : ""}
           <span class="num">${words(r)} words</span></div></div>
       <div class="acts">
+        ${canShelf ? `<button class="shelf-add" data-shelf="${id}" aria-label="${onShelf ? "Remove from shelf" : "Add to shelf"}" title="${onShelf ? "Remove from shelf" : "Add to combine with others"}">${onShelf ? "✓" : "+"}</button>` : ""}
         ${ic("cp", "i-copy", "Copy")}
         <button class="copy moreb" data-id="${id}" aria-label="More actions" title="More actions"><svg width="15" height="15"><use href="#i-more"/></svg></button>
       </div></div>`;
@@ -1452,9 +1514,8 @@
 
   function rowMenu(btn, r, x, y) {
     const media = r.kind === "file" || r.kind === "meeting";
-    const selectable = !media;                                  // meetings and files pick clips a different way
     const items = [
-      ...(selectable ? [["sel", "Select (combine with others)", "Pick several dictations to summarise or email together"]] : []),
+      // "Combine with others" lives on the row's + button now, not in this menu (23 Oct: shelf design).
       ["todo", r.todo ? "Remove from To do" : "Add to To do", r.todo ? "" : "Find it again on the To do page"],
       ["star", r.star ? "Unstar" : "Star", r.star ? "" : "Kept until you delete it, and in starred backups"],
       ...(S.prefs.ai ? [["ai", "Ask AI…", "Improve, summarise, action items, rewrite, translate, ask anything"]] :
@@ -1475,7 +1536,6 @@
       x ?? b.right - 290, y ?? b.bottom + 4);
     m.querySelectorAll("button").forEach(x2 => x2.onclick = () => {
       const k = x2.dataset.k; m.remove();
-      if (k === "sel") { sel.add(r.id); go("home"); draw(); }
       if (k === "todo") { send({ action: "note", id: r.id, set: { todo: r.todo ? null : "open" } }); if (!r.todo) toast("Added to To do"); }
       if (k === "star") send({ action: "note", id: r.id, set: { star: !r.star } });
       if (k === "ai") aiMenu(btn, r);
@@ -1785,29 +1845,16 @@
     on(".tick", r => send({ action: "note", id: r.id, set: { todo: r.todo === "done" ? "open" : "done" } }));
     on(".fix", (r, b) => openFixer(b, r));
     on(".moreb", (r, b) => rowMenu(b, r));
-    // Multi-select toggle: the selmark circle, or any row click while in selection mode.
-    root.querySelectorAll(".selmark").forEach(sm => sm.onclick = e => {
+    // Shelf toggle: + button per row. On, the + flips to ✓ and the row dims (see .in-shelf CSS).
+    root.querySelectorAll(".shelf-add").forEach(b => b.onclick = e => {
       e.stopPropagation();
-      const id = sm.dataset.pick;
-      if (sel.has(id)) sel.delete(id);
-      else if (sel.size < 10) sel.add(id);
-      else { toast("Up to 10 dictations at a time."); return; }
-      draw();
+      const id = b.dataset.shelf;
+      if (sel.has(id)) shelfRemove(id); else shelfAdd(id);
     });
     root.querySelectorAll(".row").forEach(row => {
       row.oncontextmenu = e => {
         const b = row.querySelector(".moreb"); if (!b) return;
         e.preventDefault(); rowMenu(b, byId(b.dataset.id), e.clientX, e.clientY); };
-      if (sel.size > 0) row.addEventListener("click", e => {
-        // While picking: tap the row (not a button or the kebab) to toggle it in. Buttons keep working.
-        if (e.target.closest("button, .selmark, .copy, .more, .lnk, .flag, .aichip, .pick")) return;
-        const id = row.dataset.row;
-        if (!id) return;
-        if (sel.has(id)) sel.delete(id);
-        else if (sel.size < 10) sel.add(id);
-        else { toast("Up to 10 dictations at a time."); return; }
-        draw();
-      });
     });
     on(".whob", (r, b) => whoMenu(b, r));
     wireRest(root, on);
