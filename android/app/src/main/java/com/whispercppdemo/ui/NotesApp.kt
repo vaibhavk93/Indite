@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -39,6 +40,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
@@ -81,6 +83,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -323,6 +326,12 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
     var renamingNote by remember { mutableStateOf<Note?>(null) }
     // Long-press -> Delete asks the same question as the note screen: audio, text, or the whole note.
     var deleting by remember { mutableStateOf<Note?>(null) }
+    // Multi-select: "Select" in a row's menu starts it; tap toggles; the bottom bar shows "N selected · Ask AI".
+    // Only finished notes with text can be selected; selecting a note that's later deleted is cleaned up on refresh.
+    val selected = remember { mutableStateListOf<String>() }
+    val selecting = selected.isNotEmpty()
+    val cancelSelect = { selected.clear() }
+    var combining by remember { mutableStateOf(false) }  // true while Notes.combine runs; cheap guard against double-tap
     var remindNote by remember { mutableStateOf<Note?>(null) }
     remindNote?.let { n -> RemindDialog(n.id, remindText(n)) { remindNote = null } }
     renamingNote?.let { n -> RenameDialog(n.name, onDone = { renamingNote = null; if (it != null) Notes.rename(n.id, it) }) }
@@ -345,24 +354,58 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
         query.isBlank() || n.name.contains(query, true) || n.pieces.indices.any { n.text(it).contains(query, true) }
     }
 
+    // Combine the current selection into one new note and open it. The AI drawer on the note screen then runs as usual.
+    fun combineSelected() {
+        if (combining) return
+        val picked = selected.mapNotNull { id -> notes.firstOrNull { it.id == id } }
+            .filter { it.done && it.pieces.isNotEmpty() }
+            .sortedBy { it.created }
+        if (picked.size < 2) { scope.launch { snackbar.showSnackbar("Pick at least 2 finished notes") }; return }
+        combining = true
+        scope.launch {
+            try {
+                val id = withContext(Dispatchers.IO) { Notes.combine(picked) }
+                selected.clear()
+                onOpen(id)
+            } catch (e: Exception) {
+                snackbar.showSnackbar(e.message ?: "Couldn't combine these notes")
+            } finally { combining = false }
+        }
+    }
+    val selectedWords by remember(selected.size) {
+        derivedStateOf {
+            selected.mapNotNull { id -> notes.firstOrNull { it.id == id } }
+                .sumOf { it.allText().split(Regex("\\s+")).count { w -> w.isNotBlank() } }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 // same weight and look as before, a bit smaller, pinned (doesn't scroll away)
-                title = { Brand() },
+                title = { if (selecting) Text("${selected.size} selected") else Brand() },
+                navigationIcon = {
+                    if (selecting) IconButton(onClick = cancelSelect) { Icon(Icons.Filled.Close, contentDescription = "Cancel selection") }
+                },
                 actions = {
-                    if (problem == null) TextButton(onClick = onOpenFile) {
+                    if (!selecting && problem == null) TextButton(onClick = onOpenFile) {
                         Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Text(" Import")
                     }
-                    IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
+                    if (!selecting) IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
-        floatingActionButton = { if (problem == null) RecordButton(onRecord) },
+        floatingActionButton = { if (!selecting && problem == null) RecordButton(onRecord) },
         floatingActionButtonPosition = androidx.compose.material3.FabPosition.Center,
+        bottomBar = {
+            if (selecting) SelectionBar(
+                count = selected.size, words = selectedWords, busy = combining,
+                onAsk = { combineSelected() }, onCancel = cancelSelect,
+            )
+        },
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         LazyColumn(
@@ -403,7 +446,8 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                 // Copy and delete fired by accident while scrolling, so a swipe must now cross 3/4 of the card
                 // (the default is half). Both gestures are deliberate ones; neither should happen mid-scroll.
                 val dismiss = rememberDismissState(positionalThreshold = { it * 0.75f }, confirmValueChange = {
-                    if (it == DismissValue.DismissedToEnd && note.done && note.pieces.isNotEmpty()) {
+                    if (selecting) false  // swipes do nothing while picking notes to combine; the row's tap toggles instead
+                    else if (it == DismissValue.DismissedToEnd && note.done && note.pieces.isNotEmpty()) {
                         SwipeHint.used(context, copy = true)
                         // swipe right = copy the text, with a small buzz; the row springs back
                         val cm = context.getSystemService(android.content.ClipboardManager::class.java)
@@ -429,9 +473,20 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                         }
                     },
                     dismissContent = { Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(
-                        if (note.id == hintNote) hint.value.dp.roundToPx() else 0, 0) }) { NoteRow(note, onClick = { onOpen(note.id) }, onCopy = { copyNote(note) },
-                        onShare = { share(context, note.allText()) }, onRename = { renamingNote = note }, onDelete = { deleting = note },
-                        onRemind = { remindNote = note }, onAi = { onOpen(note.id) }) } },
+                        if (note.id == hintNote) hint.value.dp.roundToPx() else 0, 0) }) {
+                        val isSelected = note.id in selected
+                        val canSelect = note.done && note.pieces.isNotEmpty()
+                        NoteRow(note, selecting = selecting, selected = isSelected,
+                            onClick = {
+                                if (selecting) {
+                                    if (canSelect) { if (isSelected) selected -= note.id else if (selected.size < 10) selected += note.id
+                                        else scope.launch { snackbar.showSnackbar("Up to 10 notes") } }
+                                } else onOpen(note.id)
+                            },
+                            onCopy = { copyNote(note) }, onShare = { share(context, note.allText()) },
+                            onRename = { renamingNote = note }, onDelete = { deleting = note },
+                            onRemind = { remindNote = note }, onAi = { onOpen(note.id) },
+                            onStartSelect = { if (canSelect && note.id !in selected) selected += note.id }) } },
                 )
             }
             }
@@ -452,6 +507,36 @@ private fun SearchField(query: String, onChange: (String) -> Unit) = TextField(
         focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, disabledIndicatorColor = Color.Transparent,
     ),
 )
+
+/**
+ * The bar that appears while picking notes to combine. Shows how many are picked and roughly how much text, so the
+ * user can see when the AI call is about to get too big before firing it. "Ask AI combined" opens the new note.
+ */
+@Composable
+private fun SelectionBar(count: Int, words: Int, busy: Boolean, onAsk: () -> Unit, onCancel: () -> Unit) {
+    androidx.compose.material3.BottomAppBar(containerColor = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                if (count < 2) "Pick 2–10 notes to combine" else "$count selected  ·  about $words words",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (words > 8000) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            )
+            if (words > 8000) Text("Big AI call — the answer may wander or be cut short.",
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End,
+                modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = onCancel) { Text("Cancel") }
+                Spacer(Modifier.weight(1f))
+                Button(onClick = onAsk, enabled = !busy && count >= 2) {
+                    Icon(Icons.Filled.Star, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (busy) "Preparing…" else "Ask AI combined")
+                }
+            }
+        }
+    }
+}
 
 /** The one big action: a round mic button, always in the same place. */
 @Composable
@@ -515,18 +600,24 @@ private fun StatusLine(text: String, working: Boolean) = Column(Modifier.animate
 @Composable
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare: () -> Unit, onRename: () -> Unit, onDelete: () -> Unit,
-                    onRemind: () -> Unit, onAi: () -> Unit) {
+                    onRemind: () -> Unit, onAi: () -> Unit,
+                    selecting: Boolean = false, selected: Boolean = false, onStartSelect: () -> Unit = {}) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     var menu by remember { mutableStateOf(false) }
     val ready = note.done && note.pieces.isNotEmpty()
+    val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+    val borderW = if (selected) 2.dp else 1.dp
     // A card with a visible border (fill colours alone are too close to the background: contrast 1.07).
+    val openMenu: () -> Unit = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); menu = true }
     Surface(
-        shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp))
+        shape = RoundedCornerShape(18.dp),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth().border(borderW, border, RoundedCornerShape(18.dp))
             .clip(RoundedCornerShape(18.dp))
-            .combinedClickable(onClickLabel = "Open note", onLongClickLabel = "More actions", onClick = onClick,
-                onLongClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); menu = true })
+            .combinedClickable(onClickLabel = if (selecting) (if (selected) "Unselect" else "Select") else "Open note",
+                onLongClickLabel = if (selecting) null else "More actions", onClick = onClick,
+                onLongClick = if (selecting) null else openMenu)
             .semantics {  // screen readers can't swipe: offer the same actions
                 customActions = listOfNotNull(
                     if (ready) androidx.compose.ui.semantics.CustomAccessibilityAction("Copy text") { onCopy(); true } else null,
@@ -536,9 +627,16 @@ private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare
     ) {
         Column(Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (selecting) {
+                    // selected: tick; unselected: a hollow circle drawn as a bordered Box (no extended-icons dependency)
+                    if (selected) Icon(Icons.Filled.CheckCircle, contentDescription = "Selected",
+                        tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                    else Box(Modifier.size(22.dp).clip(CircleShape).border(2.dp, MaterialTheme.colorScheme.outline, CircleShape))
+                    Spacer(Modifier.width(10.dp))
+                }
                 Text(note.name, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (note.recording) LiveDot()
-                if (ready) IconButton(onClick = onCopy) {  // 48 dp touch target
+                if (!selecting && ready) IconButton(onClick = onCopy) {  // 48 dp touch target
                     Icon(painterResource(R.drawable.ic_copy), contentDescription = "Copy text", tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp))
                 }
@@ -546,6 +644,9 @@ private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare
                     DropdownMenu(menu, onDismissRequest = { menu = false }) {
                         // Same actions, same order, as the menu inside the note (AUD-029). A note is one object; it
                         // should not offer a different set depending on which screen you are on.
+                        if (ready) DropdownMenuItem(text = { Text("Select (combine with others)") },
+                            onClick = { menu = false; onStartSelect() },
+                            leadingIcon = { Icon(Icons.Filled.CheckCircle, null) })
                         if (ready) DropdownMenuItem(text = { Text("Do something with this\u2026") }, onClick = { menu = false; onAi() },
                             leadingIcon = { Icon(Icons.Filled.Star, null) })
                         if (ready) DropdownMenuItem(text = { Text("Copy text") }, onClick = { menu = false; onCopy() },
@@ -563,15 +664,17 @@ private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare
             }
             when {
                 note.recording -> Text("Recording now", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-                note.done && note.cuts.isEmpty() -> Text("No speech found.", style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                 note.pieces.isNotEmpty() -> Text(note.allText(), style = MaterialTheme.typography.bodyMedium, maxLines = 2,
                     overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                note.done && note.cuts.isEmpty() -> Text("No speech found.", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (note.pending && !note.recording) LinearProgressIndicator(note.pieces.size / note.cuts.size.toFloat(),
                 Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(CircleShape))
             Row(Modifier.padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {  // chips clear of the card edge
-                Text("${clock(note.seconds)}  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}",
+                val lead = if (note.combined) "${note.sources.size} clips  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}"
+                    else "${clock(note.seconds)}  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}"
+                Text(lead,
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 Spacer(Modifier.weight(1f))
@@ -579,6 +682,7 @@ private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare
                 // they pushed the time off the card. The most useful two are shown and the rest is a count.
                 val toCheck = note.pieces.count { it.flags.isNotEmpty() }
                 val chips = buildList {
+                    if (note.combined) add("Combined" to false)
                     if (note.pending && !note.recording) add("Writing ${note.pieces.size}/${note.cuts.size}" to false)
                     if (note.done && toCheck > 0) add((if (toCheck == 1) "1 to check" else "$toCheck to check") to true)
                     note.speakers?.takeIf { !it.skipped && it.k >= 2 }?.let { add("${it.k} voices" to false) }

@@ -404,6 +404,15 @@ class Bridge(NSObject):
             self.app.notice = ""
         elif act == "ai":
             self.app.ask_ai(str(msg.get("id", "")), str(msg.get("act", "")), str(msg.get("extra", "")))
+        elif act == "combine":
+            # Multi-select → one combined note. The web side opens its drawer after the push lands.
+            ids = [str(x) for x in (msg.get("ids") or [])]
+            new_id = store.combine(ids)
+            if new_id:
+                self.push()
+                self.js(f"openDrawer({new_id!r})")
+            else:
+                self.js("toast('Pick at least 2 dictations with text to combine.')")
         elif act == "tasks":
             self.app.add_tasks(str(msg.get("id", "")), str(msg.get("label", "")))
         elif act == "ai_clear":                           # remove one AI answer, or the improved version

@@ -4,6 +4,72 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 23 Oct 2026 (afternoon) · Mac: pill hidden from screen capture, multi-select → Ask AI combined
+
+**Next step:** restart indite (`open -n -g dist/indite.app` — check the log first for ~2 min of quiet, per the rule) to pick up the new overlay.py and app.html. Then: start a Zoom/Loom/QuickTime screen recording, hold the hotkey, confirm the REC pill is NOT in the recording. And: open indite, kebab on any dictation → "Select (combine with others)" → tick 2–10 more → bottom bar → "Ask AI combined".
+
+**Pill hidden from screen share (founder, 23 Oct).** `self.panel.setSharingType_(0)` on both the Pill ([mac/overlay.py:239](mac/overlay.py:239)) and the Card ([mac/overlay.py:390](mac/overlay.py:390)). macOS's `NSWindowSharingNone` (= 0) excludes a window from every system-mediated capture: ScreenCaptureKit (what Zoom, Meet, Teams, Loom use), QuickTime screen recording, and ⌘⇧3 screenshots. The pill is a dictator's HUD, not something viewers should see floating over the slide as "REC 02:59". Not tested in a live share yet — one-liner change, standard macOS API, low risk.
+
+**Multi-select → Ask AI combined on Mac** (founder, 23 Oct, same shape as the Android build from this morning).
+- **`store.combine(ids)`** at [mac/store.py:220](mac/store.py:220). Builds a new row with `kind: "combined"`, `sources: [ids]`, `sourceLabels: [name · date]`, and `text` = each source's full text under a `— Clip N: title · date —` header. Snapshot by design: deleting a source leaves it intact. `kind != "dictation"` so `keep()` protects it from the plain-dictation CAP. **Self-check in `mac/store.py` extended**: 2 dictations → combine → combined row has the expected headers, sources list, labels; `combine([one_id])` returns None; `combine([valid, invalid])` returns None; `clear()` keeps the combined row and only removes the plain dictations. All green: `.venv/bin/python mac/store.py` → `ok`.
+- **New message action `"combine"`** in [mac/window.py:407](mac/window.py:407): calls `store.combine(ids)`, pushes new state, then `openDrawer(new_id)` on the web side so the Ask AI drawer opens on the new combined note straight away.
+- **Dictations tab UI** in [mac/ui/app.html](mac/ui/app.html):
+  - `let sel = new Set()` holds the selection ids.
+  - Kebab menu first item (non-media only): `Select (combine with others)`.
+  - Rows show a hollow circle (`.selmark`) in the time column when `sel.size > 0`; filled circle with tick when picked; row gets `.picked` class (brand-tinted background + 1.5 px brand border).
+  - While selecting, clicking anywhere on a row (not on a button) toggles it in / out. Cap: 10, with a toast.
+  - **Fixed bottom bar** `#selbar` (`.selbar`): `N selected · about W words · [Cancel] [Ask AI combined]`. Over 8,000 words the word count turns red with a one-line warning. The styles live beside `.row.sel` so dark/light inherit the same tokens the rest of the page uses.
+  - `drawList` filter widened to include `kind === "combined"` so combined notes appear naturally in the Dictations tab. A combined row shows an `i-spark`-titled line with the title.
+- **Verified in the hidden test copy** (never touched the founder's screen): seeded `sel` with 2 real ids, called `draw()`, read back: bottom bar visible with `"2 selected · about 12 words / Cancel / Ask AI combined"`; 2 rows have `.picked`; 2 filled marks + 9 hollow marks against 11 total rows; "Ask AI combined" button posts exactly `{"action":"combine","ids":[...]}` to Python; "Select (combine with others)" is the first item in the kebab menu. Testcopy stopped afterwards.
+
+**Rules I kept:**
+- Founder's live app was never touched. All verification ran in `python mac/testcopy.py` (own data folder, own engine on 8712, no mic/pill/card/menu icon). Testcopy stopped before I came off the keys.
+- Pill was NOT tested on-screen (would need to open a share; founder's call).
+- Not rebuilt (`build_app.sh` resets Accessibility and Screen Recording). The founder restarts his copy with `open -n -g dist/indite.app` after checking the log is quiet.
+
+**Untested:**
+- Pill-hide in a real screen share. One-line change, standard API, but needs a live Zoom/Loom/QuickTime run.
+- `combine` end-to-end on a real indite instance (the self-check covers logic; the message handler is simple).
+- Combined row interaction with Ask AI drawer not visually confirmed — but openDrawer takes any id and reads from S.history, which now carries `kind: "combined"` as a dictation-visible row.
+
+**Open:**
+- A combined note whose sources are later deleted shows "— Clip N: Dictation N · ..." headers with intact text, but a nice-to-have is a line "1 of 3 clips is gone" on the row. Not built — unproven whether anyone will care.
+- Combined-of-combined is allowed (store.combine admits `kind` in dictation/combined/file/meeting). Whether that reads sensibly for the AI is open.
+- Version not bumped.
+
+---
+
+## 23 Oct 2026 · Android: multi-select → Ask AI combined, paste-fail reason in log
+
+**Next step:** build 30 on the phone, long-press a note → "Select (combine with others)" → pick 2–10 → bottom bar → "Ask AI combined"; try to reproduce the "typed to clipboard" bug and read the A/B/C/D1/D2/E line in `adb logcat -s indite`.
+
+**(B) Clipboard-fallback diagnosis in the paste path.** [AutoPaste.kt:45](android/app/src/personal/java/com/whispercppdemo/overlay/AutoPaste.kt:45) now logs *which* of five conditions dropped the paste: A no focused box at bubble tap, B target node could not be refreshed (view rebuilt), C focus moved away during the recording, D1 target no longer editable, D2 target now looks sensitive, E app refused `ACTION_PASTE`. The behaviour is unchanged — a `false` still falls back to clipboard — but the next time it happens the log will say why, and the real fix can target the real cause. The old boolean guard had hidden five distinct bugs behind one return value.
+
+**(A) Multi-select transcripts → one combined Ask AI note.** Founder request (23 Oct): "I speak multiple short recordings for the same idea and later can't recall it all at once; I want to summarise or email across them in one go."
+
+Shape, after a critic pass (section below):
+- **Snapshot into a NEW standalone note** (`Note.sources`, `Note.sourceLabels` in [Notes.kt](android/app/src/main/java/com/whispercppdemo/notes/Notes.kt)). The full transcript of each source is COPIED into the combined note's own `transcript.jsonl`, one piece per source, each prefixed with `— Clip N: name · date —`. Deleting any source leaves the combined note intact.
+- **Entry:** long-press a note → the dropdown menu's first row is now `Select (combine with others)`. Normal long-press/menu behaviour is unchanged — one new row only.
+- **Selection mode:** TopAppBar flips to `N selected / Cancel`; row shows a tick or a hollow circle; swipes are disabled while selecting; tap toggles. Row border/background colour marks selected.
+- **Bottom bar:** `N selected · about W words · [Ask AI combined]`. Soft-warns in red above 8,000 words. Cap: 10.
+- **Ask AI combined** calls `Notes.combine(sources)` which validates (2–10, done, non-empty), creates a new folder with the usual `meta.json` (now carrying `sources: [ids]` and `sourceLabels: [name · date]`), empty `cuts.json`, and `transcript.jsonl` with the headers; opens the new note. The existing AI drawer (Summary, Action items, Email, Make it formal, Ask anything…) then runs on the whole concatenated text as if it were one dictation.
+- **Row chip:** combined notes show a `Combined` chip and `N clips · DD MMM` instead of a duration.
+- **Backup/restore** rides along unchanged: `meta.json` is copied whole, so `sources`/`sourceLabels` survive without a `fmt` bump (optional fields; older readers ignore them).
+
+**Critic pass before building** (full table in the chat thread). The real risk is a stale snapshot — if a user edits a source clip after combining, the combined note won't reflect that edit. Accepted and surfaced: the chip reads "Combined" and the title names the clip count and date. A "live" link (re-generate on source edit) is deliberately **not** built — unproven, and the simple snapshot answers the founder's actual ask. "Partial transcript selection" and bulk delete/export are also deliberately out.
+
+**Untested:**
+- Not run on the founder's phone yet (no build 30). Logic compiles clean under `:app:compilePersonalReleaseKotlin` and `:app:compilePublicReleaseKotlin`; unit tests pass.
+- `Notes.combine` has no unit test (file-IO heavy, mostly header plumbing); the `require` on input validity is the only logic that can fail quietly.
+- Paste-fail reason: not yet seen in the wild; the next real occurrence should surface the code.
+
+**Open:**
+- Deletion of a source clip is silent today — a future UX pass could show "1 of N clips is gone" on the combined row. Unproven: not blocking.
+- Combined-of-combined (selecting two combined notes + one dictation) works; whether it reads sensibly for the AI is open.
+- Version not bumped. Founder to decide when to cut build 30.
+
+---
+
 ## 2026-10-18 (00:00-01:30) · Claude Code (Opus 5.5) · Portable app, bug sweep, UI review, critic-passed changes
 
 - Portable app for other Macs (`mac/build_portable.sh`, `mac/portable_check.py`): the old app needed this project

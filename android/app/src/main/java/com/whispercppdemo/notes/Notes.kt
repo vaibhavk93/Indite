@@ -38,7 +38,12 @@ data class Note(
     val cuts: List<IntArray>, val pieces: List<Piece>, val edits: Map<Int, String>, val speed: String?,
     val recording: Boolean, val test: Boolean = false, val speakers: Speakers.Result? = null,
     val ai: List<AiReply> = emptyList(), val live: Boolean = false,
+    // A "combined" note (built from several dictations by multi-select → Ask AI). Full transcript text is copied
+    // into this note's own transcript.jsonl, so deleting any source leaves the combined one intact. Source ids are
+    // kept only for jump-back; sourceLabels is "name · date" captured at combine time, used when a source is gone.
+    val sources: List<String> = emptyList(), val sourceLabels: List<String> = emptyList(),
 ) {
+    val combined get() = sources.isNotEmpty()
     /** Speaker number of a paragraph (0-based), or null if speakers aren't labelled. */
     fun speakerOf(i: Int): Int? = speakers?.takeIf { !it.skipped }?.of?.get(i)
 
@@ -146,8 +151,11 @@ object Notes {
         } ?: emptyMap()
         val recording = meta.optBoolean("recording")
         val samples = if (recording) (File(d, "audio.pcm").length() / 2).toInt() else meta.getInt("samples")
+        val srcIds = meta.optJSONArray("sources")?.let { a -> List(a.length()) { a.getString(it) } } ?: emptyList()
+        val srcLabels = meta.optJSONArray("sourceLabels")?.let { a -> List(a.length()) { a.getString(it) } } ?: emptyList()
         Note(d.name, meta.getString("name"), meta.getLong("created"), samples, cuts, pieces, edits,
-            meta.optString("speed").ifEmpty { null }, recording, meta.optBoolean("test"), Speakers.load(d.name), loadAi(d), meta.optBoolean("live"))
+            meta.optString("speed").ifEmpty { null }, recording, meta.optBoolean("test"), Speakers.load(d.name), loadAi(d), meta.optBoolean("live"),
+            srcIds, srcLabels)
     } catch (e: Exception) { null }
 
     /** Copy a shared or picked file in (shared links can expire), decode it and cut it at pauses. Returns the note id. */
@@ -204,6 +212,40 @@ object Notes {
             }
         } finally { detector?.release() }
         return Pauses.cut(speech.toBooleanArray(), to - from).map { intArrayOf(it[0] + from, it[1] + from, it[2]) }
+    }
+
+    /**
+     * Make one note out of several finished dictations. The full transcript of each source is COPIED into the new
+     * note (one piece per source, headed by "— Clip N: name · date —"), so deleting any source leaves the combined
+     * note's text intact. Source ids are kept on meta.json only for jump-back; nothing in the UI reads from them.
+     *
+     * The caller already filtered to notes that are done and have text; this throws if either is false, so a bad
+     * call reaches the log instead of a silent empty note.
+     */
+    fun combine(sources: List<Note>): String {
+        require(sources.size in 2..10) { "combine needs 2–10 notes, got ${sources.size}" }
+        require(sources.all { it.done && it.pieces.isNotEmpty() }) { "all sources must be done and have text" }
+        val id = System.currentTimeMillis().toString()
+        val d = dir(id).apply { mkdirs() }
+        val dateFmt = java.text.SimpleDateFormat("d MMM, h:mm a", java.util.Locale.getDefault())
+        val labels = sources.map { "${it.name} · ${dateFmt.format(java.util.Date(it.created))}" }
+        // One piece per source: text includes a header so the AI sees which clip is which; start/end are dummy ranges
+        // (combined notes have no audio, so sample offsets never matter).
+        val pieces = sources.mapIndexed { k, n ->
+            val head = "— Clip ${k + 1}: ${labels[k]} —"
+            JSONObject().put("i", k).put("start", k).put("end", k + 1)
+                .put("text", "$head\n${n.allText()}").put("flags", JSONArray()).put("ms", -1).put("engine", -1)
+        }
+        writeAtomic(File(d, "cuts.json"), "[]")
+        File(d, "transcript.jsonl").writeText(pieces.joinToString("\n") { it.toString() })
+        val day = java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault()).format(java.util.Date(id.toLong()))
+        val title = "Combined · ${sources.size} clips · $day"
+        writeAtomic(File(d, "meta.json"), JSONObject().put("fmt", Backup.FMT).put("name", title).put("created", id.toLong())
+            .put("samples", 0).put("autoTitle", true)
+            .put("sources", JSONArray(sources.map { it.id }))
+            .put("sourceLabels", JSONArray(labels)).toString())
+        refresh()
+        return id
     }
 
     /** A new, empty recording. The recorder appends audio.pcm and adds a cut at every pause. */

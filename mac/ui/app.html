@@ -136,6 +136,23 @@
   }
   .row { position: relative; }
   .row.sel { background: var(--well); border-radius: 10px; box-shadow: 0 0 0 1px var(--line2); }
+  .row.picked { background: color-mix(in oklab, var(--brand) 10%, var(--paper)); border-radius: 10px;
+                box-shadow: 0 0 0 1.5px var(--brand); }
+  .selmark { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ink3); margin-top: 2px; cursor: default; }
+  .selmark.on { background: var(--brand); border-color: var(--brand); position: relative; }
+  .selmark.on::after { content: ""; position: absolute; left: 5px; top: 2px; width: 5px; height: 9px;
+                       border: solid var(--paper); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  /* bottom bar while picking */
+  .selbar { position: fixed; left: 240px; right: 24px; bottom: 18px; background: var(--paper); border: 1px solid var(--line);
+            border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.12); padding: 10px 14px; display: flex; gap: 12px;
+            align-items: center; z-index: 50; }
+  .selbar .msg { flex: 1; font-size: 13px; color: var(--ink); }
+  .selbar .msg.big { color: var(--err, #c0392b); }
+  .selbar .fine { font-size: 11px; color: var(--ink2); }
+  .selbar button { appearance: none; border: 0; background: var(--ink); color: var(--paper); font: inherit; font-weight: 600;
+                   font-size: 13px; padding: 7px 14px; border-radius: 10px; cursor: default; }
+  .selbar button.ghost { background: transparent; color: var(--ink2); }
+  .selbar button:disabled { opacity: .45; }
   /* Ask AI sits beside the list when there's room (critic: at the default 920px window that leaves a 240px list,
      so smaller windows keep it on top, but without dimming the list, which stays clickable) */
   @media (min-width: 1180px) { body.ai-open main { margin-right: min(460px, 92vw); } }
@@ -933,6 +950,7 @@
 </div>
 
 <aside class="drawer" id="drawer" hidden tabindex="-1" role="complementary" aria-label="Ask AI"></aside>
+<div class="selbar" id="selbar" hidden role="region" aria-label="Combine selected dictations"></div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -942,6 +960,9 @@
   const $ = s => document.querySelector(s);
   let S = { prefs: {}, history: [], hotkeys: {}, listening: true, engine: "", fixes: 0 };
   let tab = "home", engineReady = true;
+  // Multi-select on the Dictations tab: pick several, run Ask AI as if the whole lot were one note (Android has the
+  // same, see Notes.combine). Entry: "Select (combine with others)" in the kebab menu. Cap at 10; warn above ~8k words.
+  let sel = new Set();
 
   window.push = raw => { S = JSON.parse(raw); draw(); };
 
@@ -1205,6 +1226,7 @@
     drawDrawer();
     drawAI();
     drawList();
+    drawSelBar();
     // one search box, moved to the list page you are on (critic: no second box): titles, text and speaker lines
     const qq = tab === "meetings" || tab === "files" ? $("#q").value.trim().toLowerCase() : "";
     const hit = r => !qq || [(r.title || ""), (r.real_text ?? r.text), ...(r.segments || []).map(x => `${(r.names || {})[x.speaker] || x.speaker || ""} ${x.real ?? x.text}`)]
@@ -1240,7 +1262,7 @@
 
   function drawList() {
     const q = $("#q").value.trim().toLowerCase();
-    const rows = S.history.filter(r => (r.kind || "dictation") === "dictation"
+    const rows = S.history.filter(r => ((r.kind || "dictation") === "dictation" || r.kind === "combined")
       && (!q || (r.real_text ?? r.text).toLowerCase().includes(q)) && (filter === "all" || (filter === "check" ? r.audio && !r.said : filter === "ai" ? (r.ai || []).length || r.improved : r.star)));
 
     if (!S.history.some(r => (r.kind || "dictation") === "dictation")) {
@@ -1263,6 +1285,38 @@
       return;
     }
     feed($("#list"), rows);
+  }
+
+  function drawSelBar() {
+    // Prune ids that no longer exist in history (e.g. a selected note was deleted elsewhere).
+    const alive = new Set(S.history.map(r => r.id));
+    for (const id of [...sel]) if (!alive.has(id)) sel.delete(id);
+    const bar = $("#selbar");
+    const show = sel.size > 0 && tab === "home";
+    bar.hidden = !show;
+    if (!show) return;
+    // Rough word count across the selection, so the user sees when the AI call is getting too big before firing it.
+    const words = [...sel].reduce((n, id) => {
+      const r = S.history.find(x => x.id === id);
+      return n + (r ? (r.text || "").trim().split(/\s+/).filter(Boolean).length : 0);
+    }, 0);
+    const big = words > 8000;
+    bar.innerHTML = `
+      <div class="msg ${big ? "big" : ""}">
+        ${sel.size < 2 ? "Pick at least 2 dictations to combine." : `${sel.size} selected  ·  about ${words.toLocaleString()} words`}
+        ${big ? `<div class="fine">Big AI call — the answer may wander or be cut short.</div>` : ""}
+      </div>
+      <button class="ghost" data-x="cancel">Cancel</button>
+      <button data-x="ask" ${sel.size < 2 ? "disabled" : ""}>
+        <svg width="14" height="14" style="vertical-align:-2px;margin-right:4px"><use href="#i-spark"/></svg>Ask AI combined
+      </button>`;
+    bar.querySelector('[data-x="cancel"]').onclick = () => { sel.clear(); draw(); };
+    bar.querySelector('[data-x="ask"]').onclick = () => {
+      if (sel.size < 2) return;
+      const ids = [...sel];
+      sel.clear();
+      send({ action: "combine", ids });    // Python makes the combined note, pushes new state, then openDrawer(newId)
+    };
   }
 
   function feed(el, rows, empty) {
@@ -1288,11 +1342,15 @@
     const done = r.todo === "done";
     const ic = (cls, icon, label, on) => `<button class="copy ${cls}${on ? " on" : ""}" data-id="${id}" aria-label="${label}" title="${label}">
         <svg width="14" height="14"><use href="#${icon}"/></svg></button>`;
-    return `<div class="row${done && todoView ? " done-row" : ""}${r.id === drawerId ? " sel" : ""}" data-row="${id}">
-      <div class="when num">${todoView ? `<button class="copy tick" data-id="${id}" aria-label="${done ? "Mark not done" : "Mark done"}" title="${done ? "Not done" : "Done"}" style="${done ? "color:var(--accent)" : ""}">
+    const picked = sel.has(r.id), picking = sel.size > 0;
+    const combined = r.kind === "combined";
+    return `<div class="row${done && todoView ? " done-row" : ""}${r.id === drawerId ? " sel" : ""}${picked ? " picked" : ""}" data-row="${id}">
+      <div class="when num">${picking ? `<div class="selmark${picked ? " on" : ""}" data-pick="${id}" title="${picked ? "Unselect" : "Select"}"></div>`
+          : todoView ? `<button class="copy tick" data-id="${id}" aria-label="${done ? "Mark not done" : "Mark done"}" title="${done ? "Not done" : "Done"}" style="${done ? "color:var(--accent)" : ""}">
         <svg width="16" height="16"><use href="#${done ? "i-done" : "i-todo"}"/></svg></button>` : clock(r.at)}</div>
       <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${esc(r.title || "File")}
-          ${r.live ? `<span class="live">Live</span>` : ""}</div>` : ""}
+          ${r.live ? `<span class="live">Live</span>` : ""}</div>` :
+          combined ? `<div class="title"><svg width="13" height="13"><use href="#i-spark"/></svg>${esc(r.title || "Combined")}</div>` : ""}
         ${(r.segments || []).some(x => x.speaker) ? meetingLines(r) : `<div class="text${file ? " clamp" : longDict(r) ? " clamp6" : ""}" data-fold="${file ? "clamp" : "clamp6"}">${esc(r.text)}</div>`}
         ${todoView ? "" : flagParts(r) + aiParts(r)}
         ${(file && !(r.segments || []).some(x => x.speaker) && r.text.length > 240) || (!file && longDict(r)) ? `<button class="more showall" data-id="${id}">Show all</button>` : ""}
@@ -1363,7 +1421,9 @@
 
   function rowMenu(btn, r, x, y) {
     const media = r.kind === "file" || r.kind === "meeting";
+    const selectable = !media;                                  // meetings and files pick clips a different way
     const items = [
+      ...(selectable ? [["sel", "Select (combine with others)", "Pick several dictations to summarise or email together"]] : []),
       ["todo", r.todo ? "Remove from To do" : "Add to To do", r.todo ? "" : "Find it again on the To do page"],
       ["star", r.star ? "Unstar" : "Star", r.star ? "" : "Kept until you delete it, and in starred backups"],
       ...(S.prefs.ai ? [["ai", "Ask AI…", "Improve, summarise, action items, rewrite, translate, ask anything"]] :
@@ -1384,6 +1444,7 @@
       x ?? b.right - 290, y ?? b.bottom + 4);
     m.querySelectorAll("button").forEach(x2 => x2.onclick = () => {
       const k = x2.dataset.k; m.remove();
+      if (k === "sel") { sel.add(r.id); go("home"); draw(); }
       if (k === "todo") { send({ action: "note", id: r.id, set: { todo: r.todo ? null : "open" } }); if (!r.todo) toast("Added to To do"); }
       if (k === "star") send({ action: "note", id: r.id, set: { star: !r.star } });
       if (k === "ai") aiMenu(btn, r);
@@ -1693,9 +1754,30 @@
     on(".tick", r => send({ action: "note", id: r.id, set: { todo: r.todo === "done" ? "open" : "done" } }));
     on(".fix", (r, b) => openFixer(b, r));
     on(".moreb", (r, b) => rowMenu(b, r));
-    root.querySelectorAll(".row").forEach(row => row.oncontextmenu = e => {
-      const b = row.querySelector(".moreb"); if (!b) return;
-      e.preventDefault(); rowMenu(b, byId(b.dataset.id), e.clientX, e.clientY); });
+    // Multi-select toggle: the selmark circle, or any row click while in selection mode.
+    root.querySelectorAll(".selmark").forEach(sm => sm.onclick = e => {
+      e.stopPropagation();
+      const id = sm.dataset.pick;
+      if (sel.has(id)) sel.delete(id);
+      else if (sel.size < 10) sel.add(id);
+      else { toast("Up to 10 dictations at a time."); return; }
+      draw();
+    });
+    root.querySelectorAll(".row").forEach(row => {
+      row.oncontextmenu = e => {
+        const b = row.querySelector(".moreb"); if (!b) return;
+        e.preventDefault(); rowMenu(b, byId(b.dataset.id), e.clientX, e.clientY); };
+      if (sel.size > 0) row.addEventListener("click", e => {
+        // While picking: tap the row (not a button or the kebab) to toggle it in. Buttons keep working.
+        if (e.target.closest("button, .selmark, .copy, .more, .lnk, .flag, .aichip, .pick")) return;
+        const id = row.dataset.row;
+        if (!id) return;
+        if (sel.has(id)) sel.delete(id);
+        else if (sel.size < 10) sel.add(id);
+        else { toast("Up to 10 dictations at a time."); return; }
+        draw();
+      });
+    });
     on(".whob", (r, b) => whoMenu(b, r));
     wireRest(root, on);
   }

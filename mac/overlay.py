@@ -236,6 +236,10 @@ class Pill:
         self.panel.setIgnoresMouseEvents_(True)       # never swallow a click
         self.panel.setHidesOnDeactivate_(False)
         self.panel.setCanHide_(False)                 # "Hide indite" (⌘H) must not take the pill with it
+        # NSWindowSharingNone = 0: excludes the pill from every screen capture macOS mediates (ScreenCaptureKit,
+        # Zoom/Meet/Teams share, QuickTime recording, ⌘⇧3). The pill is for the dictator; viewers in a share should
+        # not see "REC 02:59" floating over the slide (founder, 23 Oct).
+        self.panel.setSharingType_(0)
         self.panel.setCollectionBehavior_(
             NSWindowCollectionBehaviorCanJoinAllSpaces
             | NSWindowCollectionBehaviorStationary
@@ -384,6 +388,7 @@ class Preview:
         self.panel.setLevel_(25)
         self.panel.setIgnoresMouseEvents_(True)
         self.panel.setCanHide_(False)
+        self.panel.setSharingType_(0)                 # excluded from screen capture, same reason as the pill
         self.panel.setCollectionBehavior_(
             NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorStationary
             | NSWindowCollectionBehaviorFullScreenAuxiliary

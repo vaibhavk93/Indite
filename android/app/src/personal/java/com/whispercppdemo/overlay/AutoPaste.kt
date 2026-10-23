@@ -41,14 +41,26 @@ object AutoPaste {
             com.whispercppdemo.notes.Secret.words(n.hintText, n.viewIdResourceName?.substringAfter(":id/"), n.contentDescription, n.paneTitle)
     }
 
-    /** Paste at the cursor (keeps undo). The text stays on the clipboard too, in case an app ignores the paste. */
+    /**
+     * Paste at the cursor (keeps undo). The text stays on the clipboard too, in case an app ignores the paste.
+     * Returns true if ACTION_PASTE was accepted. On false, the reason is in the log ("auto-paste fallback: <A-E>")
+     * so we can tell apart "no box was focused when you tapped" from "the app refused the paste".
+     */
     fun paste(c: Context, text: String): Boolean {
-        val t = target ?: return false
+        val t = target
         target = null
-        if (!t.refresh() || !t.isFocused || !t.isEditable || sensitive(t)) return false
+        if (t == null) { log("A", "no focused editable box when bubble was tapped"); return false }
+        if (!t.refresh()) { log("B", "target node could not be refreshed (view rebuilt)"); return false }
+        if (!t.isFocused) { log("C", "focus moved away during the recording"); return false }
+        if (!t.isEditable) { log("D1", "target is no longer editable"); return false }
+        if (sensitive(t)) { log("D2", "target now looks sensitive (password / code box)"); return false }
         c.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("indite", text))
-        return t.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+        if (!t.performAction(AccessibilityNodeInfo.ACTION_PASTE)) { log("E", "app refused ACTION_PASTE"); return false }
+        return true
     }
+
+    private fun log(code: String, why: String) =
+        android.util.Log.i("indite", "auto-paste fallback: $code — $why")
 }
 
 class PasteService : AccessibilityService() {

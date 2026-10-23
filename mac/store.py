@@ -217,6 +217,41 @@ def restore(row: dict) -> None:
     _write(sorted(_read() + [row], key=lambda r: r.get("at", 0)))
 
 
+def combine(ids: list[str]) -> str | None:
+    """
+    Make one note out of several finished dictations (Android has the same, see Notes.combine). The full text of each
+    source is COPIED into the new note under a "— Clip N: title · time —" header, so deleting any source leaves the
+    combined note intact. Source ids are stored only for jump-back.
+
+    kind="combined" so (a) the row survives the plain-dictation CAP (`keep()` protects anything non-dictation), and
+    (b) the UI can style it slightly differently. Returns the new row's id, or None if nothing valid was passed.
+    """
+    rows = _read()
+    picked = [r for r in rows if r["id"] in ids and r.get("text", "").strip()
+              and (r.get("kind", "dictation") in ("dictation", "combined", "file", "meeting"))]
+    if len(picked) < 2:
+        return None
+    picked.sort(key=lambda r: r.get("at", 0))                                 # oldest-first, so Clip 1 is the earliest
+    labels = []
+    chunks = []
+    for i, r in enumerate(picked, start=1):
+        when = time.strftime("%d %b, %I:%M %p", time.localtime(r.get("at", 0))).lstrip("0")
+        title = (r.get("title") or "").strip() or f"Dictation {i}"
+        labels.append(f"{title} · {when}")
+        chunks.append(f"— Clip {i}: {labels[-1]} —\n{(r.get('real_text') or r.get('text') or '').strip()}")
+    text = "\n\n".join(chunks)
+    now = time.time()
+    day = time.strftime("%d %b", time.localtime(now)).lstrip("0")
+    row = {
+        "id": repr(now), "at": now, "text": text, "seconds": round(sum(r.get("seconds", 0) for r in picked), 1),
+        "took": 0.0, "where": "combined", "app": "",
+        "kind": "combined", "title": f"Combined · {len(picked)} clips · {day}",
+        "sources": [r["id"] for r in picked], "sourceLabels": labels,
+    }
+    _write(rows + [row])
+    return row["id"]
+
+
 def history() -> list[dict]:
     """Newest first."""
     return _read()[::-1]
@@ -658,4 +693,18 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     (AUDIO / "1700000000.5-you.wav").write_bytes(b"x"); (AUDIO / "notes.txt").write_bytes(b"x")
     assert drop_orphan_audio(older_than=0) == 1                      # a deleted note's track goes; nothing else
     assert (AUDIO / f"{mt}-you.wav").exists() and (AUDIO / "notes.txt").exists()
+    # multi-select: two dictations in → one combined note out, with headers and sources preserved.
+    HISTORY.write_text("")
+    d1 = add("the meeting with Priya went well", 1, 1, "done", "")
+    d2 = add("she wants pricing by Friday", 1, 1, "done", "")
+    nid = combine([d1, d2])
+    assert nid is not None
+    r = next(x for x in history() if x["id"] == nid)
+    assert r["kind"] == "combined" and r["sources"] == [d1, d2] and len(r["sourceLabels"]) == 2
+    assert "— Clip 1:" in r["text"] and "Priya" in r["text"] and "Friday" in r["text"]
+    assert combine([d1]) is None                                   # needs 2+
+    assert combine([d1, "no-such-id"]) is None                     # only one valid id → still refuses
+    # a combined row is NOT a plain dictation, so clear() must not touch it
+    assert clear() == 2                                            # d1, d2 go; the combined one stays
+    assert any(x["id"] == nid for x in history())
     print("ok")

@@ -152,6 +152,17 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 
 ## 5. Where things stand (update every session)
 
+**23 Oct afternoon — Mac: pill hidden from screen capture + multi-select → Ask AI combined (same shape as Android).**
+- Pill + text card now carry `setSharingType_(0)` (NSWindowSharingNone): excluded from Zoom/Meet/Teams/Loom shares, QuickTime screen recording, and ⌘⇧3 screenshots. Not yet proven in a live share.
+- Dictations tab: kebab menu → "Select (combine with others)" starts a selection mode (checkmark marks, picked-row border); fixed bottom bar "N selected · ~W words · [Ask AI combined]"; posts `{action:"combine", ids:[...]}`; Python's `store.combine` writes a new `kind: "combined"` row (snapshot of the picked transcripts under "— Clip N: title · date —" headers, `sources`/`sourceLabels` on the row), then `openDrawer(new_id)`.
+- Verified in the hidden test copy (founder's screen untouched). `.venv/bin/python mac/store.py` → `ok` (extended self-check for combine). Not rebuilt. Restart with `open -n -g dist/indite.app` once the log has 2 min of quiet.
+
+**23 Oct — Android: multi-select → Ask AI combined, and the clipboard-fallback paste bug now logs its reason.**
+- (B, done): `AutoPaste.paste()` now logs one of five concrete reasons (`A/B/C/D1/D2/E`) when it falls back to clipboard-only; behaviour unchanged, so the next time the founder sees "it copied instead of typing in", `adb logcat -s indite` names the cause and the real fix can be targeted.
+- (A, done, untested on phone): long-press a note → "Select (combine with others)" → pick 2–10 → bottom bar "Ask AI combined" → opens a NEW combined note whose `transcript.jsonl` contains each source's full text under a `— Clip N: name · date —` header. The existing AI drawer runs on the whole thing as if it were one dictation. `Note.sources` + `Note.sourceLabels` on `meta.json`; combined notes show a "Combined" chip and "N clips · date".
+- Snapshot by design: deleting a source does nothing to the combined note. Live re-link is **unproven** and not built.
+- Compiles clean (personal + public); unit tests pass. **Not yet installed on the phone** — version not bumped. Founder to cut build 30 when ready.
+
 **18 Oct 01:45 — Mac: portable app, bug sweep, UI review and critic-passed changes done; roadmap page republished.**
 - Give indite to others ONLY as `dist/portable/indite-mac.zip` (`./mac/build_portable.sh`; see Repo rules).
 - Meetings: the call's sound reconnects if its capture dies (16 Oct it died after 7 s on headphones); the mic in use
