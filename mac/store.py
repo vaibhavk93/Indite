@@ -434,15 +434,18 @@ def trim_audio(cap_mb: float | None = None) -> tuple[int, float]:
         protect = {r["id"] for r in _read() if keep(r)}   # starred or on the to-do list: never dropped for space
     except Exception:                                    # noqa: BLE001 - an unreadable history must never cost audio
         return 0, 0.0
-    files = sorted((f for f in AUDIO.iterdir() if f.is_file()), key=lambda f: f.stat().st_mtime)
+    def droppable(f: Path) -> bool:
+        note = re.match(r"^(\d+\.\d+)(?:-you|-others)?\.\w+$", f.name)
+        return not (note and note.group(1) in protect)
+
+    # The cap counts only what can be dropped. Counting protected audio too meant 891 MB of starred meetings (24 Oct)
+    # sat over the 500 MB cap for good, so every new dictation's recording was deleted the moment it was saved.
+    files = sorted((f for f in AUDIO.iterdir() if f.is_file() and droppable(f)), key=lambda f: f.stat().st_mtime)
     total = sum(f.stat().st_size for f in files)
     gone = freed = 0
     for f in files:
         if total <= cap:
             break
-        note = re.match(r"^(\d+\.\d+)(?:-you|-others)?\.\w+$", f.name)
-        if note and note.group(1) in protect:
-            continue
         size = f.stat().st_size
         f.unlink()
         total -= size
@@ -726,6 +729,10 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     (AUDIO / "1700000000.5-you.wav").write_bytes(b"x"); (AUDIO / "notes.txt").write_bytes(b"x")
     assert drop_orphan_audio(older_than=0) == 1                      # a deleted note's track goes; nothing else
     assert (AUDIO / f"{mt}-you.wav").exists() and (AUDIO / "notes.txt").exists()
+    u = add("fresh dictation", 1, 1, "done", ""); (AUDIO / f"{u}.wav").write_bytes(b"abcd")
+    assert trim_audio(cap_mb=0.00001) == (0, 0.0) and (AUDIO / f"{u}.wav").exists()   # starred audio (13 B) over the 10 B cap must not eat a new clip
+    assert trim_audio(cap_mb=0.000001)[0] >= 1 and not (AUDIO / f"{u}.wav").exists()  # but a real overflow of droppable audio still trims
+    assert (AUDIO / f"{c}.wav").exists()                                              # starred audio is never dropped
     # multi-select: two dictations in → one combined note out, with headers and sources preserved.
     HISTORY.write_text("")
     d1 = add("the meeting with Priya went well", 1, 1, "done", "")

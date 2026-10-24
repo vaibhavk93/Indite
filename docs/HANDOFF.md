@@ -154,6 +154,7 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 ## 5. Where things stand (update every session)
 
 **24 Oct (morning) — AI price table fixed; critic rule narrowed; model default changed.**
+- **Recording bug fixed (24 Oct):** `trim_audio` counted starred/to-do audio (891 MB) toward the 500 MB cap, so every new dictation recording was deleted on save. Cap now counts droppable audio only. Live-checked after restart. The real speech set (Mac next #1) is under way: baseline not scored yet; do not add the new Dictionary spellings until it is.
 - `mac/cost.py` RATES now match Anthropic's pricing page (checked 24 Oct): added Opus 5.5, Sonnet 5.5, Fable 5.1, Opus 4.8; **corrected** Haiku 5.5 ($1/$5 → $0.10/$0.50, the default AI model, so past cost figures were ~10x too high), Sonnet 5, Opus 5/4.7, Fable 5. `.venv/bin/python mac/cost.py` → `ok`. OpenAI rows NOT re-checked. Haiku 5.5's over-100k-prompt tier and cache discounts are not modelled (marked `ponytail:` in the file). Running app still has the old table until restarted.
 - Critic rule is now narrow (see Founder's working rules above); founder's default model is Sonnet 5.5 + high (usage limits), Opus 5.5 + medium for hard tasks via `/model opus`.
 - Founder asked whether docs are enough to rebuild indite: git on GitHub is the real backup; speech models, `dist` and recordings are deliberately not in git. **Unproven:** a from-scratch rebuild following this file has never been tested.
