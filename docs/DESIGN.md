@@ -181,5 +181,68 @@ Shared everywhere: one orange family, red only for recording and danger, plain w
 6. Do the words say plainly what happens, with no hype?
 7. Does copy stay one icon on the text it copies?
 8. On the Mac pill or card: does it still never take focus or catch a stray click?
+9. **No bare hex in a stylesheet.** Every colour comes from `var(--…)`. If you need a new shade, add it as a token first.
+10. **No `opacity:` to dim text.** Use `--ink-dim` (secondary on `--well`) or a semantic state token.
+11. **No browser `title=` on buttons.** Use `data-tt="…"` — the themed `.tt` component renders it.
+12. **Menu rows carry their own subtitle** (`<b>Label</b><span>subtitle</span>`). No tooltip.
+13. **One primary button per view**, class `.btn`. Everything else is `.btn.ghost`, `.btn.quiet` or `.btn.danger`.
+14. **Pill and card copy comes from the state map** in `overlay.py` / `indite_mac.py`. No inline strings in the handler.
 
 **When you create something new: read this file first, and add any new pattern to it.**
+
+---
+
+## 9. Theme pass v2 — the patterns added 24 Oct 2026
+
+Ten commits (`bfb3f06 … 0db764b`) formalised what used to be ad-hoc. The vocabulary below is the one every new UI should reach for; the old vocabulary is gone from the codebase.
+
+### 9.1 Tokens added
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `--ink-dim` | `#8e8e95` | `#737379` | Secondary text on `--well`. **Replaces `opacity: 0.6` on text.** |
+| `--state-busy` | `#5f5f66` | `#a8a8b0` | "Warming / working / saving" — grey, not orange |
+| `--state-done` | `#2e8b47` | `#34a853` | Confirmation ticks (promoted from literal) |
+| `--state-idle` | `#737379` | `#5f5f66` | "AI off / mic off" — grey, not red |
+| `--panel-edge` | `rgba(0,0,0,.14)` | `#36363b` | Shelf / drawer edge where a shadow disappears in dark |
+| `--tt-paper` | `#0f0f10` | `#0a0a0b` | Tooltip background — one place to adjust |
+
+### 9.2 Scales added
+
+- **Icon size**: `--i-sm 14`, `--i-md 18`, `--i-lg 28`. Collapses the previous 7 ad-hoc sizes (12–28). Use these on `<svg width=…>`.
+- **Typography utility classes**: `.t-label` (11 px / 600 / 0.08 em uppercase), `.t-caption` (12 px / 500), `.t-body` (13 px / 1.5), `.t-h3` (15 px / 600), `.t-h2` (20 px / 650), `.t-h1` (24 px / 650). Named by role, not by size — a future scale shift changes one block.
+
+### 9.3 Components formalised
+
+| Component | Class | What it is |
+|---|---|---|
+| Button family | `.btn` / `.btn.ghost` / `.btn.quiet` / `.btn.danger` + `.btn.big` size variant | One vocabulary across every page. `.btn.go` kept as a one-line alias of `.btn` for out-of-tree patterns |
+| Themed tooltip | `.tt` + `data-tt="…"` on any element | Delegated listener; 200 ms delay; positions below the target, flips above when it would clip. Replaces every `title=` on buttons |
+| Menu row with subtitle | `<button><b>Label</b><span>subtitle</span></button>` inside `.menu` | `popup()` renders items this way. No browser tooltip; the subtitle is always visible |
+| Input select / slider / text | `.pick` (select or text), `.slide` (range) | Already in use; formalised. Models like free-form configuration prefer `<select>` + Custom… over a free input |
+| Shelf (combine notes) | `.shelf` + `.row .shelf-add` on each row | A right-side panel; drag-reorder; live preview; "Save as a note" vs "Save & Ask AI" |
+| Cost chip | `.aicost` on each AI answer header | Known cost shows "$0.012"; unknown model shows "cost not estimated"; local-Claude answers show no chip |
+
+### 9.4 State vocabulary
+
+The pill's state → word mapping lives in `overlay.py`'s `_draw_content`. The card's `preview.show(text, buttons)` / `preview.ask()` / `preview.failed()` / `preview.answer()` keep the same shape; failure now routes a one-line reason onto the card at the moment it happens.
+
+| Moment | What appears |
+|---|---|
+| Cold-start waiting (engine not ready) | pill: **"warming up…"** |
+| Normal waiting after dictation | pill: "writing…" |
+| Dictation typed in | pill: ✓ typed in |
+| Clipboard fallback | pill: ✓ copied · card teaches "No text box — paste with ⌘V" |
+| Dictation failed | pill: "didn't work · check the card" · card carries the reason |
+| Meeting recording | pill: red dot + REC + time |
+| AI thinking | drawer: animated bar + "Usually about N s" (unchanged — one of the strongest moments in the app) |
+| Meeting record blocked by dictation | toast: "Finish the current dictation first." |
+
+### 9.5 AI cost
+
+- Per-answer `.aicost` chip on each AI reply header
+- Monthly total line on Insights: **"This month: $X.XX across N answers · M answered via Claude on this Mac (no cost reported)"**
+- Model picked from a `<select>` populated from `cost.py`'s RATES keys plus "Custom…"
+- `cost.py` is strict: unknown model returns `None`, not `$0.00`
+
+**Rates are 2026 published numbers.** `cost.py` says so at the top; keep them current.
