@@ -66,6 +66,7 @@ DEFAULTS = {
     "asked_screen": False,      # the Screen & System Audio Recording prompt was shown once        # the first-run setup was finished (Help → Run setup again)
     "theme": "light",           # light · dark · system - the window's colours
     "preview": False,           # show what was written in a small card above the pill for a few seconds
+    "card_ai": True,            # the text card shows the AI buttons (Ask AI + two more); off = To do only
 }
 
 

@@ -778,6 +778,11 @@
                   the clipboard.</p></div>
                 <button class="sw" id="set-preview" role="switch" aria-label="Show text after dictating"></button>
               </div>
+              <div class="item" id="cardai">
+                <div class="body"><b>AI buttons on the card</b><p>Ask AI and two quick AI actions under the text.
+                  Off keeps only To do.</p></div>
+                <button class="sw" id="set-card_ai" role="switch" aria-label="AI buttons on the card"></button>
+              </div>
               <div class="item" id="cardbtns">
                 <div class="body"><b>Card buttons</b><p>The two AI buttons between Ask AI and To do. Automatic uses the
                   two you ask for most.</p></div>
@@ -1049,6 +1054,13 @@
 <script>
   let lastAsk = null;                                  // the last AI request, for "Try again" on its error
   const send = m => { if (m.action === "ai") lastAsk = m; window.webkit.messageHandlers.indite.postMessage(JSON.stringify(m)); };
+  // Python needs to know if a text box here has the cursor: a dictation spoken into one is input to indite (not a note);
+  // with none focused it is a note whose words go to the clipboard.
+  const BOX = "input:not([type=checkbox],[type=radio],[type=button],[type=range],[type=color]),textarea,select,[contenteditable]";
+  let boxOn = false;
+  const boxTell = () => { const on = !!document.activeElement?.matches?.(BOX); if (on !== boxOn) { boxOn = on; send({ action: "box", on }); } };
+  document.addEventListener("focusin", boxTell);
+  document.addEventListener("focusout", () => setTimeout(boxTell, 0));
   const $ = s => document.querySelector(s);
   let S = { prefs: {}, history: [], hotkeys: {}, listening: true, engine: "", fixes: 0 };
   let tab = "home", engineReady = true;
@@ -1255,7 +1267,9 @@
         v => send({ action: "pref", key: "theme", value: v }));
     sw("#set-preview", "preview");
     // the card's two AI buttons: Automatic, or an action (Rewrite and Translate with their style or language)
-    $("#cardbtns").hidden = !S.prefs.preview || !S.prefs.ai;
+    sw("#set-card_ai", "card_ai");
+    $("#cardai").hidden = !S.prefs.preview || !S.prefs.ai;
+    $("#cardbtns").hidden = !S.prefs.preview || !S.prefs.ai || S.prefs.card_ai === false;
     const cb = S.prefs.card_buttons || ["", ""], A = S.ai_actions || {};
     const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
     const cbOpts = opt("", "Automatic") +

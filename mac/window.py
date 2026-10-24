@@ -223,6 +223,8 @@ class Bridge(NSObject):
                 self.app.show_pill()
             if msg.get("key") == "theme" and self.app.window:
                 self.app.window.theme()
+        elif act == "box":                               # a text box in this window has / lost the cursor
+            self.app.in_box = bool(msg.get("on"))
         elif act == "copy":
             self.app.typer.copy(msg.get("text", ""))
         elif act == "note":                              # star / to-do / title: only these fields may change

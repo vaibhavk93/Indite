@@ -843,11 +843,9 @@ def focused_is_secret() -> bool:
         return False
 
 
-def is_own_input(front_pid: int, my_pid: int, text_focused: bool) -> bool:
-    """Spoken into one of indite's own boxes (Ask AI, search, a rename): input to indite, not a note. With indite in
-    front but no box focused the words only go to the clipboard, so that dictation is a note like any other (24 Oct:
-    three such dictations were never saved and their recordings were lost)."""
-    return front_pid == my_pid and text_focused
+def card_mode(saved: bool, ai: bool, card_ai: bool):
+    """The card's buttons: False = none (not a saved note), "todo" = To do only, True = the AI actions and To do."""
+    return (True if ai and card_ai else "todo") if saved else False
 
 
 def utf16_chunks(text: str, most: int) -> list[str]:
@@ -966,6 +964,7 @@ class InditeApp(rumps.App):
         self.prefs = store.prefs()
         self.mic.chosen = self.prefs["mic"]
         self.window: Window | None = None
+        self.in_box = False                               # a text box in indite's own window has the cursor (told by the page)
         self.engine_kind = "Starting the engine\u2026"
         self.busy = False
         self.started_at = 0.0
@@ -1456,10 +1455,13 @@ class InditeApp(rumps.App):
         self.last = self.out(text)                      # what is typed, copied and previewed; the note keeps the real words
         # The pill says what happened. A notification was tried here and crashed the thread that had just produced
         # the text (rumps needs a bundle identifier it could not find), so the words landed with nothing said.
-        own_box = is_own_input(where_pid, os.getpid(), focused_is_text())
+        # macOS cannot say whether indite's own page has a box focused (it answers "yes" when unsure, 24 Oct: the
+        # words were typed into nothing), so for our own window the page tells us. This only decides typing vs the
+        # clipboard: every dictation is saved, wherever it was spoken (24 Oct: three were lost inside indite).
+        box = self.in_box if where_pid == os.getpid() else focused_is_text()
         private = self.no_save_next                     # "Don't save the next dictation": this one only
         mode = self.prefs["output"]
-        if mode == "type" or (mode == "smart" and focused_is_text()):
+        if mode == "type" or (mode == "smart" and box):
             self.typer.type(self.last)
             if self.prefs.get("also_copy", True) and not private:   # typed by key events: the clipboard may hold it too
                 self.typer.copy(self.last)
@@ -1475,12 +1477,11 @@ class InditeApp(rumps.App):
             self.surprise_copy = mode == "smart"
         self.done_until = time.time() + 1.6
         took = time.time() - t0
-        # Spoken into one of indite's own boxes (the Ask AI box, search, a rename): that's input to indite, not a note.
         if private:                                      # used once, then off again
             self.no_save_next = False
             self.no_save_item.state = 0
             self.set_title("")
-        note = None if own_box or private else store.add(
+        note = None if private else store.add(
             text, len(audio) / RATE, took, self.done_state, where,
             **({"raw": heard} if heard.strip() != text.strip() else {}))   # what the engine heard, so a fix can be undone
         if note and self.prefs.get("review"):
@@ -1503,7 +1504,7 @@ class InditeApp(rumps.App):
                     + ("No text box here, so it is on the clipboard — paste with ⌘V.\n"
                        if getattr(self, "surprise_copy", False) else
                        "Copied. Paste with ⌘V.\n" if self.done_state == "copied" else ""))
-            self.preview.show(told + self.last, buttons=(True if self.prefs.get("ai") else "todo") if note else False)
+            self.preview.show(told + self.last, buttons=card_mode(bool(note), self.prefs.get("ai"), self.prefs.get("card_ai", True)))
         self.surprise_copy = False
         print(f"{len(audio) / RATE:.1f}s of speech -> {took:.2f}s -> " + ("(private: not saved, not logged)" if private else text))
 
@@ -2001,6 +2002,8 @@ class InditeApp(rumps.App):
                 x, y, w, h = (float(v) for v in arg.split(","))
                 top = NSScreen.screens()[0].frame().size.height
                 self.window.win.setFrame_display_(NSMakeRect(x, top - y - h, w, h), True)
+            elif verb == "box":                                # developer check: does the page say a box has the cursor?
+                (store.DIR / "eval.out").write_text(json.dumps(self.in_box))
             elif verb == "js" and self.window:
                 self.window.bridge.js(arg)
             elif verb == "eval" and self.window and self.window.bridge.web is not None:
@@ -2169,7 +2172,8 @@ if __name__ == "__main__":
         assert kbd.Listener._handle_message(None, None, kbd.NSSystemDefined, None, None, False) is None
         assert [status_text(t) for t in ("🎙", "🎙⚠", "🎙…", "🔴", "⏳", "📄 3/10")] == ["", "⚠", "…", "●", "…", "3/10"]
         assert menubar_icon().isTemplate() and menubar_icon().size().width == 18
-        assert is_own_input(5, 5, True) and not is_own_input(5, 5, False) and not is_own_input(5, 9, True)   # indite in front, no box: still a note
+        assert card_mode(False, True, True) is False and card_mode(True, True, True) is True   # not saved: no buttons
+        assert card_mode(True, False, True) == "todo" and card_mode(True, True, False) == "todo"   # AI off or card AI off: To do only
         assert utf16_chunks("", 20) == []
         assert utf16_chunks("hello", 20) == ["hello"]
         assert utf16_chunks("abcdef", 2) == ["ab", "cd", "ef"]
