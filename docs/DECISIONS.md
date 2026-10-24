@@ -15,9 +15,8 @@ to "Decided", and update the roadmap item it touches.
 | D9 | A commercial-use review before selling | Ownership, security review, privacy law | When to start |
 | D10 | A smaller speech model if the Play Store asset pack is too big | Android next #7 | Said "yes, if quality doesn't drop" (13 Oct): set the quality bar |
 | D11 | The accessibility add-on in the public Android build (#33): see D30 | Auto-typing and "bubble only with a keyboard" for everyone | Decide in D30 |
-| D12 | Two unclear 10 Oct messages. (1) "…prompt and transcript. Why check all these features of under Ask my AI to do it." (cut off, dictated). (2) "double long-press": the original wording is not in my transcripts; the same 10 Oct message says "long press button is working: copy text, share, rename, remind me, delete". My suggestion: drop (2); for (1) say if you meant "why are these features under Ask my AI?" | Unknown | Answer or drop |
 | D13 | Pill vs window: what "dragging is not working" means (17 Oct) | A bug (window strip) or a new feature (move the pill) | Window / pill |
-| D14 | **Grow the Dictionary to ~20 names of 6+ letters** (people, brands, medicines you say) | 24 Oct (second count): 32 entries, about **15 real names of 6+ letters** (Aishwarya, Coimbatore, Confluence, Tihaar Jail, Vaigai river, …). About 5 more. **Two entries are risky:** `sau = Sure` (sau is Hindi for hundred) and `and sure = Ensure` | Add ~5 names; consider removing the two |
+| D14 | **Grow the Dictionary to ~20 names of 6+ letters** (people, brands, medicines you say) | 24 Oct (second count): 32 entries, about **15 real names of 6+ letters** (Aishwarya, Coimbatore, Confluence, Tihaar Jail, Vaigai river, …). About 5 more. The two risky entries (`sau = Sure`, `and sure = Ensure`) are gone (24 Oct) | Add ~5 names |
 | D15 | **Mark ~35 dictations "This is exactly what I said"** (Settings → Privacy → Speech test is on for you; fix the text first) | 24 Oct: **7 of 35 marked.** The first real accuracy number comes after 35; then `python mac/speechset.py score` | ~25 min more |
 | D17 | Live clean-up while dictating with a local model | Needs 30 real dictations compared side by side (your judgement) | After D15 |
 | D19 | Listen look ✅ (you checked, 24 Oct). Still open: **Both tracks on your next real call** and the card buttons in Settings | Built 17 Oct | With the call checks (D26) |
@@ -41,6 +40,7 @@ to "Decided", and update the roadmap item it touches.
 | D24 | How many to keep / Restore fixes | **Work** (founder live check) | 24 Oct |
 | D25 | "Record this call?" card for Meet / Zoom in a browser | **Yes, after a minute of steady mic use. Built** (needs a real browser call to check: D26) | 24 Oct |
 | D4 | One name for word fixes | **"Dictionary"** on both Mac and Android (Android renamed 24 Oct, compiles; not on a phone yet) | 24 Oct |
+| D12 | Two unclear 10 Oct messages ("…prompt and transcript…", "double long-press") | **Dropped** (founder, 24 Oct) | 24 Oct |
 | D22 | "Don't save the next dictation" | Yes, build it (also skips the clipboard) | 18 Oct |
 | — | OpenRouter "train on my data" | Turned off by the founder | 17 Oct |
 | — | Slack and VS Code typing | Works, confirmed by the founder | 17 Oct |
