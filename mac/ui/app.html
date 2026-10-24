@@ -165,7 +165,10 @@
                     background: transparent; transition: opacity .1s, background .1s, color .1s; padding: 0; }
   .row:hover .shelf-add, .row.in-shelf .shelf-add { opacity: 1; }
   .row .shelf-add:hover { background: var(--hover); color: var(--ink); }
-  .row.in-shelf { opacity: 0.6; transition: opacity .12s; }
+  /* R4 (24 Oct): previously `opacity: 0.6` on in-shelf rows pulled --ink2 text below AA on --well in dark. Replace
+     with --ink-dim on the secondary bits only (meta + timestamp); main text keeps full --ink contrast. */
+  .row.in-shelf .text, .row.in-shelf .title, .row.in-shelf .meta, .row.in-shelf .when { transition: color .12s; }
+  .row.in-shelf .meta, .row.in-shelf .when { color: var(--ink-dim); }
   .row.in-shelf .shelf-add { opacity: 1; color: var(--brand); background: rgba(226,118,25,.12); }
   .row.in-shelf .shelf-add:hover { background: rgba(226,118,25,.2); color: var(--brand); }
   /* The shelf itself - a 300 px panel on the right that lives beside the Ask AI drawer (never both at once). */
@@ -188,7 +191,9 @@
   .shelf .clip.drop-above { box-shadow: 0 -2px 0 var(--brand); }
   .shelf .clip.drop-below { box-shadow: 0 2px 0 var(--brand); }
   .shelf .clip .drag-h { color: var(--ink3); font-weight: 700; letter-spacing: -1px; text-align: center; }
-  .shelf .clip .ct { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* R5 (24 Oct): one-line nowrap at 60 chars made two similar clips indistinguishable. Two lines now. */
+  .shelf .clip .ct { color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2;
+                     -webkit-box-orient: vertical; line-height: 1.35; }
   .shelf .clip .rm { color: var(--ink3); cursor: default; font-size: 15px; line-height: 1; text-align: center;
                      background: transparent; border: 0; padding: 0; }
   .shelf .clip .rm:hover { color: var(--ink); }
@@ -209,7 +214,9 @@
   /* Ask AI sits beside the list when there's room (critic: at the default 920px window that leaves a 240px list,
      so smaller windows keep it on top, but without dimming the list, which stays clickable) */
   @media (min-width: 1180px) { body.ai-open main { margin-right: min(460px, 92vw); } }
-  .row + .row::before { content: ""; position: absolute; top: 0; left: 88px; right: 10px; height: 1px; background: var(--line); }
+  /* Theme pass commit 8 (24 Oct): full-width hairline between rows. The 88 px left offset left a "shelf of timestamps"
+     without a line, then line below - reads inconsistent on wide windows. */
+  .row + .row::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: var(--line); }
   .row:hover { background: var(--hover); }
   .row:hover::before, .row:hover + .row::before { opacity: 0; }
   .when { color: var(--ink2); font-size: 12px; padding-top: 1px; }
@@ -696,17 +703,19 @@
     </section>
 
     <section class="pane" id="pane-dict" hidden>
-      <p class="lead2">When indite keeps writing a word wrong, teach it once. It matches whole words, in any
-        capitals, and a fix can be several words. Used on every dictation, file and meeting.</p>
-      <p class="lead2">It also works the other way: put a short word on the left and anything you like on the right,
-        and saying the short word types the whole thing (up to 80 characters): <b>addr</b> → <i>12 MG Road, Bengaluru 560001</i>, or
-        <b>my mail</b> → <i>naam@example.com</i>.</p>
+      <!-- R12 (24 Oct): add row above the explanation. People learn faster by doing; the two paragraphs below
+           answer "what else can I do?" after they've already made one fix. -->
       <div class="addrow">
         <input class="pick" id="dh" aria-label="Word indite writes" placeholder="indite writes… e.g. ptm" spellcheck="false">
         <span class="arrow">→</span>
         <input class="pick" id="dw" aria-label="Word you meant" placeholder="you meant… e.g. Paytm" spellcheck="false">
         <button class="btn" id="dadd">Add</button>
       </div>
+      <p class="lead2">When indite keeps writing a word wrong, teach it once. It matches whole words, in any
+        capitals, and a fix can be several words. Used on every dictation, file and meeting.</p>
+      <p class="lead2">It also works the other way: put a short word on the left and anything you like on the right,
+        and saying the short word types the whole thing (up to 80 characters): <b>addr</b> → <i>12 MG Road, Bengaluru 560001</i>, or
+        <b>my mail</b> → <i>naam@example.com</i>.</p>
       <div class="card" id="dict-list"></div>
       <p class="fine" style="text-align:left">Tip: you can also fix a word straight from a dictation — “…” → Fix a word.
         <button class="more" id="edit-fixes">Open the list as a file</button></p>
@@ -918,7 +927,7 @@
               <div class="item">
                 <div class="body"><b>Back up or restore</b><p>One .zip you can keep anywhere. Restoring adds the notes
                   that are missing and never changes one that is already here.</p></div>
-                <button class="btn ghost" id="restore">Restore…</button><button class="btn" id="backup">Back up…</button>
+                <button class="btn" id="backup">Back up…</button><button class="btn ghost" id="restore">Restore…</button>
               </div>
             </div>
           </div>
@@ -2152,7 +2161,9 @@
     let cells = "";
     for (let t = start; t <= today; t += DAY) { const v = byDay[t] || 0, l = v ? Math.min(4, 1 + Math.floor(v / mx * 3.999)) : 0;
       cells += `<i class="${l ? "l" + l : ""}" data-tt="${new Date(t).toDateString()}: ${v} words"></i>`; }
-    h += `<div class="igrid"><div class="ibox"><h3>Activity<span>${streak} day${streak === 1 ? "" : "s"} in a row · best: ${best}</span></h3><div class="heat">${cells}</div>
+    // R8 (24 Oct): "0 days in a row · best: 0" reads sadly on a fresh install. Show em-dashes until first streak.
+    const streakLine = (streak || best) ? `${streak} day${streak === 1 ? "" : "s"} in a row · best: ${best}` : "— · best: —";
+    h += `<div class="igrid"><div class="ibox"><h3>Activity<span>${streakLine}</span></h3><div class="heat">${cells}</div>
       <div class="axis"><span>12 weeks ago</span><span>today</span></div></div>`;
     // last 14 days
     const days = [...Array(14)].map((_, i) => today - (13 - i) * DAY), dm = Math.max(1, ...days.map(t => byDay[t] || 0));
@@ -2198,13 +2209,16 @@
       ? `<p class="fine" style="text-align:left; margin-top:6px">This month: <b style="color:var(--ink)">$${costUsd.toFixed(2)}</b> across ${costedN} answer${costedN === 1 ? "" : "s"}` +
         (uncostedN ? ` · ${uncostedN} answered via Claude on this Mac (no cost reported)` : "") + `.</p>`
       : "";
-    h += `<div class="ibox aiuse"><h3>AI<span>only when you asked</span></h3>${aiN
-      ? `<p><b>${aiN}</b> answers on <b>${aiNotes.length}</b> notes. Most used: ${topAI}.</p>` +
-        Object.entries(used).sort((a, b) => b[1] - a[1]).map(([n, v], _, all) =>
-          `<div class="hbar"><span>${esc(n)}</span><span class="t"><i style="width:${v / all[0][1] * 100}%"></i></span><span class="num">${v}</span></div>`).join("") +
-        costLine +
-        `<button class="lnk" id="ins-ai">See the notes with AI →</button>`
-      : `<p>No AI answers yet. Open any note’s “…” → Ask AI.</p>`}</div>`;
+    // R9 (24 Oct): hide the AI tile entirely when AI is off. Nagging someone who turned it off is impolite.
+    if (S.prefs.ai) {
+      h += `<div class="ibox aiuse"><h3>AI<span>only when you asked</span></h3>${aiN
+        ? `<p><b>${aiN}</b> answers on <b>${aiNotes.length}</b> notes. Most used: ${topAI}.</p>` +
+          Object.entries(used).sort((a, b) => b[1] - a[1]).map(([n, v], _, all) =>
+            `<div class="hbar"><span>${esc(n)}</span><span class="t"><i style="width:${v / all[0][1] * 100}%"></i></span><span class="num">${v}</span></div>`).join("") +
+          costLine +
+          `<button class="lnk" id="ins-ai">See the notes with AI →</button>`
+        : `<p>No AI answers yet. Open any note’s “…” → Ask AI.</p>`}</div>`;
+    }
     h += `<p class="fine" style="text-align:left">Counts only what is saved (Settings → Privacy). Time saved assumes typing at 40 words a minute.</p>`;
     $("#ins").innerHTML = h;
     if ($("#ins-ai")) $("#ins-ai").onclick = () => { filter = "ai"; go("home"); draw(); };

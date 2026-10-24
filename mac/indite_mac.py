@@ -1871,6 +1871,11 @@ class InditeApp(rumps.App):
             self.meeting_item.title = "Record a meeting"
             return
         if self.started_at or self.busy:
+            # R10 (24 Oct): used to swallow the click silently. Say so, so the person knows why Record did nothing.
+            if self.window:
+                from PyObjCTools import AppHelper
+                said = "Finish the current dictation first." if self.started_at else "indite is still writing the last dictation."
+                AppHelper.callAfter(self.window.bridge.js, f"toast({said!r})")
             return
         self.player.stop()                               # the meeting's mic must not record the playback
         try:
