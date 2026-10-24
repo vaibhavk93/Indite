@@ -42,13 +42,17 @@ def last_usage() -> dict:
             "cost_usd": out.get("total_cost_usd"), "cost_basis": "list"}
 
 
-def _claude(text: str, cwd: str, system: str = SYSTEM, model: str = "") -> str:
+def _claude(text: str, cwd: str, system: str = SYSTEM, model: str = "", effort: str = "") -> str:
     cmd = ["claude", "-p", "--output-format", "json", "--tools", "", "--strict-mcp-config",
            "--setting-sources", "", "--no-session-persistence", "--system-prompt", system]
     if model:                    # "" = the account's own default. A typed model name must never become a flag.
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", model):
             raise SystemExit("That model name has odd characters. Check Settings → AI → Model.")
         cmd += ["--model", model]
+    if effort:                   # "" = the model's own default. A level the model lacks falls to the highest below it.
+        if effort not in ("low", "medium", "high", "xhigh", "max"):
+            raise SystemExit("That effort level is not one of low, medium, high, xhigh, max.")
+        cmd += ["--effort", effort]
     r = subprocess.run(cmd, input=text, capture_output=True, text=True, timeout=600, cwd=cwd)
     try:
         out = json.loads(r.stdout)
@@ -71,7 +75,7 @@ def _codex(text: str, cwd: str, system: str = SYSTEM) -> str:
     return answer.read_text()
 
 
-def ask(prompt: str, text: str, via: str = "claude", model: str = "") -> str:
+def ask(prompt: str, text: str, via: str = "claude", model: str = "", effort: str = "") -> str:
     """The phone's "Ask my AI" (personal build), answered by this Mac's own logged-in `claude`, or `codex` (ChatGPT plan)."""
     if via not in ("claude", "codex"):
         raise SystemExit(f"Unknown AI '{via}'.")
@@ -80,7 +84,7 @@ def ask(prompt: str, text: str, via: str = "claude", model: str = "") -> str:
         raise SystemExit(f"{name} is not installed on the Mac. Install it and log in with your own account.")
     with tempfile.TemporaryDirectory() as d:  # empty folder: nothing on the Mac for it to see
         run = _claude if via == "claude" else _codex
-        return run(f"{prompt}\n\n<transcript>\n{text}\n</transcript>", d, ASK_SYSTEM, **({"model": model} if via == "claude" else {}))
+        return run(f"{prompt}\n\n<transcript>\n{text}\n</transcript>", d, ASK_SYSTEM, **({"model": model, "effort": effort} if via == "claude" else {}))
 
 
 def notes(transcript: dict, via: str = "claude") -> str:

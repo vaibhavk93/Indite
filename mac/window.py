@@ -151,18 +151,20 @@ class Bridge(NSObject):
 
     def state(self) -> dict:
         from indite_mac import can_listen, HOTKEYS
+        audio_idx = store.audio_counts()                  # one directory listing, not one disk check per note
         return {
             "prefs": store.prefs(),
-            "history": [dict(r, audio=len(store.audio_files(r)), wt=r.get("wt") if store.wt_fits(r) else None) for r in
+            "history": [dict(r, audio=store.audio_count(r, audio_idx), wt=r.get("wt") if store.wt_fits(r) else None) for r in
                         ([store.masked(r, self.app.prefs.get("my_swears")) for r in store.history()] if self.app.prefs.get("mask_swears")
                          else store.history())],
             "listening": bool(can_listen()),
             "hotkeys": HOTKEYS,
             "engine": self.app.engine_kind,
-            "fixes_list": [list(f) for f in sorted(store.my_fixes(), key=lambda f: f[0].lower())],
+            "fixes_list": [list(f) for f in store.my_fixes()],              # file order (newest last); the page sorts
             "fix_counts": store.fix_counts(),
             "ai_providers": __import__("ai").PROVIDERS,
             "ai_models": __import__("ai").DEFAULT_MODEL,
+            "ai_catalog": __import__("models").catalog(),    # models + effort levels to offer, live or built-in
             "ai_status": self.app.ai_who,
             "ai_keys": self.app.ai_keys,
             "mics": __import__("indite_mac").mic_names(),
@@ -223,6 +225,17 @@ class Bridge(NSObject):
                 self.app.show_pill()
             if msg.get("key") == "theme" and self.app.window:
                 self.app.window.theme()
+        elif act == "models_refresh":                    # ask the provider which models and efforts it has (needs a key)
+            def go() -> None:
+                from PyObjCTools import AppHelper
+                try:
+                    import models
+                    said = f"Model list updated: {models.refresh(msg.get('provider', ''))} models"
+                except Exception as e:                       # noqa: BLE001 - say why, in a sentence
+                    said = f"Could not refresh: {e}"
+                AppHelper.callAfter(self.js, f"toast({said!r})")
+                AppHelper.callAfter(self.app.refresh)
+            threading.Thread(target=go, daemon=True).start()
         elif act == "box":                               # a text box in this window has / lost the cursor
             self.app.in_box = bool(msg.get("on"))
         elif act == "copy":
@@ -285,11 +298,24 @@ class Bridge(NSObject):
             if getattr(self, "edit_undo", None):
                 store.update(self.edit_undo[0], text=self.edit_undo[1], edited=None)
                 self.edit_undo = None
-        elif act == "delete":
-            self.undo = store.delete(str(msg.get("id", "")))
+        elif act == "delete":                            # what: both (default) | audio | text. Each can be undone.
+            nid, what = str(msg.get("id", "")), msg.get("what", "both")
+            if what == "audio":
+                self.undo = ("audio", nid, store.stash_audio(nid))
+            elif what == "text":
+                self.undo = ("text", store.delete_text(nid))
+            else:
+                self.undo = ("both", store.delete(nid), store.stash_audio(nid))
         elif act == "undo":
-            if getattr(self, "undo", None):
-                store.restore(self.undo)
+            u = getattr(self, "undo", None)
+            if u:
+                if u[0] == "audio":
+                    store.unstash_audio(u[1])
+                elif u[0] == "text" and u[1]:
+                    store.replace(u[1])
+                elif u[0] == "both" and u[1]:
+                    store.restore(u[1])
+                    store.unstash_audio(u[1]["id"])
                 self.undo = None
         elif act == "export":
             self.app.export(str(msg.get("id", "")), str(msg.get("fmt", "txt")))
@@ -337,7 +363,8 @@ class Bridge(NSObject):
                         self.js(f"toast({why!r})")
                     else:
                         store.add_fix(f["heard"], f["want"])
-                store.update(row["id"], text=text, flags=flags or None)
+                decided = (row.get("reviewed") or []) + [{"heard": f["heard"], "want": f["want"], "how": how, "at": __import__("time").time()}]
+                store.update(row["id"], text=text, flags=flags or None, reviewed=decided[-50:])    # kept so the list can filter by it
                 if how == "fix" and before >= 1:         # the 2nd identical fix: offer to make it permanent
                     self.js(f"toast({'You fixed this before. Always fix ' + f['heard'] + ' → ' + f['want'] + '? Use Always fix next time.'!r})")
             self.push()

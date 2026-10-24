@@ -996,7 +996,7 @@ class InditeApp(rumps.App):
         self.player = Player()           # a note's recording, played inside the window (Listen)
         if store.TEST:
             self.typer, self.player.vol = Offstage("typer"), 0.0
-        threading.Thread(target=lambda: print("audio of deleted notes removed:", store.drop_orphan_audio()),
+        threading.Thread(target=lambda: print("audio of deleted notes removed:", store.drop_orphan_audio() + store.purge_audio_trash(0)),
                          daemon=True).start()
         for r in store.history():                        # nothing is recording yet: a LIVE left by a crash is stale
             if r.get("live"):
@@ -1744,6 +1744,10 @@ class InditeApp(rumps.App):
         """The model to ask: the Claude login has its own pick ("" = the account default), the API providers share one."""
         return self.prefs["claude_model"] if self.prefs["ai_provider"] == "claude" else self.prefs["ai_model"]
 
+    def ai_effort(self) -> str:
+        """Effort only means something to Claude (the login or an Anthropic key); OpenAI and OpenRouter get none."""
+        return self.prefs["ai_effort"] if self.prefs["ai_provider"] in ("claude", "anthropic") else ""
+
     def _ai(self, row: dict, action: str, extra: str) -> None:
         t0 = time.time()
         answer = None
@@ -1753,7 +1757,7 @@ class InditeApp(rumps.App):
                     raise RuntimeError("Review with AI works on dictations for now, not on meetings or files")
                 targets = [want for _, want in store.my_fixes()]
                 mine = [f for f in row.get("flags") or [] if f.get("by") != "ai"]
-                found = ai.review(row["text"], targets, mine, self.prefs["ai_provider"], self.ai_model())
+                found = ai.review(row["text"], targets, mine, self.prefs["ai_provider"], self.ai_model(), self.ai_effort())
                 found = [f for f in found if not any(f["heard"] == m["heard"] for m in mine)]
                 store.update(row["id"], flags=mine + found or None)
                 print(f"ai review: {len(found)} suggestion(s) for {row['id']} in {time.time() - t0:.1f}s")
@@ -1763,7 +1767,7 @@ class InditeApp(rumps.App):
                     said = f"{len(found)} likely mistake{'s' if len(found) != 1 else ''} to check" if found else "Nothing looks wrong"
                     AppHelper.callAfter(self.window.bridge.js, f"toast({said!r})")
                 return
-            answer, usage = ai.run(action, row["text"], extra, self.prefs["ai_provider"], self.ai_model())
+            answer, usage = ai.run(action, row["text"], extra, self.prefs["ai_provider"], self.ai_model(), self.ai_effort())
             # cost fields are optional on the AiReply (new 24 Oct). None means "no cost reported" rather than $0,
             # so the UI can say so honestly - the Claude-via-CLI path never carries a number.
             cost = {k: usage[k] for k in ("model", "in_tok", "out_tok", "cost_usd", "cost_basis") if usage.get(k) is not None}

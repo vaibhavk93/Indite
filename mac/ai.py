@@ -174,7 +174,7 @@ def _http(url: str, body: dict, headers: dict) -> dict:
         raise RuntimeError(f"no internet connection to the AI ({e.reason})")
 
 
-def _api(provider: str, model: str, prompt: str, text: str) -> tuple[str, dict]:
+def _api(provider: str, model: str, prompt: str, text: str, effort: str = "") -> tuple[str, dict]:
     """Returns (answer_text, usage) where usage = {"model": str, "in_tok": int|None, "out_tok": int|None}."""
     import cost as cost_mod
     key = key_get(provider)
@@ -183,8 +183,11 @@ def _api(provider: str, model: str, prompt: str, text: str) -> tuple[str, dict]:
     user = f"{prompt}\n\n<note>\n{text}\n</note>"
     model = model or DEFAULT_MODEL[provider]
     if provider == "anthropic":
-        out = _http("https://api.anthropic.com/v1/messages",
-                    {"model": model, "max_tokens": 8000, "system": SYSTEM, "messages": [{"role": "user", "content": user}]},
+        import models
+        body = {"model": model, "max_tokens": 8000, "system": SYSTEM, "messages": [{"role": "user", "content": user}]}
+        if effort and effort in models.efforts_for(model):       # only a level this model is known to accept (else a 400)
+            body["output_config"] = {"effort": effort}
+        out = _http("https://api.anthropic.com/v1/messages", body,
                     {"x-api-key": key, "anthropic-version": "2023-06-01"})
         answer = "".join(b.get("text", "") for b in out.get("content", []))
         if out.get("stop_reason") == "max_tokens":            # a cut-off answer must not look like a finished one
@@ -200,7 +203,7 @@ def _api(provider: str, model: str, prompt: str, text: str) -> tuple[str, dict]:
     return out["choices"][0]["message"]["content"], {"model": used_model or model, "in_tok": in_tok, "out_tok": out_tok}
 
 
-def run(action: str, text: str, extra: str = "", provider: str = "claude", model: str = "") -> tuple[str, dict]:
+def run(action: str, text: str, extra: str = "", provider: str = "claude", model: str = "", effort: str = "") -> tuple[str, dict]:
     """
     Returns (answer, usage) where usage = {model, in_tok, out_tok, cost_usd}. cost_usd may be None (unknown model,
     or provider that doesn't return token counts - local Claude via the CLI is the common case).
@@ -210,7 +213,7 @@ def run(action: str, text: str, extra: str = "", provider: str = "claude", model
     label, _gets, _group, prompt = ACTIONS[action]
     prompt = prompt.replace("{extra}", extra or "plain English")
     if provider != "claude":
-        answer, usage = _api(provider, model, prompt, text)
+        answer, usage = _api(provider, model, prompt, text, effort)
         usage["cost_usd"] = cost_mod.estimate(usage["model"], usage["in_tok"], usage["out_tok"])
         return answer.strip(), usage
     # Local Claude CLI: its JSON reply carries usage and a list-price cost; last_usage() reads them (Nones if absent).
@@ -219,7 +222,7 @@ def run(action: str, text: str, extra: str = "", provider: str = "claude", model
         sys.path.insert(0, str(ROOT))
     from indite.notes import ask, last_usage
     try:
-        answer = ask(prompt, text, model=model).strip()     # model "" = the Claude account's own default
+        answer = ask(prompt, text, model=model, effort=effort).strip()     # model "" = the Claude account's own default
         return answer, last_usage()                 # the CLI's own model, tokens and list-price cost (24 Oct)
     except SystemExit as e:                         # notes.py speaks in SystemExit; the app must not exit
         raise RuntimeError(str(e)) from None
@@ -253,7 +256,8 @@ Tat vaala | CleverTap | "Tat vaala" is not a product; CleverTap is in the dictio
 The note follows."""
 
 
-def review(text: str, targets: list[str], suspected: list[dict], provider: str = "claude", model: str = "") -> list[dict]:
+def review(text: str, targets: list[str], suspected: list[dict], provider: str = "claude", model: str = "",
+           effort: str = "") -> list[dict]:
     """
     AI review step 2 (docs/WISPR_DEEPDIVE.md §2.4): the AI lists suspected mishearings; it never changes the note.
     Returns flags {heard, want, why, sure, by: "ai"} that passed the guards in review_lines().
@@ -261,14 +265,14 @@ def review(text: str, targets: list[str], suspected: list[dict], provider: str =
     prompt = REVIEW.replace("{dictionary}", "\n".join(targets) or "(empty)").replace(
         "{suspected}", "\n".join(f"{f['heard']} -> maybe {f['want']}" for f in suspected) or "(none)")
     if provider != "claude":
-        answer = _api(provider, model, prompt, text)
+        answer, _usage = _api(provider, model, prompt, text, effort)     # _api returns (text, usage) since the cost change
     else:
         _path()
         if str(ROOT) not in sys.path:
             sys.path.insert(0, str(ROOT))
         from indite.notes import ask
         try:
-            answer = ask(prompt, text, model=model)
+            answer = ask(prompt, text, model=model, effort=effort)
         except SystemExit as e:
             raise RuntimeError(str(e)) from None
     return review_lines(answer, text)

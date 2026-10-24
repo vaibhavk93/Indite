@@ -129,6 +129,32 @@ Dynamic colour (Material You) is **off**: our colours on every phone.
 - 460 pt wide, grows upward with the text, up to 320 pt. A long dictation keeps its end; an answer keeps its start.
 - On screen 4 s + 0.25 s per word, **never more than 6 s** (`CAP`). The pointer resting on it keeps it up.
 - Buttons: Ask AI, two favourite actions, To do. Clicks count only after the pointer moves onto the card.
+- **List toolbar: search, filter, group, sort (24 Oct, founder).** Every list page (Dictations, Meetings, Files, To do,
+  Dictionary) has the same toolbar, designed for years of use (about 28 dictations a day is ~25,000 notes in 2.5 years),
+  not a month. **Line 1:** filter chips (what a note is) on the left, the one shared search box on the right (it moves to
+  the page you are on and starts empty; ⌘F). **Line 2:** menu buttons **When** (Today, 7/30 days, this/last month, this
+  year, then every month and year you really have, with counts), **App**, **Mistake review** (Dictations only), **Group**
+  and **Sort**; on the right "n of total" and **Clear** whenever anything narrows the list. **Menus are our own `popup()`,
+  never a system dropdown (`<select>`)**: a menu button (`.vm`) reads like a chip with a caret (hairline, 20 px radius);
+  one holding a non-default value is filled like a pressed chip (`--well`, darker border); its list is a `.menu.vmenu`
+  with the current choice in accent and a ✓. Rules: (1) **Search** needs every word, in any order; "double", 'single' and
+  curly quotes keep a phrase; capitals and Latin accents are ignored; it reads the words, titles, AI answers, the app and
+  meeting speaker lines; matches are marked (`<mark>`, accent at 24 %); while searching the sort is **Best match** (counts
+  every mention) until you pick another. (2) **Date headings** (Today, Yesterday, the weekday for a week, "Earlier this
+  month", then "September 2026") appear only when sorted by date; any other sort is one plain list, and choosing Group by
+  date while sorted another way switches the sort to Newest first. Group by app orders groups by size; the sort works inside
+  each group. (3) **Only 100 rows are drawn**; "Show 100 more · n left" also loads as you scroll; headings show full counts.
+  (4) Filter, When, App, Review, Group and Sort are remembered per page (`views` pref); search text never is. A remembered
+  choice that no longer exists (an app you stopped using) is ignored, never a blank list. (5) No matches: "Nothing
+  matches" and a **Clear search and filters** button. (6) The toolbar hides when a page has nothing saved. (7) The
+  Dictionary shows A, B, C headings once it has more than 30 entries. (8) A meeting that matched shows the lines that
+  matched, not just its first six. **Find in one transcript:** the Listen panel has a "Find in this transcript" box;
+  lines with all the words get `--accent-soft`, the current one an orange outline, words are marked with the CSS
+  highlight (typing never loses its place); Return / Shift+Return / ↓ ↑ step through. **Delete:** a note with a recording
+  asks "Delete what?" (note and recording / recording only / words only), each with Undo; no recording or a transcribed
+  file: deleted at once with Undo. **How many to keep** is a `.seg` (Newest 500 / Newest 5,000 / Everything) and asks
+  before deleting, in a `.banner`. Measured at 25,800 notes: first draw 133 ms, search 55 ms, filters ~90 ms. New list
+  pages must reuse `query()`, `drawTools()` and `drawRows()` in `app.html`.
 - **Dependent settings (24 Oct, founder):** a setting that only matters when another is on sits **indented under it** and,
   when the parent is off, is **disabled, not hidden**: dimmed, not clickable, and its line says why ("Turn on “AI
   buttons on the card” to choose."). Done for the card's AI buttons and the two button pickers (`dep()` in `app.html`).

@@ -50,6 +50,11 @@ DEFAULTS = {
     "ai_provider": "claude",    # claude · anthropic · openai · openrouter (keys live in the Keychain, not here)
     "ai_model": "",             # "" = the provider's default             # you said yes to text leaving the Mac for AI answers (asked once)
     "claude_model": "",         # the Claude login's model: haiku / sonnet / opus / an id; "" = whatever the account uses
+    "ai_effort": "",            # low / medium / high / xhigh / max for the Claude login and Anthropic key; "" = the model's default
+    "cost_currency": "USD",     # AI costs are shown in "USD" or "INR"
+    "usd_inr": 0,               # rupees per US dollar, typed by you (indite does not look rates up); 0 = not set
+    "views": {},                # per list page: {"home": {"filter": "star", "sort": "old"}, ...}; the search text is never kept
+    "history_cap": 500,         # plain dictations to keep: 500 (default), 5000 or 0 = everything. Stars, to-dos, meetings, files: always kept
     "keep_audio": False,        # also keep each dictation's recording (about 0.3 MB for 10 s), for backups
     "backup_scope": "all",      # all · star · keep (starred + to-do)
     "backup_audio": False,      # include recordings and transcribed files in a backup
@@ -99,27 +104,54 @@ def keep(row: dict) -> bool:
     return bool(row.get("star") or row.get("todo") or row.get("kind", "dictation") != "dictation")
 
 
+_cache = {"sig": None, "rows": []}     # the parsed history, reused until the file changes (25,000 notes took 175 ms to parse)
+
+
+def _sig():
+    try:
+        st = HISTORY.stat()
+        return (str(HISTORY), st.st_mtime_ns, st.st_size)
+    except OSError:
+        return None
+
+
+def _rows() -> list[dict]:
+    """The parsed rows, shared: callers must not change them (use _read() for a list you may edit)."""
+    sig = _sig()
+    if sig is None or sig != _cache["sig"]:
+        out = []
+        if HISTORY.exists():
+            for line in HISTORY.read_text(encoding="utf-8").splitlines():
+                try:
+                    row = json.loads(line)
+                except Exception:   # noqa: BLE001 - a bad line is skipped, never a crash
+                    continue
+                row.setdefault("id", repr(row.get("at", 0)))     # rows written before ids existed
+                out.append(row)
+        _cache["sig"], _cache["rows"] = sig, out
+    return _cache["rows"]
+
+
 def _read() -> list[dict]:
-    out = []
-    if HISTORY.exists():
-        for line in HISTORY.read_text(encoding="utf-8").splitlines():
-            try:
-                row = json.loads(line)
-            except Exception:   # noqa: BLE001 - a bad line is skipped, never a crash
-                continue
-            row.setdefault("id", repr(row.get("at", 0)))     # rows written before ids existed
-            out.append(row)
-    return out
+    return [dict(r) for r in _rows()]
+
+
+def cap() -> int:
+    """How many plain dictations to keep (pref "history_cap"); 0 = everything. Starred, to-do, meeting and file notes
+    are never counted."""
+    c = prefs().get("history_cap", CAP)
+    return c if isinstance(c, int) and c >= 0 else CAP
 
 
 def _write(rows: list[dict]) -> None:
-    plain = [r for r in rows if not keep(r)]
-    drop = {id(r) for r in plain[:-CAP]} if len(plain) > CAP else set()     # oldest plain dictations first
+    plain, limit = [r for r in rows if not keep(r)], cap()
+    drop = {id(r) for r in plain[:-limit]} if limit and len(plain) > limit else set()     # oldest plain dictations first
     rows = [r for r in rows if id(r) not in drop]
     DIR.mkdir(parents=True, exist_ok=True)
     tmp = HISTORY.with_suffix(".tmp")
     tmp.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
     tmp.replace(HISTORY)                                   # all or nothing: a crash mid-write loses no notes
+    _cache["sig"], _cache["rows"] = _sig(), [dict(r) for r in rows]
 
 
 def add(text: str, seconds: float, took: float, where: str, app: str, **extra) -> str | None:
@@ -129,7 +161,20 @@ def add(text: str, seconds: float, took: float, where: str, app: str, **extra) -
     now = time.time()
     row = {"id": repr(now), "at": now, "text": text, "seconds": round(seconds, 1), "took": round(took, 2),
            "where": where, "app": app, **extra}
-    _write(_read() + [row])
+    rows, limit = _rows(), cap()
+    if limit and sum(1 for r in rows if not keep(r)) >= limit:
+        _write(_read() + [row])                            # at the limit: rewrite, dropping the oldest
+    else:                                                  # the usual case: one line, not the whole file (465 ms at 25,000 notes)
+        DIR.mkdir(parents=True, exist_ok=True)
+        lead = ""
+        if HISTORY.exists() and HISTORY.stat().st_size:       # a crash can leave the last line without its newline: never glue onto it
+            with HISTORY.open("rb") as fb:
+                fb.seek(-1, 2)
+                lead = "" if fb.read(1) == b"\n" else "\n"
+        with HISTORY.open("a", encoding="utf-8") as f:
+            f.write(lead + json.dumps(row, ensure_ascii=False) + "\n")
+        _cache["sig"] = _sig()
+        _cache["rows"].append(dict(row))                   # the cache stays valid: it is the old rows plus this one
     return row["id"]
 
 
@@ -390,6 +435,88 @@ def audio_files(row: dict) -> list[Path]:
     return [own] if own else []
 
 
+_AUDIO_ID = re.compile(r"^(\d+\.\d+)(?:-you|-others)?\.\w+$")
+
+
+def audio_counts() -> dict[str, int]:
+    """How many recordings each note has in indite's own audio folder, from ONE directory listing (a stat per note
+    would be 25,000 disk checks on every page update after years of use)."""
+    out: dict[str, int] = {}
+    if AUDIO.exists():
+        with os.scandir(AUDIO) as it:
+            for e in it:
+                m = _AUDIO_ID.match(e.name)
+                if m and e.is_file():
+                    out[m.group(1)] = out.get(m.group(1), 0) + 1
+    return out
+
+
+def audio_count(row: dict, counts: dict[str, int]) -> int:
+    """audio_files(row) without touching the disk for dictations and meetings; a file note points at its source file."""
+    if row.get("kind") == "file":
+        return len(audio_files(row))
+    return counts.get(row["id"], 0)
+
+
+AUDIO_TRASH = DIR / "audio_trash"        # where "delete the recording" moves it, so Undo can bring it back
+
+
+def stash_audio(note_id: str) -> int:
+    """Moves a note's recordings out of the audio folder (Undo moves them back). Only files inside indite's own folder:
+    a transcribed file's original is the user's own file and is never touched. Returns how many were moved."""
+    moved = 0
+    for name, n in [(f.name, f) for f in (AUDIO.iterdir() if AUDIO.exists() else [])]:
+        m = _AUDIO_ID.match(name)
+        if m and m.group(1) == note_id and n.is_file():
+            (AUDIO_TRASH / note_id).mkdir(parents=True, exist_ok=True)
+            n.replace(AUDIO_TRASH / note_id / name)
+            moved += 1
+    purge_audio_trash(600.0)
+    return moved
+
+
+def unstash_audio(note_id: str) -> int:
+    back = 0
+    d = AUDIO_TRASH / note_id
+    if d.is_dir():
+        AUDIO.mkdir(parents=True, exist_ok=True)
+        for f in d.iterdir():
+            f.replace(AUDIO / f.name)
+            back += 1
+        d.rmdir()
+    return back
+
+
+def purge_audio_trash(older_than: float = 600.0) -> int:
+    """Really deletes stashed recordings older than this many seconds (all of them at start-up, with 0)."""
+    gone = 0
+    if AUDIO_TRASH.is_dir():
+        for d in AUDIO_TRASH.iterdir():
+            if d.is_dir() and time.time() - d.stat().st_mtime >= older_than:
+                for f in d.iterdir():
+                    f.unlink()
+                    gone += 1
+                d.rmdir()
+    return gone
+
+
+def delete_text(note_id: str) -> dict | None:
+    """Deletes what was said but keeps the note and its recording ("sound only"). Returns the old row for Undo."""
+    rows = _read()
+    old = next((r for r in rows if r["id"] == note_id), None)
+    if not old:
+        return None
+    new = {k: v for k, v in old.items() if k not in ("segments", "wt", "raw", "flags", "reviewed", "improved", "ai", "said", "names", "speakers")}
+    new.update(text="", text_deleted=True)
+    _write([new if r["id"] == note_id else r for r in rows])
+    return old
+
+
+def replace(row: dict) -> None:
+    """Puts a row back exactly as it was (Undo of delete_text)."""
+    _write([row if r["id"] == row["id"] else r for r in _read()])
+
+
 def drop_orphan_audio(older_than: float = 3600.0) -> int:
     """
     Recordings of notes that are gone (deleted, cleared, or past the 500 kept) are removed - at start-up, so Undo
@@ -567,8 +694,8 @@ def fix_problem(heard: str, want: str, editing: bool = False) -> str:
         return "Both boxes need something in them."
     if "=" in heard or heard.startswith("#"):
         return "A fix cannot contain = or start with #, because that is how the list is written down."
-    if heard.lower() == want.lower():
-        return "Those are the same word."
+    if heard == want:                                    # a fix that only changes capitals (jira → Jira) is allowed: it is how names are kept
+        return "Those are exactly the same."
     if len(heard) > MAX_FIX_CHARS or len(want) > MAX_FIX_CHARS:
         return f"Keep each side under {MAX_FIX_CHARS} characters. This is for words, not sentences."
     if len(heard.split()) > MAX_FIX_WORDS:
@@ -735,6 +862,43 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     assert trim_audio(cap_mb=0.00001) == (0, 0.0) and (AUDIO / f"{u}.wav").exists()   # starred audio (13 B) over the 10 B cap must not eat a new clip
     assert trim_audio(cap_mb=0.000001)[0] >= 1 and not (AUDIO / f"{u}.wav").exists()  # but a real overflow of droppable audio still trims
     assert (AUDIO / f"{c}.wav").exists()                                              # starred audio is never dropped
+    assert fix_problem("jira", "Jira") == "" and fix_problem("jira", "jira") != ""                       # capitals-only fixes are fine
+    assert apply_my_fixes("we use jira, JIRA and Jira", [("jira", "Jira")]) == "we use Jira, Jira and Jira"
+    HISTORY = Path(tempfile.mkdtemp()) / "torn.jsonl"; DIR = HISTORY.parent                           # a torn last line costs only itself
+    HISTORY.write_text('{"id": "1.5", "at": 1.5, "text": "kept"}\n{"id": "2.5", "at": 2.5, "tex')
+    _cache["sig"] = None
+    assert [r["text"] for r in history()] == ["kept"]
+    add("after the crash", 1, 1, "done", "x")
+    assert [r["text"] for r in history()][0] == "after the crash"
+    _cache["sig"] = None
+    assert [r["text"] for r in history()] == ["after the crash", "kept"]                              # re-read from disk: nothing lost
+    # delete choices: recording only (Undo brings it back), text only (the note stays as sound), both
+    HISTORY = Path(tempfile.mkdtemp()) / "del.jsonl"; DIR = HISTORY.parent; AUDIO = DIR / "audio"; AUDIO_TRASH = DIR / "audio_trash"; AUDIO.mkdir()
+    d1 = add("hello there", 2, 1, "done", "x"); (AUDIO / f"{d1}.wav").write_bytes(b"RIFF1234")
+    assert audio_counts() == {d1: 1} and audio_count(history()[0], audio_counts()) == 1
+    assert stash_audio(d1) == 1 and audio_counts() == {} and history()[0]["text"] == "hello there"      # recording gone, note kept
+    assert unstash_audio(d1) == 1 and audio_counts() == {d1: 1}                                          # Undo
+    old = delete_text(d1); assert old["text"] == "hello there" and history()[0]["text"] == "" and history()[0]["text_deleted"]
+    assert audio_counts() == {d1: 1}                                                                    # the recording stays
+    replace(old); assert history()[0]["text"] == "hello there" and "text_deleted" not in history()[0]   # Undo
+    stash_audio(d1); assert purge_audio_trash(0) == 1 and not (AUDIO_TRASH / d1).exists()               # really gone
+    # how many plain dictations to keep: the oldest go first, a star is never counted, 0 keeps everything, and the
+    # parsed-rows cache always agrees with the file (add() appends one line instead of rewriting it)
+    HISTORY = Path(tempfile.mkdtemp()) / "cap.jsonl"; DIR = HISTORY.parent
+    cap = lambda: 3                                                      # noqa: E731 - the check's own limit
+    for i in range(5):
+        add(f"n{i}", 1, 1, "done", "x")
+    assert [r["text"] for r in history()] == ["n4", "n3", "n2"]
+    keepme = add("starred", 1, 1, "done", "x"); update(keepme, star=True)
+    for i in range(5, 8):
+        add(f"n{i}", 1, 1, "done", "x")
+    assert [r["text"] for r in history()] == ["n7", "n6", "n5", "starred"]   # 3 plain dictations + the star
+    cap = lambda: 0                                                      # noqa: E731 - everything
+    for i in range(8, 40):
+        add(f"n{i}", 1, 1, "done", "x")
+    cached = [r["text"] for r in history()]
+    _cache["sig"] = None                                                 # force a fresh parse of the file
+    assert len(cached) == 36 and [r["text"] for r in history()] == cached
     # multi-select: two dictations in → one combined note out, with headers and sources preserved.
     HISTORY.write_text("")
     d1 = add("the meeting with Priya went well", 1, 1, "done", "")

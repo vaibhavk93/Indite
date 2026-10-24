@@ -49,6 +49,8 @@ platform limit forces it, and the workaround is written down here. Every item be
 
 ## Mac: done
 
+- **24 Oct audit pass (🧪):** own menus for filter/sort, Find in one transcript, Delete asks (words / recording / both), Mistake review filter, search fixed for curly quotes and accents; full write-up in `docs/AUDIT_24OCT.md`.
+- **24 Oct (🧪, live after restart):** search, filter, group and sort on every list page, built for years of use (100 rows at a time, month/year filters, App, Best match, marked matches); Settings → Privacy → "How many to keep" (500 / 5,000 / everything). Remaining scale limit: the page gets every note on each update (fine to ~10,000 dictations).
 - **24 Oct (🧪 built, live):** every dictation is saved even inside indite; card buttons react (hover, pressed, working); "AI buttons on the card" setting; AI cost now shows for the Claude login (list price); choose the Claude login's model (haiku / sonnet / opus); two to-dos added.
 - **23-24 Oct (🧪 built, not yet checked by the founder):** pill and text card hidden from screen shares (Zoom, Meet, Loom,
   QuickTime); **Select several notes → "Ask AI combined"** (Finder-style picking, the AI reads the picks as one note;

@@ -132,7 +132,7 @@
 
 
   /* ---- history ---- */
-  .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
   .bar h2 { font-size: 15px; font-weight: 600; letter-spacing: -.2px; flex: 1; }
   .search { position: relative; width: 220px; }
   .search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--ink3); }
@@ -400,6 +400,33 @@
   .chip-now.rec { background: #c4372a; color: #fff; }
   .chip-now:empty { display: none; }
   #pane-home .chips { margin-left: 0; }
+  /* List toolbar (24 Oct): chips on the first line; then When / App / Group / Sort, the count and the search box. */
+  .qbar { margin-bottom: 12px; row-gap: 8px; }
+  .qbar .chips { order: 1; flex: 1 1 0; min-width: 250px; margin: 0; } .qbar .chips:empty { display: none; }
+  .qbar .search { order: 2; margin-left: auto; }
+  .qbar .trow { order: 3; flex: 1 1 100%; display: flex; align-items: center; gap: 10px; }
+  .qbar .tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .qbar .trow .vcount { margin-left: auto; }
+  .vm { appearance: none; display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: 12px; font-weight: 500; color: var(--ink2);
+        background: none; border: 1px solid var(--line2); border-radius: 20px; padding: 4px 10px 4px 12px; cursor: default; white-space: nowrap; }
+  .vm::after { content: ""; width: 5px; height: 5px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-1.5px) rotate(45deg); }
+  .vm:hover { background: var(--hover); color: var(--ink); }
+  .vm.on { background: var(--well); color: var(--ink); border-color: var(--ink3); }
+  .vm:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .menu.vmenu { width: 236px; }
+  .menu.vmenu button { display: flex; align-items: center; gap: 8px; }
+  .menu.vmenu button.cur b { color: var(--accent); }
+  .menu.vmenu button.cur::after { content: "✓"; margin-left: auto; color: var(--accent); font-size: 12px; }
+  .menu .mh.sub { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 8px; }
+  .vcount { font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
+  .vcount:empty { display: none; }
+  .more-rows { display: block; margin: 14px auto 6px; }
+  .pfind { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; }
+  .pfind .search { width: auto; flex: 1; } .pfc { font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
+  .pline.fhit { background: var(--accent-soft); border-radius: 6px; }
+  .pline.fcur { outline: 1.5px solid var(--brand); outline-offset: -1.5px; border-radius: 6px; }
+  ::highlight(find) { background-color: color-mix(in srgb, var(--accent) 30%, transparent); color: inherit; }
+  mark { background: color-mix(in srgb, var(--accent) 24%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
   .hero { display: flex; gap: 16px; align-items: center; padding: 18px; border-radius: 14px; background: var(--well); margin-bottom: 22px; }
   .hero-ic { width: 44px; height: 44px; border-radius: 12px; background: var(--paper); display: grid; place-items: center; color: var(--accent); flex: none; }
   .hero-t { flex: 1; } .hero-t b { font-size: 15px; } .hero-t p { font-size: 12.5px; color: var(--ink2); margin-top: 2px; }
@@ -670,8 +697,8 @@
     <div id="warn"></div>
 
     <section class="pane" id="pane-home">
-      <div class="bar">
-        <div class="chips" id="chips"></div>
+      <div class="bar qbar" data-for="home">
+        <div class="chips"></div><div class="trow"><div class="tools"></div><span class="vcount" aria-live="polite"></span></div>
         <label class="search"><svg width="13" height="13"><use href="#i-search"/></svg>
           <input id="q" placeholder="Search" spellcheck="false" aria-label="Search dictations"><span class="k">⌘F</span></label>
       </div>
@@ -686,7 +713,7 @@
           <p class="perm" id="meet-perm"></p></div>
         <button class="btn big" id="meet">● Record</button>
       </div>
-      <div class="bar qbar" data-for="meetings"></div>
+      <div class="bar qbar" data-for="meetings"><div class="chips"></div><div class="trow"><div class="tools"></div><span class="vcount" aria-live="polite"></span></div></div>
       <div id="meet-list"></div>
     </section>
 
@@ -698,12 +725,13 @@
         <button class="btn big" id="files">Choose a file…</button>
       </div>
       <div id="job"></div>
-      <div class="bar qbar" data-for="files"></div>
+      <div class="bar qbar" data-for="files"><div class="chips"></div><div class="trow"><div class="tools"></div><span class="vcount" aria-live="polite"></span></div></div>
       <div id="file-list"></div>
     </section>
 
     <section class="pane" id="pane-todo" hidden>
       <div class="addrow"><input class="pick wide todo-add" id="todo-add" aria-label="New to-do" placeholder="Add a to-do and press Return" spellcheck="false"></div>
+      <div class="bar qbar" data-for="todo"><div class="chips"></div><div class="trow"><div class="tools"></div><span class="vcount" aria-live="polite"></span></div></div>
       <div id="todo-list"></div>
     </section>
 
@@ -721,6 +749,7 @@
       <p class="lead2">It also works the other way: put a short word on the left and anything you like on the right,
         and saying the short word types the whole thing (up to 80 characters): <b>addr</b> → <i>12 MG Road, Bengaluru 560001</i>, or
         <b>my mail</b> → <i>naam@example.com</i>.</p>
+      <div class="bar qbar" data-for="dict"><div class="chips"></div><div class="trow"><div class="tools"></div><span class="vcount" aria-live="polite"></span></div></div>
       <div class="card" id="dict-list"></div>
       <p class="fine" style="text-align:left">Tip: you can also fix a word straight from a dictation — “…” → Fix a word.
         <button class="more" id="edit-fixes">Open the list as a file</button></p>
@@ -877,10 +906,23 @@
                 <button class="btn ghost" id="ai-key-clear">Remove</button><button class="btn" id="ai-key-save">Save</button>
               </div>
               <div class="item aiopt" id="ai-model-row">
-                <div class="body"><b>Model</b><p id="ai-model-why"></p></div>
+                <div class="body"><b>Model</b><p id="ai-model-why"></p><button class="lnk" id="ai-models-refresh" style="margin-top:6px">Refresh list</button></div>
                 <select class="pick" id="set-ai_model" aria-label="Model"></select>
                 <input class="pick wide" id="set-ai_model_custom" spellcheck="false" aria-label="Custom model id"
                        placeholder="Model id (e.g. anthropic/claude-haiku-5-5)" hidden style="margin-top:8px">
+              </div>
+              <div class="item aiopt sub" id="ai-effort-row">
+                <div class="body"><b>Effort</b><p id="ai-effort-why"></p></div>
+                <select class="pick" id="set-ai_effort" aria-label="Effort"></select>
+              </div>
+              <div class="item aiopt">
+                <div class="body"><b>Show AI cost in</b><p>The price under each answer and the month total on Insights.</p></div>
+                <div class="seg" id="set-cost_currency" role="radiogroup" aria-label="Currency"></div>
+              </div>
+              <div class="item aiopt sub" id="inr-row">
+                <div class="body"><b>Rupees per US dollar</b><p id="inr-why"></p></div>
+                <div class="drow"><input class="pick" id="set-usd_inr" type="number" inputmode="decimal" min="1" max="1000" step="0.01"
+                  placeholder="e.g. 85.50" aria-label="Rupees per US dollar" style="width:110px"></div>
               </div>
               <div class="item">
                 <div class="aiwhat">
@@ -911,6 +953,16 @@
                   <p>In a plain file on this Mac. Starred notes, to-dos, files and meetings are kept until you delete
                   them. Of other dictations, the newest 500 are kept. Off: new dictations are not written down.</p></div>
                 <button class="sw" id="set-keep_history" role="switch" aria-label="Save my dictations"></button>
+              </div>
+              <div class="item sub" id="cap-row">
+                <div class="body"><b>How many to keep</b><p id="cap-why"></p></div>
+                <div class="seg" id="set-history_cap" role="radiogroup" aria-label="How many dictations to keep"></div>
+              </div>
+              <div class="item sub" id="cap-warn" hidden>
+                <div class="banner" style="flex:1; margin:0">
+                  <div><b id="cap-warn-t"></b><p>This can’t be undone. Starred notes, to-dos, meetings and files stay.</p></div>
+                  <button class="btn ghost" id="cap-no">Keep them</button><button class="btn danger" id="cap-yes">Delete them</button>
+                </div>
               </div>
               <div class="item">
                 <div class="body"><b>Keep the audio of each dictation</b><p>So you can play it back, and a backup can carry it. About 0.3 MB for
@@ -958,7 +1010,46 @@
           <div class="item"><div class="body"><b>Hands-free</b></div><span id="hf-keys"></span></div>
           <div class="item"><div class="body"><b>Cancel</b></div><span><kbd>Esc</kbd> while listening</span></div>
           <div class="item"><div class="body"><b>Type the last dictation again</b></div><span><kbd>⌃⌘V</kbd></span></div>
-          <div class="item"><div class="body"><b>Search dictations · Open Settings</b></div><span><kbd>⌘F</kbd> · <kbd>⌘,</kbd></span></div>
+          <div class="item"><div class="body"><b>Search this page · Open Settings</b></div><span><kbd>⌘F</kbd> · <kbd>⌘,</kbd></span></div>
+        </div>
+      </div>
+      <div class="section"><h2>Find things</h2>
+        <div class="card faq">
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-search"/></svg></div>
+            <div class="body"><b>Search</b>
+              <p>On Dictations, Meetings, Files, To do and the Dictionary. Type several words: all of them must appear, in any
+              order. Put “quotes” around words that must stay together; curly quotes work too. Capitals and accents don’t
+              matter, so <i>cafe</i> finds <i>Café</i>, and codes like <i>JIRA-123</i> or <i>₹4,500</i> are just text. It looks
+              in the words, titles, AI answers, the app a dictation went to and, for meetings, every speaker line. Matches are
+              marked, and the best match comes first. <kbd>Esc</kbd> clears it.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-star-on"/></svg></div>
+            <div class="body"><b>Filter</b>
+              <p>The buttons narrow by what a note is (Starred, With AI, To do, Copied…). The menus under them narrow
+              further: <b>When</b> (Today, the last 7 or 30 days, any month or year you have notes in), <b>App</b> (where a
+              dictation went) and <b>Mistake review</b> (notes with suggestions, or where you chose Fix, Always fix or Not a
+              mistake; recorded from 24 Oct on). A filled menu means a filter is on; “n of total” and <b>Clear</b> show how
+              much is hidden.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-clip"/></svg></div>
+            <div class="body"><b>Group and sort</b>
+              <p><b>Group</b> by date (Today, Yesterday, the weekday, then months with the year), by app, or not at all.
+              Date headings appear when you sort by date; sort by longest, shortest or A–Z and you get one plain list.
+              <b>Sort</b> orders the notes inside each group. Your filters, group and sort are remembered for each page; the
+              search words are not.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-listen"/></svg></div>
+            <div class="body"><b>Find inside one long transcript</b>
+              <p>Open a meeting or dictation → <b>Listen</b>. The <b>Find in this transcript</b> box lights every line that has
+              all your words and marks them. <kbd>Return</kbd> or ↓ goes to the next line, <kbd>⇧Return</kbd> or ↑ to the
+              previous one. <kbd>⌘F</kbd> jumps to it while Listen is open.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-home"/></svg></div>
+            <div class="body"><b>A long history</b>
+              <p>Lists show 100 notes at a time and load more as you scroll, so years of notes stay quick. By default indite
+              keeps your newest 500 plain dictations; Settings → Privacy → <b>How many to keep</b> raises that, or keeps
+              everything. Starred notes, to-dos, meetings and files are never removed to make room.</p></div></div>
+          <div class="item"><div class="ic"><svg width="15" height="15"><use href="#i-trash"/></svg></div>
+            <div class="body"><b>Deleting a note that has a recording</b>
+              <p>“…” → Delete asks what to remove: <b>the note and its recording</b>, <b>the recording only</b> (the words stay)
+              or <b>the words only</b> (the recording stays, as a note that is just sound). Each can be undone for a few
+              seconds. A transcribed file’s original is never touched.</p></div></div>
         </div>
       </div>
       <div class="section"><h2>If something is off</h2>
@@ -1059,6 +1150,13 @@
 <script>
   let lastAsk = null;                                  // the last AI request, for "Try again" on its error
   const send = m => { if (m.action === "ai") lastAsk = m; window.webkit.messageHandlers.indite.postMessage(JSON.stringify(m)); };
+  // AI costs arrive in US dollars. With "Rupees" chosen and a rate typed in Settings → AI they show as ₹; with no rate
+  // yet they stay in dollars (never a guessed rate). Small amounts keep enough digits to be more than "0.00".
+  const money = usd => {
+    const inr = S.prefs.cost_currency === "INR" && S.prefs.usd_inr > 0;
+    const v = inr ? usd * S.prefs.usd_inr : usd, sign = inr ? "₹" : "$";
+    return sign + v.toFixed(v >= 1 ? 2 : v >= 0.1 ? 3 : 4);
+  };
   // Python needs to know if a text box here has the cursor: a dictation spoken into one is input to indite (not a note);
   // with none focused it is a note whose words go to the clipboard.
   const BOX = "input:not([type=checkbox],[type=radio],[type=button],[type=range],[type=color]),textarea,select,[contenteditable]";
@@ -1108,23 +1206,226 @@
                    settings: "Settings", help: "How indite works" };
   const PANES = Object.keys(TITLES);
   document.querySelectorAll("nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
+
+  // ---- Search, filter, sort and group on every list page (24 Oct) ---------------------------------------------
+  // Built for years of use, not a month: at about 28 dictations a day that is ~25,000 notes in 2.5 years.
+  //  - Only PAGE rows are drawn at a time; more load as you scroll (or press "Show more"). Counts cover everything.
+  //  - Search: every word must appear, in any order; "quotes" keep a phrase together. It looks in the words, the
+  //    title, AI answers and the app (meetings: every speaker line too). Matches are marked. While you search the
+  //    list is ordered by Best match; pick another sort and it follows that until you clear the search.
+  //  - Filters narrow by what a note is (chips), when it was made, and which app it went to.
+  //  - Groups: by date (Today, Yesterday, the weekday, then months with the year), by app, or none. The sort
+  //    applies inside each group. Filter, When, App, Group and Sort are remembered per page (pref "views"); the
+  //    search text never is.
+  const PAGE = 100;
+  let limits = {};                                                           // rows drawn so far, per list
+  const sortOverride = {};                                                   // sort picked while searching (not saved)
+  const NEW = ["new", "Newest first"], OLD = ["old", "Oldest first"], LONG = ["long", "Longest first"];
+  const DATE_GROUPS = [["date", "Group by date"], ["none", "No groups"]];
+  const VIEWS = {
+    home: { sorts: [NEW, OLD, LONG, ["short", "Shortest first"]], groups: [["date", "Group by date"], ["app", "Group by app"], ["none", "No groups"]], when: true, app: true, review: true },
+    meetings: { sorts: [NEW, OLD, LONG, ["title", "Title A–Z"]], groups: DATE_GROUPS, when: true },
+    files: { sorts: [NEW, OLD, LONG, ["title", "Title A–Z"]], groups: DATE_GROUPS, when: true },
+    todo: { sorts: [NEW, OLD, ["az", "A–Z"]], when: true },
+    dict: { sorts: [["az", "A–Z: what indite writes"], ["meant", "A–Z: what you meant"], ["new", "Recently added"], ["old", "Oldest added"]] },
+  };
+  const SEARCH = { home: "Search dictations", meetings: "Search meetings", files: "Search files",
+                   todo: "Search to-dos", dict: "Search the Dictionary" };
+  const view = p => ({ filter: "all", sort: VIEWS[p].sorts[0][0], when: "any", app: "any", review: "any", group: "date", ...((S.prefs.views || {})[p] || {}) });
+  const setView = (p, patch) => {
+    S.prefs.views = { ...(S.prefs.views || {}), [p]: { ...view(p), ...patch } };
+    send({ action: "pref", key: "views", value: S.prefs.views });
+    limits = {}; draw();
+  };
+  const Q = p => tab === p ? $("#q").value.trim().toLowerCase() : "";       // the search text for the page you are on
+  // Search text is compared without capitals and without Latin accents (cafe finds Café); Hindi letters are untouched.
+  const fold = x => String(x ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").normalize("NFC").toLowerCase();
+  // Words to look for. "double quotes" or 'single quotes' keep a phrase together, and the curly quotes macOS and
+  // dictation produce (“ ” ‘ ’ « ») count the same as straight ones.
+  const terms = q => (fold(q).replace(/[“”„‟«»]/g, '"').replace(/[‘’‚‛‹›]/g, "'").match(/"[^"]+"|(?<!\S)'[^']+'(?!\S)|\S+/g) || [])
+    .map(t => t.replace(/^["']|["']$/g, "").trim()).filter(Boolean);
+  let HL = [];                                                               // words to mark in the rows being drawn
+  const hl = raw => {                                                        // escape, and wrap matches in <mark>
+    const t = String(raw ?? ""), f = fold(t);
+    if (!HL.length || f.length !== t.length) return esc(t);                  // (a length change would shift the marks)
+    const re = new RegExp(HL.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+    let out = "", last = 0, m;
+    while ((m = re.exec(f))) { out += esc(t.slice(last, m.index)) + "<mark>" + esc(t.slice(m.index, m.index + m[0].length)) + "</mark>"; last = m.index + m[0].length; if (!m[0].length) re.lastIndex++; }
+    return out + esc(t.slice(last));
+  };
+  const hay = r => r._h ??= fold([r.title || "", r.real_text ?? r.text, r.app || "", r.improved || "", ...(r.ai || []).map(a => a.text),
+    ...(r.segments || []).map(x => `${(r.names || {})[x.speaker] || x.speaker || ""} ${x.real ?? x.text}`)].join("\n"));
+  // Best match: every mention counts (a word in the title most, in the words next, anywhere else a little).
+  const occ = (h, t) => { let n = 0, i = -1; while ((i = h.indexOf(t, i + 1)) >= 0) n++; return n; };
+  const score = (r, ts) => { const all = hay(r), words = fold(r.real_text ?? r.text), title = fold(r.title);
+    return ts.reduce((n, t) => n + occ(words, t) * 3 + occ(title, t) * 5 + occ(all, t), 0); };
+  const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });   // one collator: far faster than localeCompare
+  const byName = f => (a, b) => collator.compare(f(a), f(b));
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000;
+  function whenRange(w) {                                                    // [from, to) in seconds, or null for any time
+    const now = new Date(), t0 = dayStart(now), Y = now.getFullYear(), M = now.getMonth();
+    const m = w.match(/^m:(\d{4})-(\d\d)$/), y = w.match(/^y:(\d{4})$/);
+    if (w === "today") return [t0, Infinity];
+    if (w === "7d") return [t0 - 6 * 86400, Infinity];
+    if (w === "30d") return [t0 - 29 * 86400, Infinity];
+    if (w === "month") return [new Date(Y, M, 1) / 1000, Infinity];
+    if (w === "lastmonth") return [new Date(Y, M - 1, 1) / 1000, new Date(Y, M, 1) / 1000];
+    if (w === "year") return [new Date(Y, 0, 1) / 1000, Infinity];
+    if (m) return [new Date(+m[1], +m[2] - 1, 1) / 1000, new Date(+m[1], +m[2], 1) / 1000];
+    if (y) return [new Date(+y[1], 0, 1) / 1000, new Date(+y[1] + 1, 0, 1) / 1000];
+    return null;
+  }
+  // "Today", "Yesterday", the weekday for the last week, then "Earlier this month", then "September 2026" and so on
+  function smartDay(t) {
+    const d = new Date(t * 1000), now = new Date(), age = (dayStart(now) - dayStart(d)) / 86400;
+    if (age < 7) return dayLabel(t);
+    if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) return "Earlier this month";
+    return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  }
+  const effSort = p => Q(p) ? (sortOverride[p] || "match") : view(p).sort;
+  const FILTER_TEST = { all: () => true, star: r => r.star, ai: r => (r.ai || []).length || r.improved,
+                        todo: r => r.todo, copied: r => r.where === "copied", check: r => r.audio && !r.said,
+                        open: r => r.todo === "open", done: r => r.todo === "done" };
+  const activeFilter = (p, filters) => filters.some(f => f[0] === view(p).filter) ? view(p).filter : "all";
+  // What was decided about a note's likely mistakes (Fix, Always fix, Not a mistake) is kept on the note ("reviewed").
+  const REVIEW = { open: r => (r.flags || []).length, fix: r => (r.reviewed || []).some(x => x.how === "fix"),
+                   always: r => (r.reviewed || []).some(x => x.how === "always"), dismiss: r => (r.reviewed || []).some(x => x.how === "dismiss") };
+  // The rows for a page: searched, filtered, then ordered. all = every row of that kind, newest first.
+  function query(p, all, filters, size, name) {
+    const v = view(p), q = Q(p), ts = terms(q), f = activeFilter(p, filters), rng = VIEWS[p].when ? whenRange(v.when) : null;
+    // a saved choice that no longer exists (an app you stopped using, a month that is gone) is ignored, never a blank list
+    const app = VIEWS[p].app && v.app !== "any" && all.some(r => r.app === v.app) ? v.app : "", rev = VIEWS[p].review && REVIEW[v.review] ? v.review : "";
+    let rows = all.filter(r => FILTER_TEST[f](r) && (!rng || (r.at >= rng[0] && r.at < rng[1])) && (!app || r.app === app)
+                                && (!rev || REVIEW[rev](r)) && (!ts.length || ts.every(t => hay(r).includes(t))));
+    const sort = effSort(p);
+    if (sort === "match") { const sc = new Map(rows.map(r => [r, score(r, ts)])); rows.sort((a, b) => sc.get(b) - sc.get(a) || b.at - a.at); }
+    else if (sort === "old") rows.reverse();
+    else if (sort === "long" || sort === "short") {                          // measure each row once, not once per comparison
+      const n = new Map(rows.map(r => [r, size(r)])), up = sort === "short" ? 1 : -1;
+      rows.sort((x, y) => up * (n.get(x) - n.get(y)));
+    }
+    else if (sort === "title" || sort === "az") rows.sort(byName(name));
+    HL = ts;
+    return { rows, f, active: !!ts.length || f !== "all" || !!rng || !!app || !!rev };
+  }
+  // The toolbar: chips, then When / App / Review / Group / Sort as our own menus (popup), "n of total" and Clear.
+  // A menu button reads like a chip with a caret; one holding a non-default value is filled like a pressed chip.
+  function drawTools(p, filters, shown, all, active) {
+    const bar = document.querySelector(`.qbar[data-for="${p}"]`), v = view(p), cfg = VIEWS[p], f = activeFilter(p, filters);
+    bar.hidden = !all.length;                                                // nothing saved yet: nothing to search
+    const defs = {};                                                         // key → { title, items, cur, on }
+    const add = (key, title, items, cur, on) => { defs[key] = { title, items, cur, on, text: (items.find(i => i.v === cur) || items[0]).l }; };
+    if (cfg.when) {                                                          // the months and years this page really has
+      const byM = {}, byY = {};
+      all.forEach(r => { const d = new Date(r.at * 1000), k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; byM[k] = (byM[k] || 0) + 1; byY[d.getFullYear()] = (byY[d.getFullYear()] || 0) + 1; });
+      const months = Object.keys(byM).sort().reverse().slice(0, 36), years = Object.keys(byY).sort().reverse();
+      const fixed = [["any", "Any time"], ["today", "Today"], ["7d", "Last 7 days"], ["30d", "Last 30 days"], ["month", "This month"], ["lastmonth", "Last month"], ["year", "This year"]].map(([a, b]) => ({ v: a, l: b }));
+      const items = [...fixed, ...(months.length > 1 ? [{ h: "A month" }, ...months.map(k => ({ v: "m:" + k, l: `${MONTHS[+k.slice(5) - 1]} ${k.slice(0, 4)} · ${byM[k].toLocaleString()}` }))] : []),
+        ...(years.length > 1 ? [{ h: "A year" }, ...years.map(y => ({ v: "y:" + y, l: `${y} · ${byY[y].toLocaleString()}` }))] : [])];
+      const mine = whenRange(v.when);                                         // null = any time, or a value that means nothing
+      const known = items.some(i => i.v === v.when);
+      if (mine && !known) items.push({ v: v.when, l: v.when.startsWith("y:") ? v.when.slice(2) : `${MONTHS[+v.when.slice(7) - 1]} ${v.when.slice(2, 6)}` });   // a month beyond the list
+      add("when", "When", items, mine ? v.when : "any", !!mine);
+    }
+    if (cfg.app) {
+      const n = {}; all.forEach(r => { if (r.app) n[r.app] = (n[r.app] || 0) + 1; });
+      const apps = Object.keys(n).sort((a, b) => n[b] - n[a] || a.localeCompare(b)).slice(0, 40);
+      const cur = apps.includes(v.app) ? v.app : "any";
+      add("app", "Where it went", [{ v: "any", l: "Any app" }, ...apps.map(a => ({ v: a, l: `${a} · ${n[a].toLocaleString()}` }))], cur, cur !== "any");
+    }
+    if (cfg.review) {                                                        // Fix / Always fix / Not a mistake, from AI review
+      const c = k => all.filter(REVIEW[k]).length, cur = REVIEW[v.review] ? v.review : "any";
+      add("review", "Mistake review", [{ v: "any", l: "Any review state" }, { v: "open", l: `Has suggestions · ${c("open")}` }, { v: "fix", l: `Fixed · ${c("fix")}` },
+        { v: "always", l: `Always fix · ${c("always")}` }, { v: "dismiss", l: `Not a mistake · ${c("dismiss")}` }], cur, cur !== "any");
+    }
+    if (cfg.groups) { const shown = v.group === "date" && !groupFor(p) ? "none" : v.group; add("group", "Group", cfg.groups.map(([a, b]) => ({ v: a, l: b })), shown, false); }
+    add("sort", "Sort", (Q(p) ? [["match", "Best match"]] : []).concat(cfg.sorts).map(([a, b]) => ({ v: a, l: b })), effSort(p), false);
+    bar._defs = defs;
+    const html = Object.entries(defs).map(([k, d]) => `<button class="vm${d.on ? " on" : ""}" data-k="${k}" aria-haspopup="menu" aria-label="${d.title}: ${esc(d.text)}">${esc(d.text)}</button>`).join("");
+    const chipsHtml = filters.map(([val, label, tip]) => `<button class="chip" aria-pressed="${f === val}" data-f="${val}"${tip ? ` data-tt="${esc(tip)}"` : ""}>${label}</button>`).join("");
+    const chips = bar.querySelector(".chips"), tools = bar.querySelector(".tools");
+    if (chips.innerHTML !== chipsHtml) chips.innerHTML = chipsHtml;
+    if (tools.innerHTML !== html) tools.innerHTML = html;
+    chips.querySelectorAll(".chip").forEach(b => b.onclick = () => setView(p, { filter: b.dataset.f }));
+    tools.querySelectorAll(".vm").forEach(b => b.onclick = () => openViewMenu(b, p, b.dataset.k));
+    bar.querySelector(".vcount").innerHTML = active ? `${shown.toLocaleString()} of ${all.length.toLocaleString()} <button class="lnk" data-clear="${p}">Clear</button>` : "";
+  }
+  function openViewMenu(btn, p, key) {
+    const d = document.querySelector(`.qbar[data-for="${p}"]`)._defs[key], r = btn.getBoundingClientRect();
+    const m = popup(`<div class="mh">${esc(d.title)}</div>` + d.items.map(i => i.h ? `<div class="mh sub">${esc(i.h)}</div>`
+      : `<button data-v="${esc(i.v)}" role="menuitemradio" aria-checked="${i.v === d.cur}" class="${i.v === d.cur ? "cur" : ""}"><b>${esc(i.l)}</b></button>`).join(""), r.left, r.bottom + 4);
+    m.classList.add("vmenu");
+    m.querySelectorAll("button[data-v]").forEach(b => b.onclick = () => {
+      m.remove();
+      if (key === "sort" && Q(p)) { if (b.dataset.v === "match") delete sortOverride[p]; else sortOverride[p] = b.dataset.v; limits = {}; draw(); }
+      else if (key === "group" && b.dataset.v === "date" && !["new", "old"].includes(view(p).sort)) setView(p, { group: "date", sort: "new" });   // date headings need a date order
+      else setView(p, { [key]: b.dataset.v });
+    });
+    (m.querySelector(".cur") || m.querySelector("button")).focus();
+    m.querySelector(".cur")?.scrollIntoView({ block: "nearest" });
+  }
+  const noMatch = (p, what) => `<div class="empty"><h3>Nothing matches</h3>${what}
+    <p style="margin-top:12px"><button class="btn ghost" data-clear="${p}">Clear search and filters</button></p></div>`;
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-clear]");
+    if (b) { $("#q").value = ""; delete sortOverride[b.dataset.clear]; setView(b.dataset.clear, { filter: "all", when: "any", app: "any", review: "any" }); }
+  });
+  const moreIO = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && e.target.click()), { root: $("#scroll"), rootMargin: "400px" });
+  // Draws the first rows of a list with their group headings, and a "Show more" that also loads as you scroll.
+  // group: { label: row => heading, order: "date" | "size" } or null for one plain list.
+  function drawRows(el, rows, rowFn, group, extra) {
+    const lim = limits[el.id] || PAGE, lab = new Map(), count = {}, last = {};
+    let order = rows;
+    if (group) {
+      rows.forEach(r => { const l = group.label(r); lab.set(r, l); count[l] = (count[l] || 0) + 1; last[l] = Math.max(last[l] || 0, r.at); });
+      const labels = Object.keys(count);
+      labels.sort(group.order === "size" ? (a, b) => count[b] - count[a] || a.localeCompare(b) : (a, b) => (group.asc ? last[a] - last[b] : last[b] - last[a]));
+      const rank = Object.fromEntries(labels.map((l, i) => [l, i]));
+      order = [...rows].sort((a, b) => rank[lab.get(a)] - rank[lab.get(b)]);   // stable: the sort stays inside each group
+    }
+    let html = "", seen = null;
+    order.slice(0, lim).forEach(r => {
+      if (group && lab.get(r) !== seen) { seen = lab.get(r); html += `<div class="daybar">${esc(seen)}<span>${count[seen].toLocaleString()}</span></div>`; }
+      html += rowFn(r);
+    });
+    const left = order.length - lim;
+    if (left > 0) html += `<button class="btn ghost more-rows" data-more="${el.id}">Show ${Math.min(PAGE, left)} more · ${left.toLocaleString()} left</button>`;
+    el.innerHTML = html + (extra || "");
+    wire(el);
+    const m = el.querySelector(".more-rows");
+    if (m) { m.onclick = () => { limits[el.id] = lim + PAGE; draw(); }; moreIO.observe(m); }
+  }
+  // Date headings only make sense in date order: sorted any other way (longest, A–Z, best match) the list is one plain
+  // list. Your Group choice is kept, and comes back when you sort by date again.
+  const groupFor = p => {
+    const g = view(p).group, byDateSort = ["new", "old"].includes(effSort(p));
+    return g === "app" ? { label: r => r.app || "No app", order: "size" }
+      : g === "date" && byDateSort ? { label: r => smartDay(r.at), order: "date", asc: effSort(p) === "old" } : null;
+  };
   function go(t) {
     if (t !== tab && drawerId) closeDrawer();   // Ask AI belongs to the page it was opened on, not the whole window
     tab = t;
     document.querySelectorAll("nav button").forEach(o => o.setAttribute("aria-current", o.dataset.tab === t));
     for (const p of PANES) $("#pane-" + p).hidden = p !== t;
-    const box = $("#q").closest(".search"), bar = t === "home" ? $("#pane-home .bar") : document.querySelector(`.qbar[data-for="${t}"]`);
+    const box = $("#q").closest(".search"), bar = document.querySelector(`.qbar[data-for="${t}"]`);
     if (bar && box.parentElement !== bar) { $("#q").value = ""; bar.appendChild(box); }   // the search box goes with you
-    $("#q").setAttribute("aria-label", t === "meetings" ? "Search meetings" : t === "files" ? "Search files" : "Search dictations");
+    if (SEARCH[t]) $("#q").setAttribute("aria-label", SEARCH[t]);
+    box.dataset.tt = "Every word, in any order. Put “quotes” around words that must stay together.";
+    limits = {};
+    if (VIEWS[t] && S.history && S.history.length) draw();                                  // this page's toolbar and counts
     if (t === "insights") drawInsights();
     $("#scroll").scrollTop = 0;
     header();
   }
 
-  $("#q").oninput = () => tab === "home" ? drawList() : draw();
-  $("#q").onkeydown = e => { if (e.key === "Escape") { $("#q").value = ""; tab === "home" ? drawList() : draw(); $("#q").blur(); } };
+  const searched = () => { limits = {}; if (!$("#q").value.trim()) delete sortOverride[tab]; tab === "home" ? drawList() : draw(); };
+  $("#q").oninput = searched;
+  $("#q").onkeydown = e => { if (e.key === "Escape") { $("#q").value = ""; searched(); $("#q").blur(); } };
   document.addEventListener("keydown", e => {
-    if (e.metaKey && e.key === "f") { e.preventDefault(); if (!["home", "meetings", "files"].includes(tab)) go("home"); $("#q").focus(); }
+    if (e.metaKey && e.key === "f") { e.preventDefault();
+      if (drawerId && drawerMode === "listen" && $("#pfq")) { $("#pfq").focus(); $("#pfq").select(); return; }   // inside Listen: find in this transcript
+      if (!VIEWS[tab]) go("home"); $("#q").focus(); }
     if (e.metaKey && e.key === ",") { e.preventDefault(); go("settings"); $("#sq").focus(); }
     // Shelf shortcuts: Esc clears the shelf and closes it (unless something else wants Esc).
     if (sel.size > 0 && tab === "home" && e.key === "Escape"
@@ -1191,7 +1492,6 @@
     sw("#setup-preview", "preview");
   }
   $("#restore").onclick = () => send({ action: "restore" });
-  let filter = "all";
 
   // A web view cannot show confirm() unless the app draws it - the old "Clear history" silently did nothing.
   // The app asks with a real macOS dialog instead (window.py), as the "…" on the button promises.
@@ -1345,6 +1645,20 @@
       ? `Uses ${chosen} when it is connected; otherwise the next one that works.`
       : `The Mac’s default, then the built-in one, then any other.${S.using ? " Last used: " + S.using + "." : ""}`;
     sw("#set-keep_history", "keep_history");
+    // How many plain dictations to keep. Choosing fewer than you have asks first: the oldest would go on your next dictation.
+    const plainNow = S.history.filter(r => !(r.star || r.todo || (r.kind || "dictation") !== "dictation")).length;
+    const cap = S.prefs.history_cap ?? 500, saveOn = S.prefs.keep_history !== false, capEl = $("#set-history_cap");
+    seg("#set-history_cap", { n500: "Newest 500", n5000: "Newest 5,000", n0: "Everything" }, "n" + cap, v => {
+      const n = +v.slice(1);
+      if (n && plainNow > n) { $("#cap-warn-t").textContent = `${(plainNow - n).toLocaleString()} older dictations would be deleted the next time you dictate.`; $("#cap-warn").hidden = false; capEl.dataset.pending = n; }
+      else { $("#cap-warn").hidden = true; send({ action: "pref", key: "history_cap", value: n }); }
+    });
+    capEl.querySelectorAll("button").forEach(b => { b.disabled = !saveOn; });
+    $("#cap-row").classList.toggle("off", !saveOn);
+    $("#cap-why").textContent = !saveOn ? "Turn on “Save my dictations” first."
+      : `${plainNow.toLocaleString()} kept now. Once the limit is reached the oldest plain dictations are deleted. ` + (cap === 0 ? "Everything stays on this Mac, so search reaches back as far as you have used indite." : "Choose Everything to search years of dictations.");
+    $("#cap-no").onclick = () => { $("#cap-warn").hidden = true; delete capEl.dataset.pending; };
+    $("#cap-yes").onclick = () => { $("#cap-warn").hidden = true; send({ action: "pref", key: "history_cap", value: +capEl.dataset.pending }); delete capEl.dataset.pending; };
     const plainN = S.history.filter(r => !(r.star || r.todo || (r.kind || "dictation") !== "dictation")).length;
     $("#count-line").textContent = plainN ? `${plainN} plain dictation${plainN > 1 ? "s" : ""}. Starred, to-do, files and meetings are kept.`
       : "Nothing to clear.";
@@ -1365,12 +1679,6 @@
     meetButton();
     $("#meet-perm").textContent = [S.meeting && S.meeting.mic ? `Recording from: ${S.meeting.mic}` : "",
       S.meeting && S.meeting.problem ? S.meeting.problem : ""].filter(Boolean).join(" · ");
-    const dic = S.history.filter(r => (r.kind || "dictation") === "dictation" && r.audio), left = dic.filter(r => !r.said).length;
-    if (!S.prefs.speech_test && filter === "check") filter = "all";
-    $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["ai", "With AI"],
-      ...(S.prefs.speech_test ? [["check", `To check · ${left}`, `${left} left, ${dic.length - left} done`]] : [])].map(([v, l, t]) =>
-      `<button class="chip" aria-pressed="${filter === v}" data-f="${v}"${t ? ` data-tt="${t}"` : ""}>${l}</button>`).join("");
-    $("#chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); });
     drawTodo();
     drawDict();
     if (tab === "insights") drawInsights();
@@ -1380,12 +1688,18 @@
     drawList();
     drawShelf();
     // one search box, moved to the list page you are on (critic: no second box): titles, text and speaker lines
-    const qq = tab === "meetings" || tab === "files" ? $("#q").value.trim().toLowerCase() : "";
-    const hit = r => !qq || [(r.title || ""), (r.real_text ?? r.text), ...(r.segments || []).map(x => `${(r.names || {})[x.speaker] || x.speaker || ""} ${x.real ?? x.text}`)]
-      .join(" ").toLowerCase().includes(qq);
-    feed($("#meet-list"), S.history.filter(r => r.kind === "meeting" && hit(r)),
+    const listPage = (p, kind, el, empty) => {
+      const all = S.history.filter(r => r.kind === kind), filters = [["all", "All"], ["star", "Starred"], ["ai", "With AI"]];
+      const { rows, f, active } = query(p, all, filters, r => r.seconds || 0, r => r.title || r.text || "");
+      drawTools(p, filters, rows.length, all, active);
+      if (!rows.length) { el.innerHTML = all.length ? noMatch(p, Q(p) ? `Nothing in your ${p} contains all of “${esc(Q(p))}”.` : "Nothing matches these filters.") : empty; HL = []; return; }
+      if (el.querySelector(".editor, .fixer")) return;                        // never redraw over text you are typing
+      drawRows(el, rows, rowHtml, groupFor(p));
+      HL = [];
+    };
+    listPage("meetings", "meeting", $("#meet-list"),
       `<div class="empty"><div class="art"><svg width="28" height="28"><use href="#i-mic"/></svg></div><h3>No meetings yet</h3>Click Record when a call or conversation starts. Text appears after each pause.</div>`);
-    feed($("#file-list"), S.history.filter(r => r.kind === "file" && hit(r)),
+    listPage("files", "file", $("#file-list"),
       `<div class="empty"><div class="art"><svg width="28" height="28"><use href="#i-file"/></svg></div><h3>No files yet</h3>Choose an audio or video file. It is written down here, on this Mac.</div>`);
   }
 
@@ -1413,9 +1727,14 @@
 
 
   function drawList() {
-    const q = $("#q").value.trim().toLowerCase();
-    const rows = S.history.filter(r => ((r.kind || "dictation") === "dictation" || r.kind === "combined")
-      && (!q || (r.real_text ?? r.text).toLowerCase().includes(q)) && (filter === "all" || (filter === "check" ? r.audio && !r.said : filter === "ai" ? (r.ai || []).length || r.improved : r.star)));
+    const all = S.history.filter(r => (r.kind || "dictation") === "dictation" || r.kind === "combined");
+    const dic = all.filter(r => r.audio), left = dic.filter(r => !r.said).length;
+    const count = t => all.filter(FILTER_TEST[t]).length;
+    const filters = [["all", "All"], ["star", "Starred"], ["ai", "With AI"], ["todo", `To do · ${count("todo")}`, "Dictations on your To do list"],
+      ["copied", `Copied · ${count("copied")}`, "No text box was focused, so the words went to the clipboard"],
+      ...(S.prefs.speech_test ? [["check", `To check · ${left}`, `${left} left, ${dic.length - left} done`]] : [])];
+    const { rows, f, active } = query("home", all, filters, words, r => r.text);
+    drawTools("home", filters, rows.length, all, active);
 
     if (!S.history.some(r => (r.kind || "dictation") === "dictation")) {
       $("#list").innerHTML = `<div class="empty">
@@ -1430,13 +1749,19 @@
       return;
     }
     if (!rows.length) {
-      $("#list").innerHTML = `<div class="empty"><h3>Nothing here</h3>${q ? `Nothing you said contains “${esc(q)}”.`
-        : filter === "ai" ? "No dictation has AI answers yet. Open one with “…” → Ask AI."
-        : filter === "check" ? "Every dictation with its audio kept is checked."
-        : "Star a dictation (“…” → Star) to keep it here, and in every backup."}</div>`;
+      HL = [];
+      $("#list").innerHTML = noMatch("home", Q("home") ? `Nothing you said contains all of “${esc(Q("home"))}”.`
+        : f === "ai" ? "No dictation has AI answers yet. Open one with “…” → Ask AI."
+        : f === "check" ? "Every dictation with its audio kept is checked."
+        : f === "todo" ? "Nothing here is on your To do list. “…” → Add to To do."
+        : f === "copied" ? "Every dictation was typed where you were. Nothing went only to the clipboard."
+        : f === "star" ? "Star a dictation (“…” → Star) to keep it here, and in every backup."
+        : "Nothing matches these filters.");
       return;
     }
-    feed($("#list"), rows);
+    if ($("#list").querySelector(".editor, .fixer")) return;                  // never redraw over text you are typing
+    drawRows($("#list"), rows, rowHtml, groupFor("home"));
+    HL = [];
   }
 
   // The shelf preserves pick order (not chronological), so it reflects the order the user built it in.
@@ -1531,10 +1856,10 @@
     return `<div class="row${done && todoView ? " done-row" : ""}${r.id === drawerId ? " sel" : ""}${onShelf ? " in-shelf" : ""}" data-row="${id}">
       <div class="when num">${todoView ? `<button class="copy tick" data-id="${id}" aria-label="${done ? "Mark not done" : "Mark done"}" data-tt="${done ? "Not done" : "Done"}" style="${done ? "color:var(--accent)" : ""}">
         <svg width="16" height="16"><use href="#${done ? "i-done" : "i-todo"}"/></svg></button>` : clock(r.at)}</div>
-      <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${esc(r.title || "File")}
+      <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${hl(r.title || "File")}
           ${r.live ? `<span class="live">Live</span>` : ""}</div>` :
           combined ? `<div class="title"><svg width="13" height="13"><use href="#i-spark"/></svg>${esc(r.title || "Combined")}</div>` : ""}
-        ${(r.segments || []).some(x => x.speaker) ? meetingLines(r) : `<div class="text${file ? " clamp" : longDict(r) ? " clamp6" : ""}" data-fold="${file ? "clamp" : "clamp6"}">${esc(r.text)}</div>`}
+        ${(r.segments || []).some(x => x.speaker) ? meetingLines(r) : `<div class="text${file ? " clamp" : longDict(r) ? " clamp6" : ""}" data-fold="${file ? "clamp" : "clamp6"}">${r.text_deleted ? `<span style="color:var(--ink-dim)">Words deleted. The recording is kept.</span>` : hl(r.text)}</div>`}
         ${todoView ? "" : flagParts(r) + aiParts(r)}
         ${(file && !(r.segments || []).some(x => x.speaker) && r.text.length > 240) || (!file && longDict(r)) ? `<button class="more showall" data-id="${id}">Show all</button>` : ""}
         <div class="meta">${r.star ? `<svg width="12" height="12" class="starred"><use href="#i-star-on"/></svg>` : ""}
@@ -1555,10 +1880,13 @@
 
   function meetingLines(r) {
     const names = r.names || {}, segs = r.segments || [];
-    if (!segs.length) return `<div class="text" style="color:var(--ink2)">${r.live ? "Listening… text appears after each pause." : esc(r.text)}</div>`;
-    const lines = segs.map((s, i) => `<div class="line${i >= 6 && !r._open ? " hide" : ""}">
+    if (!segs.length) return `<div class="text" style="color:var(--ink2)">${r.live ? "Listening… text appears after each pause." : r.text_deleted ? "Words deleted. The recording is kept." : esc(r.text)}</div>`;
+    // searching: show the lines that matched (up to 6), not just the first six, so you can see why this meeting is here
+    const hit = HL.length ? segs.map((s, i) => i).filter(i => HL.some(w => fold(`${(names[segs[i].speaker] || segs[i].speaker || "")} ${segs[i].real ?? segs[i].text}`).includes(w))) : [];
+    const shown = new Set((hit.length ? hit : segs.map((s, i) => i)).slice(0, 6));
+    const lines = segs.map((s, i) => `<div class="line${!shown.has(i) && !r._open ? " hide" : ""}">
       <button class="who ${whoCls(s.speaker)}" data-id="${esc(r.id)}" data-who="${esc(s.speaker)}"
-        data-tt="Rename this speaker">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${esc(s.text)}</div></div>`).join("");
+        data-tt="Rename this speaker">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${hl(s.text)}</div></div>`).join("");
     return `<div class="lines">${lines}</div>` + (segs.length > 6 ? `<button class="more mshow" data-id="${esc(r.id)}">Show all ${segs.length} lines</button>` : "");
   }
 
@@ -1603,6 +1931,23 @@
     return m;
   }
 
+  // Delete. A note with a recording asks what to delete: everything, the recording only (the words stay), or the words
+  // only (the recording stays, as a note that is just sound). Each can be undone for a few seconds; a transcribed
+  // file's original is never touched.
+  function askDelete(btn, r) {
+    const done = (what, msg) => { send({ action: "delete", id: r.id, what }); toast(msg, () => send({ action: "undo" })); };
+    if (!(r.audio > 0) || r.kind === "file") return done("both", "Deleted");
+    const b = btn.getBoundingClientRect();
+    const m = popup(`<div class="mh">Delete what?</div>
+      <button data-w="both" class="danger"><b>The note and its recording</b><span>Everything about it</span></button>
+      <button data-w="audio"><b>The recording only</b><span>Keeps the words and frees the disk space</span></button>
+      ${r.text_deleted ? "" : `<button data-w="text"><b>The words only</b><span>Keeps the recording; the note stays as sound</span></button>`}`, b.left, b.bottom + 4);
+    m.classList.add("vmenu");
+    const msg = { both: "Note and recording deleted", audio: "Recording deleted. The words are kept", text: "Words deleted. The recording is kept" };
+    m.querySelectorAll("button[data-w]").forEach(x => x.onclick = () => { m.remove(); done(x.dataset.w, msg[x.dataset.w]); });
+    m.querySelector("button").focus();
+  }
+
   function rowMenu(btn, r, x, y) {
     const media = r.kind === "file" || r.kind === "meeting";
     const items = [
@@ -1640,7 +1985,7 @@
       if (k === "said") { send({ action: "said", id: r.id, on: !r.said }); toast(r.said ? "Taken out of the speech test" : "Marked as exactly what you said"); }
       if (k === "play") { go(r.kind === "meeting" ? "meetings" : r.kind === "file" ? "files" : "home"); openDrawer(r.id, "listen"); send({ action: "listen", id: r.id }); }
       if (k === "reveal") send({ action: k, id: r.id });
-      if (k === "del") { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); }
+      if (k === "del") askDelete(btn, r);
     });
     m.querySelector("button").focus();
   }
@@ -1678,6 +2023,39 @@
     const w = (r.wt || []).find(x => Math.abs(x.s - s) < 0.01 && x.k === k), ws = text.split(/\s+/).filter(Boolean);
     return w && w.t.length === ws.length ? ws.map((x, i) => `<span class="w" data-w="${w.t[i]}">${esc(x)}</span>`).join(" ") : esc(text);
   };
+  // Find in one transcript: every line that has all the words is lit, the words are marked (CSS highlight, so typing
+  // never loses its place), and ↑ ↓ / Return / Shift+Return step through the lines. Shown in the Listen panel.
+  let findQ = "", findAt = -1, findNote = null;
+  function findApply(keep) {
+    const root = $("#drawer .plines"), box = $("#pfq");
+    if (!root || !box) return;
+    findQ = box.value;
+    const ts = terms(findQ), lines = [...root.querySelectorAll(".pline")];
+    const hits = ts.length ? lines.filter(l => ts.every(t => fold(l.textContent).includes(t))) : [];
+    lines.forEach(l => l.classList.toggle("fhit", hits.includes(l)));
+    if (window.CSS && CSS.highlights && typeof Highlight === "function") {
+      const ranges = [];
+      if (ts.length) hits.forEach(l => { const w = document.createTreeWalker(l, NodeFilter.SHOW_TEXT);
+        for (let n; (n = w.nextNode());) { const f = fold(n.data); if (f.length !== n.data.length) continue;
+          const re = new RegExp(ts.flatMap(t => t.split(/\s+/)).filter(Boolean).map(x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+          for (let m; (m = re.exec(f));) { const rg = new Range(); rg.setStart(n, m.index); rg.setEnd(n, m.index + m[0].length); ranges.push(rg); if (!m[0].length) re.lastIndex++; } } });
+      CSS.highlights.set("find", new Highlight(...ranges));
+    }
+    findAt = hits.length ? (keep && findAt >= 0 ? Math.min(findAt, hits.length - 1) : 0) : -1;
+    findShow(hits);
+  }
+  function findShow(hits) {
+    $("#drawer").querySelectorAll(".pline.fcur").forEach(l => l.classList.remove("fcur"));
+    const c = hits[findAt];
+    if (c) { c.classList.add("fcur"); c.scrollIntoView({ block: "center", behavior: "smooth" }); }
+    const n = hits.length, whole = $("#drawer .pline.whole");
+    $("#pfc").textContent = !terms(findQ).length ? "" : n ? `${findAt + 1} of ${n} ${whole ? "match" : "line"}${n > 1 ? "s" : ""}` : "No lines";
+  }
+  function findStep(d) {
+    const hits = [...$("#drawer .plines").querySelectorAll(".pline.fhit")];
+    if (!hits.length) return;
+    findAt = (findAt + d + hits.length) % hits.length; findShow(hits);
+  }
   function drawListen(r) {
     const segs = r.segments || [], nm = r.names || {}, meet = r.kind === "meeting";
     const lining = S.ai_busy && S.ai_busy[r.id] === "lining up the words";
@@ -1693,17 +2071,31 @@
         <span class="num ptime" id="ptime">0:00 / 0:00</span><input type="range" id="pseek" min="0" max="1000" value="0" aria-label="Position">
         <div class="seg mini" id="prate">${[1, 1.5, 2].map(x => `<button data-r="${x}">${x}×</button>`).join("")}</div></div>` +
         (meet && r.audio > 1 ? `<div class="ptrack">Track <div class="seg mini" id="ptrack">${r.clock ? `<button data-t="2">Both</button>` : ""}<button data-t="0">You</button><button data-t="1">The others</button></div></div>` : "") +
+        `<div class="pfind"><label class="search"><svg width="13" height="13"><use href="#i-search"/></svg><input id="pfq" value="${esc(findNote === r.id ? findQ : "")}" placeholder="Find in this transcript" spellcheck="false" aria-label="Find in this transcript"></label>
+          <span class="num pfc" id="pfc" aria-live="polite"></span>
+          <button class="copy" id="pfp" aria-label="Previous match" data-tt="Previous (⇧Return)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 9l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="copy" id="pfn" aria-label="Next match" data-tt="Next (Return)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>` +
         (segs.length ? `<div class="plines">${segs.map(x => `<div class="pline" data-s="${x.start}" data-e="${x.end}" data-k="${kOf(x, meet)}">
             <span class="pt num">${tclock(x.start || 0)}</span>${x.speaker ? `<button class="pwho ${whoCls(x.speaker)}" data-tt="${esc(nm[x.speaker] || x.speaker)} · click to change who said this">${esc(nm[x.speaker] || x.speaker)}</button>` : ""}<span class="px">${timedWords(r, x.text, x.start || 0, kOf(x, meet))}</span>
             <span class="pacts"><button class="copy pp" data-tt="Play just this line" aria-label="Play just this line"><svg width="13" height="13"><use href="#i-play"/></svg></button><button class="copy pc" data-tt="Copy this line" aria-label="Copy this line"><svg width="14" height="14"><use href="#i-copy"/></svg></button><button class="copy pe" data-tt="Edit this line" aria-label="Edit this line"><svg width="14" height="14"><use href="#i-pen"/></svg></button></span></div>`).join("")}</div>`
-          : `<div class="plines"><div class="pline whole"><span class="px">${timedWords(r, r.text, 0, 0)}</span></div></div>`) +
+          : `<div class="plines"><div class="pline whole"><span class="px">${r.text_deleted ? "Words deleted. Only the recording is kept." : timedWords(r, r.text, 0, 0)}</span></div></div>`) +
         (lining ? `<p class="fine phint">Lining up each word with the sound. Only the first time: about a minute per 5 minutes of audio…</p>` : "") +
         `<p class="fine phint">Space plays or pauses · ← → move 5 s · click a word or a time to go there</p></div></div>`;
     }
     if ($("#drawer .pedit")) return playerTick(P);            // never rebuild over a line you are editing
+    const findFocus = document.activeElement && document.activeElement.id === "pfq" ? document.activeElement.selectionStart : null;
+    if (findNote !== r.id) { findNote = r.id; findQ = ""; findAt = -1; }
     if (!putDrawer(h)) return playerTick(P);
     $("#dclose").onclick = closeDrawer;
     if (!r.audio) return;
+    const pf = $("#pfq");
+    pf.oninput = () => findApply(false);
+    pf.onkeydown = e => { e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); findStep(e.shiftKey ? -1 : 1); }
+      if (e.key === "Escape") { pf.value = ""; findApply(false); pf.blur(); } };
+    $("#pfn").onclick = () => findStep(1); $("#pfp").onclick = () => findStep(-1);
+    if (findQ) findApply(true);
+    if (findFocus !== null) { pf.focus(); pf.setSelectionRange(findFocus, findFocus); }
     $("#pplay").onclick = () => send({ action: "pctl", cmd: P.playing && P.note === r.id ? "pause" : "play" });
     const sk = $("#pseek");
     sk.oninput = () => { seeking = true; sk.style.setProperty("--p", sk.value / 10 + "%"); $("#ptime").textContent = `${tclock(sk.value / 1000 * P.dur)} / ${tclock(P.dur)}`; };
@@ -1869,7 +2261,7 @@
     // for Anthropic/OpenAI answers whose model slug isn't in cost.py RATES.
     const costChip = a => {
       const c = a && a.cost_usd, m = a && a.model;
-      if (typeof c === "number") return `<span class="aicost" data-tt="${m ? esc(m) + " · " : ""}${a.in_tok || "?"} in / ${a.out_tok || "?"} out tokens${a.cost_basis === "list" ? " · list price; your Claude plan may not charge this" : ""}">$${c.toFixed(c < 0.01 ? 4 : 3)}</span>`;
+      if (typeof c === "number") return `<span class="aicost" data-tt="${m ? esc(m) + " · " : ""}${a.in_tok || "?"} in / ${a.out_tok || "?"} out tokens${a.cost_basis === "list" ? " · list price; your Claude plan may not charge this" : ""}">${money(c)}</span>`;
       if (m && (a.in_tok || a.out_tok)) return `<span class="aicost na" data-tt="This model isn't in indite's rate table; see the provider's dashboard for the exact charge.">cost not estimated</span>`;
       return "";
     };
@@ -1992,7 +2384,7 @@
       input.onblur = () => done(false);                  // only Enter saves: a half-typed name is never kept
     });
 
-    on(".del", r => { send({ action: "delete", id: r.id }); toast("Deleted", () => send({ action: "undo" })); });
+    on(".del", (r, b) => askDelete(b, r));
     on(".exp", (r, b) => send({ action: "export", id: r.id, fmt: b.dataset.fmt }));
     root.querySelectorAll(".showall").forEach(b => b.onclick = () => {   // only "Show all": not Who spoke or Show all N lines
       const t = b.closest(".row").querySelector(".text"); t.classList.toggle(t.dataset.fold); b.textContent = b.textContent === "Show all" ? "Show less" : "Show all"; });
@@ -2010,16 +2402,29 @@
   }
 
   function drawTodo() {
-    const open = S.history.filter(r => r.todo === "open"), done = S.history.filter(r => r.todo === "done");
-    if (!open.length && !done.length) {
-      $("#todo-list").innerHTML = `<div class="empty"><div class="art"><svg width="28" height="28"><use href="#i-todo-on"/></svg></div>
+    const all = S.history.filter(r => r.todo === "open" || r.todo === "done"), nOpen = all.filter(r => r.todo === "open").length;
+    const filters = [["all", "All"], ["open", `Open · ${nOpen}`], ["done", `Done · ${all.length - nOpen}`]];
+    const { rows, active } = query("todo", all, filters, () => 0, r => r.title || r.text);
+    drawTools("todo", filters, rows.length, all, active);
+    const el = $("#todo-list");
+    if (!all.length) {
+      HL = [];
+      el.innerHTML = `<div class="empty"><div class="art"><svg width="28" height="28"><use href="#i-todo-on"/></svg></div>
         <h3>Nothing to do</h3>On any note, “…” → Add to To do, or click To do on the card after you dictate.</div>`;
       return;
     }
-    if ($("#todo-list .editor, #todo-list .fixer")) return;   // never redraw over a box you are typing in
-    $("#todo-list").innerHTML = open.map(r => rowHtml(r, true)).join("") +
-      (done.length ? `<div class="group-h">Done · ${done.length}</div>` + done.map(r => rowHtml(r, true)).join("") : "");
-    wire($("#todo-list"));
+    if (el.querySelector(".editor, .fixer")) return;           // never redraw over a box you are typing in
+    if (!rows.length) { HL = []; el.innerHTML = noMatch("todo", Q("todo") ? `No to-do contains all of “${esc(Q("todo"))}”.` : "Nothing is in that state."); return; }
+    const open = rows.filter(r => r.todo === "open"), done = rows.filter(r => r.todo === "done"), lim = limits["todo-list"] || PAGE;
+    let html = open.slice(0, lim).map(r => rowHtml(r, true)).join("");
+    const doneRoom = lim - open.length;
+    if (done.length && doneRoom > 0) html += `<div class="group-h">Done · ${done.length.toLocaleString()}</div>` + done.slice(0, doneRoom).map(r => rowHtml(r, true)).join("");
+    const left = rows.length - lim;
+    if (left > 0) html += `<button class="btn ghost more-rows" data-more="todo-list">Show ${Math.min(PAGE, left)} more · ${left.toLocaleString()} left</button>`;
+    el.innerHTML = html; HL = [];
+    wire(el);
+    const m = el.querySelector(".more-rows");
+    if (m) { m.onclick = () => { limits["todo-list"] = lim + PAGE; draw(); }; moreIO.observe(m); }
   }
 
   // Fix a word, from the dictation where it went wrong. The Mac cannot see edits made in other apps (the phone
@@ -2116,6 +2521,13 @@
     send({ action: "pref", key: mkey(), value: v });
   };
   $("#set-ai_model_custom").onchange = e => send({ action: "pref", key: mkey(), value: e.target.value.trim() });
+  $("#set-ai_effort").onchange = e => send({ action: "pref", key: "ai_effort", value: e.target.value });
+  $("#set-usd_inr").onchange = e => {
+    const v = parseFloat(e.target.value);
+    if (!(v >= 1 && v <= 1000)) { toast("Enter rupees per dollar, for example 85.50"); e.target.value = S.prefs.usd_inr || ""; return; }
+    send({ action: "pref", key: "usd_inr", value: Math.round(v * 100) / 100 });
+  };
+  $("#ai-models-refresh").onclick = () => { send({ action: "models_refresh", provider: S.prefs.ai_provider || "claude" }); toast("Asking the provider…"); };
   $("#ai-login").onclick = () => { send({ action: "ai_login" }); toast("A Terminal window opened. Sign in there, then come back."); };
   $("#ai-key-save").onclick = () => { const k = $("#ai-key").value.trim(); if (!k) return;
     send({ action: "ai_key", provider: S.prefs.ai_provider, key: k }); $("#ai-key").value = ""; toast("Key saved in your Keychain"); };
@@ -2140,24 +2552,51 @@
       : "Paste your key. It is kept in your Mac’s Keychain, never in a file.";
     // Populate the model <select> from KNOWN_MODELS[provider]; default to the provider's default; add "Custom…"
     // so a model id we don't ship with is still reachable. The custom text input appears only when "Custom…" is picked.
-    const KNOWN_MODELS = {
-      claude: ["", "haiku", "sonnet", "opus"],   // "" = the model your Claude account uses by default
-      anthropic: ["claude-haiku-5-5", "claude-haiku-4-5", "claude-sonnet-5-5", "claude-sonnet-5", "claude-opus-5-5", "claude-opus-5", "claude-opus-4-7", "claude-fable-5"],
+    const KNOWN_MODELS = {     // only if the catalog is missing; the real lists come from models.py (live or built-in)
+      claude: ["", "haiku", "sonnet", "opus"],
       openai: ["gpt-4.1-mini", "gpt-4o-mini", "gpt-5"],
       openrouter: ["openrouter/auto", "anthropic/claude-haiku-5-5", "openai/gpt-4.1-mini"],
     };
     const def = (S.ai_models || {})[prov] || "";
     const current = (prov === "claude" ? S.prefs.claude_model : S.prefs.ai_model) || def;
-    const known = KNOWN_MODELS[prov] || [];
+    const cat = (S.ai_catalog || {})[prov];
+    const rows = cat ? cat.models : (KNOWN_MODELS[prov] || []).map(id => ({ id, name: id, efforts: [] }));
+    const known = rows.map(r => r.id);
     const usingCustom = current && !known.includes(current);
-    $("#set-ai_model").innerHTML = known.map(m => `<option value="${esc(m)}"${m === current ? " selected" : ""}>${m === "" ? "Claude’s default for your account" : esc(m) + (m === def ? " (default)" : "")}</option>`).join("")
+    const label = r => r.id === "" ? r.name : (r.name && r.name !== r.id ? `${esc(r.name)} · ${esc(r.id)}` : esc(r.id)) + (r.id === def ? " (default)" : "");
+    $("#set-ai_model").innerHTML = rows.map(r => `<option value="${esc(r.id)}"${r.id === current ? " selected" : ""}>${label(r)}</option>`).join("")
       + `<option value="__custom__"${usingCustom ? " selected" : ""}>Custom…</option>`;
     $("#set-ai_model_custom").value = usingCustom ? current : "";
     $("#set-ai_model_custom").hidden = !usingCustom;
-    $("#ai-model-why").textContent = usingCustom
-      ? "A model id this app doesn't ship with. Cost may not be estimated — see Insights."
-      : prov === "claude" ? "Which Claude answers. Haiku is the quickest and uses the least of your plan, Sonnet is in between, Opus is the most capable. Default is whatever your account uses."
-      : "Default is a fast, inexpensive model. Pick a different one for different trade-offs.";
+    // Where the list came from: live from the provider, or the built-in table (no listing call without a key).
+    const when = cat && cat.at ? new Date(cat.at * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "";
+    const src = prov === "openrouter" ? "OpenRouter has hundreds of models; type the one you want under Custom…."
+      : cat && cat.source === "live" ? `Live list from the provider, updated ${when}.`
+      : prov === "openai" ? "A few common models. Add an API key above, then Refresh, to ask OpenAI for its full list."
+      : "Built-in list from Anthropic’s docs (24 Oct 2026). Add an Anthropic API key (pick “Anthropic API key” as the provider), then Refresh, to ask Anthropic for the live list.";
+    $("#ai-model-why").textContent = (usingCustom ? "A model id this app doesn't ship with; its cost may not be estimated. " : "") + src;
+    $("#ai-models-refresh").disabled = prov === "openrouter";
+    // Cost currency: Dollars, or Rupees at a rate you type. The rate row is disabled (not hidden) while Dollars is on.
+    seg("#set-cost_currency", { USD: "Dollars", INR: "Rupees" }, S.prefs.cost_currency || "USD",
+        v => send({ action: "pref", key: "cost_currency", value: v }));
+    const inrOn = S.prefs.cost_currency === "INR", rate = S.prefs.usd_inr || 0;
+    $("#inr-row").classList.toggle("off", !inrOn);
+    $("#set-usd_inr").disabled = !inrOn;
+    if (document.activeElement !== $("#set-usd_inr")) $("#set-usd_inr").value = rate || "";
+    $("#inr-why").textContent = !inrOn ? "Choose Rupees to set your rate."
+      : rate ? `Costs show in ₹ at ₹${rate} per $1. indite doesn’t look rates up, so update this when the rate changes.`
+      : "Type your rate to see rupees. Until then costs stay in dollars.";
+    // Effort: only the levels the chosen model supports. Claude (login or key) only; others are disabled with a reason.
+    const effRow = $("#ai-effort-row"), effSel = $("#set-ai_effort"), claudeish = prov === "claude" || prov === "anthropic";
+    const chosen = rows.find(r => r.id === current), levels = chosen ? chosen.efforts : [];
+    const effOn = claudeish && (levels.length || usingCustom || !chosen);
+    effSel.innerHTML = `<option value="">Automatic (the model’s own default)</option>` +
+      levels.map(l => `<option value="${l}"${S.prefs.ai_effort === l ? " selected" : ""}>${l}</option>`).join("");
+    effSel.value = levels.includes(S.prefs.ai_effort) ? S.prefs.ai_effort : "";
+    effRow.classList.toggle("off", !effOn); effSel.disabled = !effOn; effSel.setAttribute("aria-disabled", String(!effOn));
+    $("#ai-effort-why").textContent = !claudeish ? "Effort applies to Claude models only."
+      : chosen && !levels.length ? "This model has no effort setting."
+      : "How much the model thinks before it answers. Lower is faster and uses less of your plan; higher is more thorough.";
   }
 
   // ---- Insights: like Wispr Flow's "Your usage", computed here from the saved notes ------------------------
@@ -2239,7 +2678,7 @@
     // Monthly cost (24 Oct, commit 4). Hidden when nothing was charged this month; honest about the unknowns.
     const [costUsd, costedN, uncostedN] = S.ai_cost_month || [0, 0, 0];
     const costLine = (costedN || uncostedN)
-      ? `<p class="fine" style="text-align:left; margin-top:6px">This month: <b style="color:var(--ink)">$${costUsd.toFixed(2)}</b> across ${costedN} answer${costedN === 1 ? "" : "s"}` +
+      ? `<p class="fine" style="text-align:left; margin-top:6px">This month: <b style="color:var(--ink)">${money(costUsd)}</b> across ${costedN} answer${costedN === 1 ? "" : "s"}` +
         (uncostedN ? ` · ${uncostedN} answered via Claude on this Mac (no cost reported)` : "") + `.</p>`
       : "";
     // R9 (24 Oct): hide the AI tile entirely when AI is off. Nagging someone who turned it off is impolite.
@@ -2254,7 +2693,7 @@
     }
     h += `<p class="fine" style="text-align:left">Counts only what is saved (Settings → Privacy). Time saved assumes typing at 40 words a minute.</p>`;
     $("#ins").innerHTML = h;
-    if ($("#ins-ai")) $("#ins-ai").onclick = () => { filter = "ai"; go("home"); draw(); };
+    if ($("#ins-ai")) $("#ins-ai").onclick = () => { go("home"); setView("home", { filter: "ai" }); };
   }
 
   // ---- Dictionary ------------------------------------------------------------------------------------------
@@ -2263,11 +2702,22 @@
   $("#dw").onkeydown = e => { if (e.key === "Enter") $("#dadd").onclick(); };
   $("#goto-dict").onclick = () => go("dict");
   function drawDict() {
-    const list = S.fixes_list || [];
-    $("#dict-list").innerHTML = list.length ? list.map(([h, w]) => `<div class="dict-row"><span class="h">${esc(h)}</span>
-      <span class="arrow">→</span><span class="w">${esc(w)}</span>
-      <button class="copy fixdel" data-h="${esc(h)}" data-w="${esc(w)}" aria-label="Remove" data-tt="Remove"><svg width="14" height="14"><use href="#i-trash"/></svg></button></div>`).join("")
+    const list = S.fixes_list || [], v = view("dict"), ts = terms(Q("dict")), sort = effSort("dict");     // file order: newest last
+    const rows = list.map((f, i) => ({ f, i })).filter(({ f }) => ts.every(t => fold(`${f[0]} ${f[1]}`).includes(t)));
+    rows.sort({ match: (a, b) => b.i - a.i, az: byName(x => x.f[0]), meant: byName(x => x.f[1]), new: (a, b) => b.i - a.i, old: (a, b) => a.i - b.i }[sort]);
+    drawTools("dict", [], rows.length, list.map(() => ({ at: 0 })), !!ts.length);
+    HL = ts;
+    const letter = x => (x.f[sort === "meant" ? 1 : 0][0] || "#").toUpperCase();
+    const lettered = (sort === "az" || sort === "meant") && list.length > 30;                       // A, B, C… headings in a long list
+    let seenL = "";
+    $("#dict-list").innerHTML = rows.length ? rows.map(x => { const [h, w] = x.f; let head = "";
+      if (lettered && letter(x) !== seenL) { seenL = letter(x); head = `<div class="daybar" style="margin:0;padding:8px 16px">${esc(seenL)}</div>`; }
+      return head + `<div class="dict-row"><span class="h">${hl(h)}</span>
+      <span class="arrow">→</span><span class="w">${hl(w)}</span>
+      <button class="copy fixdel" data-h="${esc(h)}" data-w="${esc(w)}" aria-label="Remove" data-tt="Remove"><svg width="14" height="14"><use href="#i-trash"/></svg></button></div>`; }).join("")
+      : list.length ? noMatch("dict", `No entry contains all of “${esc(Q("dict"))}”.`)
       : `<div class="empty" style="padding:30px"><h3>No words yet</h3>Add the first one above.</div>`;
+    HL = [];
     $("#dict-list").querySelectorAll(".dict-row").forEach(row => row.onclick = e => {   // click an entry: edit it above
       const d = row.querySelector(".fixdel"); if (!d || e.target.closest(".fixdel")) return;
       $("#dh").value = d.dataset.h; $("#dw").value = d.dataset.w; $("#dw").focus(); $("#dw").select(); });

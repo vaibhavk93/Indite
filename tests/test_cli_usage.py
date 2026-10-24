@@ -20,3 +20,10 @@ def test_a_typed_model_name_can_never_become_a_flag():
     for bad in ("--tools", "-x", "haiku --tools bash", "a b", ""[:0] + "$(x)"):
         with pytest.raises(SystemExit):
             notes._claude("x", ".", model=bad)
+
+
+def test_a_bad_effort_level_is_refused_before_anything_runs():
+    import pytest
+    for bad in ("--tools", "ultra", "High"):
+        with pytest.raises(SystemExit):
+            notes._claude("x", ".", effort=bad)
