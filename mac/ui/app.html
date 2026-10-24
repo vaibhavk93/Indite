@@ -445,6 +445,16 @@
   .menu button:hover, .menu button:focus-visible { background: var(--well); }
   .menu button b { display: block; font-weight: 550; font-size: 13px; }
   .menu button span { display: block; font-size: 11px; font-weight: 500; color: var(--ink-dim); margin-top: 2px; line-height: 1.35; }
+  /* Themed tooltip. Replaces `title=` on buttons (24 Oct theme pass commit 3). 200 ms delay matches macOS native;
+     anchored below the target; same vocabulary everywhere. Chart data-points keep `title=` (365 activity cells +
+     14-day + 24-hour bars would waste listeners for ambient-only hover). */
+  .tt { position: fixed; z-index: 99; pointer-events: none; background: var(--tt-paper);
+        color: #e8e8e8; font: 500 11px/1.4 -apple-system, system-ui, sans-serif;
+        padding: 5px 9px; border-radius: 5px; max-width: 240px;
+        box-shadow: 0 3px 10px rgba(0,0,0,.35); border: 1px solid var(--line2);
+        letter-spacing: 0.02em; opacity: 0; animation: tt-in .1s ease-out .05s forwards; }
+  @keyframes tt-in { to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .tt { animation: none; opacity: 1; } }
   .menu select { margin: 2px 8px 6px; width: calc(100% - 16px); }
   .menu .fine { text-align: left; margin: 6px 8px 2px; }
   .aicard { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
@@ -1022,6 +1032,34 @@
 
   window.push = raw => { S = JSON.parse(raw); draw(); };
 
+  // Themed tooltip (24 Oct commit 3). Listens via delegation so new DOM gets it for free. The whole thing is
+  // ~20 lines because the trade-offs are small: no touch handling (mac/web app), no arrow, hidden on click/scroll.
+  (function initTt() {
+    let el = null, pending = null, overEl = null;
+    function hide() { if (pending) { clearTimeout(pending); pending = null; } if (el) { el.remove(); el = null; } overEl = null; }
+    document.addEventListener("mouseover", e => {
+      const t = e.target.closest("[data-tt]");
+      if (!t || t === overEl) return;
+      hide(); overEl = t;
+      pending = setTimeout(() => {
+        pending = null; if (overEl !== t || !document.body.contains(t)) return;
+        el = document.createElement("div"); el.className = "tt"; el.textContent = t.dataset.tt;
+        document.body.appendChild(el);
+        const r = t.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+        const topBelow = r.bottom + 6;
+        const useAbove = topBelow + h > innerHeight - 8;
+        el.style.top = (useAbove ? r.top - h - 6 : topBelow) + "px";
+        el.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + "px";
+      }, 200);
+    });
+    document.addEventListener("mouseout", e => {
+      const t = e.target.closest("[data-tt]"); if (t && t === overEl && !t.contains(e.relatedTarget)) hide();
+    });
+    document.addEventListener("mousedown", hide, true);
+    document.addEventListener("scroll", hide, true);
+    document.addEventListener("keydown", e => { if (e.key === "Escape") hide(); });
+  })();
+
   const TITLES = { home: "Dictations", meetings: "Meetings", files: "Files", todo: "To do", dict: "Dictionary",
                    insights: "Insights",
                    settings: "Settings", help: "How indite works" };
@@ -1266,7 +1304,7 @@
       <div style="flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>${esc(j.name)}</b></div>
       <div class="bar2"><i style="width:${j.total ? Math.round(100 * j.done / j.total) : 3}%"></i></div>
       <span class="num" style="color:var(--ink2);font-size:12px">${j.total ? `Part ${Math.min(j.done + 1, j.total)} of ${j.total}` : "Reading the file…"}</span>
-      <button class="btn" onclick="send({action:'stop_job'}); this.disabled = true; this.textContent = 'Stopping…'" title="Keeps the parts done so far">Stop</button></div>`
+      <button class="btn" onclick="send({action:'stop_job'}); this.disabled = true; this.textContent = 'Stopping…'" data-tt="Keeps the parts done so far">Stop</button></div>`
       : "";
     const err = S.ai_error && !(drawerId && drawerMode === "ai") ? [/^Could not tell who spoke/.test(S.ai_error) ? "Couldn’t find who spoke" : "The AI couldn’t answer", S.ai_error] : S.file_error ? ["That file didn’t work", S.file_error] : null;
     if (err) $("#warn").innerHTML += `<div class="banner"><div><b>${err[0]}</b><p>${esc(err[1])}</p></div>
@@ -1278,7 +1316,7 @@
     if (!S.prefs.speech_test && filter === "check") filter = "all";
     $("#chips").innerHTML = [["all", "All"], ["star", "Starred"], ["ai", "With AI"],
       ...(S.prefs.speech_test ? [["check", `To check · ${left}`, `${left} left, ${dic.length - left} done`]] : [])].map(([v, l, t]) =>
-      `<button class="chip" aria-pressed="${filter === v}" data-f="${v}"${t ? ` title="${t}"` : ""}>${l}</button>`).join("");
+      `<button class="chip" aria-pressed="${filter === v}" data-f="${v}"${t ? ` data-tt="${t}"` : ""}>${l}</button>`).join("");
     $("#chips").querySelectorAll(".chip").forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); });
     drawTodo();
     drawDict();
@@ -1377,8 +1415,8 @@
       <div class="count${big ? " warn" : ""}">${items.length} clip${items.length === 1 ? "" : "s"} · about ${words.toLocaleString()} words${big ? " · a lot for one AI call" : ""}</div>
       <div class="clips">
         ${items.map((r, i) => `<div class="clip" draggable="true" data-i="${i}" data-id="${esc(r.id)}">
-            <span class="drag-h" title="Drag to reorder">⋮⋮</span>
-            <span class="ct" title="${esc(r.text || "")}">${esc((r.text || "").slice(0, 60))}${r.text && r.text.length > 60 ? "…" : ""}</span>
+            <span class="drag-h" data-tt="Drag to reorder">⋮⋮</span>
+            <span class="ct" data-tt="${esc(r.text || "")}">${esc((r.text || "").slice(0, 60))}${r.text && r.text.length > 60 ? "…" : ""}</span>
             <button class="rm" data-rm="${esc(r.id)}" aria-label="Remove">×</button>
           </div>`).join("")}
       </div>
@@ -1431,14 +1469,14 @@
   function rowHtml(r, todoView) {
     const copied = r.where === "copied", meet = r.kind === "meeting", file = r.kind === "file" || meet, id = esc(r.id);
     const done = r.todo === "done";
-    const ic = (cls, icon, label, on) => `<button class="copy ${cls}${on ? " on" : ""}" data-id="${id}" aria-label="${label}" title="${label}">
+    const ic = (cls, icon, label, on) => `<button class="copy ${cls}${on ? " on" : ""}" data-id="${id}" aria-label="${label}" data-tt="${label}">
         <svg width="14" height="14"><use href="#${icon}"/></svg></button>`;
     const onShelf = sel.has(r.id);
     const combined = r.kind === "combined";
     // The + button is per-row, hover-visible; dictations only (not meetings / files / combined), not todo view.
     const canShelf = !meet && !file && !combined && !todoView;
     return `<div class="row${done && todoView ? " done-row" : ""}${r.id === drawerId ? " sel" : ""}${onShelf ? " in-shelf" : ""}" data-row="${id}">
-      <div class="when num">${todoView ? `<button class="copy tick" data-id="${id}" aria-label="${done ? "Mark not done" : "Mark done"}" title="${done ? "Not done" : "Done"}" style="${done ? "color:var(--accent)" : ""}">
+      <div class="when num">${todoView ? `<button class="copy tick" data-id="${id}" aria-label="${done ? "Mark not done" : "Mark done"}" data-tt="${done ? "Not done" : "Done"}" style="${done ? "color:var(--accent)" : ""}">
         <svg width="16" height="16"><use href="#${done ? "i-done" : "i-todo"}"/></svg></button>` : clock(r.at)}</div>
       <div>${file ? `<div class="title"><svg width="13" height="13"><use href="#${meet ? "i-mic" : "i-file"}"/></svg>${esc(r.title || "File")}
           ${r.live ? `<span class="live">Live</span>` : ""}</div>` :
@@ -1456,9 +1494,9 @@
             : r.app ? `<span>${esc(r.app)}</span>·` : ""}
           <span class="num">${words(r)} words</span></div></div>
       <div class="acts">
-        ${canShelf ? `<button class="shelf-add" data-shelf="${id}" aria-label="${onShelf ? "Remove from shelf" : "Add to shelf"}" title="${onShelf ? "Remove from shelf" : "Add to combine with others"}">${onShelf ? "✓" : "+"}</button>` : ""}
+        ${canShelf ? `<button class="shelf-add" data-shelf="${id}" aria-label="${onShelf ? "Remove from shelf" : "Add to shelf"}" data-tt="${onShelf ? "Remove from shelf" : "Add to combine with others"}">${onShelf ? "✓" : "+"}</button>` : ""}
         ${ic("cp", "i-copy", "Copy")}
-        <button class="copy moreb" data-id="${id}" aria-label="More actions" title="More actions"><svg width="15" height="15"><use href="#i-more"/></svg></button>
+        <button class="copy moreb" data-id="${id}" aria-label="More actions" data-tt="More actions"><svg width="15" height="15"><use href="#i-more"/></svg></button>
       </div></div>`;
   }
 
@@ -1467,7 +1505,7 @@
     if (!segs.length) return `<div class="text" style="color:var(--ink2)">${r.live ? "Listening… text appears after each pause." : esc(r.text)}</div>`;
     const lines = segs.map((s, i) => `<div class="line${i >= 6 && !r._open ? " hide" : ""}">
       <button class="who ${whoCls(s.speaker)}" data-id="${esc(r.id)}" data-who="${esc(s.speaker)}"
-        title="Rename this speaker">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${esc(s.text)}</div></div>`).join("");
+        data-tt="Rename this speaker">${esc(names[s.speaker] || s.speaker)}</button><div class="text">${esc(s.text)}</div></div>`).join("");
     return `<div class="lines">${lines}</div>` + (segs.length > 6 ? `<button class="more mshow" data-id="${esc(r.id)}">Show all ${segs.length} lines</button>` : "");
   }
 
@@ -1477,9 +1515,9 @@
     return (r.flags || []).map((f, i) => {
       const re = new RegExp("(?<![\\p{L}\\p{N}_])" + f.heard.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").split(/\s+/).join("\\s+") + "(?![\\p{L}\\p{N}_])", "iu");
       const elsewhere = S.history.filter(x => x.id !== r.id && re.test(x.text || "")).length;   // self-contained: rows draw early
-      return `<div class="flag"${f.why ? ` title="AI: ${esc(f.why)}${f.sure ? ` (${esc(f.sure)})` : ""}"` : ""}>${f.by === "ai" ? `<span class="tag">AI</span> ` : ""}Did you mean <b>${esc(f.want)}</b>? indite wrote “${esc(f.heard)}”.
+      return `<div class="flag"${f.why ? ` data-tt="AI: ${esc(f.why)}${f.sure ? ` (${esc(f.sure)})` : ""}"` : ""}>${f.by === "ai" ? `<span class="tag">AI</span> ` : ""}Did you mean <b>${esc(f.want)}</b>? indite wrote “${esc(f.heard)}”.
         <button class="lnk" data-flag="${i}" data-id="${esc(r.id)}" data-how="fix">Fix</button>
-        <button class="lnk" data-flag="${i}" data-id="${esc(r.id)}" data-how="always" title="${elsewhere ? `“${esc(f.heard)}” also appears, unchanged, in ${elsewhere} other note${elsewhere > 1 ? "s" : ""}. It may be a real word.` : "Fix it in every future dictation"}">Always fix${elsewhere ? ` (careful: also in ${elsewhere} other note${elsewhere > 1 ? "s" : ""})` : ""}</button>
+        <button class="lnk" data-flag="${i}" data-id="${esc(r.id)}" data-how="always" data-tt="${elsewhere ? `“${esc(f.heard)}” also appears, unchanged, in ${elsewhere} other note${elsewhere > 1 ? "s" : ""}. It may be a real word.` : "Fix it in every future dictation"}">Always fix${elsewhere ? ` (careful: also in ${elsewhere} other note${elsewhere > 1 ? "s" : ""})` : ""}</button>
         <button class="lnk mute" data-flag="${i}" data-id="${esc(r.id)}" data-how="dismiss">Not a mistake</button></div>`;
     }).join("");
   }
@@ -1489,7 +1527,7 @@
     let h = "";
     if (busy === "finding who spoke" || busy === "finishing")
       h += `<div class="working"><i></i>${busy === "finishing" ? "Finishing the last words…" : "Finding who spoke…"}</div>`;
-    else if (busy || n) h += `<button class="aichip${busy ? "" : " has"}" data-id="${esc(r.id)}" title="${busy ? "" : "Open what AI made for this note"}">
+    else if (busy || n) h += `<button class="aichip${busy ? "" : " has"}" data-id="${esc(r.id)}" data-tt="${busy ? "" : "Open what AI made for this note"}">
         <svg width="12" height="12"><use href="#i-spark"/></svg>${busy ? "AI is writing…" : `AI · ${n} answer${n > 1 ? "s" : ""}`}</button>`;
     return h;
   }
@@ -1592,7 +1630,7 @@
     const lining = S.ai_busy && S.ai_busy[r.id] === "lining up the words";
     if (r.audio && !r.wt && !lining && !wtAsked.has(r.id)) { wtAsked.add(r.id); send({ action: "word_times", id: r.id }); }
     let h = `<div class="dhead"><div>${dtabs(r)}<p class="dnote">${esc(r.title ? r.title + " — " : "")}${esc(r.text.slice(0, 120))}${r.text.length > 120 ? "…" : ""}</p></div>
-      <button class="dx" id="dclose" aria-label="Close" title="Close (Esc)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div><div class="dbody">`;
+      <button class="dx" id="dclose" aria-label="Close" data-tt="Close (Esc)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div><div class="dbody">`;
     if (!r.audio) {
       h += `<div class="dempty"><b>No recording kept for this note</b><p>${(r.kind || "dictation") === "dictation"
         ? "Dictations keep their sound only when Settings → Privacy → “Keep the audio of each dictation” is on."
@@ -1603,8 +1641,8 @@
         <div class="seg mini" id="prate">${[1, 1.5, 2].map(x => `<button data-r="${x}">${x}×</button>`).join("")}</div></div>` +
         (meet && r.audio > 1 ? `<div class="ptrack">Track <div class="seg mini" id="ptrack">${r.clock ? `<button data-t="2">Both</button>` : ""}<button data-t="0">You</button><button data-t="1">The others</button></div></div>` : "") +
         (segs.length ? `<div class="plines">${segs.map(x => `<div class="pline" data-s="${x.start}" data-e="${x.end}" data-k="${kOf(x, meet)}">
-            <span class="pt num">${tclock(x.start || 0)}</span>${x.speaker ? `<button class="pwho ${whoCls(x.speaker)}" title="${esc(nm[x.speaker] || x.speaker)} · click to change who said this">${esc(nm[x.speaker] || x.speaker)}</button>` : ""}<span class="px">${timedWords(r, x.text, x.start || 0, kOf(x, meet))}</span>
-            <span class="pacts"><button class="copy pp" title="Play just this line" aria-label="Play just this line"><svg width="13" height="13"><use href="#i-play"/></svg></button><button class="copy pc" title="Copy this line" aria-label="Copy this line"><svg width="14" height="14"><use href="#i-copy"/></svg></button><button class="copy pe" title="Edit this line" aria-label="Edit this line"><svg width="14" height="14"><use href="#i-pen"/></svg></button></span></div>`).join("")}</div>`
+            <span class="pt num">${tclock(x.start || 0)}</span>${x.speaker ? `<button class="pwho ${whoCls(x.speaker)}" data-tt="${esc(nm[x.speaker] || x.speaker)} · click to change who said this">${esc(nm[x.speaker] || x.speaker)}</button>` : ""}<span class="px">${timedWords(r, x.text, x.start || 0, kOf(x, meet))}</span>
+            <span class="pacts"><button class="copy pp" data-tt="Play just this line" aria-label="Play just this line"><svg width="13" height="13"><use href="#i-play"/></svg></button><button class="copy pc" data-tt="Copy this line" aria-label="Copy this line"><svg width="14" height="14"><use href="#i-copy"/></svg></button><button class="copy pe" data-tt="Edit this line" aria-label="Edit this line"><svg width="14" height="14"><use href="#i-pen"/></svg></button></span></div>`).join("")}</div>`
           : `<div class="plines"><div class="pline whole"><span class="px">${timedWords(r, r.text, 0, 0)}</span></div></div>`) +
         (lining ? `<p class="fine phint">Lining up each word with the sound. Only the first time: about a minute per 5 minutes of audio…</p>` : "") +
         `<p class="fine phint">Space plays or pauses · ← → move 5 s · click a word or a time to go there</p></div></div>`;
@@ -1757,7 +1795,7 @@
     const answers = [...(r.ai || [])].sort((a, b) => (b.at || 0) - (a.at || 0));
     let h = `<div class="dhead"><div>${dtabs(r)}
         <p class="dnote">${esc(r.title ? r.title + " — " : "")}${esc(r.text.slice(0, 160))}${r.text.length > 160 ? "…" : ""}</p></div>
-        <button class="dx" id="dclose" aria-label="Close" title="Close (Esc)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div><div class="dbody">`;
+        <button class="dx" id="dclose" aria-label="Close" data-tt="Close (Esc)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div><div class="dbody">`;
     if (!S.prefs.ai) {
       h += `<div class="dempty"><b>AI is off</b><p>Turn it on in Settings → AI. Until then nothing ever leaves this Mac.</p>
         <button class="btn go" id="dgo-set">Open Settings → AI</button></div></div>`;
@@ -1773,7 +1811,7 @@
     if (busy) h += `<div class="dpend"><b>${busy === "finding who spoke" ? "Finding who spoke" : busy === "lining up the words" ? "Lining up words with the sound" : busy === "finishing" ? "Finishing the last words" : "Working on: " + esc(busy)}…</b>
         <div class="dbar"><i></i></div><p>${aiWait(r)}You can close this and keep working. The answer is saved on the note.</p></div>`;
     const noRepeat = (title, body) => body.replace(new RegExp("^\\s*#{1,4}\\s*" + title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\n", "i"), "");
-    const doc = (key, title, when, body, extra) => (body = noRepeat(title, body), `<div class="doc"><div class="dh"><h4>${title}</h4>${when}<button class="copy dcp" data-copy="${esc(key)}" aria-label="Copy" title="Copy"><svg width="14" height="14"><use href="#i-copy"/></svg></button></div>
+    const doc = (key, title, when, body, extra) => (body = noRepeat(title, body), `<div class="doc"><div class="dh"><h4>${title}</h4>${when}<button class="copy dcp" data-copy="${esc(key)}" aria-label="Copy" data-tt="Copy"><svg width="14" height="14"><use href="#i-copy"/></svg></button></div>
         ${long(body) ? `<div class="md${more(key) ? "" : " clamp"}">${md(body)}</div>
           <button class="lnk" data-more="${esc(key)}">${more(key) ? "Show less" : "Show more"}</button>` : `<div class="md">${md(body)}</div>`}
         <div class="df">${extra || ""}<button class="lnk mute" data-del="${esc(key)}">Remove</button></div></div>`);
@@ -2066,13 +2104,13 @@
     const start = today - (7 * 11 + ((new Date(today).getDay() + 6) % 7)) * DAY, mx = Math.max(1, ...Object.values(byDay));
     let cells = "";
     for (let t = start; t <= today; t += DAY) { const v = byDay[t] || 0, l = v ? Math.min(4, 1 + Math.floor(v / mx * 3.999)) : 0;
-      cells += `<i class="${l ? "l" + l : ""}" title="${new Date(t).toDateString()}: ${v} words"></i>`; }
+      cells += `<i class="${l ? "l" + l : ""}" data-tt="${new Date(t).toDateString()}: ${v} words"></i>`; }
     h += `<div class="igrid"><div class="ibox"><h3>Activity<span>${streak} day${streak === 1 ? "" : "s"} in a row · best: ${best}</span></h3><div class="heat">${cells}</div>
       <div class="axis"><span>12 weeks ago</span><span>today</span></div></div>`;
     // last 14 days
     const days = [...Array(14)].map((_, i) => today - (13 - i) * DAY), dm = Math.max(1, ...days.map(t => byDay[t] || 0));
     h += `<div class="ibox"><h3>Last 14 days<span>words a day</span></h3><div class="bars">${days.map(t => { const v = byDay[t] || 0;
-      return `<div class="${v ? "" : "z"}" style="height:${Math.max(2, v / dm * 100)}%" title="${new Date(t).toDateString()}: ${v} words"></div>`; }).join("")}</div>
+      return `<div class="${v ? "" : "z"}" style="height:${Math.max(2, v / dm * 100)}%" data-tt="${new Date(t).toDateString()}: ${v} words"></div>`; }).join("")}</div>
       <div class="axis"><span>${new Date(days[0]).toLocaleDateString([], { day: "numeric", month: "short" })}</span><span>today</span></div></div></div>`;
     // speed: the wait is shown as typical and slow, because the average is pulled up by a few long ones
     const waits = d.map(r => r.took || 0).filter(x => x > 0).sort((a, b) => a - b);
@@ -2090,7 +2128,7 @@
     h += sec("Where &amp; when") + `<div class="igrid"><div class="ibox"><h3>Where you dictate<span>words</span></h3>${top.map(([a, v]) =>
       `<div class="hbar"><span>${esc(a)}</span><span class="t"><i style="width:${v / am * 100}%"></i></span><span class="num">${k(v)}</span></div>`).join("") || "<p class='fine'>No dictations yet.</p>"}${d.length ? `<p class="fine" style="text-align:left">${Math.round(copied / d.length * 100)}% went to the clipboard (no text box to type into)</p>` : ""}</div>
       <div class="ibox"><h3>When you dictate<span>by hour</span></h3><div class="bars">${hours.map((v, i) =>
-      `<div class="${v ? "" : "z"}" style="height:${Math.max(2, v / hm * 100)}%" title="${i}:00 - ${v} words"></div>`).join("")}</div>
+      `<div class="${v ? "" : "z"}" style="height:${Math.max(2, v / hm * 100)}%" data-tt="${i}:00 - ${v} words"></div>`).join("")}</div>
       <div class="axis"><span>midnight</span><span>noon</span><span>11 pm</span></div></div></div>`;
     // meetings, files, quality
     const meets = all.filter(r => r.kind === "meeting"), files = all.filter(r => r.kind === "file");
@@ -2127,7 +2165,7 @@
     const list = S.fixes_list || [];
     $("#dict-list").innerHTML = list.length ? list.map(([h, w]) => `<div class="dict-row"><span class="h">${esc(h)}</span>
       <span class="arrow">→</span><span class="w">${esc(w)}</span>
-      <button class="copy fixdel" data-h="${esc(h)}" data-w="${esc(w)}" aria-label="Remove" title="Remove"><svg width="14" height="14"><use href="#i-trash"/></svg></button></div>`).join("")
+      <button class="copy fixdel" data-h="${esc(h)}" data-w="${esc(w)}" aria-label="Remove" data-tt="Remove"><svg width="14" height="14"><use href="#i-trash"/></svg></button></div>`).join("")
       : `<div class="empty" style="padding:30px"><h3>No words yet</h3>Add the first one above.</div>`;
     $("#dict-list").querySelectorAll(".dict-row").forEach(row => row.onclick = e => {   // click an entry: edit it above
       const d = row.querySelector(".fixdel"); if (!d || e.target.closest(".fixdel")) return;
