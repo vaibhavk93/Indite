@@ -11,7 +11,8 @@ import ctypes
 import ctypes.util
 import struct
 
-# bundle id -> the name to show. Browsers are left out: they use the mic for much more than calls.
+# bundle id -> the name to show. Browsers are not here: they use the mic for much more than calls, so they are asked
+# about only after BROWSER_SECS of steady use (BROWSERS below; founder's decision, 24 Oct: Meet and Zoom run in a tab).
 CALL_APPS = {
     "us.zoom.xos": "Zoom",
     "com.microsoft.teams2": "Teams", "com.microsoft.teams": "Teams",
@@ -21,6 +22,13 @@ CALL_APPS = {
     "com.cisco.webexmeetingsapp": "Webex", "Cisco-Systems.Spark": "Webex",
     "com.hnc.Discord": "Discord", "com.skype.skype": "Skype",
 }
+
+BROWSERS = {
+    "com.google.Chrome": "Chrome", "com.apple.Safari": "Safari", "org.mozilla.firefox": "Firefox",
+    "com.microsoft.edgemac": "Edge", "company.thebrowser.Browser": "Arc", "com.brave.Browser": "Brave",
+    "com.operasoftware.Opera": "Opera", "com.vivaldi.Vivaldi": "Vivaldi",
+}
+BROWSER_SECS = 60        # a call lasts; a voice search or a dictation tab does not
 
 _ca = None
 
@@ -62,13 +70,24 @@ def mic_users() -> list[str]:
     return out
 
 
+def _match(users: list[str], table: dict[str, str]) -> str:
+    return next((name for b in users for app, name in table.items() if b == app or b.startswith(app + ".")), "")
+
+
 def call_app() -> str:
     """The name of a call app using the mic now, or ""."""
-    return next((name for b in mic_users() for app, name in CALL_APPS.items() if b == app or b.startswith(app + ".")), "")
+    return _match(mic_users(), CALL_APPS)
+
+
+def mic_now() -> tuple[str, str]:
+    """(call app, browser) using the mic now; "" for each that is not. One look at the mic, so both agree."""
+    users = mic_users()
+    return _match(users, CALL_APPS), _match(users, BROWSERS)
 
 
 if __name__ == "__main__":       # python mac/calls.py  - what is using the mic right now
     print("using the mic:", mic_users() or "nothing")
-    print("call app:", call_app() or "none")
+    print("call app:", call_app() or "none", "| browser:", mic_now()[1] or "none")
+    assert _match(["com.google.Chrome.helper"], BROWSERS) == "Chrome" and _match(["com.google.Chromex"], BROWSERS) == ""
     assert all(isinstance(v, str) and v for v in CALL_APPS.values())
     print("ok")

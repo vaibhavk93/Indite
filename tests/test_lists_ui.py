@@ -63,7 +63,7 @@ def run(rows, steps, prefs=None):
 
 # --------------------------------------------------------------------------------------------------- search
 CODES = ["Please review the launch report today", "launch the report after review", "Ticket JIRA-123 is blocked by PROJ-45",
-         "invoice from emergent.com for ₹4,500", "price is a+b (x) [y] \\path .* ? $5 ^caret", "mail <b>bold</b> & more",
+         "invoice from example.com for ₹4,500", "price is a+b (x) [y] \\path .* ? $5 ^caret", "mail <b>bold</b> & more",
          "naam hai Rahul, ticket #77 done", "कल मीटिंग है report भेजना", "Café meeting at the résumé desk",
          'he said "launch report" twice', "UPPER Case LAUNCH", "x" * 400 + " long"]
 
@@ -71,7 +71,7 @@ CODES = ["Please review the launch report today", "launch the report after revie
 def test_search_words_quotes_codes_and_symbols():
     rows = [note(i, t) for i, t in enumerate(CODES)]
     queries = ["launch report", '"launch report"', "“launch report”", "‘launch report’", "«launch report»", '"launch', 'launch"', '""', '"',
-               "JIRA-123", "jira-123", "PROJ", "emergent.com", "₹4,500", "4,500", "#77", "rahul,", "a+b", "(x)", "[y]", "\\path", ".*",
+               "JIRA-123", "jira-123", "PROJ", "example.com", "₹4,500", "4,500", "#77", "rahul,", "a+b", "(x)", "[y]", "\\path", ".*",
                "?", "$5", "^caret", "<b>", "&", "कल", "cafe", "café", "resume", "RESUME", "upper case", "launch  report", "  launch  ",
                "x" * 300, '"launch report" review', '"a b" "c d"', "zzzz", ""]
     r = run(rows, f"R.q=[];for(const q of {json.dumps(queries)}){{$('#q').value=q;searched();R.q.push([n('#list .row'),n('#list mark')])}}"
@@ -84,7 +84,7 @@ def test_search_words_quotes_codes_and_symbols():
     assert got['"launch'] == got['launch"'] == 4                       # a lone quote is just a quote
     assert got['""'] == got['"'] == got[""] == 12                      # nothing to look for: everything
     assert got["JIRA-123"] == got["jira-123"] == 1 and got["PROJ"] == 1 and got["#77"] == 1   # codes, any capitals
-    assert got["emergent.com"] == got["₹4,500"] == got["4,500"] == 1
+    assert got["example.com"] == got["₹4,500"] == got["4,500"] == 1
     assert all(got[q] == 1 for q in ["a+b", "(x)", "[y]", "\\path", ".*", "?", "$5", "^caret", "<b>", "&"])   # symbols are plain text
     assert got["कल"] == 1                                              # other scripts
     assert got["cafe"] == got["café"] == got["resume"] == got["RESUME"] == 1   # accents and capitals do not matter

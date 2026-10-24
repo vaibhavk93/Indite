@@ -374,6 +374,14 @@ object Notes {
         refresh()
     }
 
+    /** The Retry button on a stopped card (#56): forget the crash-loop count so the whole note is tried again. The
+     *  words already written stay; only the missing parts are written. */
+    fun retryNote(id: String) {
+        File(dir(id), "attempt").delete()
+        status.value = ""
+        refresh()
+    }
+
     /**
      * N02: what happened to an action item after the AI found it - done, or not for me. Kept per note in tasks.json,
      * keyed by the task's own words, so regenerating the brief keeps the states that still apply and quietly forgets

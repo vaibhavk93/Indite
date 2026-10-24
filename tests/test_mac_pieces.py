@@ -101,6 +101,30 @@ def test_a_call_is_asked_about_once_and_never_while_recording():
     assert len(asked) == 2 and started == [1]
 
 
+def test_a_browser_tab_is_asked_about_only_after_a_minute_of_steady_mic_use():
+    import indite_mac as m
+    a = m.InditeApp.__new__(m.InditeApp)
+    asked = []
+    a.preview = type("P", (), {"ask": lambda s, text, choices, cb: asked.append(text)})()
+    a.meeting = type("M", (), {"running": False})()
+    a.started_at, a.busy, a.prefs = 0.0, False, {"ask_calls": True}
+    for t in range(0, 59, 3):
+        a.mic_tick("", "Chrome", now=1000.0 + t)           # 58 s: a voice search, not a call
+    assert asked == []
+    a.mic_tick("", "", now=1060.0)                          # it stopped: the minute starts over
+    a.mic_tick("", "Chrome", now=1063.0)
+    a.mic_tick("", "Chrome", now=1100.0)
+    assert asked == []
+    a.mic_tick("", "Chrome", now=1124.0)                    # 61 s of steady use: ask, once
+    a.mic_tick("", "Chrome", now=1127.0)
+    assert asked == ["A Chrome tab is using the microphone. Record this call?"]
+    a.mic_tick("Zoom", "", now=1130.0)                      # a call app still asks at once (the tab call ended first)
+    a.mic_tick("", "", now=1133.0)
+    a.mic_tick("", "Safari", now=1136.0)
+    a.mic_tick("", "Safari", now=1200.0)
+    assert len(asked) == 3 and asked[-1].startswith("A Safari tab")
+
+
 def test_the_card_can_ask_a_question_and_then_go_back_to_its_own_buttons():
     import overlay
     from AppKit import NSMakeRect

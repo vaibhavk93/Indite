@@ -11,34 +11,37 @@ to "Decided", and update the roadmap item it touches.
 | D2 | Un-park the Android build 29 check and the release key | **Every new Android build** (Android next #2-3) | Now / later |
 | D3 | Leadership demo: length, your own narration, show a real mistake | Mac next #8 | 3:00-3:30 or ~9:30; your voice or synthetic; yes / no |
 | D4 | One name for word fixes | Same app on both platforms | "Dictionary" (Mac) or "Word fixes" (Android) |
-| D5 | Go-ahead for the 7-day assistant test (Claude Code over your notes) | Whether indite grows an assistant mode (#252) | Yes / no |
-| D6 | A Retry button on cards (#56) | Android UI | Add / drop |
-| D7 | Logo: the orange dot on the "i" (#107) | Branding; do a trademark search first | Keep / change |
+| D5 | 7-day assistant test: plan and pass bar written in `docs/ASSISTANT_TEST.md` (24 Oct). You said go: it starts when you ask your first question to Claude Code about your notes | Whether indite grows an assistant mode (#252) | 5-10 min a day for 7 days |
 | D8 | Subtitle style and wording (#110, #175) | Android home screen | Keep italic / plain; wording |
 | D9 | A commercial-use review before selling | Ownership, security review, privacy law | When to start |
 | D10 | A smaller speech model if the Play Store asset pack is too big | Android next #7 | Said "yes, if quality doesn't drop" (13 Oct): set the quality bar |
-| D11 | The accessibility add-on in the public Android build (#33) | Auto-typing and "bubble only with a keyboard" for everyone | In / out (Play review risk) |
-| D12 | Two unclear 10 Oct messages ("…prompt and transcript…", "double long-press") | Unknown | Say what was meant, or drop |
+| D11 | The accessibility add-on in the public Android build (#33): see D30 | Auto-typing and "bubble only with a keyboard" for everyone | Decide in D30 |
+| D12 | Two unclear 10 Oct messages. (1) "…prompt and transcript. Why check all these features of under Ask my AI to do it." (cut off, dictated). (2) "double long-press": the original wording is not in my transcripts; the same 10 Oct message says "long press button is working: copy text, share, rename, remind me, delete". My suggestion: drop (2); for (1) say if you meant "why are these features under Ask my AI?" | Unknown | Answer or drop |
 | D13 | Pill vs window: what "dragging is not working" means (17 Oct) | A bug (window strip) or a new feature (move the pill) | Window / pill |
-| D14 | **Grow the Dictionary to ~20 names of 6+ letters** (people, brands, medicines you say) | The speech test proves nothing without them; Mark likely mistakes has nothing to look for | Add them in Dictionary |
-| D15 | **Mark ~35 dictations "This is exactly what I said"** (Settings → Privacy → Speech test is on for you; fix the text first) | The first real accuracy number; then `python mac/speechset.py score` | ~30 min of your time |
-| D16 | Note-before-instructions order test for the AI actions | Uses your Claude account: ~10 AI requests | Yes / no |
+| D14 | **Grow the Dictionary to ~20 names of 6+ letters** (people, brands, medicines you say) | 24 Oct count: 23 different entries, **11 of them 6+ letters** (Banglore, cleverTap, Confluence, Indore, Jaipur, Sachdev, Storefront, Widget Serve, Madhya Pradesh, Tamil Nadu, …). About 9 more names needed | Add them in Dictionary |
+| D15 | **Mark ~35 dictations "This is exactly what I said"** (Settings → Privacy → Speech test is on for you; fix the text first) | 24 Oct: **7 of 35 marked.** The first real accuracy number comes after 35; then `python mac/speechset.py score` | ~25 min more |
 | D17 | Live clean-up while dictating with a local model | Needs 30 real dictations compared side by side (your judgement) | After D15 |
-| D18 | ₹ / lakh-crore formatting ("2 lakh" → "₹2,00,000"?) | Unproven: no real note shows the need yet | Want it / wait for examples |
-| D19 | Check the new things on your screen: Listen look, Both tracks on your next call, "Record this call?" card, card buttons in Settings | Built 17 Oct, tested off-screen only | Yes / what's wrong |
+| D19 | Listen look ✅ (you checked, 24 Oct). Still open: **Both tracks on your next real call** and the card buttons in Settings | Built 17 Oct | With the call checks (D26) |
 | D20 | **One real call with headphones on** (5 min is enough), after today's fix | The call's sound now reconnects if it drops (16 Oct it died after 7 s). Also check: Settings → General → Microphone is your headphone mic, else indite hears you only faintly | Do it / tell me what you saw |
 | D21 | **Send your boss the new `indite-mac.zip`** (`dist/portable/`, 630 MB) and tell me what he sees. His Mac: Apple M2 ✓; still needed: the macOS version (needs 14+) | The old app could never run there (it needed your project folder) | Send it / tell me his macOS |
-| D23 | **Live-check Esc**: hold the talk key, say a sentence, press Esc; then `tail -5 ~/Library/Logs/indite-mac.log` and tell me whether the `Esc:` line says "key listener" or "Esc check" (and which app was in front) | Esc did not cancel in 2 live tests; the fix (a direct Esc check) is not proven live | 2 min |
-| D24 | **Live-check the two fixes**: (a) Settings → Privacy → How many to keep → pick a smaller number → Delete them: the count drops at once; (b) delete one old note (words only, then whole), press Restore with your backup: the note comes back | Both fixed 24 Oct; tested on the real page in the test copy, not on your real notes | 5 min; use notes you don't mind |
-| D25 | **Browser call card**: ask "Record this call?" for Meet / Zoom in a browser after ~1 minute of steady mic use? | Today the card skips browsers on purpose; manual Record works for any call. Changes app behaviour | Yes / no (manual Record is enough) |
 | D26 | **Meetings and calls checks, at the end** (you keep 3 waiting): live meeting with mic + system sound, "Record this call?" card, pill hidden during a screen share. Say "start the call checks" and I walk you through one step at a time | Not testable without a real call | ~15 min |
 | D27 | **Optional: live model list**: save an Anthropic API key (Settings → AI) and press Refresh list next to Model; tell me what appears | The only way to test the live list; a Codex list is not built (Codex is not installed here) | 2 min, needs a key |
 | D28 | **Optional: Android** - nothing changed today; only needed if you want build 29 re-checked | Same as D2 | Now / later |
+| D29 | **Trademark: finish the check yourself (free, ~30 min, in a real browser)**: tmrsearch.ipindia.gov.in (wordmark "indite", classes 9, 42, 35, 41), branddb.wipo.int, tmdn.org/tmview, USPTO search; look up "Indite Technologies" (Pune, documentation services). Then file in India, classes 9 and 42, about ₹4,500 per class for a startup or individual | The only business with the same name found is Indite Technologies, Pune (a writing-adjacent service) | You do the searches; I draft the filing text |
+| D30 | **Android: accessibility add-on in the public build?** Research done (Google Play rules). My recommendation: public build = keyboard with a mic button (no declaration needed); accessibility typing stays in your own build for now, and goes to Play later only as an opt-in with the full form | Decides how Android types into other apps for everyone | Decide: keyboard first / accessibility with the Play form now |
+| D31 | **Which "D4" did you mean?** D4 is the name for word fixes (Mac "Dictionary" vs Android "Word fixes"). You may have meant D14 or D15 | Same app, one name | Say which |
 
 ## Decided
 
 | # | Decision | Answer | Date |
 |---|---|---|---|
+| D6 | Retry button on cards (#56) | **Add it** | 24 Oct (built, compiles; not on a phone yet) |
+| D7 | Logo: orange dot on the "i" | **Keep it.** Trademark search first: preliminary web check done (no live clash found, but the official registers could not be searched). Next: D29 | 24 Oct |
+| D16 | Note-before-instructions order for AI actions | **Tested, no difference: leave the order as it is** (30 requests, Haiku low, 3 made-up notes x 5 actions x 2 orders: both orders 15 of 15 fine; the injected "reply HACKED" line was ignored in all) | 24 Oct |
+| D18 | ₹ / lakh-crore / % / $ / time / email formatting | **Yes. Built** inside "Numbers as digits" (see worklog 24 Oct) | 24 Oct |
+| D23 | Esc cancels a dictation | **Works** (founder live check). The direct Esc check fixed it | 24 Oct |
+| D24 | How many to keep / Restore fixes | **Work** (founder live check) | 24 Oct |
+| D25 | "Record this call?" card for Meet / Zoom in a browser | **Yes, after a minute of steady mic use. Built** (needs a real browser call to check: D26) | 24 Oct |
 | D22 | "Don't save the next dictation" | Yes, build it (also skips the clipboard) | 18 Oct |
 | — | OpenRouter "train on my data" | Turned off by the founder | 17 Oct |
 | — | Slack and VS Code typing | Works, confirmed by the founder | 17 Oct |

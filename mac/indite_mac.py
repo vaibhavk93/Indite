@@ -1873,7 +1873,7 @@ class InditeApp(rumps.App):
         if self.prefs["spelling"]:
             text = apply_fixes(text, self.table)
         if self.prefs["digits"]:
-            text = numbers.digits(text)
+            text = numbers.symbols(numbers.digits(text))
         return store.apply_my_fixes(text, store.my_fixes())   # yours last, and even with the others off
         # Swears are NOT masked here: this text is what gets saved. They are masked on the way out (out()).
 
@@ -1892,10 +1892,25 @@ class InditeApp(rumps.App):
         while True:
             time.sleep(3)
             try:
-                self.call_tick(calls.call_app())
+                self.mic_tick(*calls.mic_now())
             except Exception as e:                       # noqa: BLE001 - a missed question beats a dead watcher
                 print("call watch:", e)
                 time.sleep(60)
+
+    def mic_tick(self, app: str, browser: str, now: float | None = None) -> None:
+        """A call app asks at once. A browser (Meet, Zoom in a tab) asks only after a minute of steady mic use, because
+        it also uses the mic for a voice search or a dictation tab. Gone for a moment (a tick without it) = starts over."""
+        import calls
+        now = time.time() if now is None else now
+        if app:
+            self.browser_since = 0.0
+            return self.call_tick(app)
+        if not browser:
+            self.browser_since = 0.0
+            return self.call_tick("")
+        self.browser_since = getattr(self, "browser_since", 0.0) or now
+        if now - self.browser_since >= calls.BROWSER_SECS:
+            self.call_tick(f"A {browser} tab")
 
     def call_tick(self, app: str) -> None:
         """app: the call app on the mic now, or "". Asks at most once per call; never while recording or dictating."""

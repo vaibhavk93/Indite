@@ -671,6 +671,14 @@ private fun NoteRow(note: Note, onClick: () -> Unit, onCopy: () -> Unit, onShare
             }
             if (note.pending && !note.recording) LinearProgressIndicator(note.pieces.size / note.cuts.size.toFloat(),
                 Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(CircleShape))
+            // #56: a note the writer gave up on (queue idle, a failure message showing) can be tried again from its card.
+            val stopped = note.pending && !note.recording && !Notes.working.collectAsState().value &&
+                Notes.status.collectAsState().value.isNotBlank() && !selecting
+            if (stopped) Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Stopped before it finished.", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = { Notes.retryNote(note.id); NoteService.kick(context) }) { Text("Try again") }
+            }
             Row(Modifier.padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {  // chips clear of the card edge
                 val lead = if (note.combined) "${note.sources.size} clips  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}"
                     else "${clock(note.seconds)}  ·  ${DateUtils.getRelativeTimeSpanString(context, note.created, true)}"

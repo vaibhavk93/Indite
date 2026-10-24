@@ -74,7 +74,7 @@ disabled, the AI-buttons switch layout, the model setting being ignored for the 
 ## 2. Positive cases checked
 
 - **Search:** all words in any order; "phrase" in straight, curly, single and « » quotes; codes (`JIRA-123`, `#77`,
-  `emergent.com`, `₹4,500`); symbols (`a+b`, `(x)`, `[y]`, `\path`, `.*`, `?`, `$5`, `^`, `<b>`, `&`); Hindi; capitals;
+  `example.com`, `₹4,500`); symbols (`a+b`, `(x)`, `[y]`, `\path`, `.*`, `?`, `$5`, `^`, `<b>`, `&`); Hindi; capitals;
   accents; extra spaces; a 300-character query; Esc clears; matches marked; the sort follows the search.
 - **Filters:** Starred, With AI, To do, Copied, To check; When (today, 7 and 30 days, month, last month, year, a named
   month or year); App; Mistake review (suggestions, Fix, Always fix, Not a mistake); combinations; Clear.
