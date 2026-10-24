@@ -28,6 +28,12 @@ to "Decided", and update the roadmap item it touches.
 | D19 | Check the new things on your screen: Listen look, Both tracks on your next call, "Record this call?" card, card buttons in Settings | Built 17 Oct, tested off-screen only | Yes / what's wrong |
 | D20 | **One real call with headphones on** (5 min is enough), after today's fix | The call's sound now reconnects if it drops (16 Oct it died after 7 s). Also check: Settings → General → Microphone is your headphone mic, else indite hears you only faintly | Do it / tell me what you saw |
 | D21 | **Send your boss the new `indite-mac.zip`** (`dist/portable/`, 630 MB) and tell me what he sees. His Mac: Apple M2 ✓; still needed: the macOS version (needs 14+) | The old app could never run there (it needed your project folder) | Send it / tell me his macOS |
+| D23 | **Live-check Esc**: hold the talk key, say a sentence, press Esc; then `tail -5 ~/Library/Logs/indite-mac.log` and tell me whether the `Esc:` line says "key listener" or "Esc check" (and which app was in front) | Esc did not cancel in 2 live tests; the fix (a direct Esc check) is not proven live | 2 min |
+| D24 | **Live-check the two fixes**: (a) Settings → Privacy → How many to keep → pick a smaller number → Delete them: the count drops at once; (b) delete one old note (words only, then whole), press Restore with your backup: the note comes back | Both fixed 24 Oct; tested on the real page in the test copy, not on your real notes | 5 min; use notes you don't mind |
+| D25 | **Browser call card**: ask "Record this call?" for Meet / Zoom in a browser after ~1 minute of steady mic use? | Today the card skips browsers on purpose; manual Record works for any call. Changes app behaviour | Yes / no (manual Record is enough) |
+| D26 | **Meetings and calls checks, at the end** (you keep 3 waiting): live meeting with mic + system sound, "Record this call?" card, pill hidden during a screen share. Say "start the call checks" and I walk you through one step at a time | Not testable without a real call | ~15 min |
+| D27 | **Optional: live model list**: save an Anthropic API key (Settings → AI) and press Refresh list next to Model; tell me what appears | The only way to test the live list; a Codex list is not built (Codex is not installed here) | 2 min, needs a key |
+| D28 | **Optional: Android** - nothing changed today; only needed if you want build 29 re-checked | Same as D2 | Now / later |
 
 ## Decided
 
