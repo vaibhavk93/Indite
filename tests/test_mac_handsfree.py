@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "mac"))
-import indite_mac as m  # noqa: E402
+import inditeflow_mac as m  # noqa: E402
 
 
 class FakeMic:
@@ -34,7 +34,7 @@ def _real_threads():
 
 
 def app():
-    a = m.InditeApp.__new__(m.InditeApp)                    # no menu bar, no engine: just the key logic
+    a = m.InditeflowApp.__new__(m.InditeflowApp)                    # no menu bar, no engine: just the key logic
     a.mic, a.busy, a.started_at, a.locked, a.last_tap = FakeMic(), False, 0.0, False, 0.0
     a.taps, a.hf_down = 0, 0.0
     a.meeting = type("M", (), {"running": False})()

@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "mac"))
-from indite_mac import RATE, pieces  # noqa: E402
+from inditeflow_mac import RATE, pieces  # noqa: E402
 
 
 def test_long_hold_is_cut_in_the_quiet_and_loses_nothing():
@@ -26,7 +26,7 @@ def test_short_hold_is_untouched():
 
 def test_a_stuck_coreaudio_is_noticed_and_restarts_at_most_once_in_10_minutes(tmp_path, monkeypatch):
     import threading
-    from indite_mac import Mic, MicStuck, restart_allowed
+    from inditeflow_mac import Mic, MicStuck, restart_allowed
     m = Mic()
     monkeypatch.setattr(m, "_start", threading.Event().wait)   # an open that never comes back, like the deadlock
     for _ in range(2):                                           # the second press fails at once, without waiting
@@ -41,7 +41,7 @@ def test_a_stuck_coreaudio_is_noticed_and_restarts_at_most_once_in_10_minutes(tm
 
 
 def test_the_text_cards_two_ai_buttons_follow_use():
-    from indite_mac import card_slots, slot_title
+    from inditeflow_mac import card_slots, slot_title
     assert card_slots({}) == [("prompt", ""), ("rewrite", "Formal English")]                 # nothing asked yet
     assert card_slots({"translate|Hindi (Devanagari)": 3, "summary|": 2, "prompt|": 1}) == [
         ("translate", "Hindi (Devanagari)"), ("summary", "")]                                # most asked first
@@ -56,9 +56,9 @@ def test_the_text_cards_two_ai_buttons_follow_use():
 
 
 def test_a_card_button_picked_in_settings_shows_at_once(tmp_path, monkeypatch):
-    import indite_mac as m
+    import inditeflow_mac as m
     monkeypatch.setattr(m.store, "PREFS", tmp_path / "prefs.json")
-    a = m.InditeApp.__new__(m.InditeApp)
+    a = m.InditeflowApp.__new__(m.InditeflowApp)
     titles = []
     a.preview = type("P", (), {"set_titles": lambda s, t: titles.append(t)})()
     a.mic = type("M", (), {"chosen": ""})()
@@ -73,8 +73,8 @@ def test_a_card_button_picked_in_settings_shows_at_once(tmp_path, monkeypatch):
 
 
 def test_a_call_is_asked_about_once_and_never_while_recording():
-    import indite_mac as m
-    a = m.InditeApp.__new__(m.InditeApp)
+    import inditeflow_mac as m
+    a = m.InditeflowApp.__new__(m.InditeflowApp)
     asked = []
     a.preview = type("P", (), {"ask": lambda s, text, choices, cb: asked.append((text, choices, cb))})()
     a.meeting = type("M", (), {"running": False})()
@@ -102,8 +102,8 @@ def test_a_call_is_asked_about_once_and_never_while_recording():
 
 
 def test_a_browser_tab_is_asked_about_only_after_a_minute_of_steady_mic_use():
-    import indite_mac as m
-    a = m.InditeApp.__new__(m.InditeApp)
+    import inditeflow_mac as m
+    a = m.InditeflowApp.__new__(m.InditeflowApp)
     asked = []
     a.preview = type("P", (), {"ask": lambda s, text, choices, cb: asked.append(text)})()
     a.meeting = type("M", (), {"running": False})()
@@ -157,5 +157,5 @@ def test_the_pill_is_placed_on_a_real_screen_at_the_bottom():
 
 
 def test_review_never_becomes_a_card_button():
-    from indite_mac import card_slots
+    from inditeflow_mac import card_slots
     assert all(a != "review" for a, _ in card_slots({"review|": 9, "summary|": 1}, ["review|", ""]))

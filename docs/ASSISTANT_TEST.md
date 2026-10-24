@@ -1,14 +1,14 @@
 # 7-day assistant test (D5, founder request #252)
 
-**Question:** is "talk to your own recordings" worth building into indite? The test costs no code: for 7 days the
-founder asks Claude Code questions about his own indite notes, and we count what was useful.
+**Question:** is "talk to your own recordings" worth building into inditeflow? The test costs no code: for 7 days the
+founder asks Claude Code questions about his own inditeflow notes, and we count what was useful.
 
 ## How it runs
 
-1. Open Claude Code in any folder. Say: "Read `~/Library/Application Support/indite/history.jsonl`. It is my indite notes
+1. Open Claude Code in any folder. Say: "Read `~/Library/Application Support/inditeflow/history.jsonl`. It is my inditeflow notes
    (one JSON note per line: `text`, `at` = time, `kind` dictation / meeting / file, `title`, `star`, `todo`)."
 2. Ask the questions below (or your own), any time in the day. One line in the log table per question.
-3. Nothing is written back to indite. Notes go to Claude under the founder's own login, the same way Ask AI sends them.
+3. Nothing is written back to inditeflow. Notes go to Claude under the founder's own login, the same way Ask AI sends them.
    **⚠ Remember:** meeting notes can hold other people's words. Ask only about your own notes if that worries you.
 
 ## Questions worth trying (pick 2-3 a day)
@@ -31,7 +31,7 @@ founder asks Claude Code questions about his own indite notes, and we count what
 | A real action taken because of an answer | at least 3 (a message sent, a task done) |
 | Wrong answers that would have misled you (made-up facts) | at most 1 |
 
-**Pass:** build a small "Ask your notes" box in indite (answered the same way as Ask AI, scoped to notes you pick).
+**Pass:** build a small "Ask your notes" box in inditeflow (answered the same way as Ask AI, scoped to notes you pick).
 **Fail:** drop the idea; Ask AI on one note stays as it is.
 
 ## Daily log

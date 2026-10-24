@@ -37,10 +37,10 @@ class MainActivity : ComponentActivity() {
     private val pickFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { import(it) } }
     private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
     private val askMic = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) record() else Messages.flow.tryEmit("indite needs the microphone to record. You can allow it in Settings → Apps → indite.")
+        if (granted) record() else Messages.flow.tryEmit("Inditeflow needs the microphone to record. You can allow it in Settings → Apps → Inditeflow.")
     }
 
-    /** Anything that brings indite to the front stops a ringing reminder. */
+    /** Anything that brings Inditeflow to the front stops a ringing reminder. */
     override fun onResume() {
         super.onResume()
         com.whispercppdemo.notes.Reminders.AlarmSound.stop()
@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Automated tests over USB (adb), restricted to files in the app's own test folder, which only the app and a
-     * connected computer can write:  am start -n com.indite.app/com.whispercppdemo.MainActivity --es test_import NAME
+     * connected computer can write:  am start -n com.inditeflow.app/com.whispercppdemo.MainActivity --es test_import NAME
      * (or --es test_live NAME: the file is played into the recorder in real time, as if spoken).
      */
     private fun testHook(intent: Intent): Boolean {
@@ -111,7 +111,7 @@ class MainActivity : ComponentActivity() {
             AppScope.launch(Dispatchers.Default) {
                 val note = Notes.list.value.firstOrNull { it.test && it.name == name && it.done } ?: return@launch
                 val t0 = System.currentTimeMillis()
-                runCatching { com.whispercppdemo.notes.Speakers.label(app, note, k) {} }.onFailure { Log.w("indite", "test label failed", it) }
+                runCatching { com.whispercppdemo.notes.Speakers.label(app, note, k) {} }.onFailure { Log.w("inditeflow", "test label failed", it) }
                 Notes.exportTestResult(note.id, extra = "label_ms" to (System.currentTimeMillis() - t0))
             }
             return true
@@ -119,25 +119,25 @@ class MainActivity : ComponentActivity() {
         if (intent.hasExtra("test_short")) {  // --ez test_short true : always cut at the first pause
             com.whispercppdemo.notes.LiveRecorder.shortCuts = intent.getBooleanExtra("test_short", false)
             intent.removeExtra("test_short")
-            Log.i("indite", "test: short cuts = ${com.whispercppdemo.notes.LiveRecorder.shortCuts}")
+            Log.i("inditeflow", "test: short cuts = ${com.whispercppdemo.notes.LiveRecorder.shortCuts}")
             return true
         }
         if (intent.hasExtra("test_ctx")) {  // --ei test_ctx 512|768 : A/B of the audio window for short live pieces
             com.whispercppdemo.notes.Pauses.shortCtx = intent.getIntExtra("test_ctx", 768).takeIf { it == 512 || it == 768 } ?: 768
             intent.removeExtra("test_ctx")
-            Log.i("indite", "test: short-piece audio window = ${com.whispercppdemo.notes.Pauses.shortCtx}")
+            Log.i("inditeflow", "test: short-piece audio window = ${com.whispercppdemo.notes.Pauses.shortCtx}")
             return true
         }
         if (intent.hasExtra("test_round")) {  // --ei test_round 64|256 : A/B test of the audio-window rounding (live speed)
             com.whispercppdemo.notes.Pauses.round = intent.getIntExtra("test_round", 256).takeIf { it == 64 || it == 256 } ?: 256
             intent.removeExtra("test_round")
-            Log.i("indite", "test: audio window rounding = ${com.whispercppdemo.notes.Pauses.round}")
+            Log.i("inditeflow", "test: audio window rounding = ${com.whispercppdemo.notes.Pauses.round}")
             return true
         }
         if (intent.getBooleanExtra("test_reminder", false)) {  // --ez test_reminder true : fire a reminder right now
             intent.removeExtra("test_reminder")
             com.whispercppdemo.notes.Reminders.test(applicationContext)
-            Log.i("indite", "test: reminder fired; channel = " + com.whispercppdemo.notes.Reminders.channelId(applicationContext) +
+            Log.i("inditeflow", "test: reminder fired; channel = " + com.whispercppdemo.notes.Reminders.channelId(applicationContext) +
                 "; alarm = " + com.whispercppdemo.notes.Reminders.ringLikeAlarm(applicationContext) +
                 "; problem = " + com.whispercppdemo.notes.Reminders.soundProblem(applicationContext))
             return true
@@ -157,7 +157,7 @@ class MainActivity : ComponentActivity() {
         val name = import ?: live ?: return false
         intent.removeExtra("test_import"); intent.removeExtra("test_live")
         val f = File(dir, name).canonicalFile
-        if (f.parentFile != dir.canonicalFile || !f.exists()) { Log.w("indite", "test file not found: $name"); return true }
+        if (f.parentFile != dir.canonicalFile || !f.exists()) { Log.w("inditeflow", "test file not found: $name"); return true }
         val app = applicationContext
         AppScope.launch {
             try {
@@ -169,7 +169,7 @@ class MainActivity : ComponentActivity() {
                     withContext(Dispatchers.IO) { decodeToPcm(f, pcm) }
                     openRequest = NoteService.startRecording(app, simulate = pcm, name = "live " + f.nameWithoutExtension)
                 }
-            } catch (e: Throwable) { Log.w("indite", "test hook failed", e) }
+            } catch (e: Throwable) { Log.w("inditeflow", "test hook failed", e) }
         }
         return true
     }
@@ -210,7 +210,7 @@ class MainActivity : ComponentActivity() {
             } catch (e: Notes.ImportError) {
                 Messages.flow.tryEmit(e.message ?: "Couldn't open this file.")
             } catch (e: Throwable) {
-                Log.w("indite", e)
+                Log.w("inditeflow", e)
                 Messages.flow.tryEmit(if (e is OutOfMemoryError) "This file is too big for this phone. Try a shorter one."
                     else "Couldn't open this file. Try sharing it again, or pick another file.")
             }

@@ -130,7 +130,7 @@ object Notes {
 
     private fun load(d: File): Note? = try {
         val meta = JSONObject(File(d, "meta.json").readText())
-        // A note written by a newer indite is left closed rather than half-read (older builds had no version at all,
+        // A note written by a newer Inditeflow is left closed rather than half-read (older builds had no version at all,
         // so a missing "fmt" means "as old as or older than this build" and is fine).
         if (meta.optInt("fmt", 0) > Backup.FMT) throw IllegalStateException("note is newer than this app")
         val cuts = JSONArray(File(d, "cuts.json").readText()).let { a ->
@@ -169,11 +169,11 @@ object Notes {
             status.value = "Opening $name…"
             val source = File(d, "source")
             context.contentResolver.openInputStream(uri)!!.use { i -> source.outputStream().use { i.copyTo(it) } }
-            if (durationSec(source) > MAX_IMPORT_MIN * 60) throw ImportError("Files longer than $MAX_IMPORT_MIN minutes aren't supported yet. Split it, or use the indite web app.")
+            if (durationSec(source) > MAX_IMPORT_MIN * 60) throw ImportError("Files longer than $MAX_IMPORT_MIN minutes aren't supported yet. Split it, or use the Inditeflow web app.")
             status.value = "Reading the audio in $name…"
             val samples = decodeToPcm(source, File(d, "audio.pcm"))
             source.delete()
-            if (samples < SR / 2) throw ImportError("This file has no audio indite can read.")
+            if (samples < SR / 2) throw ImportError("This file has no audio Inditeflow can read.")
             status.value = "Finding the pauses in $name…"
             val cuts = cutRange(context, id, 0, samples)
             writeAtomic(File(d, "cuts.json"), JSONArray(cuts.map { JSONArray(it.toList()) }).toString())

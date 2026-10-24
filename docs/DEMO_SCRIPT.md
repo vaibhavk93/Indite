@@ -1,4 +1,4 @@
-# indite demo video — the script, for approval
+# inditeflow demo video — the script, for approval
 
 **Audience:** leadership, advisors, investors. People who will sit and watch, and who decide things.
 **Length:** about 9 minutes 30 seconds. Deliberately patient — every result stays on screen long enough to read.
@@ -12,7 +12,7 @@
 Every section answers "so what?" for a user **and** for the business. If a use case is not in this table, it is not
 in the video.
 
-| What a person actually suffers | What it costs the business | What indite does | Section |
+| What a person actually suffers | What it costs the business | What inditeflow does | Section |
 |---|---|---|---|
 | You think in Hinglish; the keyboard only knows English. Autocorrect fights every second word | Slower replies, and people switch to voice notes that nobody can search | Dictate Hinglish directly, into any app | 2 |
 | Typing a long message takes minutes. Speaking it takes seconds | Hours a week per person, on messages alone | Hold a key and talk; hands-free for long thoughts | 2 |
@@ -30,7 +30,7 @@ and shows the fix, because that is more convincing than pretending.
 
 ## The script
 
-`N` = narration, the founder's voice. `S` = spoken into indite, the founder's voice, fed in place of the microphone.
+`N` = narration, the founder's voice. `S` = spoken into inditeflow, the founder's voice, fed in place of the microphone.
 Timings are targets. Every typed result holds on screen for at least 4 seconds before anything moves.
 
 ### 1. The problem (0:00 – 1:05)
@@ -43,7 +43,7 @@ Timings are targets. Every typed result holds on screen for at least 4 seconds b
 > **N03.** Speaking is about three times faster than typing. The problem has never been the speed of our hands. It is
 > that nothing listens to the way we actually talk.
 
-> **N04.** This is indite. It runs on this Mac, with no internet, and no account needed for now, and it turns
+> **N04.** This is inditeflow. It runs on this Mac, with no internet, and no account needed for now, and it turns
 > spoken Hinglish into text, directly into whatever app you are already in.
 
 *On screen: empty TextEdit, full screen, menu bar in shot. Nothing else.*
@@ -76,7 +76,7 @@ Timings are targets. Every typed result holds on screen for at least 4 seconds b
 > **N10.** Changed your mind halfway? Press Escape and nothing is written at all. And if you need the last thing you
 > said again, somewhere else, Control Command V types it again.
 
-> **N11.** One more thing it does quietly: if the cursor is in a password box, indite types nothing, saves nothing,
+> **N11.** One more thing it does quietly: if the cursor is in a password box, inditeflow types nothing, saves nothing,
 > and tells you why.
 
 ### 3. Getting it right, and what to do when it is wrong (3:05 – 4:25)
@@ -124,7 +124,7 @@ Timings are targets. Every typed result holds on screen for at least 4 seconds b
 > **N22.** A transcript is raw material. What people actually want is the thing they were going to write anyway.
 
 > **N23.** So every note can be handed to AI — and this is the part that matters — **your** AI. Your own Claude
-> login, or your own key. indite has no AI of its own and no bill of its own.
+> login, or your own key. inditeflow has no AI of its own and no bill of its own.
 
 > **N24.** Meeting notes: decisions, action items, open questions. Action items on their own, each with who owns it
 > and by when. A summary as long as the note needs. Lecture notes with revision questions. Or a brain dump, organised.
@@ -144,7 +144,7 @@ Timings are targets. Every typed result holds on screen for at least 4 seconds b
 > **N28.** Translate does the same across thirteen languages — Hindi, Marathi, Tamil, Bengali, Gujarati and more —
 > so a note meant for a regional team does not need a second person to rewrite it.
 
-> **N29.** And this one is for anyone who works with AI all day. Think out loud about what you want, and indite turns
+> **N29.** And this one is for anyone who works with AI all day. Think out loud about what you want, and inditeflow turns
 > that rambling into a properly structured prompt — role, context, task, constraints, output format — ready to paste
 > into ChatGPT, Claude or Gemini.
 
@@ -170,7 +170,7 @@ Timings are targets. Every typed result holds on screen for at least 4 seconds b
 > **N35.** This is working today, on this machine, built as a side project. What it needs next is not more features.
 > It needs a handful of people willing to use it for a week and tell me where it breaks.
 
-> **N36.** indite. Speak Hinglish, get text, and keep every word on your own Mac.
+> **N36.** inditeflow. Speak Hinglish, get text, and keep every word on your own Mac.
 
 ---
 
@@ -179,7 +179,7 @@ Timings are targets. Every typed result holds on screen for at least 4 seconds b
 | Set | Count | What it is |
 |---|---|---|
 | **N01 – N36** | 36 lines | The narration, in your voice. Read normally, as if explaining to a colleague |
-| **S01 – S05** | 5 lines | The Hinglish spoken *into* indite. Say these the way you actually talk — these prove the engine works on a real voice |
+| **S01 – S05** | 5 lines | The Hinglish spoken *into* inditeflow. Say these the way you actually talk — these prove the engine works on a real voice |
 
 **⚠ Remember:** S01–S05 must be spoken naturally, not read carefully. The whole point is that it is real speech.
 

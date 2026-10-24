@@ -2,7 +2,7 @@ package com.whispercppdemo.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// indite palette: warm paper and ink, one amber accent (same family as the web app), red only for recording.
+// Inditeflow palette: warm paper and ink, one amber accent (same family as the web app), red only for recording.
 val Paper = Color(0xFFFAF7F2)
 val PaperRaised = Color(0xFFFFFFFF)
 val PaperSunken = Color(0xFFF1ECE4)

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Builds indite.app - a real Mac app bundle, so macOS has one stable thing to grant Accessibility to.
+# Builds inditeflow.app - a real Mac app bundle, so macOS has one stable thing to grant Accessibility to.
 # Without a bundle, the permission attaches to whatever launched the script (Terminal, or Claude, or iTerm),
 # which is why granting it to a python binary never stuck.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"   # -P: the real folder, never the Desktop symlink macOS blocks
-APP="$ROOT/dist/indite.app"
+APP="$ROOT/dist/inditeflow.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
@@ -13,19 +13,19 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>indite</string>
-  <key>CFBundleDisplayName</key><string>indite</string>
-  <key>CFBundleIdentifier</key><string>com.indite.mac</string>
+  <key>CFBundleName</key><string>Inditeflow</string>
+  <key>CFBundleDisplayName</key><string>Inditeflow</string>
+  <key>CFBundleIdentifier</key><string>com.inditeflow.mac</string>
   <key>CFBundleVersion</key><string>$(cat "$ROOT/mac/VERSION")</string>
   <key>CFBundleShortVersionString</key><string>$(cat "$ROOT/mac/VERSION")</string>
-  <key>CFBundleExecutable</key><string>indite</string>
+  <key>CFBundleExecutable</key><string>inditeflow</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleIconFile</key><string>indite</string>
+  <key>CFBundleIconFile</key><string>inditeflow</string>
   <key>LSUIElement</key><true/>
   <key>NSMicrophoneUsageDescription</key>
-  <string>indite turns what you say into text. The recording stays on this Mac and is deleted straight after.</string>
+  <string>Inditeflow turns what you say into text. The recording stays on this Mac and is deleted straight after.</string>
   <key>NSAppleEventsUsageDescription</key>
-  <string>indite types the text into the app you are using.</string>
+  <string>Inditeflow types the text into the app you are using.</string>
 </dict>
 </plist>
 PLIST
@@ -33,7 +33,7 @@ PLIST
 # -u: print at once, so the log shows each dictation (without it nothing appeared until the buffer filled)
 # Python lives INSIDE the bundle (a copy of the interpreter, ~70 MB), the code and libraries stay in this folder.
 # macOS checks Screen & System Audio Recording against the program actually running: with the interpreter outside
-# the app, the switch for "indite" never applied and meetings could not hear calls (15 Oct, log said False).
+# the app, the switch for "Inditeflow" never applied and meetings could not hear calls (15 Oct, log said False).
 PY_HOME="$("$ROOT/.venv/bin/python" -c 'import sys; print(sys.base_prefix)')"
 cp -R "$PY_HOME" "$APP/Contents/Resources/python"
 SITE="$("$ROOT/.venv/bin/python" -c 'import site; print(site.getsitepackages()[0])')"
@@ -46,12 +46,12 @@ export PYTHONNOUSERSITE=1
 # (16 Oct: "key access allowed: True" ... "This process is not trusted!"). Never write bytecode into the bundle.
 export PYTHONDONTWRITEBYTECODE=1
 HERE="\$(cd "\$(dirname "\$0")" && pwd)"
-exec "\$HERE/python/bin/python3" -u "$ROOT/mac/indite_mac.py" >> "\$HOME/Library/Logs/indite-mac.log" 2>&1
+exec "\$HERE/python/bin/python3" -u "$ROOT/mac/inditeflow_mac.py" >> "\$HOME/Library/Logs/inditeflow-mac.log" 2>&1
 LAUNCH
 chmod +x "$APP/Contents/Resources/run.sh"
 # The app's executable is a tiny program that keeps running as the parent (mac/launcher.c says why).
-clang -O2 -o "$APP/Contents/MacOS/indite" "$ROOT/mac/launcher.c"
-cp "$ROOT/mac/brand/indite.icns" "$APP/Contents/Resources/indite.icns"     # the logo (mac/brand/logo.svg)
+clang -O2 -o "$APP/Contents/MacOS/inditeflow" "$ROOT/mac/launcher.c"
+cp "$ROOT/mac/brand/inditeflow.icns" "$APP/Contents/Resources/inditeflow.icns"     # the logo (mac/brand/logo.svg)
 
 # An ad-hoc signature gives the bundle a stable identity, so the Accessibility tick survives a rebuild.
 # Any stray bytecode from a previous run has to go before signing, or the new signature seals files that will
@@ -65,4 +65,4 @@ else
     echo "⚠ signature did NOT verify - macOS will drop Accessibility again. Do not ship this build."
 fi
 echo "built: $APP"
-echo "log:   ~/Library/Logs/indite-mac.log"
+echo "log:   ~/Library/Logs/inditeflow-mac.log"

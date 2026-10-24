@@ -1,4 +1,4 @@
-# indite for Mac: what to build, and why
+# inditeflow for Mac: what to build, and why
 
 > **Detail only, not a roadmap.** Order and status of every item live in `ROADMAP.md` (Mac and Android, done / next / later). If this file disagrees with it, `ROADMAP.md` wins.
 
@@ -28,14 +28,14 @@ wisprflow's features and the user flow and UX flow and improve the app."*
 | AI | 9 actions incl. Improve (original kept); from your Claude login or an API key (Anthropic / OpenAI / OpenRouter, in the Keychain); off by default for new users |
 | Backup | All / starred / starred + to-do, with or without audio; restore adds only what is missing |
 | Setup | First-run screen; Screen Recording asked once |
-| Sharing | `mac/build_share.sh` → self-contained `indite-mac.zip` (624 MB), tested in a bare environment |
+| Sharing | `mac/build_share.sh` → self-contained `inditeflow-mac.zip` (624 MB), tested in a bare environment |
 
 ### Pending (needs doing or checking before it is "done")
 
 | # | Item | Status | Who |
 |---|---|---|---|
 | P1 | Your boss tries the zip | Ready to send | You |
-| P2 | Meeting recording with the call's sound, in a real call | **Permission NOT granted to indite** (log says False) — turn it on, then test | You, then me |
+| P2 | Meeting recording with the call's sound, in a real call | **Permission NOT granted to inditeflow** (log says False) — turn it on, then test | You, then me |
 | P3 | Dropped ends of sentences | **Measured: mostly not real.** 48 of the 58 "dropped" words are one test sentence repeated 6 times (the model stops after "Bhej diya." when timestamps are off); most of the rest are faults in the long test file's timings and audio. A detect-and-retry fix recovers it (0 false triggers in 360 clips) but gains ~1 word and can add junk on broken audio. **Not built** - parked unless real dictations show drops | Me, if it shows up in real use |
 | P4 | Settings / UI: what exactly still feels bad | Width and slider fixed; need your specifics | You |
 | P5 | Real-use check: full screen, drag, hands-free over Terminal, ⌃⌘V | Fixes shipped, unconfirmed | You |
@@ -60,7 +60,7 @@ wisprflow's features and the user flow and UX flow and improve the app."*
 
 ## 1. Android → Mac, capability by capability (verified in code, 15 Oct)
 
-★ = founder's personal build only. "Python" = reusable code already in the `indite/` package (the web/CLI app,
+★ = founder's personal build only. "Python" = reusable code already in the `inditeflow/` package (the web/CLI app,
 which is not the Android app, so reusing it keeps Android and Mac separate).
 
 | Android capability | On Mac? | Python has it? | Mac equivalent / note | Port (h) |
@@ -123,7 +123,7 @@ scratchpad (⌥S floating notes); stats with streaks; ranked microphone list; se
 movable after 700+ survey replies); cleanup rewriting what was said; privacy (screenshots of the active window;
 cloud only); added itself to login items; ~800 MB memory when idle.
 
-**What indite already does better:** offline and private; Roman Hinglish as one language (Wispr picks one language
+**What inditeflow already does better:** offline and private; Roman Hinglish as one language (Wispr picks one language
 per dictation); typing without touching the clipboard; a pill that never takes focus or clicks.
 
 Sources: docs.wisprflow.ai articles on setup, first dictation, hands-free, shortcuts, flow bar, dictionary, snippets,
@@ -143,7 +143,7 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R2 | Pill border, so it never merges with a same-coloured background | ✅ | Two-tone rim (dark outside, light inside) |
 | R3 | Animation while it is writing | ✅ | Dots in a wave + an orange glint sweeping under the word |
 | R4 | Drag the window (not in full screen) | 🧪 | Invisible strip along the top; double-click zooms |
-| R5 | Full screen | 🧪 | Fixed: its own Space, no gaps (indite becomes a normal Dock app while the window is open) |
+| R5 | Full screen | 🧪 | Fixed: its own Space, no gaps (inditeflow becomes a normal Dock app while the window is open) |
 | R6 | Password guard | ✅ | Founder checked it on a website's login page: works |
 | R7 | Hands-free: double-tap to lock | 🧪 | Tap to finish, Esc cancels, 15-min cap, red dot in the pill. 5 logic tests |
 | R8 | Paste-last shortcut | 🧪 | ⌃⌘V types the last dictation again |
@@ -169,7 +169,7 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R30 | Find error patterns in real transcriptions and plan fixes | ✅ | ~⅓ of "19% wrong" was spelling or digits. Fixed: punctuation bug in the spelling list, numbers → digits, junk from short taps. Clean set 19.9% → 14.4%. Analysis: docs/research/mac_errors_2026-10-15.txt |
 | R31 | Show or hide the place where the written words appear | ✅ | Settings → Look & sounds → Show text after dictating. Multi-line, grows with the text, stays 4–15 s |
 | R33 | Text card: multi-line, dynamic height | ✅ | Was one line + "…" |
-| R34 | Opening indite again should show it | ✅ | Window appears on every activation |
+| R34 | Opening inditeflow again should show it | ✅ | Window appears on every activation |
 | R35 | Demo video with a voice-over | 💬 | Possible; see answer |
 | R36 | Test cases for the founder, in a doc | ✅ | `docs/MAC_TEST_PLAN.md` |
 | R37 | Who spoke runs by default | ✅ | Files ≥20 s and every meeting; switch in Settings → Writing |
@@ -181,7 +181,7 @@ for its technical catches. Status: ✅ done · 🧪 done, founder to check · �
 | R44 | A logo | ✅ | `mac/brand/logo.svg`, app icon |
 | R45 | Shortcuts / pill dead after a settings change | ✅ | Listener switched off by macOS; now restarted and kept fast |
 | R46 | Ask AI: less clutter, focused, separated | ✅ | Side panel per note; answers first; Ask anything |
-| R47 | Which app needs key access | 💬 | indite (Accessibility, Microphone, Screen & System Audio Recording) |
+| R47 | Which app needs key access | 💬 | inditeflow (Accessibility, Microphone, Screen & System Audio Recording) |
 | R48 | Is the logo original | 💬 | Drawn here from basic shapes; the voice-bar motif is common - search before trademarking |
 | R41 | A real run-time demo video with voice-over, made alone | ⏳ | Built and run twice: hotkeys, typing, hands-free, AI, file + speakers all worked live. Full screen, more features live, short tour at the end. **Waiting:** the founder re-grants Accessibility and Screen Recording (the app now has its own Python) |
 | R32 | Keep saving progress | rule | Commit after each feature; docs in the same session |
@@ -200,16 +200,16 @@ phase 6, a shareable signed build — and the real-world checks in the middle co
 ## 4. The first plan (critic-reviewed, 15 Oct)
 
 **The critic's main point: "all Android features on the Mac" is the wrong goal.** Android is a notes app plus a
-keyboard; the Mac app is a hold-to-talk tool. The web app (`indite serve`, `indite/web.py`) already does files,
+keyboard; the Mac app is a hold-to-talk tool. The web app (`inditeflow serve`, `inditeflow/web.py`) already does files,
 long recordings, an editor with undo, SRT/VTT export and "Copy for Claude" — and it never reads `android/`. What
 would make daily use better is fewer wrong words (still ~19%) and whatever the founder actually misses from Wispr.
 
 | # | Item | Verdict | Status | Why / the catch |
 |---|---|---|---|---|
 | a | **Password-box guard** | Build now | ✅ built | Password boxes are `AXTextField` with subrole `AXSecureTextField`; checked in every output mode. Dropped, not copied, not saved. macOS "secure input" is *not* used as a signal: Terminal and password managers leave it on |
-| m | **Fix a word from history** | Build now | ✅ built | Pencil on each row → "indite wrote / you meant". Shows how many past dictations hold the word, warns when it is a lot. Inline form, because WKWebView ignores `prompt()` |
+| m | **Fix a word from history** | Build now | ✅ built | Pencil on each row → "inditeflow wrote / you meant". Shows how many past dictations hold the word, warns when it is a lot. Inline form, because WKWebView ignores `prompt()` |
 | h | **Transcribe a file…** | Build now, as a link | ✅ built | Menu item and Home button start the web app on 127.0.0.1:8000 (its own process, ~2 s) and open it. Keeps torch out of the always-on app |
-| e | Launch at login | No code | ✅ Help line | A LaunchAgent running Python would lose the Accessibility permission; Login Items → `indite.app` keeps it |
+| e | Launch at login | No code | ✅ Help line | A LaunchAgent running Python would lose the Accessibility permission; Login Items → `inditeflow.app` keeps it |
 | b | Hands-free (double-tap to lock) | Ask the founder | ⏳ | Not asked for yet. A 10-min take means one big block of text ~70 s later. Reopening the mic on Bluetooth clips the first words |
 | f | Start sound | Later | — | The pill already shows it; the beep would be recorded; late on Bluetooth |
 | d | Microphone picker | Later | — | The fallback fixed the real crash. **Known bug if built:** device list read once at startup; `preferred` stores a position number that can change after a reconnect — store the name |
@@ -276,13 +276,13 @@ notice if AI features send personal data out) and any security review are questi
 
 ## 6. The Wispr Flow screenshots: gap check and the plan that came out of it (15 Oct, critic-reviewed)
 
-The founder sent 15 screenshots of Wispr Flow's own settings and pages and asked which features indite lacks, which
+The founder sent 15 screenshots of Wispr Flow's own settings and pages and asked which features inditeflow lacks, which
 are easy, which are not. **Most of the "gaps" were not gaps.** The list below was checked against the code, not from
 memory, and then handed to an independent critic (the standing rule). The critic's verdict changed 9 of 14 items.
 
 ### Already built — nothing to do but say so
 
-| Wispr feature | indite already has it | Where |
+| Wispr feature | inditeflow already has it | Where |
 |---|---|---|
 | Snippets (say a short word, get a long string) | Word fixes take a phrase and give back any text; longest match wins | `mac/store.py:235` `parse_fixes`, `:245` `apply_my_fixes`; the file's own example is `addr1 = 12 MG Road, Bengaluru 560001` |
 | Dictionary page, add and remove terms | Dictionary tab, add box, remove button, and a pencil on any past dictation | `mac/ui/app.html:452`, `:1416`, `:1300`; `mac/window.py` `add_fix` / `remove_fix` |
@@ -302,21 +302,21 @@ memory, and then handed to an independent critic (the standing rule). The critic
 
 | | What | The gate | The risk if we skip the gate |
 |---|---|---|---|
-| W4 | Feed the Dictionary to the engine as whisper's `initial_prompt`, so names are *heard* right instead of repaired afterwards | Re-run the 360-clip bench with the Dictionary primed. Ship only if words-wrong drops **and** dictionary words appear **0** times in clips that do not contain them | This is the only item that can lower the error rate — and the only one whose failure is invisible. The model already writes `nan` on silence (`mac/indite_mac.py:224`, 15 Oct: a 1.7 s hold typed `nan` into a real app). Priming it with real people's names risks a colleague's name landing in a message they were never in |
+| W4 | Feed the Dictionary to the engine as whisper's `initial_prompt`, so names are *heard* right instead of repaired afterwards | Re-run the 360-clip bench with the Dictionary primed. Ship only if words-wrong drops **and** dictionary words appear **0** times in clips that do not contain them | This is the only item that can lower the error rate — and the only one whose failure is invisible. The model already writes `nan` on silence (`mac/inditeflow_mac.py:224`, 15 Oct: a 1.7 s hold typed `nan` into a real app). Priming it with real people's names risks a colleague's name landing in a message they were never in |
 | W5 | "Light" clean-up with **no AI**: strip a fixed list of filler words (umm, matlab, basically, you know) in `tidy()`, and store the raw text beside it | 30 real Hinglish dictations: removes ≥1 filler on ≥10 of them and **0** real words on all 30 | ~10 lines, offline, free. Must keep the raw text (R5: nothing is deleted silently) |
 
 ### Dropped, with the reason
 
 | Wispr feature | Why not |
 |---|---|
-| Auto Cleanup levels (AI on every dictation) | ~6 s AI call on top of a 0.8–1.6 s transcription: **4–7× slower on every dictation**, the one measure where indite already matches Wispr. Spends the founder's own Claude quota per dictation (R2: zero cost per use) and types the rewrite instead of the raw text (R3). Wispr itself withdrew its "High" level after complaints |
+| Auto Cleanup levels (AI on every dictation) | ~6 s AI call on top of a 0.8–1.6 s transcription: **4–7× slower on every dictation**, the one measure where inditeflow already matches Wispr. Spends the founder's own Claude quota per dictation (R2: zero cost per use) and types the rewrite instead of the raw text (R3). Wispr itself withdrew its "High" level after complaints |
 | Transforms on a hotkey (Opt+1/2) | The "Ask anything" action already exists in `mac/ai.py`. The new part is reading and replacing the selection inside other apps — the same trust problem as a keylogger, and it overwrites text with no stored original (R3) |
 | Per-app styles (formal for email, casual for chat) | Already decided against in ROADMAP ("no accounts, streaks or per-app tone"). Also costs one AI call per dictation, and Wispr's styles are English-only |
 | Command mode ("delete that", "press enter") | Already dropped in §4 for misfires. On a 14.4%-wrong engine a misheard "delete that" in a chat box has no undo (R5) |
 | Stacked messages | Nobody asked. Needs Hinglish sentence splitting plus per-app Enter behaviour — the misfire problem again |
-| Show / hide the Dock icon | **Actively harmful.** indite is a normal app only while its window is in front; a Dock app's panels cannot appear over another app's full screen. A toggle here breaks the pill over full-screen apps |
+| Show / hide the Dock icon | **Actively harmful.** inditeflow is a normal app only while its window is in front; a Dock app's panels cannot appear over another app's full screen. A toggle here breaks the pill over full-screen apps |
 | Mute music while dictating | Unasked, and touching other apps' audio on a tool already fighting permission resets is a bad trade |
-| Launch at login | No code needed: a LaunchAgent running Python would lose Accessibility. Login Items → `indite.app` keeps it. One Help line (§4e) |
+| Launch at login | No code needed: a LaunchAgent running Python would lose Accessibility. Login Items → `inditeflow.app` keeps it. One Help line (§4e) |
 | Scratchpad with its own hotkey | The window is already one: Dictations, To do with a direct add box, stars, search. PRD §9 rules out being a to-do app |
 | Read the IDE's open file for code variable names | Biggest cost on the list and the worst shape: continuously reading another app's document through Accessibility, on a tool a company Mac may already block for looking like a keylogger (§5). The free 80% is putting ~20 identifiers in the Dictionary — do that first and measure |
 | Extra Indian languages (Hindi, Marathi…) | PRD §9: demand unproven, ask the testers — and there are no testers yet. 20 h+ and a second model each |
@@ -326,7 +326,7 @@ memory, and then handed to an independent critic (the standing rule). The critic
 
 **⚠ Remember: three things beat the whole Wispr list, and two of them are shipped features that do not work right now.**
 
-1. **Screen & System Audio Recording is not granted to indite.** Meeting recording (R14) and the demo video (R41) are
+1. **Screen & System Audio Recording is not granted to inditeflow.** Meeting recording (R14) and the demo video (R41) are
    built and non-functional until the founder re-grants it (HANDOFF §"Screen & System Audio Recording is NOT granted").
    Fixing a broken shipped feature beats adding a new one.
 2. **Real-world accuracy has never been measured.** Every number in this repo comes from 360 synthetic clips. 53 real
@@ -340,7 +340,7 @@ Also open and cheap: the public repo has **no LICENSE file**, and the Android ke
 
 ### Is "catch up with Wispr Flow" even the right question?
 
-No. Wispr's feature list is shaped by a ₹320/month subscription: accounts, teams, streaks, referrals. indite's own
+No. Wispr's feature list is shaped by a ₹320/month subscription: accounts, teams, streaks, referrals. inditeflow's own
 rules forbid most of it. The three questions that should drive the Mac app instead, in order:
 
 1. How many Hinglish words does it get wrong **on real speech**? (not synthetic clips)

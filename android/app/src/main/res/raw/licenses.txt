@@ -1,4 +1,4 @@
-indite uses these open-source parts. Thank you to their authors.
+Inditeflow uses these open-source parts. Thank you to their authors.
 
 == Hindi2Hinglish-Apex speech model, by Oriserve ==
 https://huggingface.co/Oriserve/Whisper-Hindi2Hinglish-Apex

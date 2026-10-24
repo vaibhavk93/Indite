@@ -4,8 +4,8 @@ import tempfile
 
 import numpy as np
 
-from indite.bench import edits, normalize, score
-from indite.core import SR, chunks, load_audio, wav_bytes
+from inditeflow.bench import edits, normalize, score
+from inditeflow.core import SR, chunks, load_audio, wav_bytes
 
 
 def test_scoring():
@@ -28,7 +28,7 @@ def test_audio_roundtrip():
 
 
 def test_guards():
-    from indite.guards import flag, has_loop
+    from inditeflow.guards import flag, has_loop
 
     assert has_loop("haan haan haan theek hai") and has_loop("ok bye ok bye ok bye")
     assert not has_loop("haan haan theek hai")
@@ -48,7 +48,7 @@ def test_guards():
 
 
 def test_styles():
-    from indite.styles import _lines, paragraphs, srt, timestamped, vtt
+    from inditeflow.styles import _lines, paragraphs, srt, timestamped, vtt
 
     long = "kal hum log meeting karenge please time pe aa jana budget approve ho gaya hai " * 2
     assert all(len(l) <= 42 for l in _lines(long))
@@ -63,7 +63,7 @@ def test_styles():
 
 
 def test_cut_at_pauses():
-    from indite.core import cut_at_pauses
+    from inditeflow.core import cut_at_pauses
 
     speech = [(0, 10), (11, 20), (21, 30), (31, 90)]  # pauses at 10, 20, 30; then 59 s without a pause
     pieces = cut_at_pauses(speech, total=100, pad=0)

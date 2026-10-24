@@ -2,7 +2,7 @@
 __pycache__/
 .env
 clips/
-*.indite.json
+*.inditeflow.json
 data/
 .tools/
 .DS_Store

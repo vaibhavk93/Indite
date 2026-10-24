@@ -1,4 +1,4 @@
-# indite AI modes: product, design and technical spec
+# inditeflow AI modes: product, design and technical spec
 
 > **Detail only, not a roadmap.** Order and status of every item live in `ROADMAP.md` (Mac and Android, done / next / later). If this file disagrees with it, `ROADMAP.md` wins.
 
@@ -19,7 +19,7 @@ Everything else here is designed now so it is cheap and safe later, but is **par
 | Word | Plain meaning |
 |---|---|
 | **Mode** | A ready-made AI request, e.g. "Brain dump". Today these are the 8 buttons in "Ask my AI". |
-| **Transcript** | The text indite wrote from the audio. AI **never changes it** (PLAN 5c rule). |
+| **Transcript** | The text inditeflow wrote from the audio. AI **never changes it** (PLAN 5c rule). |
 | **AI reply** | What the AI wrote back. Kept beside the transcript as a card, saved in `ai.json`. |
 | **Share sheet** | Android's "Share to…" list. We hand the text to the user's own ChatGPT/Claude app this way. |
 | **Paste reply** | User copies the AI's answer in ChatGPT, comes back, taps "Paste reply" to keep it with the note. |
@@ -27,9 +27,9 @@ Everything else here is designed now so it is cheap and safe later, but is **par
 | **API key** | A password-like code from OpenAI, Google etc. The key's owner pays for what it's used for. |
 | **JSON / schema** | JSON is strict text a program can read. The schema is the list of fields it must have. A reply missing a field counts as broken. |
 | **Agent loop** | The AI does more than one step: asks you questions, waits for your answers, then finishes. |
-| **STT** | Speech-to-text, done by indite on the phone. A spoken part takes ~8 s to appear (target; last measured 13.7 s for a 4 s sentence, PLAN section 7). |
+| **STT** | Speech-to-text, done by inditeflow on the phone. A spoken part takes ~8 s to appear (target; last measured 13.7 s for a 4 s sentence, PLAN section 7). |
 | **TTS** | Text-to-speech. Android reads text aloud with its built-in voice. |
-| **Flavour** | A variant of the app built from the same code. indite has `public` (no internet) and `personal` (founder only). |
+| **Flavour** | A variant of the app built from the same code. inditeflow has `public` (no internet) and `personal` (founder only). |
 | **Unproven** | No evidence yet. A guess, not a fact. |
 
 ---
@@ -37,7 +37,7 @@ Everything else here is designed now so it is cheap and safe later, but is **par
 ## 1. The whole system on one page
 
 ```
-                              indite AI MODES
+                              inditeflow AI MODES
               transcript stays raw; AI output is a card beside it
                                      |
         +----------------------------+-----------------------------+
@@ -66,11 +66,11 @@ Everything else here is designed now so it is cheap and safe later, but is **par
 
 ### 1.1 The four AI tiers
 
-| Tier | What it is | Internet in indite? | Who pays | Status |
+| Tier | What it is | Internet in inditeflow? | Who pays | Status |
 |---|---|---|---|---|
 | **T1** Share sheet + Paste reply | Opens the user's own ChatGPT/Claude app with the text and a ready request | **No** | User's own app (often free) | **Built (v0.5)** |
-| **T3** Mac companion | Phone → founder's Mac over **Tailscale HTTPS** → `/api/ask` in `indite/web.py` → his own unmodified `claude -p` on his subscription | Yes, `personal` flavour only | Founder's own plan | **Built (uncommitted)**, founder only, removed before launch |
-| **T2** Own API key | indite calls OpenAI / Gemini / OpenRouter directly with the user's key | Yes, separate flavour | User's key (~$0.0006–0.0065 per brain dump, PLAN 5d) | **Parked.** Gate: interviews (10.2) |
+| **T3** Mac companion | Phone → founder's Mac over **Tailscale HTTPS** → `/api/ask` in `inditeflow/web.py` → his own unmodified `claude -p` on his subscription | Yes, `personal` flavour only | Founder's own plan | **Built (uncommitted)**, founder only, removed before launch |
+| **T2** Own API key | inditeflow calls OpenAI / Gemini / OpenRouter directly with the user's key | Yes, separate flavour | User's key (~$0.0006–0.0065 per brain dump, PLAN 5d) | **Parked.** Gate: interviews (10.2) |
 | **T4** Phone LLM | Gemma 3n/4 E2B (~3 GB) on the phone | No | Nobody | **Test only**: 20 real Hinglish brain dumps first |
 
 **⚠ Remember:** never design "Sign in with Claude" or "Sign in with Gemini". Their terms ban third-party apps from using
@@ -92,7 +92,7 @@ own use. The `public` flavour already compiles a stub `MacCompanion` with `avail
 | Paste-reply card | `NoteScreen`, `awaitingReply` | "Got the {mode} from your AI? Copy its reply there, then paste it here…" [Paste reply] [Not now]. Rejects an empty clipboard or one still holding the transcript. |
 | AI reply cards | `AiCard` | Mode chip + "from your AI", 4 lines, tap to expand, Copy / Remove. |
 | Storage | `notes/Notes.kt` `addAi` / `deleteAi` / `loadAi` | `ai.json` in the note folder: `[{label, text, created}]`, newest first. Deleted with the note. |
-| Mac settings | `ui/SettingsScreen.kt` + `src/personal/.../ai/MacCompanion.kt` | URL (must be `https://`), token, "Test" button. Errors in plain words ("Couldn't reach your Mac. Is it awake, with indite and Tailscale running?"). |
+| Mac settings | `ui/SettingsScreen.kt` + `src/personal/.../ai/MacCompanion.kt` | URL (must be `https://`), token, "Test" button. Errors in plain words ("Couldn't reach your Mac. Is it awake, with inditeflow and Tailscale running?"). |
 | Speakers | `notes/Speakers.kt` | If labelled, `allText()` gives "Amit: …" turns, so AI requests get names. |
 | Word fixes + everyday spelling | `notes/Settings.kt` | Applied before sharing, so the AI sees "Paytm", not "PTM". |
 | Voice keyboard; floating mic bubble (uncommitted) | `keyboard/`, `overlay/BubbleService.kt` | Dictate into other apps. The bubble uses "draw over other apps", **not** the accessibility permission that PLAN section 3 ruled out. No AI in either. |
@@ -156,14 +156,14 @@ The date and title lines are new and nearly free to add (one string each).
 
 **"Brain dump + questions" (ninth request, prompt only):** asks the user's own AI app to ask up to 3 questions first, one at a time,
 then regroup. The user answers inside ChatGPT (typing or ChatGPT voice), then pastes the final version back.
-**This gives the agent-loop experience in T1 for free**, with zero new indite code.
+**This gives the agent-loop experience in T1 for free**, with zero new inditeflow code.
 
 ### 3.4 User flow: T3 today, T2 later
 
 T3 (built): same dialog; the answer comes back from the Mac and is saved with no copy-paste.
 Status text: "Asking Claude on your Mac: Brain dump…". Errors are the existing `MacCompanion` messages.
 
-**Agent loop inside indite (parked; T2/T3 only).** Designed so it's cheap to build if one-shot brain dump proves popular.
+**Agent loop inside inditeflow (parked; T2/T3 only).** Designed so it's cheap to build if one-shot brain dump proves popular.
 
 ```
                      BRAIN DUMP AGENT LOOP (parked)
@@ -319,7 +319,7 @@ Fix in v0.6: always write `text` (a plain rendering of `json`), and read every f
 | **Who** | People in Hinglish meetings (startups, sales, family business); students in Hinglish lectures. |
 | **Problem** | Cloud note-takers send audio away and handle Hinglish poorly. |
 | **Job to be done** | "After a meeting or class, give me notes I can forward or revise from, without uploading the audio." |
-| **Evidence** | "indite Notes" is critic-reviewed in PLAN section 4 (phase 2). Long recordings already work on the phone. Demand **unproven**. |
+| **Evidence** | "inditeflow Notes" is critic-reviewed in PLAN section 4 (phase 2). Long recordings already work on the phone. Demand **unproven**. |
 
 ### 4.2 Flow (both tiers)
 
@@ -412,13 +412,13 @@ Parked T2 schema (meeting): `{"decisions": [], "action_items": [{"task", "who", 
 **v0.6 (prompt only):** Ask my AI → Action items → reply pasted → card shows the lines. Copy / Share work as for any card.
 
 **v0.7 (only if cheap; critic: "parser + buttons only if cheap, no tick boxes"):**
-1. When an Action items reply is pasted, indite splits lines on ` | ` into rows: task · who · by when.
+1. When an Action items reply is pasted, inditeflow splits lines on ` | ` into rows: task · who · by when.
 2. Lines that don't split are kept as plain text below.
 3. Each row gets **[Add to Calendar]** and **[Share]**.
 
 | Button | What Android does | Permission |
 |---|---|---|
-| Add to Calendar | `Intent(Intent.ACTION_INSERT, CalendarContract.Events.CONTENT_URI)` with `Events.TITLE` = task and `Events.DESCRIPTION` = "From indite: {note name}". No time is pre-filled (T1 only has words like "Monday"). The calendar app opens; **the user** sets the time and saves. Wrapped in try/catch for `ActivityNotFoundException`. | None |
+| Add to Calendar | `Intent(Intent.ACTION_INSERT, CalendarContract.Events.CONTENT_URI)` with `Events.TITLE` = task and `Events.DESCRIPTION` = "From inditeflow: {note name}". No time is pre-filled (T1 only has words like "Monday"). The calendar app opens; **the user** sets the time and saves. Wrapped in try/catch for `ActivityNotFoundException`. | None |
 | Share | `ACTION_SEND` text "Deck bhejna — Priya — by Monday". User picks Keep / Tasks / WhatsApp. | None |
 
 **Note:** Google Tasks has no public "add task" intent. Whether Tasks shows up in the share sheet for plain text is **unchecked**.
@@ -441,7 +441,7 @@ So the button says "Share", not "Add to Tasks".
 +--------------------------------------+
 ```
 
-No tick boxes. indite is not a to-do app.
+No tick boxes. inditeflow is not a to-do app.
 
 ### 5.5 States and copy
 
@@ -523,7 +523,7 @@ would be a guess).
 2. Taps the title to rename the note to the question, e.g. "Tell me about a product you love". **Rename already exists.**
 3. Ask my AI → Practice answer. The request includes `Title: <note name>`, so the AI knows the question.
 4. T1: share → copy → Paste reply. T3: saved directly.
-5. indite reads the **SCORES line** (6.5) from the reply and stores the numbers in that `ai.json` entry.
+5. inditeflow reads the **SCORES line** (6.5) from the reply and stores the numbers in that `ai.json` entry.
 6. The card shows the scores at the top in plain text.
 7. To retry: record again and give it the same name.
 
@@ -657,7 +657,7 @@ All three must hold:
 | Condition | Why |
 |---|---|
 | On-device STT ≤ ~1.5 s per line | Today's model reads a 15–30 s window each time; needs the small own model (PLAN "Later") |
-| ≥ 5 testers use Practice weekly | Proves people want speaking practice from indite at all |
+| ≥ 5 testers use Practice weekly | Proves people want speaking practice from inditeflow at all |
 | A reason to beat ChatGPT voice (better Hinglish, private scoring) | Otherwise it's a slower copy of a free product |
 
 Cloud speech (sending audio) is **not** a route. It breaks "audio never leaves the phone".
@@ -721,7 +721,7 @@ NoteScreen (UI): Ask my AI button / dialog, Paste reply, AiCard
 |---|---|---|---|
 | `AiModes` | `notes/AiModes.kt` | S | Moves `AskPrompts` out of `NotesApp.kt`; adds `id`, `version`, and `parse()` for Practice / Action items. |
 | Request text | in `AiModes` | S | Builds the 2.3 format (rules, date, title, transcript). |
-| `MacCompanion` | `src/personal/.../ai/` | Built | `POST {url}/api/ask` with `{prompt, text}`, bearer token, 8 s connect / 10 min read timeout. Mac side: `indite/web.py`, constant-time token check, 200,000-character cap, server bound to 127.0.0.1 and exposed only through `tailscale serve`. |
+| `MacCompanion` | `src/personal/.../ai/` | Built | `POST {url}/api/ask` with `{prompt, text}`, bearer token, 8 s connect / 10 min read timeout. Mac side: `inditeflow/web.py`, constant-time token check, 200,000-character cap, server bound to 127.0.0.1 and exposed only through `tailscale serve`. |
 | `ApiKeyClient` (parked) | `src/byokey/.../ai/` | M | Same `ask(prompt, text)` shape as `MacCompanion`, so the UI code doesn't change. `HttpURLConnection` + `org.json` (already used; no new library). One OpenAI-style client for OpenAI, Gemini's OpenAI-compatible endpoint, and OpenRouter. **Anthropic models via OpenRouter**: Anthropic's own OpenAI-compatible endpoint is meant for testing, not production. |
 | Key storage (parked) | in `ApiKeyClient` | S | PLAN 5d says Android Keystore: an AES key in Keystore encrypts the API key, kept in private prefs. **Critic:** adds little because backup is off and the key travels in every request anyway. Keep it because it's ~30 lines and matches the decision. |
 | Privacy notice (parked) | dialog | S | 9.4 |
@@ -758,7 +758,7 @@ earns its place only when one build holds two network routes (e.g. a personal bu
 Gemini free tier adds: "Google's free tier may use your text to improve its products." (PLAN 5d.)
 T3 (personal) shows no notice: the founder set up his own Mac.
 Settings privacy line in the `byokey` build: "Audio and notes stay on this phone. When you use AI, only that note's text is sent,
-with your own key." (The `public` line "indite has no internet access" stays as is.)
+with your own key." (The `public` line "inditeflow has no internet access" stays as is.)
 
 ### 9.5 Cost display (T2, parked)
 
@@ -790,7 +790,7 @@ speaker labels); the price test (₹299 vs ₹999 one-time, PLAN section 2) runs
 
 | Before building | We need | How we learn it |
 |---|---|---|
-| T2 `byokey` build | Several testers say in interviews they'd paste an API key and want AI answers kept in indite | **Interviews**, not a paste-back counter (critic: a low paste rate may just mean the copy-paste is annoying) |
+| T2 `byokey` build | Several testers say in interviews they'd paste an API key and want AI answers kept in inditeflow | **Interviews**, not a paste-back counter (critic: a low paste rate may just mean the copy-paste is annoying) |
 | JSON modes / agent loop | T2 built, and one-shot brain dump used weekly by ≥ 3 testers | Interviews + founder's own use |
 | Practice history | ≥ 3 testers retry the same question | Interviews |
 | Phrase-spotter | Precision test on 20–50 real notes | Offline test |

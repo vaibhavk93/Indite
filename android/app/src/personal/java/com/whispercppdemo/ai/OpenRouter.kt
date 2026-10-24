@@ -9,7 +9,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * PERSONAL BUILD FIRST (critic-reviewed 2026-10-10): the user's own OpenRouter key, so AI answers are written inside indite
+ * PERSONAL BUILD FIRST (critic-reviewed 2026-10-10): the user's own OpenRouter key, so AI answers are written inside Inditeflow
  * and saved with the note. Only the note's text is sent, never audio. The public build stays internet-free (stub).
  * ⚠ Many free models run on providers that may keep or train on what you send; the app warns once before the first use.
  */
@@ -29,7 +29,7 @@ object OpenRouter {
         connectTimeout = 10_000
         readTimeout = 180_000
         setRequestProperty("Authorization", "Bearer $key")
-        setRequestProperty("X-Title", "indite")
+        setRequestProperty("X-Title", "Inditeflow")
     }
 
     /** Free models right now (price 0), so the list never goes stale. */

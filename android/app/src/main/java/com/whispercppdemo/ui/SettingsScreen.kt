@@ -156,7 +156,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 "reminders" to com.whispercppdemo.notes.Reminders.load(context).let { if (it.isEmpty()) "None" else "${it.size} upcoming" },
                 "fixes" to (if (fixes.isEmpty()) "None yet" else "${fixes.size} ${if (fixes.size == 1) "entry" else "entries"}"),
                 "storage" to "${notes.size} notes · ${Formatter.formatShortFileSize(context, used)}",
-                "about" to "indite ${BuildConfig.VERSION_NAME}",
+                "about" to "Inditeflow ${BuildConfig.VERSION_NAME}",
             )
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp)) {
                 items(SettingsGroups) { g ->
@@ -242,7 +242,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     LaunchedEffect(Unit) {  // re-check when you come back from the phone's settings
                         while (true) { enabled = imm.enabledInputMethodList.any { it.packageName == context.packageName }; delay(1000) }
                     }
-                    Text("Dictate into any app: WhatsApp, Gmail, notes. Switch to the indite keyboard, tap the mic and talk. " +
+                    Text("Dictate into any app: WhatsApp, Gmail, notes. Switch to the Inditeflow keyboard, tap the mic and talk. " +
                         "Each dictation is also saved here with its audio.", style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -270,7 +270,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                     Text("A small mic bubble on top of every app. Tap it, talk, tap again. When it turns green, tap it to copy the text. " +
                         "Hold it while recording to cancel. Drag it onto the ✕ at the bottom to turn it off. " +
-                        "If you use the indite keyboard, use its mic instead: it types the text in directly.",
+                        "If you use the Inditeflow keyboard, use its mic instead: it types the text in directly.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(if (on && allowed) "On" else "Off", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
@@ -281,12 +281,12 @@ fun SettingsScreen(onBack: () -> Unit) {
                             com.whispercppdemo.overlay.BubbleService.setEnabled(context, want)
                         })
                     }
-                    if (on && !allowed) Text("Allow \"Display over other apps\" for indite, then come back.", Modifier.padding(top = 6.dp),
+                    if (on && !allowed) Text("Allow \"Display over other apps\" for Inditeflow, then come back.", Modifier.padding(top = 6.dp),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                     // Quick way back after dragging it onto the X: a tile in the phone's pull-down quick settings.
                     if (android.os.Build.VERSION.SDK_INT >= 33) TextButton(onClick = {
                         context.getSystemService(android.app.StatusBarManager::class.java).requestAddTileService(
-                            android.content.ComponentName(context, com.whispercppdemo.overlay.MicTile::class.java), "indite mic",
+                            android.content.ComponentName(context, com.whispercppdemo.overlay.MicTile::class.java), "Inditeflow mic",
                             android.graphics.drawable.Icon.createWithResource(context, R.drawable.ic_mic), context.mainExecutor) {}
                     }) { Text("Add an on/off tile to quick settings") }
                     var auto by remember { mutableStateOf(com.whispercppdemo.overlay.BubbleService.autoCopy(context)) }
@@ -318,11 +318,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                         // Google Play requires this disclosure before sending people to the accessibility settings.
                         if (disclose) AlertDialog(
                             onDismissRequest = { disclose = false },
-                            title = { Text("Let indite type into text boxes?") },
-                            text = { Text("indite uses Android's accessibility service only to paste your dictation into the text box " +
+                            title = { Text("Let Inditeflow type into text boxes?") },
+                            text = { Text("Inditeflow uses Android's accessibility service only to paste your dictation into the text box " +
                                 "you were typing in. It looks for that box only when you start and finish a dictation, and skips " +
                                 "password boxes. It does not read or save anything on your screen, and nothing leaves your phone.\n\n" +
-                                "Next: in the list, tap \"indite: type into the box\" and turn it on.") },
+                                "Next: in the list, tap \"Inditeflow: type into the box\" and turn it on.") },
                             confirmButton = { TextButton(onClick = { disclose = false
                                 context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)) }) { Text("Agree") } },
                             dismissButton = { TextButton(onClick = { disclose = false }) { Text("Not now") } },
@@ -330,7 +330,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                     // Some phones (OnePlus, Xiaomi, Vivo…) stop background apps to save battery; this opens the phone's own list.
                     TextButton(onClick = { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) } }) {
-                        Text("Bubble disappears? Allow indite in battery settings")
+                        Text("Bubble disappears? Allow Inditeflow in battery settings")
                     }
                 }
             }
@@ -340,7 +340,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text("Make notes, Action items, Translate and Formal version go here. Tick one to go straight there, or " +
                         "several to choose each time. None ticked: your phone's share list.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // indite has no AI of its own, and the three routes fail in different ways. Say which one is live,
+                    // Inditeflow has no AI of its own, and the three routes fail in different ways. Say which one is live,
                     // so a request that only opens the share list doesn't look like a broken feature.
                     Text("Right now: " + com.whispercppdemo.ui.aiRouteNow(context), Modifier.padding(top = 6.dp),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
@@ -366,7 +366,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     var model by remember { mutableStateOf(com.whispercppdemo.ai.OpenRouter.model(context)) }
                     var models by remember { mutableStateOf<List<String>>(emptyList()) }
                     var result by remember { mutableStateOf<String?>(null) }
-                    Text("Answers are written inside indite and saved with the note. Only the text is sent, never audio. " +
+                    Text("Answers are written inside Inditeflow and saved with the note. Only the text is sent, never audio. " +
                         "Free models: about 50 requests a day. Get a key at openrouter.ai → Keys.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(key, { key = it }, Modifier.fillMaxWidth().padding(top = 8.dp), singleLine = true,
@@ -391,7 +391,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                                     com.whispercppdemo.ai.OpenRouter.ask(context, "Reply with just: OK", "test")
                                     if (com.whispercppdemo.ui.IN_APP !in com.whispercppdemo.ui.aiTargets(context))
                                         com.whispercppdemo.ui.setAiTargets(context, com.whispercppdemo.ui.aiTargets(context).toSet() + com.whispercppdemo.ui.IN_APP)
-                                    "✓ Working. \"Answer inside indite\" is now ticked above."
+                                    "✓ Working. \"Answer inside Inditeflow\" is now ticked above."
                                 } catch (e: Exception) { e.message }
                             }
                         }, enabled = key.isNotBlank() && model.isNotBlank()) { Text("Save and test") }
@@ -411,8 +411,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                     var token by remember { mutableStateOf(com.whispercppdemo.ai.MacCompanion.token(context)) }
                     var result by remember { mutableStateOf<String?>(null) }
                     val scope = androidx.compose.runtime.rememberCoroutineScope()
-                    Text("Ask my AI uses Claude or ChatGPT (Codex) on your own Mac, on your own plan. On the Mac: start indite, run " +
-                        "`tailscale serve --bg --set-path /api/ask http://127.0.0.1:8000/api/ask`, then paste the ts.net address and the token indite prints.",
+                    Text("Ask my AI uses Claude or ChatGPT (Codex) on your own Mac, on your own plan. On the Mac: start Inditeflow, run " +
+                        "`tailscale serve --bg --set-path /api/ask http://127.0.0.1:8000/api/ask`, then paste the ts.net address and the token Inditeflow prints.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     var via by remember { mutableStateOf(com.whispercppdemo.ai.MacCompanion.via(context)) }
                     Text("Answers come from", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.labelLarge)
@@ -501,7 +501,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                     Text("Fires a reminder right now, exactly as a real one would. Tap Done on it, or Stop here. " +
                         "⚠ This proves the sound, not the timing: a real 5 pm reminder also needs this phone to let " +
-                        "indite run in the background.",
+                        "Inditeflow run in the background.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     com.whispercppdemo.notes.Reminders.lastFire(context)?.let {
                         Text("Last reminder: $it", Modifier.padding(top = 6.dp), style = MaterialTheme.typography.bodySmall,
@@ -513,7 +513,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         TextButton(onClick = {
                             runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                                 .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)) }
-                        }) { Text("Open indite's notification settings") }
+                        }) { Text("Open Inditeflow's notification settings") }
                     }
                     if (!com.whispercppdemo.notes.Reminders.canBeExact(context)) TextButton(onClick = {
                         runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
@@ -521,17 +521,17 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }) { Text("Allow exact reminders (otherwise they may be up to an hour late)") }
                     // OnePlus, Xiaomi, Vivo and others force-stop background apps, and a force-stop deletes the alarm.
                     // Nothing in the app can prevent that; only the phone's own battery setting can.
-                    Text("A reminder didn't arrive at all? This phone may be stopping indite in the background. " +
-                        "Allow it below, and keep indite's card in Recents locked.", Modifier.padding(top = 8.dp),
+                    Text("A reminder didn't arrive at all? This phone may be stopping Inditeflow in the background. " +
+                        "Allow it below, and keep Inditeflow's card in Recents locked.", Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = {
                         runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
-                    }) { Text("Allow indite in battery settings") }
+                    }) { Text("Allow Inditeflow in battery settings") }
                 }
             }
             if (shown == "fixes") item {
                 Section("Dictionary") {
-                    Text("Words indite keeps getting wrong, fixed everywhere. The original text is kept.",
+                    Text("Words Inditeflow keeps getting wrong, fixed everywhere. The original text is kept.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     fixes.forEach { (from, to) ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -549,7 +549,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text("${notes.size} notes use ${Formatter.formatShortFileSize(context, used)} on this phone.",
                         style = MaterialTheme.typography.bodyLarge)
                     val stamp = java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.ENGLISH).format(java.util.Date())
-                    if (notes.isNotEmpty()) Button(onClick = { backup.launch("indite backup $stamp.zip") },
+                    if (notes.isNotEmpty()) Button(onClick = { backup.launch("Inditeflow backup $stamp.zip") },
                         Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Back up everything") }
                     if (notes.isNotEmpty()) Text("A zip you can keep anywhere: the text, the times and the speaker labels. " +
                         "This is the only way to get your notes onto a new phone.",
@@ -566,7 +566,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                         Modifier.padding(top = 8.dp)) { Text("Restore from a backup") }
                     Text("Notes already on this phone are left as they are.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (notes.isNotEmpty()) OutlinedButton(onClick = { export.launch("indite notes.txt") }, Modifier.padding(top = 10.dp)) {
+                    if (notes.isNotEmpty()) OutlinedButton(onClick = { export.launch("Inditeflow notes.txt") }, Modifier.padding(top = 10.dp)) {
                         Text("Export as plain text")
                     }
                     Text("Text only, for reading elsewhere. Not a backup: it cannot be restored.",
@@ -581,7 +581,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text(if (com.whispercppdemo.ai.MacCompanion.available)
                         "Personal build: speech-to-text happens on this phone. When you use Ask my AI, the note's text goes to your own Mac " +
                             "over Tailscale, nowhere else. Nothing is backed up to the cloud."
-                    else "Everything happens on this phone. indite has no internet access, and nothing is backed up to the cloud. " +
+                    else "Everything happens on this phone. Inditeflow has no internet access, and nothing is backed up to the cloud. " +
                         "Your audio and text leave the phone only if you copy or share them.", style = MaterialTheme.typography.bodyMedium)
                     Text("When recording other people, ask them first.", Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -590,7 +590,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             }
             if (shown == "about") item {
                 Section("About") {
-                    Text("indite ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE} · ${BuildConfig.GIT} · ${BuildConfig.FLAVOR})",
+                    Text("Inditeflow ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE} · ${BuildConfig.GIT} · ${BuildConfig.FLAVOR})",
                         style = MaterialTheme.typography.bodyLarge)
                     Text("Speech model: Oriserve Hindi2Hinglish-Apex (Apache-2.0), run with whisper.cpp (MIT). " +
                         "Speech detection: Silero VAD (MIT).", style = MaterialTheme.typography.bodySmall,
@@ -642,7 +642,7 @@ private suspend fun shareDebugInfo(context: android.content.Context, notes: List
             Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-t", "300", "*:W")).inputStream.bufferedReader().readText()
         }.getOrDefault("(no log)")
         buildString {
-            appendLine("indite ${BuildConfig.VERSION_NAME} (${BuildConfig.FLAVOR})")
+            appendLine("Inditeflow ${BuildConfig.VERSION_NAME} (${BuildConfig.FLAVOR})")
             appendLine("${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}, Android ${android.os.Build.VERSION.RELEASE}, ${Runtime.getRuntime().availableProcessors()} cores")
             appendLine("CPU $cpu")
             appendLine("Free space ${Notes.freeBytes() / 1_000_000} MB, ${notes.size} notes")
@@ -654,6 +654,6 @@ private suspend fun shareDebugInfo(context: android.content.Context, notes: List
         }
     }
     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-        .putExtra(Intent.EXTRA_SUBJECT, "indite debug info").putExtra(Intent.EXTRA_TEXT, text), "Share debug info")
+        .putExtra(Intent.EXTRA_SUBJECT, "Inditeflow debug info").putExtra(Intent.EXTRA_TEXT, text), "Share debug info")
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }

@@ -1,4 +1,4 @@
-# indite chat spelling: the model writes formal transliteration; people type Hinglish like this.
+# Inditeflow chat spelling: the model writes formal transliteration; people type Hinglish like this.
 # formal<TAB>chat. Whole words only, case kept. Ambiguous words (nai, ve, sunana, karana, lie as English) are left out on purpose.
 mainne	maine
 tumhen	tumhe

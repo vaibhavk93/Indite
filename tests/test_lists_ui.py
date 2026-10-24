@@ -39,7 +39,7 @@ def run(rows, steps, prefs=None):
              "ai_status": {}, "ai_keys": {}, "ai_actions": {}, "ai_style_groups": {}, "ai_langs": [], "ai_cost_month": [0, 0, 0],
              "fix_counts": {}, "ai_busy": {}}
     page = (ROOT / "mac/ui/app.html").read_text()
-    stub = ("<script>window.webkit={messageHandlers:{indite:{postMessage(m){(window.__sent=window.__sent||[]).push(JSON.parse(m))}}}};"
+    stub = ("<script>window.webkit={messageHandlers:{inditeflow:{postMessage(m){(window.__sent=window.__sent||[]).push(JSON.parse(m))}}}};"
             "window.onerror=(m)=>{(window.__err=window.__err||[]).push(m)};</script>")
     probe = ("<script>(()=>{const R={},n=s=>document.querySelectorAll(s).length,"
              "vcAll=p=>{const e=document.querySelector('.qbar[data-for='+(p||'home')+'] .vcount');return e?[...e.children].map(x=>x.textContent.trim()).join(' '):''},"

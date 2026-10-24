@@ -1,4 +1,4 @@
-# indite plan: features, decisions, products
+# inditeflow plan: features, decisions, products
 
 Last updated: 2026-10-10. Every "survived" item passed an independent critic review or is the founder's own decision.
 Short-term roadmap: [ROADMAP.md](ROADMAP.md). Pages: [plan](https://claude.ai/artifact/BPuiRa3MBzHaWkirWVCKZX) · [vision](https://claude.ai/artifact/LJZmUuUP7xP5JXtRrrtkGK) (private links).
@@ -71,7 +71,7 @@ Web roadmap "Next" items still stand: custom vocabulary (remember corrections), 
 | Rough draft text while speaking (two models) | Cut | Draft models write Devanagari or are untested; Wispr doesn't do it |
 | Shade words the model was unsure of | Cut | Confidence doesn't match real mistakes |
 | Full keyboard (FlorisBoard) | Cut | Endless work; voice input screen does the job |
-| Floating bubble over other apps (Wispr's way) | **Built (v0.5), without accessibility** | Overlay bubble + a tiny invisible screen starts the mic; text is copied to paste (or typed in by the indite keyboard). Play reviews the 'special use' service: possible rejection |
+| Floating bubble over other apps (Wispr's way) | **Built (v0.5), without accessibility** | Overlay bubble + a tiny invisible screen starts the mic; text is copied to paste (or typed in by the inditeflow keyboard). Play reviews the 'special use' service: possible rejection |
 | Own call recorder | Cut | Banned on Play since 2022; import recordings instead |
 | Laptop via Tailscale | Cut | Too technical for users |
 | Cloud fallback / AI on our keys | Cut | Breaks zero-cost and privacy rules |
@@ -82,10 +82,10 @@ Web roadmap "Next" items still stand: custom vocabulary (remember corrections), 
 
 | Product | What it is | Stage | Review |
 |---|---|---|---|
-| indite Voice Notes (Android) | Share a WhatsApp voice note, get Roman text | v1, next month | Critic-reviewed |
-| indite Dictation | Speak in the app, text after each pause | Month 2, gated | Critic-reviewed |
-| indite Web / Mac | Long files, editor, export | Exists | — |
-| indite Notes | Meetings/classes on phone, who-said-what, summary via user's own AI | Phase 2 | Critic-reviewed |
+| inditeflow Voice Notes (Android) | Share a WhatsApp voice note, get Roman text | v1, next month | Critic-reviewed |
+| inditeflow Dictation | Speak in the app, text after each pause | Month 2, gated | Critic-reviewed |
+| inditeflow Web / Mac | Long files, editor, export | Exists | — |
+| inditeflow Notes | Meetings/classes on phone, who-said-what, summary via user's own AI | Phase 2 | Critic-reviewed |
 | Voice input for any app | Mic screen any keyboard can switch to | Phase 2 | Critic-reviewed |
 | Hinglish leaderboard | Public test set scoring Google, Sarvam, Wispr and us | Phase 3 | Critic-reviewed |
 | Own small Hinglish model | Faster model trained to copy ours | Only if needed | Critic-reviewed |
@@ -177,7 +177,7 @@ Dropped: no-speech score filter (already covered by our speech detector), rate-l
 | Option | Verdict | Why |
 |---|---|---|
 | User's own ChatGPT/Claude app via share sheet ("Ask my AI") | Now | Free, allowed, works with a subscription |
-| Bring your own API key (OpenAI / OpenRouter / Gemini / Anthropic, one OpenAI-compatible client) | Next, as an opt-in "indite AI" build with INTERNET; default build stays offline | Text (not audio) leaves the phone; ~$0.0006–0.0065 per brain dump on the user's key; keys in Android Keystore; warn that Gemini free tier may use data |
+| Bring your own API key (OpenAI / OpenRouter / Gemini / Anthropic, one OpenAI-compatible client) | Next, as an opt-in "inditeflow AI" build with INTERNET; default build stays offline | Text (not audio) leaves the phone; ~$0.0006–0.0065 per brain dump on the user's key; keys in Android Keystore; warn that Gemini free tier may use data |
 | Claude subscription login / Claude Code via Termux | Not allowed | Anthropic: third parties may not offer Claude.ai login or route Pro/Max credentials (code.claude.com/docs/en/legal-and-compliance); Termux needs a patched build |
 | Gemini account login (Gemini CLI) | Not allowed | geminicli.com terms |
 | ChatGPT subscription ("Sign in with ChatGPT") | Apply via OpenAI interest form; don't build | Official preview, no mobile docs, open-source apps first (repo has no LICENSE yet) |
@@ -197,7 +197,7 @@ Dropped: no-speech score filter (already covered by our speech detector), rate-l
 
 ## 5e. Personal build: Claude on the founder's own Mac (built v0.5; remove before launch)
 
-`personal` build flavour only (has INTERNET); `public` has none. Phone → Tailscale HTTPS → Mac web app `POST /api/ask` (token in ~/.indite_ask_token) → the founder's own unmodified `claude -p` (all tools off) → answer saved in the note. Allowed by Anthropic's terms for one person on their own plan and machine; shipping it to anyone else is not. Full AI spec: docs/AI_MODES.md.
+`personal` build flavour only (has INTERNET); `public` has none. Phone → Tailscale HTTPS → Mac web app `POST /api/ask` (token in ~/.inditeflow_ask_token) → the founder's own unmodified `claude -p` (all tools off) → answer saved in the note. Allowed by Anthropic's terms for one person on their own plan and machine; shipping it to anyone else is not. Full AI spec: docs/AI_MODES.md.
 
 ## 6. Phases and gates
 

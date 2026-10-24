@@ -16,7 +16,7 @@ class WhisperContext private constructor(private var ptr: Long) {
         Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     )
 
-    /** indite: the text as sentences with their times (milliseconds from the start of `data`). */
+    /** inditeflow: the text as sentences with their times (milliseconds from the start of `data`). */
     data class Segment(val startMs: Int, val endMs: Int, val text: String, val noSpeech: Float = 0f)
 
     suspend fun transcribeSegments(data: FloatArray, audioCtx: Int = 0): List<Segment> = withContext(scope.coroutineContext) {
@@ -152,7 +152,7 @@ private class WhisperLib {
         external fun getTextSegmentT0(contextPtr: Long, index: Int): Long
         external fun getTextSegmentT1(contextPtr: Long, index: Int): Long
 
-        /** indite: the model's own "this was not speech" probability for a sentence (hallucination filter). */
+        /** inditeflow: the model's own "this was not speech" probability for a sentence (hallucination filter). */
         external fun getTextSegmentNoSpeechProb(contextPtr: Long, index: Int): Float
         external fun getSystemInfo(): String
         external fun vadInit(path: String): Long
@@ -197,7 +197,7 @@ private fun cpuInfo(): String? {
     }
 }
 /**
- * indite: Silero speech detector. Returns one speech probability per 512 samples (32 ms at 16 kHz).
+ * inditeflow: Silero speech detector. Returns one speech probability per 512 samples (32 ms at 16 kHz).
  * stream = true keeps the detector's memory between calls (live recording, 512 samples at a time).
  * Not thread-safe: use one instance per thread.
  */

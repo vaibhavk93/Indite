@@ -1,8 +1,8 @@
-# What indite needs to run and to be tested. There was no dependency file at all until 22 Oct, which meant the
+# What inditeflow needs to run and to be tested. There was no dependency file at all until 22 Oct, which meant the
 # environment could not be rebuilt on another machine - a quiet blocker for the Windows port and for anyone else
 # ever touching this. Versions are the ones measured working on the founder's Mac.
 [project]
-name = "indite"
+name = "inditeflow"
 version = "0.1.0"
 description = "Offline Hinglish speech to text for macOS"
 requires-python = ">=3.12"

@@ -24,13 +24,13 @@ object Speakers {
     /** of: one speaker per paragraph (majority); seg: one speaker per sentence inside it (a paragraph often holds several turns). */
     data class Result(val of: Map<Int, Int>, val names: Map<Int, String>, val k: Int = 0, val skipped: Boolean = false,
                       val seg: Map<Int, List<Int>> = emptyMap(), val spans: Map<Int, List<Pair<Int, Int>>> = emptyMap(),
-                      /** indite guessed how many people spoke; the user hasn't confirmed it yet. */
+                      /** Inditeflow guessed how many people spoke; the user hasn't confirmed it yet. */
                       val guessed: Boolean = false)
 
     /** Ids being labelled right now (so "Who spoke?" can't run twice on one note). */
     val running: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
-    /** What a run started by indite itself is doing: note id -> message, null when nothing is running. */
+    /** What a run started by Inditeflow itself is doing: note id -> message, null when nothing is running. */
     val status = MutableStateFlow<Pair<String, String>?>(null)
 
     /**
@@ -50,7 +50,7 @@ object Speakers {
 
     /**
      * Only one voice in this recording: no labels. `k = 1` separates it from the user tapping "Just me" (which leaves k
-     * at 0), and `guessed` says indite decided this by itself — together they let the note screen offer "two people
+     * at 0), and `guessed` says Inditeflow decided this by itself — together they let the note screen offer "two people
      * spoke?" once, on a recording long enough to be a conversation, without nagging someone who chose 1 themselves.
      */
     private fun heardOne(id: String, guessed: Boolean) {

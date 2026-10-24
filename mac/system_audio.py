@@ -80,7 +80,7 @@ class SystemAudio:
             filt = SC.SCContentFilter.alloc().initWithDisplay_excludingWindows_(content.displays()[0], [])
             cfg = SC.SCStreamConfiguration.alloc().init()
             cfg.setCapturesAudio_(True)
-            cfg.setExcludesCurrentProcessAudio_(True)       # never record indite's own sounds
+            cfg.setExcludesCurrentProcessAudio_(True)       # never record Inditeflow's own sounds
             cfg.setSampleRate_(48000)
             cfg.setChannelCount_(1)
             cfg.setWidth_(2)

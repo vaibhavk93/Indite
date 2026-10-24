@@ -35,7 +35,7 @@ fun RemindDialog(noteId: String?, initialText: String, onDone: () -> Unit) {
     val exact = remember { Reminders.canBeExact(context) }
     val ringing = remember { Reminders.ringLikeAlarm(context) }
     val problem = remember { Reminders.soundProblem(context) }   // once per dialog: it creates the channel if needed
-    // A reminder is a notification. Without this permission nothing appears and nothing sounds, and until now indite
+    // A reminder is a notification. Without this permission nothing appears and nothing sounds, and until now Inditeflow
     // only asked for it when you recorded or imported, so a reminder could be set that could never show up.
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     LaunchedEffect(Unit) {
@@ -85,7 +85,7 @@ fun RemindDialog(noteId: String?, initialText: String, onDone: () -> Unit) {
                 }, Modifier.fillMaxWidth()) { Text("Pick a date and time…") }
                 // Without exact alarms Android may deliver a reminder up to an hour late: say so, and offer the fix.
                 if (!exact) {
-                    Text("This phone may deliver reminders up to an hour late until you allow indite to set exact alarms.",
+                    Text("This phone may deliver reminders up to an hour late until you allow Inditeflow to set exact alarms.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     TextButton(onClick = {
                         runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,

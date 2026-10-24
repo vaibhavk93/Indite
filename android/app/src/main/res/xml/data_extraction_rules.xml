@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- indite: audio and transcripts never leave the phone, not even to the user's Google backup or a new phone. -->
+<!-- Inditeflow: audio and transcripts never leave the phone, not even to the user's Google backup or a new phone. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="." />

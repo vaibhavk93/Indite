@@ -1,5 +1,5 @@
 """
-The floating pill: a small window near the bottom of the screen that shows what indite is doing while you dictate.
+The floating pill: a small window near the bottom of the screen that shows what Inditeflow is doing while you dictate.
 
 Three rules it must obey, and all three are easy to get wrong:
   1. It must never take focus. The whole point is to type into the app you are already in - if the pill steals
@@ -49,7 +49,7 @@ from AppKit import (
 JOIN_ALL_APPS = getattr(AppKit, "NSWindowCollectionBehaviorCanJoinAllApplications", 0)
 CLEAR = 60                      # pill transparency in %, 0-100 in steps of 10 (Settings → Look & sounds)
 W, H = 116.0, 30.0              # small on purpose: it sits over whatever you are reading (was 168 x 44)
-ACCENT = (0.886, 0.463, 0.106)      # the indite orange, the same one the phone uses
+ACCENT = (0.886, 0.463, 0.106)      # the Inditeflow orange, the same one the phone uses
 
 
 class PillView(NSView):
@@ -240,7 +240,7 @@ class Pill:
         self.panel.setLevel_(25)                      # above normal windows, below the menu bar
         self.panel.setIgnoresMouseEvents_(True)       # never swallow a click
         self.panel.setHidesOnDeactivate_(False)
-        self.panel.setCanHide_(False)                 # "Hide indite" (⌘H) must not take the pill with it
+        self.panel.setCanHide_(False)                 # "Hide Inditeflow" (⌘H) must not take the pill with it
         # NSWindowSharingNone = 0: excludes the pill from every screen capture macOS mediates (ScreenCaptureKit,
         # Zoom/Meet/Teams share, QuickTime recording, ⌘⇧3). The pill is for the dictator; viewers in a share should
         # not see "REC 02:59" floating over the slide (founder, 23 Oct).
@@ -316,14 +316,14 @@ class Pill:
         if changed:
             self.view.since = time.time()
         self.view.state = state
-        # Ask the window, not our own flag: hiding or minimising indite takes the panel off screen behind our back,
+        # Ask the window, not our own flag: hiding or minimising Inditeflow takes the panel off screen behind our back,
         # and the flag then said "showing" forever - the pill never came back (founder, 15 Oct)
         if not self.visible or not self.panel.isVisible():
             self.panel.setFrameOrigin_(bottom_centre(W, 96))   # on the screen you are working on
             self.panel.orderFrontRegardless()         # front, but never focused
             self.visible = True
         # Full strength at once, not a fade. The fade added 0.18 an frame and assumed 20 frames a second, which is
-        # true only while indite is the app in front. In real use - the founder in Chrome, holding the key - macOS
+        # true only while Inditeflow is the app in front. In real use - the founder in Chrome, holding the key - macOS
         # throttles a background app's timers, and the log showed the pill still at alpha 0.40 after a SIX SECOND
         # dictation: on screen, and all but invisible. That is every "the pill is not there" report (16 Oct).
         if self.panel.alphaValue() < 1.0:

@@ -1,5 +1,5 @@
 """
-The indite window: the part of the Mac app you can look at.
+The Inditeflow window: the part of the Mac app you can look at.
 
 It is a WKWebView in a glass window. The reason is laziness with a straight face - a history list, a search box,
 four settings and a stats strip is a few hundred lines of NSTableView plumbing in AppKit and about forty lines of
@@ -45,7 +45,7 @@ W, H = 920.0, 660.0
 
 
 def front_pid() -> int:
-    """The process of the app in front; indite's own window is this very process."""
+    """The process of the app in front; Inditeflow's own window is this very process."""
     try:
         from AppKit import NSWorkspace
         a = NSWorkspace.sharedWorkspace().frontmostApplication()
@@ -67,7 +67,7 @@ def front_app() -> str:
 class Activation(NSObject):
     """
     Calls the app back when macOS activates it (an NSObject, because notifications need a selector). Lives here, not
-    in indite_mac.py: that file is both the program and a module this one imports, so a class there is defined twice
+    in inditeflow_mac.py: that file is both the program and a module this one imports, so a class there is defined twice
     and Objective-C refuses the second ("overriding existing Objective-C class").
     """
 
@@ -81,13 +81,13 @@ class Activation(NSObject):
     def resigned_(self, _note):                          # noqa: N802
         """Another app is in front: back to menu-bar-only, so the pill may enter that app's full screen."""
         w = self.app.window
-        if w is None or not (w.win.styleMask() & (1 << 14)):      # unless indite itself is full screen
+        if w is None or not (w.win.styleMask() & (1 << 14)):      # unless Inditeflow itself is full screen
             NSApp.setActivationPolicy_(1)
 
-    def quitIndite_(self, _sender):                      # noqa: N802
+    def quitInditeflow_(self, _sender):                      # noqa: N802
         self.app.quit_all(None)
 
-    def openSettings_(self, _sender):                    # noqa: N802 - indite menu → Settings… ⌘,
+    def openSettings_(self, _sender):                    # noqa: N802 - Inditeflow menu → Settings… ⌘,
         self.app.open_window(None)
         self.app.window.bridge.js("go('settings')")
 
@@ -102,7 +102,7 @@ class Activation(NSObject):
 
 def main_menu(app) -> None:
     """
-    The menus a Mac app is expected to have. indite had none, so in full screen the top bar was empty (no Close or
+    The menus a Mac app is expected to have. Inditeflow had none, so in full screen the top bar was empty (no Close or
     Minimize), and ⌘C / ⌘V / ⌘A did nothing in the window's text boxes - a web view takes those from the Edit menu.
     """
     from AppKit import NSMenu, NSMenuItem
@@ -123,11 +123,11 @@ def main_menu(app) -> None:
         top.setSubmenu_(m)
         bar.addItem_(top)
 
-    menu("indite", [("About indite", "orderFrontStandardAboutPanel:", ""), None,
+    menu("Inditeflow", [("About Inditeflow", "orderFrontStandardAboutPanel:", ""), None,
                     ("Settings…", "openSettings:", ","), None,
-                    ("Hide indite", "hide:", "h"), None, ("Quit indite", "quitIndite:", "q")])
+                    ("Hide Inditeflow", "hide:", "h"), None, ("Quit Inditeflow", "quitInditeflow:", "q")])
     menu("File", [("Transcribe a file…", "openFile:", "o")])
-    for title in ("Quit indite", "Settings…"):             # through indite itself (quit also stops the engine)
+    for title in ("Quit Inditeflow", "Settings…"):             # through Inditeflow itself (quit also stops the engine)
         bar.itemAtIndex_(0).submenu().itemWithTitle_(title).setTarget_(app._activation)
     bar.itemAtIndex_(1).submenu().itemWithTitle_("Transcribe a file…").setTarget_(app._activation)
     menu("Edit", [("Undo", "undo:", "z"), ("Redo", "redo:", "Z"), None, ("Cut", "cut:", "x"),
@@ -150,7 +150,7 @@ class Bridge(NSObject):
         return self
 
     def state(self) -> dict:
-        from indite_mac import can_listen, HOTKEYS
+        from inditeflow_mac import can_listen, HOTKEYS
         audio_idx = store.audio_counts()                  # one directory listing, not one disk check per note
         return {
             "prefs": store.prefs(),
@@ -167,13 +167,13 @@ class Bridge(NSObject):
             "ai_catalog": __import__("models").catalog(),    # models + effort levels to offer, live or built-in
             "ai_status": self.app.ai_who,
             "ai_keys": self.app.ai_keys,
-            "mics": __import__("indite_mac").mic_names(),
+            "mics": __import__("inditeflow_mac").mic_names(),
             "using": self.app.mic.using,
             "job": self.app.job,
             "meeting": {"running": self.app.meeting.running, "started": self.app.meeting.started,
                         "problem": self.app.meeting.problem, "note": self.app.meeting.note,
                         "mic": getattr(self.app.mic, "using", "") if self.app.meeting.running else ""},
-            "mic_ok": __import__("indite_mac").mic_allowed(),
+            "mic_ok": __import__("inditeflow_mac").mic_allowed(),
             "ai_busy": self.app.ai_busy,
             "ai_cost_month": store.ai_cost_month(),           # (usd_total, with_cost_count, no_cost_count) — commit 4
             "notice": self.app.notice,
@@ -323,7 +323,7 @@ class Bridge(NSObject):
             self.app.file_error = ""
             self.app.ai_error = ""
         elif act == "mic_ask":
-            from indite_mac import ask_mic, mic_allowed
+            from inditeflow_mac import ask_mic, mic_allowed
             if mic_allowed() is False:                   # refused before: only System Settings can change it
                 subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"])
             else:
@@ -489,10 +489,10 @@ class Bridge(NSObject):
             alert.addButtonWithTitle_("Delete")
             alert.addButtonWithTitle_("Cancel")
             alert.buttons()[0].setHasDestructiveAction_(True)
-            if __import__('indite_mac').run_modal(alert) == NSAlertFirstButtonReturn:
+            if __import__('inditeflow_mac').run_modal(alert) == NSAlertFirstButtonReturn:
                 store.clear()
         elif act == "permission":
-            from indite_mac import ask_to_listen
+            from inditeflow_mac import ask_to_listen
             ask_to_listen()
         elif act == "quit":
             self.app.quit_all(None)
@@ -546,7 +546,7 @@ class WindowEvents(NSObject):
     """
     Full screen, done properly. A menu-bar-only app ("accessory") cannot own a full-screen Space: macOS zoomed the
     window over whatever app was in front and left the menu bar and Dock gaps (founder, 15 Oct). So while the window
-    is open indite becomes a normal app with a Dock icon, and goes back to living in the menu bar when it closes.
+    is open Inditeflow becomes a normal app with a Dock icon, and goes back to living in the menu bar when it closes.
     """
 
     def initWithBridge_(self, bridge):
@@ -585,7 +585,7 @@ class Window:
             | NSWindowStyleMaskResizable | NSWindowStyleMaskFullSizeContentView,
             NSBackingStoreBuffered, False,
         )
-        self.win.setTitle_("indite")
+        self.win.setTitle_("Inditeflow")
         self.win.setTitlebarAppearsTransparent_(True)       # the page draws its own header, under the traffic lights
         self.win.setMinSize_((700.0, 480.0))
         self.win.center()
@@ -601,7 +601,7 @@ class Window:
         glass.setAutoresizingMask_(18)                      # width | height
 
         content = WKUserContentController.alloc().init()
-        content.addScriptMessageHandler_name_(self.bridge, "indite")
+        content.addScriptMessageHandler_name_(self.bridge, "inditeflow")
         cfg = WKWebViewConfiguration.alloc().init()
         cfg.setUserContentController_(content)
         self.web = WKWebView.alloc().initWithFrame_configuration_(NSMakeRect(0, 0, W, H), cfg)

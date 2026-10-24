@@ -1,4 +1,4 @@
-# indite speed test (Android)
+# inditeflow speed test (Android)
 
 Test APK: is the Hinglish model fast enough on a phone, fully offline? Based on whisper.cpp's Android example.
 "Run 15-min test" transcribes every piece in `app/src/main/assets/samples/` and reports speed, battery temperature and peak memory.

@@ -28,7 +28,7 @@ KEEP_DAYS = 3 * 365  # founder's choice for now; per-transcript retention is on 
 MAX_BYTES = 1 << 30  # 1 GB upload cap
 INDEX = Path(__file__).with_name("index.html")
 
-app = FastAPI(title="indite")
+app = FastAPI(title="inditeflow")
 todo: "queue.Queue[Path]" = queue.Queue()
 
 
@@ -215,7 +215,7 @@ class Ask(BaseModel):
     via: str = "claude"  # or "codex": the founder's ChatGPT plan through his own Codex CLI
 
 
-ASK_TOKEN_FILE = Path.home() / ".indite_ask_token"
+ASK_TOKEN_FILE = Path.home() / ".inditeflow_ask_token"
 
 
 def _ask_token() -> str:
@@ -260,7 +260,7 @@ def serve(port: int = 8000) -> None:
             todo.put(p.parent)
     threading.Thread(target=worker, daemon=True).start()
     threading.Thread(target=cleanup, daemon=True).start()
-    print(f"indite running at http://127.0.0.1:{port}  (only this Mac can reach it)")
+    print(f"inditeflow running at http://127.0.0.1:{port}  (only this Mac can reach it)")
     print(f"Phone 'Ask my AI' (personal): run `tailscale serve --bg --set-path /api/ask http://127.0.0.1:{port}/api/ask` "
           f"(shares only that one address, not your transcripts), then in the app use your Mac's ts.net address and this token: "
           f"{_ask_token()}")

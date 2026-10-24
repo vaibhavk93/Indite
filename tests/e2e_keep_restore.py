@@ -23,7 +23,7 @@ def main():
         (D / f).unlink(missing_ok=True)
     subprocess.run(["rm", "-rf", str(D / "audio"), str(D / "audio_trash")])
     sys.path.insert(0, str(ROOT / "mac"))
-    os.environ["INDITE_DATA"] = str(D)
+    os.environ["INDITEFLOW_DATA"] = str(D)
     import store  # noqa: PLC0415
     store.set_pref("history_cap", 0)
     (D / "audio").mkdir()

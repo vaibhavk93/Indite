@@ -83,7 +83,7 @@ object PhoneCheck {
             File("/proc/cpuinfo").readLines().firstOrNull { it.startsWith("Features") }.orEmpty()
         } catch (e: Exception) { "" }
         if (features.isNotEmpty() && !("asimddp" in features && "fphp" in features)) {
-            return "This phone's processor is too old for indite's offline engine. You can still use the indite web app on a computer."
+            return "This phone's processor is too old for Inditeflow's offline engine. You can still use the Inditeflow web app on a computer."
         }
         return null
     }
@@ -96,7 +96,7 @@ object PhoneCheck {
 }
 
 /**
- * Keeps indite in the foreground while it records or transcribes, and works through unfinished notes, oldest first.
+ * Keeps Inditeflow in the foreground while it records or transcribes, and works through unfinished notes, oldest first.
  * Every finished piece is saved before the next starts.
  */
 class NoteService : Service() {
@@ -119,7 +119,7 @@ class NoteService : Service() {
         if (Build.VERSION.SDK_INT >= 30) startForeground(ONGOING, n, type) else startForeground(ONGOING, n)
         if (recordId != null) Recording.start(this, recordId, Engine.vadPath(this), intent.getStringExtra(EXTRA_SIMULATE)?.let(::File))
         if (job?.isActive != true) job = scope.launch { runQueue() }
-        // Not sticky: if Android kills the app, it resumes the next time indite opens (restarting in the background isn't allowed).
+        // Not sticky: if Android kills the app, it resumes the next time Inditeflow opens (restarting in the background isn't allowed).
         return START_NOT_STICKY
     }
 
@@ -160,7 +160,7 @@ class NoteService : Service() {
                         try { process(w, note) } catch (e: Exception) {
                             Log.w(TAG, e)
                             if (Notes.dir(note.id).exists()) {  // a deleted note is simply skipped
-                                say("Couldn't finish \"${note.name}\". It will try again next time you open indite.")
+                                say("Couldn't finish \"${note.name}\". It will try again next time you open Inditeflow.")
                                 failed = true
                                 if (!Recording.active) break
                             }
@@ -177,7 +177,7 @@ class NoteService : Service() {
             Log.w(TAG, e)
             failed = true
             com.whispercppdemo.overlay.BubbleService.pending.clear()
-            Notes.status.value = "Transcription stopped. Open indite to try again."
+            Notes.status.value = "Transcription stopped. Open Inditeflow to try again."
             while (Recording.active) delay(300)  // never leave the mic running without the notification
         } finally {
             Notes.refresh()
@@ -231,10 +231,10 @@ class NoteService : Service() {
             bubble -= id
             val text = n.allText()
             val msg = when {
-                text.isBlank() -> "indite didn't hear any speech."
+                text.isBlank() -> "Inditeflow didn't hear any speech."
                 com.whispercppdemo.overlay.AutoPaste.paste(this, text) -> "Typed in."
                 com.whispercppdemo.overlay.BubbleService.autoCopy(this) -> {
-                    getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("indite", text))
+                    getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("Inditeflow", text))
                     if (Build.VERSION.SDK_INT >= 33) null else "Copied. Long-press a text box to paste."
                 }
                 else -> { com.whispercppdemo.overlay.BubbleService.readyText = text; "Text ready: tap the green button to copy." }
@@ -344,7 +344,7 @@ class NoteService : Service() {
         val b = Notification.Builder.recoverBuilder(this, n)
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .setPublicVersion(Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_mic)
-                .setContentTitle("indite").setContentText("Text ready").build())
+                .setContentTitle("Inditeflow").setContentText("Text ready").build())
         if (text.isNotEmpty()) {
             b.setContentText(text).setStyle(Notification.BigTextStyle().bigText(text.take(400)).setBigContentTitle("Text ready: ${note.name}"))
             val copy = PendingIntent.getBroadcast(this, note.id.hashCode(),
@@ -361,7 +361,7 @@ class NoteService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val b = Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_mic)
-            .setContentTitle(when { recording -> "indite is recording"; ongoing -> "Turning speech into text"; else -> "indite" })
+            .setContentTitle(when { recording -> "Inditeflow is recording"; ongoing -> "Turning speech into text"; else -> "Inditeflow" })
             .setContentText(text)
             .setContentIntent(pi)
             .setOngoing(ongoing)
@@ -376,7 +376,7 @@ class NoteService : Service() {
     }
 
     companion object {
-        private const val TAG = "indite"
+        private const val TAG = "inditeflow"
         private const val CHANNEL = "transcription"
         private const val ONGOING = 1
         private const val EXTRA_RECORD = "record"

@@ -1,6 +1,6 @@
-# indite design guidelines
+# inditeflow design guidelines
 
-**⚠ Remember:** these are our own rules, taken from what indite already looks like. Founder, 17 Oct: "The design
+**⚠ Remember:** these are our own rules, taken from what inditeflow already looks like. Founder, 17 Oct: "The design
 guidelines should be our own." **Before you build any new screen, card or control, read this file. If you add a new
 pattern, add it here in the same change.**
 
@@ -99,7 +99,7 @@ Dynamic colour (Material You) is **off**: our colours on every phone.
 | Tell once, then go | `.toast` | Bottom centre; name what happened. Stays ~60 ms per character (1.8-8 s); 5 s with Undo |
 | Needs attention | `.banner` | `--accent-soft`, one line + one button |
 | Nothing here yet | `.empty` | Icon in a well, a heading, a next step |
-| Menu-bar icon | `menubar_icon()` | indite's five bars as a template image (macOS colours it); status as short text beside it: ⚠ … ● 3/10. Never emoji |
+| Menu-bar icon | `menubar_icon()` | inditeflow's five bars as a template image (macOS colours it); status as short text beside it: ⚠ … ● 3/10. Never emoji |
 | Work on one note | `.drawer` | Right side, tabs **Ask AI \| Listen** (`.dtabs`) |
 | Play a recording | `.plisten` | Looks like the note list: 22 px gutter, `.who` speaker colours, 14 px text, hairline rows. Player = one `--well` strip (round ink play button, thin orange-fill slider). Line being spoken = `--well`; word being spoken = `--accent-soft` + `--accent`. Line actions = `.copy` icons on hover (play, copy, pen). No orange box or bar (founder, 17 Oct) |
 | Settings | `.card` + `.item` | Grouped, label left, control right; with no room the control drops under the label (label ≥ 220 px) |
@@ -226,7 +226,7 @@ Shared everywhere: one orange family, red only for recording and danger, plain w
 11. **No browser `title=` on buttons.** Use `data-tt="…"` — the themed `.tt` component renders it.
 12. **Menu rows carry their own subtitle** (`<b>Label</b><span>subtitle</span>`). No tooltip.
 13. **One primary button per view**, class `.btn`. Everything else is `.btn.ghost`, `.btn.quiet` or `.btn.danger`.
-14. **Pill and card copy comes from the state map** in `overlay.py` / `indite_mac.py`. No inline strings in the handler.
+14. **Pill and card copy comes from the state map** in `overlay.py` / `inditeflow_mac.py`. No inline strings in the handler.
 
 **When you create something new: read this file first, and add any new pattern to it.**
 

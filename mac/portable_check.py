@@ -1,5 +1,5 @@
 """
-Is indite self-contained? (17 Oct: the app sent to another Mac ran code, libraries and the model from the founder's
+Is Inditeflow self-contained? (17 Oct: the app sent to another Mac ran code, libraries and the model from the founder's
 project folder, was built for macOS 26 only, and its engine looked for its parts in an old folder.)
 
     python mac/portable_check.py deps            # the libraries the app really loads (used by build_portable.sh)
@@ -23,14 +23,14 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 
-APP_MODULES = ["indite_mac", "window", "overlay", "player", "meeting", "system_audio", "calls", "speakers", "review",
-               "wordtimes", "digits", "ai", "store", "indite.core", "indite.styles", "indite.notes", "indite.guards"]
+APP_MODULES = ["inditeflow_mac", "window", "overlay", "player", "meeting", "system_audio", "calls", "speakers", "review",
+               "wordtimes", "digits", "ai", "store", "inditeflow.core", "inditeflow.styles", "inditeflow.notes", "inditeflow.guards"]
 LAZY = ["av", "sherpa_onnx", "AVFoundation", "WebKit", "ScreenCaptureKit", "CoreMedia", "Quartz", "AppKit",
         "Foundation", "PyObjCTools.AppHelper", "sounddevice", "pynput.keyboard", "rumps", "numpy", "httpx", "truststore",
         "ssl", "zipfile", "wave", "json", "urllib.request", "ctypes.util", "difflib", "faulthandler", "uuid"]
 MIN_MACOS = (14, 0)        # numpy and av wheels, and the call detector, need macOS 14
 FILES = ["mac/ui/app.html", "mac/models/ggml-apex-q5_k.bin", "mac/models/titanet_small.onnx", "mac/spelling.tsv",
-         ".tools/whisper.cpp/build/bin/whisper-server", "mac/brand/indite.icns"]
+         ".tools/whisper.cpp/build/bin/whisper-server", "mac/brand/inditeflow.icns"]
 
 
 def load_all() -> None:

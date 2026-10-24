@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(whisper.cpp)
 
 set(CMAKE_CXX_STANDARD 17)
-set(WHISPER_LIB_DIR ${WHISPER_SRC})  # indite: whisper.cpp lives in .tools/
+set(WHISPER_LIB_DIR ${WHISPER_SRC})  # inditeflow: whisper.cpp lives in .tools/
 
 # Get whisper.cpp version
 file(READ "${WHISPER_LIB_DIR}/CMakeLists.txt" MAIN_CMAKE_CONTENT)

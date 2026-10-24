@@ -1,5 +1,5 @@
 """
-Notice a call starting, so indite can ASK "Record this call?" (roadmap Mac later; never records by itself).
+Notice a call starting, so Inditeflow can ASK "Record this call?" (roadmap Mac later; never records by itself).
 
 A call = one of the known call apps is using the microphone. macOS 14+ says which processes use audio input
 (CoreAudio's process objects), so nothing here needs a new permission: no screen reading, no window titles.

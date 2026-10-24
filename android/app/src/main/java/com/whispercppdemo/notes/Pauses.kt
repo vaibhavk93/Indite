@@ -5,7 +5,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
-/** Cut audio at pauses into pieces of at most 25 s, like the web app (indite/core.py cut_at_pauses), using Silero. */
+/** Cut audio at pauses into pieces of at most 25 s, like the web app (inditeflow/core.py cut_at_pauses), using Silero. */
 object Pauses {
     const val WINDOW = 512  // Silero's step: 32 ms at 16 kHz
 

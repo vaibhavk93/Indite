@@ -108,12 +108,12 @@ static void asset_close(void *ctx) {
 }
 
 /*
- * indite: about flash attention. With it on (the default), the decoder reads padded rows of the audio cache that the
+ * inditeflow: about flash attention. With it on (the default), the decoder reads padded rows of the audio cache that the
  * encoder never wrote for short audio windows, so a piece's text depended on which pieces ran before it (run-to-run
  * differences, some pieces losing most of their text). Mac test 2026-10-10: 15-min file 27.6% -> 25.1% words wrong,
  * repeatable. Phone speed impact: measure.
  */
-static struct whisper_context_params indite_params(void) {
+static struct whisper_context_params inditeflow_params(void) {
     struct whisper_context_params p = whisper_context_default_params();
     p.flash_attn = true;  // kept ON: off made live dictation ~6 s slower per sentence on the phone (build 8 test).
                           // The leak is avoided instead by sizing audio_ctx to a multiple of 256 (Pauses.audioCtx). Never pass 0 (=1500).
@@ -140,7 +140,7 @@ static struct whisper_context *whisper_init_from_asset(
             .close = &asset_close
     };
 
-    return whisper_init_with_params(&loader, indite_params());
+    return whisper_init_with_params(&loader, inditeflow_params());
 }
 
 JNIEXPORT jlong JNICALL
@@ -160,7 +160,7 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_initContext(
     UNUSED(thiz);
     struct whisper_context *context = NULL;
     const char *model_path_chars = (*env)->GetStringUTFChars(env, model_path_str, NULL);
-    context = whisper_init_from_file_with_params(model_path_chars, indite_params());
+    context = whisper_init_from_file_with_params(model_path_chars, inditeflow_params());
     (*env)->ReleaseStringUTFChars(env, model_path_str, model_path_chars);
     return (jlong) context;
 }
@@ -194,7 +194,7 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_fullTranscribe(
     params.offset_ms = 0;
     params.no_context = true;
     params.single_segment = false;
-    params.audio_ctx = audio_ctx;  // indite: 0 = full 30 s window; 768 = 15 s (short clips only)
+    params.audio_ctx = audio_ctx;  // inditeflow: 0 = full 30 s window; 768 = 15 s (short clips only)
 
     whisper_reset_timings(context);
 
@@ -279,7 +279,7 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_benchGgmlMulMat(JNIEnv *en
     return string;
 }
 
-// indite: Silero speech detector (built into whisper.cpp). One probability per 512-sample (32 ms) window.
+// inditeflow: Silero speech detector (built into whisper.cpp). One probability per 512-sample (32 ms) window.
 JNIEXPORT jlong JNICALL
 Java_com_whispercpp_whisper_WhisperLib_00024Companion_vadInit(JNIEnv *env, jobject thiz, jstring path) {
     UNUSED(thiz);

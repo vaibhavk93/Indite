@@ -27,6 +27,8 @@ to "Decided", and update the roadmap item it touches.
 | D28 | **Optional: Android** - nothing changed today; only needed if you want build 29 re-checked | Same as D2 | Now / later |
 | D29 | **Trademark: finish the check yourself (free, ~30 min, in a real browser)**: tmrsearch.ipindia.gov.in (wordmark "indite", classes 9, 42, 35, 41), branddb.wipo.int, tmdn.org/tmview, USPTO search; look up "Indite Technologies" (Pune, documentation services). Then file in India, classes 9 and 42, about ₹4,500 per class for a startup or individual | The only business with the same name found is Indite Technologies, Pune (a writing-adjacent service) | You do the searches; I draft the filing text |
 | D30 | **Android: accessibility add-on in the public build?** Research done (Google Play rules). My recommendation: public build = keyboard with a mic button (no declaration needed); accessibility typing stays in your own build for now, and goes to Play later only as an opt-in with the full form | Decides how Android types into other apps for everyone | Decide: keyboard first / accessibility with the Play form now |
+| D33 | **After the rename: things only you can do** (the code cannot do them): (1) **Mac:** rebuild with `mac/build_app.sh`, then re-allow Inditeflow in System Settings → Privacy & Security → Accessibility, Input Monitoring, Microphone and Screen & System Audio Recording (macOS ties these to the app's id, which changed); re-add it under Login Items. Your notes and Dictionary move on their own. (2) **Android:** the new app (`com.inditeflow.app`) installs next to the old one and starts empty. In the old app: Settings → Backup; in the new app: Restore. Then remove the old app. (3) **GitHub:** rename the repository (Settings → General); the old link redirects. (4) Re-run the name check for **Inditeflow** (D29 was for "indite"). (5) The logo and the word on it still say "indite" in the picture files; a designer pass is needed | None of these can be done from the code | 20-30 min |
+| D34 | **"Flow" and Wispr Flow:** the name now ends in the same word as the app we compare ourselves to. Fine, or a risk for the trademark check? | Brand / trademark | Your call after D29 |
 
 ## Decided
 
@@ -41,6 +43,7 @@ to "Decided", and update the roadmap item it touches.
 | D25 | "Record this call?" card for Meet / Zoom in a browser | **Yes, after a minute of steady mic use. Built** (needs a real browser call to check: D26) | 24 Oct |
 | D4 | One name for word fixes | **"Dictionary"** on both Mac and Android (Android renamed 24 Oct, compiles; not on a phone yet) | 24 Oct |
 | D12 | Two unclear 10 Oct messages ("…prompt and transcript…", "double long-press") | **Dropped** (founder, 24 Oct) | 24 Oct |
+| D32 | Rename the app from Indite to Inditeflow | **Yes** (founder, 24 Oct). Done on the branch `rename-inditeflow`; merge after you check the list in D33 | 24 Oct |
 | D22 | "Don't save the next dictation" | Yes, build it (also skips the clipboard) | 18 Oct |
 | — | OpenRouter "train on my data" | Turned off by the founder | 17 Oct |
 | — | Slack and VS Code typing | Works, confirmed by the founder | 17 Oct |

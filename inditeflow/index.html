@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>indite</title>
+<title>inditeflow</title>
 <style>
 :root {
   --bg: #f4f6f7; --surface: #fff; --ink: #15212b; --muted: #5a6873; --line: #d9dfe3;
@@ -91,7 +91,7 @@ kbd { font: .75rem var(--mono); border: 1px solid var(--line); border-bottom-wid
 </head>
 <body>
 <main>
-  <h1>indite<span>.</span></h1>
+  <h1>inditeflow<span>.</span></h1>
 
   <section class="card" id="upload">
     <h2>New transcript</h2>
@@ -283,14 +283,14 @@ async function loadJobs() {
     lastStatus[j.id] = j.status;
   });
   const working = jobs.find(j => j.status === "working");
-  document.title = working ? `${Math.round((working.progress || 0) * 100)}% · indite` : doneUnseen ? "✓ Done · indite" : "indite";
+  document.title = working ? `${Math.round((working.progress || 0) * 100)}% · inditeflow` : doneUnseen ? "✓ Done · inditeflow" : "inditeflow";
   if (jobs.some(j => j.status === "queued" || j.status === "working")) poll = setTimeout(loadJobs, 1500);
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden && doneUnseen) { doneUnseen = false; document.title = "indite"; } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && doneUnseen) { doneUnseen = false; document.title = "inditeflow"; } });
 
 // ---------- editor ----------
 const segEls = () => [...document.querySelectorAll(".seg .x")];
-const draftKey = id => `indite-draft-${id}`;
+const draftKey = id => `inditeflow-draft-${id}`;
 function setDirty(v) {
   dirty = v; $("#save").disabled = !v; $("#dirty").hidden = !v;
   try { v ? localStorage.setItem(draftKey(current.id), JSON.stringify({ at: Date.now(), texts: segEls().map(x => x.textContent) }))

@@ -1,4 +1,4 @@
-"""Apply indite's chat-spelling list (the same file the app uses) to a hypothesis TSV.  python3 chat_spelling.py IN.tsv OUT.tsv"""
+"""Apply inditeflow's chat-spelling list (the same file the app uses) to a hypothesis TSV.  python3 chat_spelling.py IN.tsv OUT.tsv"""
 import re, sys
 from pathlib import Path
 SPELL = Path(__file__).resolve().parent.parent / "android/app/src/main/res/raw/spelling.tsv"

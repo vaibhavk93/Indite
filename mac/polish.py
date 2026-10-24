@@ -27,7 +27,7 @@ from pathlib import Path
 import numpy as np
 from scipy import signal
 
-VOICES = Path.home() / "Documents/indite-demo-voice"
+VOICES = Path.home() / "Documents/inditeflow-demo-voice"
 RATE, LOW = 44100, 16000
 KEEP = 0.45          # a pause longer than this is shortened to this - about a natural breath
 GAP = 1.0            # what counts as "a pause worth shortening"

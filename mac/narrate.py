@@ -6,7 +6,7 @@ Records the demo narration in a person's own voice, one line at a time.
     .venv/bin/python mac/narrate.py --list     # what is done and what is left
 
 The lines come from docs/DEMO_SCRIPT.md, so editing the script changes what you are asked to read - there is no
-second copy of the words to keep in step. Recordings go to ~/Documents/indite-demo-voice, never into the repo: the founder's
+second copy of the words to keep in step. Recordings go to ~/Documents/inditeflow-demo-voice, never into the repo: the founder's
 voice is not something to push to a public GitHub.
 
 Why this exists: take 1 of the demo used a synthetic voice in place of the microphone, and the engine - which is
@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "docs/DEMO_SCRIPT.md"
 # Documents, not /tmp: macOS empties /tmp at every boot, and it took 8.1 minutes of the founder's
 # own voice with it (22 Oct). Outside the repo too - the repo is public and his voice is not going in it.
-OUT = Path.home() / "Documents/indite-demo-voice"
+OUT = Path.home() / "Documents/inditeflow-demo-voice"
 RATE, LOW = 44100, 16000
 
 
@@ -198,7 +198,7 @@ def trim(audio: np.ndarray, pad: float = 0.25) -> np.ndarray:
 
 
 def write(name: str, audio: np.ndarray) -> None:
-    """44.1 kHz for the soundtrack, and 16 kHz for the lines that are fed to indite in place of the microphone."""
+    """44.1 kHz for the soundtrack, and 16 kHz for the lines that are fed to Inditeflow in place of the microphone."""
     OUT.mkdir(parents=True, exist_ok=True)
     pcm = (np.clip(audio, -1, 1) * 32767).astype(np.int16)
     for path, rate in ((OUT / f"{name}.wav", RATE), (OUT / f"{name}-16k.wav", LOW)):
@@ -226,7 +226,7 @@ def main() -> None:
     if not todo:
         sys.exit("no N.. or S.. lines found in the script - has its format changed?")
     want = [a.upper() for a in sys.argv[1:] if not a.startswith("--")]
-    # the raw takes only: -16k is the copy fed to indite, -polished is mac/polish.py's tidied version
+    # the raw takes only: -16k is the copy fed to Inditeflow, -polished is mac/polish.py's tidied version
     done = {p.stem for p in OUT.glob("*.wav") if not p.stem.endswith("-16k") and "-polished" not in p.stem}
 
     if "--list" in sys.argv:
@@ -270,7 +270,7 @@ def main() -> None:
                 break
     finally:
         mic.close()
-    # the raw takes only: -16k is the copy fed to indite, -polished is mac/polish.py's tidied version
+    # the raw takes only: -16k is the copy fed to Inditeflow, -polished is mac/polish.py's tidied version
     done = {p.stem for p in OUT.glob("*.wav") if not p.stem.endswith("-16k") and "-polished" not in p.stem}
     print(f"\n  {len(done)} of {len(todo)} recorded → {OUT}")
 
@@ -304,17 +304,17 @@ if __name__ == "__main__":
             return "" if step["n"] == 1 else "k"
 
         real_input, builtins.input = builtins.input, answer
-        here, globals()["OUT"] = OUT, Path("/tmp/indite-narrate-selftest")
+        here, globals()["OUT"] = OUT, Path("/tmp/inditeflow-narrate-selftest")
         try:
             mic = Mic()
             record(mic, "__selftest", "one short line")
             mic.close()
         finally:
             builtins.input, globals()["OUT"] = real_input, here
-        for f in Path("/tmp/indite-narrate-selftest").glob("*"):
+        for f in Path("/tmp/inditeflow-narrate-selftest").glob("*"):
             f.unlink()
-        Path("/tmp/indite-narrate-selftest").rmdir()
-        print(f"ok - {len(got)} lines, {sum(1 for n, _ in got if n[0] == 'S')} of them spoken into indite; "
+        Path("/tmp/inditeflow-narrate-selftest").rmdir()
+        print(f"ok - {len(got)} lines, {sum(1 for n, _ in got if n[0] == 'S')} of them spoken into Inditeflow; "
               f"the record path runs")
         sys.exit(0)
     main()

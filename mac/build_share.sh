@@ -1,22 +1,22 @@
 #!/bin/bash
-# Builds indite.app that runs on ANOTHER Mac (Apple Silicon, macOS 13+): its own Python, its own libraries, the
+# Builds inditeflow.app that runs on ANOTHER Mac (Apple Silicon, macOS 13+): its own Python, its own libraries, the
 # models inside. Unlike build_app.sh (a launcher for this folder), nothing here points back at this project.
 #
-#   ./mac/build_share.sh          -> dist-share/indite.app and dist-share/indite-mac.zip
+#   ./mac/build_share.sh          -> dist-share/inditeflow.app and dist-share/inditeflow-mac.zip
 #
-# Not signed with a Developer ID: the first time, the person right-clicks indite.app -> Open -> Open.
+# Not signed with a Developer ID: the first time, the person right-clicks inditeflow.app -> Open -> Open.
 # Nothing personal goes in: no history, settings, word fixes, API keys or logins - those live in each person's
-# ~/Library/Application Support/indite and Keychain, which this script never reads.
+# ~/Library/Application Support/inditeflow and Keychain, which this script never reads.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 OUT="$ROOT/dist-share"
-APP="$OUT/indite.app"
+APP="$OUT/inditeflow.app"
 RES="$APP/Contents/Resources"
 PY_HOME="$("$ROOT/.venv/bin/python" -c 'import sys; print(sys.base_prefix)')"
 VERSION="0.2"
 
 rm -rf "$OUT"
-mkdir -p "$APP/Contents/MacOS" "$RES/app/mac/models" "$RES/app/indite" "$RES/app/.tools/whisper.cpp/build/bin"
+mkdir -p "$APP/Contents/MacOS" "$RES/app/mac/models" "$RES/app/inditeflow" "$RES/app/.tools/whisper.cpp/build/bin"
 
 echo "1/6 Python (relocatable build, $(basename "$PY_HOME"))"
 cp -R "$PY_HOME" "$RES/python"
@@ -30,11 +30,11 @@ uv pip install --quiet --python "$RES/python/bin/python3" --target "$RES/site" \
     pyobjc-framework-AVFoundation pyobjc-framework-WebKit pyobjc-framework-CoreMedia \
     pyobjc-framework-ScreenCaptureKit pyobjc-framework-CoreAudio
 
-echo "3/6 indite code"
+echo "3/6 Inditeflow code"
 cp "$ROOT"/mac/*.py "$RES/app/mac/"
 cp -R "$ROOT/mac/ui" "$RES/app/mac/ui"
 cp "$ROOT/mac/spelling.tsv" "$RES/app/mac/"
-cp "$ROOT"/indite/{__init__,core,styles,notes}.py "$RES/app/indite/"
+cp "$ROOT"/inditeflow/{__init__,core,styles,notes}.py "$RES/app/inditeflow/"
 
 echo "4/6 Models (the speech model and the speaker model, real copies)"
 cp "$ROOT/mac/models/ggml-apex-q5_k.bin" "$ROOT/mac/models/titanet_small.onnx" "$RES/app/mac/models/"
@@ -59,20 +59,20 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>indite</string>
-  <key>CFBundleDisplayName</key><string>indite</string>
-  <key>CFBundleIdentifier</key><string>com.indite.mac</string>
+  <key>CFBundleName</key><string>Inditeflow</string>
+  <key>CFBundleDisplayName</key><string>Inditeflow</string>
+  <key>CFBundleIdentifier</key><string>com.inditeflow.mac</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
-  <key>CFBundleExecutable</key><string>indite</string>
+  <key>CFBundleExecutable</key><string>inditeflow</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleIconFile</key><string>indite</string>
+  <key>CFBundleIconFile</key><string>inditeflow</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
   <key>NSMicrophoneUsageDescription</key>
-  <string>indite turns what you say into text, on this Mac. The recording is deleted straight after.</string>
+  <string>Inditeflow turns what you say into text, on this Mac. The recording is deleted straight after.</string>
   <key>NSAppleEventsUsageDescription</key>
-  <string>indite types the text into the app you are using.</string>
+  <string>Inditeflow types the text into the app you are using.</string>
 </dict>
 </plist>
 PLIST
@@ -83,17 +83,17 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 export PYTHONPATH="$HERE/site:$HERE/app"
 export PYTHONNOUSERSITE=1
 mkdir -p "$HOME/Library/Logs"
-exec "$HERE/python/bin/python3" -u "$HERE/app/mac/indite_mac.py" >> "$HOME/Library/Logs/indite-mac.log" 2>&1
+exec "$HERE/python/bin/python3" -u "$HERE/app/mac/inditeflow_mac.py" >> "$HOME/Library/Logs/inditeflow-mac.log" 2>&1
 LAUNCH
 chmod +x "$RES/run.sh"
-clang -O2 -mmacosx-version-min=13.0 -o "$APP/Contents/MacOS/indite" "$ROOT/mac/launcher.c"   # stays the parent (launcher.c)
-cp "$ROOT/mac/brand/indite.icns" "$RES/indite.icns"                          # the logo (mac/brand/logo.svg)
+clang -O2 -mmacosx-version-min=13.0 -o "$APP/Contents/MacOS/inditeflow" "$ROOT/mac/launcher.c"   # stays the parent (launcher.c)
+cp "$ROOT/mac/brand/inditeflow.icns" "$RES/inditeflow.icns"                          # the logo (mac/brand/logo.svg)
 
 # One ad-hoc signature over everything: Apple Silicon refuses to run unsigned code, and a stable identity keeps the
 # Accessibility tick across launches. Not a Developer ID: Gatekeeper still asks once ("right-click -> Open").
 codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || echo "note: signing failed"
 
-(cd "$OUT" && ditto -c -k --sequesterRsrc --keepParent indite.app indite-mac.zip)
+(cd "$OUT" && ditto -c -k --sequesterRsrc --keepParent inditeflow.app inditeflow-mac.zip)
 echo
 echo "built: $APP ($(du -sh "$APP" | cut -f1))"
-echo "share: $OUT/indite-mac.zip ($(du -sh "$OUT/indite-mac.zip" | cut -f1))"
+echo "share: $OUT/inditeflow-mac.zip ($(du -sh "$OUT/inditeflow-mac.zip" | cut -f1))"

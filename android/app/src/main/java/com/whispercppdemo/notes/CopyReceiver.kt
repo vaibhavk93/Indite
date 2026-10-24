@@ -14,7 +14,7 @@ class CopyReceiver : BroadcastReceiver() {
         Settings.init(context)
         Notes.init(context)
         val note = Notes.note(intent.getStringExtra(EXTRA_NOTE) ?: return) ?: return
-        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("indite", note.allText()))
+        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Inditeflow", note.allText()))
         if (Build.VERSION.SDK_INT < 33) Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
     }
 

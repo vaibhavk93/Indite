@@ -1,4 +1,4 @@
-# Player plan: listen to a note inside indite, with the words following along
+# Player plan: listen to a note inside inditeflow, with the words following along
 
 **Draft - not yet critic-reviewed.** Written 2026-10-17. Mac app first; Android notes at the end.
 
@@ -13,7 +13,7 @@ Python, and light up the line being played. Build it in 5 small steps; leave wor
 |---|---|---|
 | Play | `⋯ → Play recording` runs `open <wav>`: QuickTime opens outside the app. A meeting opens two QuickTime windows (you, others). | `mac/window.py` act `play` |
 | Kept audio | Dictation: `audio/<id>.wav`, only if "Keep audio" is on (off by default). Meeting: `<id>-you.wav` + `<id>-others.wav`. File: its original path. | `store.audio_files` |
-| Timings | Meetings and files have `segments` `[{start, end, speaker, text}]`. Dictations have none. | `meeting.py`, `indite_mac.py` |
+| Timings | Meetings and files have `segments` `[{start, end, speaker, text}]`. Dictations have none. | `meeting.py`, `inditeflow_mac.py` |
 | Side panel | Ask AI drawer: 460 px, focus handling, Escape closes. | `app.html` `openDrawer` |
 | Edit | Edit text (one undo) - **only for notes without speakers**. Speaker rename (whole note). Flags (Mark likely mistakes) and Fix a word. | `window.py`, `app.html` |
 | Android | Tap a paragraph -> sheet with Edit / Play / Copy. Plays **that one piece** and highlights it. No whole-note player. | `NotesApp.kt` `Player` |
@@ -104,7 +104,7 @@ highlight is normal elsewhere, but every app doing it keeps word timings from th
 
 **⚠ Remember:** the page cannot just use an HTML `<audio>` tag. The window only lets the page read files in
 `mac/ui/` (`loadFileURL ... allowingReadAccessToURL` in `window.py`). Recordings live in `~/Library/Application
-Support/indite/audio/` or anywhere on disk. Widening that permission would let the page read the whole home folder.
+Support/inditeflow/audio/` or anywhere on disk. Widening that permission would let the page read the whole home folder.
 
 ```
                      WHO PLAYS THE SOUND?

@@ -1,22 +1,32 @@
-# indite handoff
+# inditeflow handoff
 
 **Read this first.** It lets any Claude Code or Codex session (or a different account) continue the work. Keep it current:
 update "Where things stand" and add a dated entry to `docs/WORKLOG.md` at the end of every session.
 
 Last updated: 2026-10-10.
 
+> **Renamed 24 Oct 2026: indite → Inditeflow** (founder's decision). Code, bundle ids, folders and living docs use the new
+> name: `mac/inditeflow_mac.py`, package `inditeflow/`, `com.inditeflow.mac`, `com.inditeflow.app`, data folder
+> `~/Library/Application Support/inditeflow`, log `~/Library/Logs/inditeflow-mac.log`, env `INDITEFLOW_DATA` / `INDITEFLOW_TEST`.
+> **Older docs (WORKLOG, FOUNDER_REQUESTS, AUDIT, DECISIONS history, `docs/research/`) still say "indite": read it as the same
+> thing.** Kept on purpose: the Android signing key path `~/.indite/indite-testers.keystore` (the key must not change),
+> `com.whispercppdemo` (a code package, not the brand), and the name "Indite Technologies" (an unrelated company).
+> Moves for old data: the Mac data folder moves itself on first start (the old name stays as a link), Keychain keys are
+> copied to the new name, and the Android Restore still accepts backups made before the rename.
+
+
 ---
 
-## 1. What indite is
+## 1. What inditeflow is
 
 Offline, private Hinglish speech-to-text. Speak Hindi + English, get Roman-script text ("kal meeting hai").
 
 | Part | Where | State |
 |---|---|---|
 | **Android app** (main product) | `android/` | build 29 on the founder's OnePlus 12 |
-| **Mac app** (hold a key, speak, it types) | `mac/`, built to `dist/indite.app` | working; 0.8 s per sentence with the engine resident |
-| Mac CLI + web app | `indite/` (Python, `uv`) | working; local + Sarvam engines |
-| Benchmarks | `bench_synth/` (synthetic Hinglish + automated phone test), `indite bench` | working |
+| **Mac app** (hold a key, speak, it types) | `mac/`, built to `dist/inditeflow.app` | working; 0.8 s per sentence with the engine resident |
+| Mac CLI + web app | `inditeflow/` (Python, `uv`) | working; local + Sarvam engines |
+| Benchmarks | `bench_synth/` (synthetic Hinglish + automated phone test), `inditeflow bench` | working |
 
 Docs that matter, in order:
 1. `ROADMAP.md`: **the one roadmap**, split Mac / Android, each done / next / later / parked (17 Oct). Add new items there, nowhere else (built / now / next / later / not doing / founder requests with status). The page
@@ -43,38 +53,38 @@ Docs that matter, in order:
 - Audio never leaves the phone. **The public build has no INTERNET permission**: check with `aapt2 dump permissions`.
 - Zero per-use cost to the founder. AI only via the user's own AI app, own API key (personal build for now), or the
   founder's own Mac (personal build, removed before launch).
-- No in-app Claude/Gemini/ChatGPT login (terms). **Reminders: indite sets its own** (founder decision, 10 Oct, overrides the old "hand off to Calendar / Clock" rule); Calendar and Share are still offered on task rows.
+- No in-app Claude/Gemini/ChatGPT login (terms). **Reminders: inditeflow sets its own** (founder decision, 10 Oct, overrides the old "hand off to Calendar / Clock" rule); Calendar and Share are still offered on task rows.
 - The `personal` flavour is founder-only: internet, Mac route, OpenRouter key, accessibility auto-paste.
 
-**Design rule (founder, 17 Oct):** indite has its own design language, not the generic AI-tool look. Read
+**Design rule (founder, 17 Oct):** inditeflow has its own design language, not the generic AI-tool look. Read
 `docs/DESIGN.md` before any UI work and add new patterns to it.
 
 **Testing without disturbing the founder (founder, 17 Oct):** tests of the running app must not take over his screen.
 Use the **hidden test copy**: `python mac/testcopy.py start | js | eval | cmd | stop` (own data folder
-`~/Library/Application Support/indite-test`, own engine on port 8712 with 2 threads; no keys, mic, typing, clipboard,
+`~/Library/Application Support/inditeflow-test`, own engine on port 8712 with 2 threads; no keys, mic, typing, clipboard,
 pill, card, menu icon, sound or focus; what it would have typed or shown goes to `offstage.jsonl`). Feed speech with
 `cmd "dictate:<wav>"` (16 kHz mono, e.g. `bench_synth/clean/s03.wav`).
-- **⚠ Stop it when done.** While it runs, opening indite from Spotlight/Finder may reach the hidden copy.
-- **⚠ Restart the founder's app with `open -n -g dist/indite.app`** - plain `open` hands over to the test copy if it
-  is running (happened 17 Oct: his indite was down ~30 s). Before any restart, check the log: no `pill:` line in the
+- **⚠ Stop it when done.** While it runs, opening inditeflow from Spotlight/Finder may reach the hidden copy.
+- **⚠ Restart the founder's app with `open -n -g dist/inditeflow.app`** - plain `open` hands over to the test copy if it
+  is running (happened 17 Oct: his inditeflow was down ~30 s). Before any restart, check the log: no `pill:` line in the
   last ~2 minutes (the `paint:` lines come every ~10 s).
 - Its window does not draw pictures (macOS stops painting off-screen windows): check the page with `eval`; for a
   picture, render `mac/ui/app.html` in headless Chrome with made-up notes.
 - Still on the real screen, only with his OK: typing into other apps, the pill, the card's look.
 - Never kill engines with `pkill -f "whisper-server...8712"` from a shell command line: the pattern matches the shell.
-- **⚠ Never run `dist/indite.app/Contents/Resources/python/bin/python3` directly** (use `.venv/bin/python`). It writes
+- **⚠ Never run `dist/inditeflow.app/Contents/Resources/python/bin/python3` directly** (use `.venv/bin/python`). It writes
   `.pyc` files into the app, which breaks its signature: the app then warns "app file has been changed" on the
   founder's screen and Accessibility can stop working (17 Oct). Fix: delete `.pyc` files newer than `Contents/Info.plist`,
-  then `codesign --verify --deep --strict dist/indite.app`.
+  then `codesign --verify --deep --strict dist/inditeflow.app`.
 
 **Repo rules:**
-- **⚠ Giving indite to anyone else: send ONLY `dist/portable/indite-mac.zip`, built with `./mac/build_portable.sh`.**
-  `dist/indite.app` (mac/build_app.sh) is the founder's own copy: it runs code, libraries and the model from this
+- **⚠ Giving inditeflow to anyone else: send ONLY `dist/portable/inditeflow-mac.zip`, built with `./mac/build_portable.sh`.**
+  `dist/inditeflow.app` (mac/build_app.sh) is the founder's own copy: it runs code, libraries and the model from this
   project folder, so on another Mac it "does nothing" (17 Oct, his boss's M2). The portable build carries everything,
   needs macOS 14+ on Apple Silicon, and stops itself if `mac/portable_check.py` finds a home-folder path, a binary for
   a newer macOS or another chip, a missing file, or anything loaded from outside the app. It needs 4 GB free.
-- **Never quote speech-set sentences, references or results in docs or commits** (they may hold work names; the repo is public). They live in `~/Library/Application Support/indite/speechset/`.
-- **The GitHub repo is PUBLIC** (github.com/vaibhavk93/Indite). Never commit `.env`, `data/`, `clips/`, `phonetest/`,
+- **Never quote speech-set sentences, references or results in docs or commits** (they may hold work names; the repo is public). They live in `~/Library/Application Support/inditeflow/speechset/`.
+- **The GitHub repo is PUBLIC** (github.com/vaibhavk93/Inditeflow). Never commit `.env`, `data/`, `clips/`, `phonetest/`,
   `test_recordings/`, APKs, models, or any recording of real people. Never put tokens or keys in docs.
 - Commit as `vaibhavk93@users.noreply.github.com` (`git -c user.email=... commit`), never a work email.
 - Commit and push only when the founder asks, or as part of a build he asked for.
@@ -110,7 +120,7 @@ Model fingerprints (SHA-256), so a rebuild uses exactly the same files:
 **Keeping old versions (critic-reviewed 10 Oct):**
 - Every build installed on a phone: bump `versionCode`/`versionName` in `android/app/build.gradle`, then
   `git tag build-<versionCode>`. Settings → About shows "build N · git hash" so you can see what's on the phone.
-- Keep **one** last-known-good personal APK outside the repo: `~/.indite/apks/` (disk is tight; tags cover older ones).
+- Keep **one** last-known-good personal APK outside the repo: `~/.inditeflow/apks/` (disk is tight; tags cover older ones).
 - **The signing key `~/.indite/indite-testers.keystore` is the one file that can't be replaced.** Founder keeps a copy
   (and its password, `android`) in a password manager or a private, unshared Drive folder. Optional: a copy of the
   574 MB model there too.
@@ -154,7 +164,7 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 ## 5. Where things stand (update every session)
 
 **24 Oct (afternoon) — founder's checks: always-save, card, cost, model choice (all 🧪, restarted, live).**
-- **Every dictation is saved**, even with indite in front (page tells Python when a box has the cursor). **Card:** hover/pressed tints, pulsing "working" line, new setting "AI buttons on the card" (dependent rows are indented and *disabled, not hidden*; rule in `docs/DESIGN.md`). **Cost:** the Claude login's own usage and list-price cost are now carried (`notes.last_usage`), so the chip and Insights "This month" fill in for new answers. **Model:** Settings → AI → Model now shows for the Claude login (`claude_model`: account default / haiku / sonnet / opus / custom; typed names are validated); measured on one rewrite: default Opus 5.5 $0.00705 vs haiku $0.000177 (quality of Haiku unproven). Two to-dos added (they must be `todo="open"`, not `True`).
+- **Every dictation is saved**, even with inditeflow in front (page tells Python when a box has the cursor). **Card:** hover/pressed tints, pulsing "working" line, new setting "AI buttons on the card" (dependent rows are indented and *disabled, not hidden*; rule in `docs/DESIGN.md`). **Cost:** the Claude login's own usage and list-price cost are now carried (`notes.last_usage`), so the chip and Insights "This month" fill in for new answers. **Model:** Settings → AI → Model now shows for the Claude login (`claude_model`: account default / haiku / sonnet / opus / custom; typed names are validated); measured on one rewrite: default Opus 5.5 $0.00705 vs haiku $0.000177 (quality of Haiku unproven). Two to-dos added (they must be `todo="open"`, not `True`).
 - **Founder still to check:** card hover/press on a real card; To do page shows the 2 items; a cost chip + Insights line; the Model row; design clean-up (9 passes) by eye; speech set: ~28 more marked dictations, then `python mac/speechset.py score` (baseline on the 20 read-aloud sentences: 21.5% words wrong, names 57% right; Dictionary spellings were added AFTER that baseline).
 - **Testing rule (founder, 24 Oct):** a feature is not tested until a test looks at what is DRAWN (computed visibility), and numbers shown are compared with the rows on screen. Run `.venv/bin/python -m pytest tests -q` (61, needs Chrome) and `.venv/bin/python tests/e2e_testcopy.py` (131 checks on the real app in the hidden copy, ~13 min) before committing list, Settings or store changes. Settings: never hide an `.item` row with `hidden` (sgo() un-hides all of them).
 - **Audit 24 Oct:** `docs/AUDIT_24OCT.md` is the full end-to-end audit (findings, positive and negative cases, run times, known limits, how to re-run). Run `.venv/bin/python -m pytest tests -q` before any change to `mac/ui/app.html` lists or `mac/store.py`. New since the entry below: own `popup()` menus in the toolbar, Find in one transcript, Delete asks (words / recording / both, `store.stash_audio`), Mistake review filter (`reviewed` on notes), capital-only Dictionary fixes.
@@ -163,26 +173,26 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 - **Open ideas, not built:** Dictionary entries that differ only by capital letters (refused as "same word"); voice commands (#262, parked); live model/effort discovery (asked, see worklog).
 
 **24 Oct (morning) — AI price table fixed; critic rule narrowed; model default changed.**
-- **Every dictation is saved now (24 Oct, founder's decision; not live-proven):** the old skip when indite was in front is gone, because macOS says "box focused" when unsure and 3 dictations were lost. The page tells Python when a box in indite has the cursor (`in_box`); that only picks typing vs clipboard. New setting `card_ai` (AI buttons on the card). Test after restart: Dictations page, click empty space, dictate - a note + recording + card with buttons. Distinct from the audio-cap bug below.
+- **Every dictation is saved now (24 Oct, founder's decision; not live-proven):** the old skip when inditeflow was in front is gone, because macOS says "box focused" when unsure and 3 dictations were lost. The page tells Python when a box in inditeflow has the cursor (`in_box`); that only picks typing vs clipboard. New setting `card_ai` (AI buttons on the card). Test after restart: Dictations page, click empty space, dictate - a note + recording + card with buttons. Distinct from the audio-cap bug below.
 - **Three live bugs fixed (24 Oct evening, 🧪):** Esc cancel (extra direct Esc check; not proven live - ask the founder what the log line says), Restore refilling emptied notes, "How many to keep" deleting at once. Real-page check: `.venv/bin/python tests/e2e_keep_restore.py`. Founder keeps the Meetings/calls checks for last and wants them walked step by step then.
 - **Recording bug fixed (24 Oct):** `trim_audio` counted starred/to-do audio (891 MB) toward the 500 MB cap, so every new dictation recording was deleted on save. Cap now counts droppable audio only. Live-checked after restart. The real speech set (Mac next #1) is under way: baseline not scored yet; do not add the new Dictionary spellings until it is.
 - `mac/cost.py` RATES now match Anthropic's pricing page (checked 24 Oct): added Opus 5.5, Sonnet 5.5, Fable 5.1, Opus 4.8; **corrected** Haiku 5.5 ($1/$5 → $0.10/$0.50, the default AI model, so past cost figures were ~10x too high), Sonnet 5, Opus 5/4.7, Fable 5. `.venv/bin/python mac/cost.py` → `ok`. OpenAI rows NOT re-checked. Haiku 5.5's over-100k-prompt tier and cache discounts are not modelled (marked `ponytail:` in the file). Running app still has the old table until restarted.
 - Critic rule is now narrow (see Founder's working rules above); founder's default model is Sonnet 5.5 + high (usage limits), Opus 5.5 + medium for hard tasks via `/model opus`.
-- Founder asked whether docs are enough to rebuild indite: git on GitHub is the real backup; speech models, `dist` and recordings are deliberately not in git. **Unproven:** a from-scratch rebuild following this file has never been tested.
+- Founder asked whether docs are enough to rebuild inditeflow: git on GitHub is the real backup; speech models, `dist` and recordings are deliberately not in git. **Unproven:** a from-scratch rebuild following this file has never been tested.
 
 **23 Oct afternoon — Mac: pill hidden from screen capture + multi-select → Ask AI combined (same shape as Android).**
 - Pill + text card now carry `setSharingType_(0)` (NSWindowSharingNone): excluded from Zoom/Meet/Teams/Loom shares, QuickTime screen recording, and ⌘⇧3 screenshots. Not yet proven in a live share.
 - Dictations tab: kebab menu → "Select (combine with others)" starts a selection mode (checkmark marks, picked-row border); fixed bottom bar "N selected · ~W words · [Ask AI combined]"; posts `{action:"combine", ids:[...]}`; Python's `store.combine` writes a new `kind: "combined"` row (snapshot of the picked transcripts under "— Clip N: title · date —" headers, `sources`/`sourceLabels` on the row), then `openDrawer(new_id)`.
-- Verified in the hidden test copy (founder's screen untouched). `.venv/bin/python mac/store.py` → `ok` (extended self-check for combine). Not rebuilt. Restart with `open -n -g dist/indite.app` once the log has 2 min of quiet.
+- Verified in the hidden test copy (founder's screen untouched). `.venv/bin/python mac/store.py` → `ok` (extended self-check for combine). Not rebuilt. Restart with `open -n -g dist/inditeflow.app` once the log has 2 min of quiet.
 
 **23 Oct — Android: multi-select → Ask AI combined, and the clipboard-fallback paste bug now logs its reason.**
-- (B, done): `AutoPaste.paste()` now logs one of five concrete reasons (`A/B/C/D1/D2/E`) when it falls back to clipboard-only; behaviour unchanged, so the next time the founder sees "it copied instead of typing in", `adb logcat -s indite` names the cause and the real fix can be targeted.
+- (B, done): `AutoPaste.paste()` now logs one of five concrete reasons (`A/B/C/D1/D2/E`) when it falls back to clipboard-only; behaviour unchanged, so the next time the founder sees "it copied instead of typing in", `adb logcat -s inditeflow` names the cause and the real fix can be targeted.
 - (A, done, untested on phone): long-press a note → "Select (combine with others)" → pick 2–10 → bottom bar "Ask AI combined" → opens a NEW combined note whose `transcript.jsonl` contains each source's full text under a `— Clip N: name · date —` header. The existing AI drawer runs on the whole thing as if it were one dictation. `Note.sources` + `Note.sourceLabels` on `meta.json`; combined notes show a "Combined" chip and "N clips · date".
 - Snapshot by design: deleting a source does nothing to the combined note. Live re-link is **unproven** and not built.
 - Compiles clean (personal + public); unit tests pass. **Not yet installed on the phone** — version not bumped. Founder to cut build 30 when ready.
 
 **18 Oct 01:45 — Mac: portable app, bug sweep, UI review and critic-passed changes done; roadmap page republished.**
-- Give indite to others ONLY as `dist/portable/indite-mac.zip` (`./mac/build_portable.sh`; see Repo rules).
+- Give inditeflow to others ONLY as `dist/portable/inditeflow-mac.zip` (`./mac/build_portable.sh`; see Repo rules).
 - Meetings: the call's sound reconnects if its capture dies (16 Oct it died after 7 s on headphones); the mic in use
   is shown and logged. Listen: engine "nan" answers retried, else word times estimated from the sound.
 - End-to-end bugs fixed (window actions can no longer crash the app; masked text never saved over real words;
@@ -193,7 +203,7 @@ Personal-build test hooks (adb, see `MainActivity.testHook`): `--es test_import 
 - Waiting on the founder: D21 (boss's macOS), D20 (headphone call), D14/D15 (speech test), D19 (on-screen look).
 
 **17 Oct 23:05 — Mac roadmap: everything buildable without the founder is built; copy reviewed.**
-- New: Listen view in indite's look; card buttons picked in Settings (`card_buttons`); meeting tracks on one clock
+- New: Listen view in inditeflow's look; card buttons picked in Settings (`card_buttons`); meeting tracks on one clock
   (`Track.catch_up`, arrival-stamped system audio) + "Both" playback (`clock` on the note); word times rebuilt when
   words change (`store.wt_fits`) or the engine heard nothing; lines remember their track (`k`, `store.track_of`);
   per-line speaker fix + join (Listen → click the name); "Record this call?" (`mac/calls.py`, CoreAudio process
@@ -232,8 +242,8 @@ call. Four test meetings (16 Oct 03:02-03:06) are in the founder's Meetings list
 **Mac, 16 Oct 02:40 — the stuck-mic bug came back; the old fix could not work.** After a meeting, CoreAudio
 deadlocked closing the mic and held the device lock for the life of the process, so every later press queued forever
 (pill shown, nothing recorded). Now `Mic.start` gives up after 8 s, a stuck close or open raises `MicStuck`, and the
-next press restarts indite itself (at most once per 10 min, else "restart the Mac"). **The self-restart is untested
-on a real lock-up**: if the log shows "restarting indite to get the microphone back", check it came back.
+next press restarts inditeflow itself (at most once per 10 min, else "restart the Mac"). **The self-restart is untested
+on a real lock-up**: if the log shows "restarting inditeflow to get the microphone back", check it came back.
 Founder's assistant idea answered: use Claude/Gemini for actions (ROADMAP "Not doing").
 
 **Mac, 16 Oct ~02:00 — full end-to-end test: 21 of 21 pass.** App, engine, signature, both permissions, 3 live
@@ -266,7 +276,7 @@ fixed. Next: founder looks, restarts the Mac, demo video. Plans: `docs/ROADMAP_D
 
 **Mac, 15 Oct 21:55 — key access and Screen Recording both work now.** Hotkey dictation tested by the founder.
 The blocker was a silent crash, not the permission (see "The Mac app now" below). Item 1 in the list below is
-resolved. Next: restart the Mac (a frozen indite copy holds Dock clicks), then record the demo video.
+resolved. Next: restart the Mac (a frozen inditeflow copy holds Dock clicks), then record the demo video.
 
 **Mac, 15 Oct evening — the Wispr Flow gap review changed the plan.** 5 of the 14 "missing" features were already
 built (snippets = word fixes, the Dictionary page, and every Insights stat including the streak). What is actually
@@ -321,11 +331,11 @@ Use push + install always. Three failed installs and ~90 minutes were lost befor
 - **Backup that can be restored** (`notes/Backup.kt`): a zip with text, times, speaker labels, edits and AI answers;
   audio optional; restore skips notes already present; `fmt` version in every note and a refusal to open a newer one.
 - **One door for AI**: the three duplicate buttons and the ten-label menu are gone; one sheet, grouped by intent,
-  every action says what it gives back, suggestions ordered by what indite knows about the note.
+  every action says what it gives back, suggestions ordered by what inditeflow knows about the note.
 - **R06** per-paragraph speaker correction with "Not sure", rename-to-merge. **R03** retry one failed part.
   **N01** briefs link each task back to its paragraph. **N02** task states (done / not mine). **N03** rewrite chips
   in the keyboard. "Say this calmly" style with an insults-removed carve-out.
-- Reminders ring on the alarm stream, played by indite itself (this ROM stores a USAGE_ALARM channel as
+- Reminders ring on the alarm stream, played by inditeflow itself (this ROM stores a USAGE_ALARM channel as
   USAGE_NOTIFICATION), and stop on Stop, Done, Snooze, swipe-away or opening the app.
 - Delete asks what to delete: audio, text, or the whole note.
 - 22 unit tests (was 14), `docs/PRD.md`, and the audit register (37 findings).
@@ -337,15 +347,15 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
 
 | | |
 |---|---|
-| Run (your Mac) | `./mac/build_app.sh && open dist/indite.app` (a launcher for this folder) |
-| Share | `./mac/build_share.sh` → `dist-share/indite-mac.zip`, 624 MB, Apple Silicon, unsigned (right-click → Open once). Own Python, libraries, models; no personal data, no logins |
+| Run (your Mac) | `./mac/build_app.sh && open dist/inditeflow.app` (a launcher for this folder) |
+| Share | `./mac/build_share.sh` → `dist-share/inditeflow-mac.zip`, 624 MB, Apple Silicon, unsigned (right-click → Open once). Own Python, libraries, models; no personal data, no logins |
 | Window | Dictations · Meetings · Files · To do · Dictionary · Settings (General, Look & sounds, Writing, AI, Privacy, Backup) · Help |
-| Code | `indite_mac.py` (keys, mic, engine, files, AI calls, who-spoke), `meeting.py`, `system_audio.py`, `speakers.py`, `ai.py`, `digits.py`, `store.py`, `window.py`, `overlay.py`, `ui/app.html` |
+| Code | `inditeflow_mac.py` (keys, mic, engine, files, AI calls, who-spoke), `meeting.py`, `system_audio.py`, `speakers.py`, `ai.py`, `digits.py`, `store.py`, `window.py`, `overlay.py`, `ui/app.html` |
 | Checks | `tests/test_mac_handsfree.py`, `tests/test_mac_pieces.py`, and `python mac/<store,ai,digits,meeting,speakers>.py` |
-| See the real window | write a tab (`settings:ai`, `home`…) into `~/Library/Application Support/indite/snapshot.request`; a PNG appears beside it (needs Screen Recording) |
+| See the real window | write a tab (`settings:ai`, `home`…) into `~/Library/Application Support/inditeflow/snapshot.request`; a PNG appears beside it (needs Screen Recording) |
 
 **⚠ Lessons from today, each cost time:**
-- **A normal (Dock) app's panels cannot appear over another app's full screen.** indite is a normal app only while its window is in front, else menu-bar only.
+- **A normal (Dock) app's panels cannot appear over another app's full screen.** inditeflow is a normal app only while its window is in front, else menu-bar only.
 - **The first engine start on a new Mac takes ~63 s** (GPU code compiled once), 3 s after. The app waits 2 min and says so.
 - **The engine had a library path from this Mac baked in** (with a space in it). `build_share.sh` strips it and refuses to finish if one remains.
 - **`sherpa-onnx` needs `sherpa-onnx-core`** or its runtime library is missing.
@@ -354,21 +364,21 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
 - **A Finder-launched app has a bare PATH**: `ai.py` adds `~/.local/bin` so `claude` is found.
 - **AI uses the founder's personal Claude account**, signed in on this Mac. Settings → AI shows which account is
   signed in, so it is never a surprise; AI is off by default for new users.
-- **A class defined in `indite_mac.py` is defined twice** (it runs as the program and `window.py` imports it again):
+- **A class defined in `inditeflow_mac.py` is defined twice** (it runs as the program and `window.py` imports it again):
   Objective-C refuses the second copy. NSObject subclasses go in `window.py` / `overlay.py`.
-- **Opening a running indite did nothing visible**, so it looked dead: the window now shows whenever the app is
+- **Opening a running inditeflow did nothing visible**, so it looked dead: the window now shows whenever the app is
   activated (Finder, Spotlight, Dock).
-- **indite had no app menus**: full screen's top bar was empty and ⌘C/⌘V did nothing in the window. `window.main_menu`
-  adds indite / Edit / Window; Quit goes through `quit_all` so the engine stops too.
+- **inditeflow had no app menus**: full screen's top bar was empty and ⌘C/⌘V did nothing in the window. `window.main_menu`
+  adds inditeflow / Edit / Window; Quit goes through `quit_all` so the engine stops too.
 - **Menu-bar-only mode on "window lost focus" stranded the window when leaving full screen** (grey buttons). It now
   follows the app losing focus (`Activation.resigned_`).
 - **Fading the pill's glass froze its view of the background.** The glass stays at full strength; transparency is a
   tint drawn under the text (`pill_clear`, 0–100 % in 10 % steps). Check with `pill:<0-100>` in `snapshot.request`.
 - Who spoke now runs by itself after files (≥20 s) and meetings; Settings → Writing → Find who spoke.
-- **⚠ Screen & System Audio Recording is NOT granted to indite** (log line "screen & system audio recording
+- **⚠ Screen & System Audio Recording is NOT granted to inditeflow** (log line "screen & system audio recording
   allowed: False", 15 Oct 20:55). Meetings therefore hear only the mic, and the demo video cannot record. A window
   snapshot of the desktop looked fine only because wallpaper and own windows need no permission. The founder may
-  have enabled it for `dist-share/indite.app` (a different signature) instead.
+  have enabled it for `dist-share/inditeflow.app` (a different signature) instead.
 - **⚠ macOS switches off a slow key listener and pynput never turns it back on** — the founder's shortcuts died
   after a settings change. Key handlers only change state; mic work runs on `self.ops` (one worker, in order);
   `listen()` restarts the listener on a "tap disabled" event. Keep anything slow out of `on_press`/`on_release`.
@@ -384,37 +394,37 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
   when the bundle itself must change (code lives outside it, so code changes need only a restart), or create a local
   signing certificate for a stable identity - the founder's call, it adds a certificate to the keychain.
 - **Ad-hoc signing + rebuilds can drop a privacy permission**: after `build_app.sh`, check the log line
-  "screen & system audio recording allowed". If False: remove indite from that list (−), add `dist/indite.app` (+).
+  "screen & system audio recording allowed". If False: remove inditeflow from that list (−), add `dist/inditeflow.app` (+).
 - **Your app now carries its own Python** (`build_app.sh` copies the interpreter into the bundle). Reason: macOS
-  checked Screen & System Audio Recording against the interpreter *outside* the app, so the switch for indite
+  checked Screen & System Audio Recording against the interpreter *outside* the app, so the switch for inditeflow
   never applied. After this one change Accessibility and Screen Recording must be granted again, once.
 - **⚠ The app's executable must stay alive as Python's parent** (`mac/launcher.c`, compiled by both build scripts).
-  With a shell script that exec'd Python, Screen Recording was credited to indite but Accessibility was judged
-  against Python itself, so key access stayed False with indite switched on. Every rebuild re-signs ad hoc and
+  With a shell script that exec'd Python, Screen Recording was credited to inditeflow but Accessibility was judged
+  against Python itself, so key access stayed False with inditeflow switched on. Every rebuild re-signs ad hoc and
   resets both permissions: rebuild only when the bundle itself must change (code changes need only a restart).
   A local signing certificate would stop the resets; it needs the founder's OK (it adds a trusted certificate).
 - **⚠ Key access finally works (15 Oct, 21:50); the real blocker was a crash, not the permission.** Once keys reached
-  indite, pynput read the keyboard layout from its listener thread; macOS 26 demands the main thread and killed the
-  app silently (SIGTRAP, `dispatch_assert_queue`). Fix: `_layout_on_main_thread()` in `indite_mac.py` reads it once at
+  inditeflow, pynput read the keyboard layout from its listener thread; macOS 26 demands the main thread and killed the
+  app silently (SIGTRAP, `dispatch_assert_queue`). Fix: `_layout_on_main_thread()` in `inditeflow_mac.py` reads it once at
   start-up and hands pynput that copy, so **pynput is pinned to 1.8.2** (the patch reaches into its internals).
-- **⚠ Media keys crashed indite (18 Oct):** pynput turns volume/brightness/play keys into an NSEvent on its own thread
+- **⚠ Media keys crashed inditeflow (18 Oct):** pynput turns volume/brightness/play keys into an NSEvent on its own thread
   (`keyboard/_darwin.py:303`), which macOS 26 aborts. `_skip_media_keys()` drops those events first; keep it with the pin.
   The log's old "Accessibility" line was checking **Input Monitoring** (`CGPreflightListenEventAccess`), so it read
   False even with Accessibility on. `can_listen()` (log, menu ⚠, window banner, prompt) now checks Accessibility, plus `faulthandler` writes a Python stack into the log on
   any crash. Rules: after a crash, read `~/Library/Logs/DiagnosticReports/python3.12-*.ips` before blaming a
   permission; Accessibility True + Input Monitoring False is the working state.
-- **A frozen indite copy (pid 99097, status `T`) can't be killed, even outside the sandbox.** Likely the company's
+- **A frozen inditeflow copy (pid 99097, status `T`) can't be killed, even outside the sandbox.** Likely the company's
   security agent (unproven: its logs need admin). It makes a normal `open` fail (-1712) and Dock clicks go to it, so
-  the window "doesn't show". Until the Mac restarts: start with `open -n dist/indite.app`, show the window with
-  `echo open: > ~/Library/Application\ Support/indite/demo.cmd`. `launcher.c` now stops waiting on any error but
+  the window "doesn't show". Until the Mac restarts: start with `open -n dist/inditeflow.app`, show the window with
+  `echo open: > ~/Library/Application\ Support/inditeflow/demo.cmd`. `launcher.c` now stops waiting on any error but
   an interruption (source only; takes effect at the next rebuild, which resets permissions).
 - **Ask AI is a side panel** (`openDrawer` in `ui/app.html`): answers first, then actions; new "Ask anything" action
   (`custom` in `ai.py`). The note list shows only "AI · n answers".
-- Logo: `mac/brand/logo.svg` (five voice bars, the middle one is the letter i) → `indite.icns` in both builds.
+- Logo: `mac/brand/logo.svg` (five voice bars, the middle one is the letter i) → `inditeflow.icns` in both builds.
 - **Demo video** (`mac/demo.py`, `mac/recorder.py`, `mac/demo_make.py`): runs against a demo profile
-  (`open --env INDITE_DATA=<folder> dist/indite.app`), started by writing `run:<out_dir>` into that folder's
+  (`open --env INDITEFLOW_DATA=<folder> dist/inditeflow.app`), started by writing `run:<out_dir>` into that folder's
   `demo.cmd`. Synthetic key presses from the runner work (it inherits Accessibility); screen recording must happen
-  inside indite (`rec:` command) because a child process is refused. `say` can freeze: clips are made first, with
+  inside inditeflow (`rec:` command) because a child process is refused. `say` can freeze: clips are made first, with
   timeouts. Hidden apps are restored in `finally` (needs a run-loop spin to take effect).
 - **Insights** page (sidebar): words, this week vs last, speed, time saved vs typing at 40 wpm, 12-week activity,
   14 days, by app, by hour, meetings/files/wait.
@@ -423,7 +433,7 @@ and **`docs/MAC_TEST_PLAN.md`** (what was tested automatically, and 32 tests B1�
 
 ### The Mac app (15 Oct)
 
-`mac/indite_mac.py` plus `overlay.py`, `window.py`, `store.py`. Hold a key anywhere, speak, let go, and the text is
+`mac/inditeflow_mac.py` plus `overlay.py`, `window.py`, `store.py`. Hold a key anywhere, speak, let go, and the text is
 typed into whatever app has focus. Same window rule as the phone.
 
 **⚠ The Mac and Android apps are kept separate (founder, 15 Oct).** Neither reads the other's folder. The Mac has its
@@ -439,14 +449,14 @@ whisper.cpp tools in `.tools/` are shared, and Android builds its own copy from 
 | Feedback | a floating pill: voice bars while held, "writing…", a tick when it lands |
 | Window | history grouped by day, searchable, one-click copy, words/minute and a day streak; settings for the hotkey, typed-or-copied, Hinglish spelling, and whether history is kept at all |
 | History | capped at 500 lines in Application Support — an unbounded log of everything said is a liability, not a feature |
-| Build | `./mac/build_app.sh` → `dist/indite.app`, ad-hoc signed so the Accessibility tick survives a rebuild |
+| Build | `./mac/build_app.sh` → `dist/inditeflow.app`, ad-hoc signed so the Accessibility tick survives a rebuild |
 
 **⚠ The permission lesson, three times over.** macOS gives no key events to an untrusted process and pynput fails
 silently, so the first build looked healthy and did nothing. The permission attaches to **the app that launched the
 script** — Terminal, or Claude, or iTerm — which is why granting it to a python binary never stuck, and why the
 bundle exists. The app now checks at startup and names what to add.
 
-**⚠ The project moved on 14 Oct** from `~/Desktop/Personal/Cowork/Voice to Text` to `~/Projects/indite`, because a
+**⚠ The project moved on 14 Oct** from `~/Desktop/Personal/Cowork/Voice to Text` to `~/Projects/inditeflow`, because a
 new app cannot read `~/Desktop` (macOS protects it) and the bundle could not reach its own Python. A symlink keeps
 the old Desktop path working. All paths in the repo were relative, so nothing else changed.
 
@@ -459,7 +469,7 @@ the old Desktop path working. All paths in the repo were relative, so nothing el
   clears any old engine on port 8711 at startup. Checked with `kill -9`, then relaunch: one engine.
 - `build_app.sh` uses the real folder (`pwd -P`); run from the Desktop symlink, it baked in a path macOS blocks.
 - **Built (untested by the founder):** your own word fixes — menu → "Edit my word fixes…" opens
-  `~/Library/Application Support/indite/my_fixes.txt` (`heard = wanted`, whole words, multi-word OK, read on every
+  `~/Library/Application Support/inditeflow/my_fixes.txt` (`heard = wanted`, whole words, multi-word OK, read on every
   dictation; check: `.venv/bin/python mac/store.py`). **Esc while holding cancels** (pill: "cancelled"); Esc also
   reaches the app underneath, pynput cannot block it.
 - **Long holds were broken, now fixed (measured 15 Oct, clean synthetic clips, local server):**
@@ -537,9 +547,9 @@ the old Desktop path working. All paths in the repo were relative, so nothing el
 
 | Place | What's there | State (15 Oct, night) |
 |---|---|---|
-| **GitHub** `github.com/vaibhavk93/Indite` (PUBLIC, branch `main`) | Source, docs | **Pushed 15 Oct night** (`aad93dc` and this doc fix), incl. tags `build-7`…`build-10`. Push again when the founder says so |
+| **GitHub** `github.com/vaibhavk93/Inditeflow` (PUBLIC, branch `main`) | Source, docs | **Pushed 15 Oct night** (`aad93dc` and this doc fix), incl. tags `build-7`…`build-10`. Push again when the founder says so |
 | **Local repo** (this Mac) | Everything, plus git-ignored files: models in `android/app/src/main/assets/models/`, `android/app/libs/sherpa-onnx-1.13.8.aar`, `.tools/` (JDK, whisper.cpp), test audio, old APKs in `phonetest/` and `APK/` (~2.4 GB, OK to delete pending) | HEAD = latest commit; tags `build-7`…`build-10` mark builds installed on the phone |
-| **Mac app builds** | `dist/indite.app` (yours: launcher + its own Python, code runs from this folder) and `dist-share/indite.app` + `indite-mac.zip` (shareable, self-contained). Both git-ignored | Rebuilding resets Accessibility and Screen Recording (ad-hoc signing) |
+| **Mac app builds** | `dist/inditeflow.app` (yours: launcher + its own Python, code runs from this folder) and `dist-share/inditeflow.app` + `inditeflow-mac.zip` (shareable, self-contained). Both git-ignored | Rebuilding resets Accessibility and Screen Recording (ad-hoc signing) |
 | **Founder's phone** (OnePlus CPH2573, USB) | Personal build 0.10 (build 10) + the rounding A/B hook | Notes live only on the phone (no backup). Export via Settings → Storage |
 | **Signing key** `~/.indite/indite-testers.keystore` | Same key for every build (updates install over the old app) | **Only copy is on this Mac: founder to back it up** |
 

@@ -6,7 +6,7 @@ Meeting recording: your microphone and what the Mac is playing, as two tracks, t
                                       without it the meeting is still recorded, mic only, and the window says why)
 
 Text arrives while the meeting goes on, and is saved after every piece, so a crash loses at most the last ~20 s.
-Both tracks are also written to disk as they come (Application Support/indite/audio/<id>-you.wav / -others.wav).
+Both tracks are also written to disk as they come (Application Support/inditeflow/audio/<id>-you.wav / -others.wav).
 """
 
 from __future__ import annotations
@@ -126,7 +126,7 @@ class Meeting:
         self.sys = SystemAudio()
         self.others_ok = self.sys.start()
         self.problem = "" if self.others_ok else (
-            "Recording your microphone only. To hear the other people in a call, allow indite under System "
+            "Recording your microphone only. To hear the other people in a call, allow Inditeflow under System "
             "Settings → Privacy & Security → Screen & System Audio Recording, then start again.")
         self.started = time.time()
         self.sys_tried, self.sys_restarts = 0.0, 0
@@ -148,7 +148,7 @@ class Meeting:
     def watch_others(self, quiet_for: float = 4.0, every: float = 10.0) -> None:
         """
         macOS sends the call's sound all the time, silence included - until its capture dies. On 16 Oct it died 7 s into
-        a 13-minute call (headphones switching into call mode, most likely) and indite never noticed: 6.8 s of "others"
+        a 13-minute call (headphones switching into call mode, most likely) and Inditeflow never noticed: 6.8 s of "others"
         for 864 s of you. So: an error, or nothing for 4 s, means start the capture again (at most every 10 s); the
         gap is written as silence (Track.catch_up) and the meeting says so.
         """

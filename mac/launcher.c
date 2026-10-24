@@ -1,11 +1,11 @@
 /*
- * indite's app executable (Contents/MacOS/indite). It starts Contents/Resources/run.sh as a CHILD and stays
+ * inditeflow's app executable (Contents/MacOS/inditeflow). It starts Contents/Resources/run.sh as a CHILD and stays
  * running until it ends.
  *
  * Why not just a shell script that execs Python: macOS then judged the Accessibility permission against the
- * Python program itself, which has no permission of its own, so "key access" stayed off even with indite switched
+ * Python program itself, which has no permission of its own, so "key access" stayed off even with inditeflow switched
  * on (15 Oct). A parent that stays alive is the "responsible process": macOS credits everything its children do -
- * the hotkey, typing, the microphone, screen recording - to indite, the app the person actually allowed.
+ * the hotkey, typing, the microphone, screen recording - to inditeflow, the app the person actually allowed.
  */
 #include <errno.h>
 #include <libgen.h>

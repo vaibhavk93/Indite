@@ -1,7 +1,7 @@
 """
 Records part of the screen to a .mov with ScreenCaptureKit (SCRecordingOutput, macOS 15+). Used only by the demo
-video: it runs INSIDE indite, because macOS gives the Screen Recording permission to indite and not to a program
-indite starts (`screencapture -v` exited 1 with no message; a child process got "user declined").
+video: it runs INSIDE Inditeflow, because macOS gives the Screen Recording permission to Inditeflow and not to a program
+inditeflow starts (`screencapture -v` exited 1 with no message; a child process got "user declined").
 """
 
 from __future__ import annotations

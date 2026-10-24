@@ -1,5 +1,5 @@
 """
-What indite remembers between launches: the dictations, and the few settings that change how it behaves.
+What Inditeflow remembers between launches: the dictations, and the few settings that change how it behaves.
 
 Both live in one folder under Application Support, as plain text a person can read and delete. Nothing goes
 anywhere else - the same promise the engine makes.
@@ -16,15 +16,31 @@ import re
 import time
 from pathlib import Path
 
-# INDITE_DATA points a second copy at another folder - used for the demo video, so a recording never shows a
+# INDITEFLOW_DATA points a second copy at another folder - used for the demo video, so a recording never shows a
 # person's real notes.
-DIR = Path(os.environ["INDITE_DATA"]) if os.environ.get("INDITE_DATA") else Path.home() / "Library/Application Support/indite"
-# INDITE_TEST=1: the hidden test copy (mac/testcopy.py, founder rule 17 Oct "never test on my screen"). It has its own
+def _data_dir() -> Path:
+    """The data folder. The app was called indite until 24 Oct: its folder is moved to the new name once (a rename inside
+    one disk, instant), and the old name is left as a link to it, so the old build still works if the rename is undone."""
+    if os.environ.get("INDITEFLOW_DATA"):
+        return Path(os.environ["INDITEFLOW_DATA"])
+    base = Path.home() / "Library/Application Support"
+    new, old = base / "inditeflow", base / "indite"
+    if not new.exists() and old.is_dir() and not old.is_symlink():
+        try:
+            old.rename(new)
+            old.symlink_to(new)
+        except OSError:                          # could not move it: keep working on the old folder, lose nothing
+            return old
+    return new
+
+
+DIR = _data_dir()
+# INDITEFLOW_TEST=1: the hidden test copy (mac/testcopy.py, founder rule 17 Oct "never test on my screen"). It has its own
 # data folder and engine, and never listens to keys, opens the mic, types, copies, shows a pill / card / menu icon, or
 # comes to the front. Refuses to run on the real data folder.
-TEST = os.environ.get("INDITE_TEST") == "1"
-if TEST and not os.environ.get("INDITE_DATA"):
-    raise SystemExit("INDITE_TEST needs its own INDITE_DATA folder")
+TEST = os.environ.get("INDITEFLOW_TEST") == "1"
+if TEST and not os.environ.get("INDITEFLOW_DATA"):
+    raise SystemExit("INDITEFLOW_TEST needs its own INDITEFLOW_DATA folder")
 HISTORY = DIR / "history.jsonl"
 PREFS = DIR / "prefs.json"
 MY_FIXES = DIR / "my_fixes.txt"
@@ -52,7 +68,7 @@ DEFAULTS = {
     "claude_model": "",         # the Claude login's model: haiku / sonnet / opus / an id; "" = whatever the account uses
     "ai_effort": "",            # low / medium / high / xhigh / max for the Claude login and Anthropic key; "" = the model's default
     "cost_currency": "USD",     # AI costs are shown in "USD" or "INR"
-    "usd_inr": 0,               # rupees per US dollar, typed by you (indite does not look rates up); 0 = not set
+    "usd_inr": 0,               # rupees per US dollar, typed by you (Inditeflow does not look rates up); 0 = not set
     "views": {},                # per list page: {"home": {"filter": "star", "sort": "old"}, ...}; the search text is never kept
     "history_cap": 500,         # plain dictations to keep: 500 (default), 5000 or 0 = everything. Stars, to-dos, meetings, files: always kept
     "keep_audio": False,        # also keep each dictation's recording (about 0.3 MB for 10 s), for backups
@@ -453,7 +469,7 @@ _AUDIO_ID = re.compile(r"^(\d+\.\d+)(?:-you|-others)?\.\w+$")
 
 
 def audio_counts() -> dict[str, int]:
-    """How many recordings each note has in indite's own audio folder, from ONE directory listing (a stat per note
+    """How many recordings each note has in Inditeflow's own audio folder, from ONE directory listing (a stat per note
     would be 25,000 disk checks on every page update after years of use)."""
     out: dict[str, int] = {}
     if AUDIO.exists():
@@ -476,7 +492,7 @@ AUDIO_TRASH = DIR / "audio_trash"        # where "delete the recording" moves it
 
 
 def stash_audio(note_id: str) -> int:
-    """Moves a note's recordings out of the audio folder (Undo moves them back). Only files inside indite's own folder:
+    """Moves a note's recordings out of the audio folder (Undo moves them back). Only files inside Inditeflow's own folder:
     a transcribed file's original is the user's own file and is never touched. Returns how many were moved."""
     moved = 0
     for name, n in [(f.name, f) for f in (AUDIO.iterdir() if AUDIO.exists() else [])]:
@@ -602,7 +618,7 @@ def backup(path: Path, scope: str = "all", with_audio: bool = False) -> int:
     rows = [r for r in _read() if scope == "all" or (scope == "star" and r.get("star"))
             or (scope == "keep" and (r.get("star") or r.get("todo")))]
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr("manifest.json", json.dumps({"app": "indite-mac", "format": FORMAT, "made": time.time(),
+        z.writestr("manifest.json", json.dumps({"app": "inditeflow-mac", "format": FORMAT, "made": time.time(),
                                                 "scope": scope, "audio": with_audio, "notes": len(rows)}))
         out = []
         for r in rows:
@@ -621,7 +637,7 @@ def backup(path: Path, scope: str = "all", with_audio: bool = False) -> int:
 
 
 def restore_zip(path: Path) -> int:
-    """Returns how many notes were added or refilled. Refuses a backup from a newer indite rather than half-reading it.
+    """Returns how many notes were added or refilled. Refuses a backup from a newer Inditeflow rather than half-reading it.
     A note that is already here is left alone, except when it lost its words or its recording ("Delete → words only /
     recording only" leaves an empty note behind, 24 Oct): those come back from the backup. A plain dictation older than
     the keep limit would be dropped again at once, so it is not counted as restored."""
@@ -630,7 +646,7 @@ def restore_zip(path: Path) -> int:
     with zipfile.ZipFile(path) as z:
         meta = json.loads(z.read("manifest.json"))
         if meta.get("format", 0) > FORMAT:
-            raise ValueError("This backup was made by a newer indite. Update indite, then restore it.")
+            raise ValueError("This backup was made by a newer Inditeflow. Update Inditeflow, then restore it.")
         names = set(z.namelist())
         have = {r["id"]: r for r in _read()}
         new, refill, touched = [], {}, set()
@@ -681,7 +697,7 @@ def _put_audio(z, names: set, r: dict) -> bool:
 # ---- your own word fixes ---------------------------------------------------------------------------------------
 # One per line, "what it writes = what you want". Read on every dictation, so a saved edit works on the next one.
 # "=" and not a tab, because the person editing this is in TextEdit, where a tab and spaces look the same.
-FIXES_HEADER = """# indite: your word fixes. One per line:   what indite writes = what you want
+FIXES_HEADER = """# Inditeflow: your word fixes. One per line:   what Inditeflow writes = what you want
 # Matches whole words, any capitals. Save the file; the next dictation uses it. Lines starting with # are ignored.
 # Examples (delete the # to use one):
 # ptm = Paytm

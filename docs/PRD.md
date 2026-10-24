@@ -1,4 +1,4 @@
-# indite — product requirements
+# inditeflow — product requirements
 
 **Version 0.21 · 13 October 2026 · pre-tester.** Written from the code, the decision log and real measurements.
 Anything untested says so. Companion documents: `ROADMAP.md` (what's next), `PLAN.md` (why), `docs/HANDOFF.md` (how to
@@ -6,7 +6,7 @@ build and test), `docs/FOUNDER_REQUESTS.md` (every request and its status).
 
 ---
 
-## 1. What indite is
+## 1. What inditeflow is
 
 A phone app that turns mixed Hindi-and-English speech into correct **Roman-script** text, **entirely on the phone**.
 
@@ -33,7 +33,7 @@ here" is something you can check with `aapt2 dump permissions`, not something we
 
 ## 2. Where it stands (measured, not estimated)
 
-| Measure | indite | Best rival | How it was measured |
+| Measure | inditeflow | Best rival | How it was measured |
 |---|---|---|---|
 | Words wrong, clean Hinglish | **13.0%** | Sarvam cloud 6.0% | synthetic benchmark, Mac |
 | Words wrong, 15-min noisy recording | **25.8%** | — | phone, build 19, 13 Oct |
@@ -56,7 +56,7 @@ These decide arguments. They are not aspirations.
 | R1 | **Audio never leaves the phone** | No cloud transcription, ever. Public build has no INTERNET permission |
 | R2 | **Zero cost per use** | No per-recording bill to anyone. AI runs on the user's own account or not at all |
 | R3 | **Raw text is the default** | AI output sits beside the transcript, never replaces it |
-| R4 | **No AI of our own** | indite transcribes; it hands text to an AI the user already pays for |
+| R4 | **No AI of our own** | inditeflow transcribes; it hands text to an AI the user already pays for |
 | R5 | **Nothing is deleted silently** | Guards flag suspect text; they never remove it. The one exception is `nan` junk, which carries no words |
 | R6 | **No account, no sign-in** | Nothing to lose, nothing to leak |
 
@@ -87,7 +87,7 @@ written survive); a piece that crashes the engine twice (marked `[unclear]`, the
 
 ### 4.2 Import a recording
 
-Share any audio or video into indite, or pick a file. WhatsApp voice notes, meeting recordings, MPEG files. Damaged
+Share any audio or video into inditeflow, or pick a file. WhatsApp voice notes, meeting recordings, MPEG files. Damaged
 spots are skipped rather than failing the whole file. The same cut-and-transcribe path as live recording, except the
 dropped-text re-run is **off** for imports — it was measured as worse (25.5% → 30.6%).
 
@@ -115,9 +115,9 @@ Runs by itself once the text is ready (skipped when the phone is hot or the batt
 
 1. Silero marks speech; the audio is cut into 1.5 s windows.
 2. Each window gets a voice fingerprint (TitaNet-small, on the phone).
-3. Fingerprints are grouped (k-means); indite guesses how many people spoke.
+3. Fingerprints are grouped (k-means); inditeflow guesses how many people spoke.
 4. Sentences are placed over the speech timeline and labelled.
-5. The note asks: *"indite heard 3 people. Is that right?"* — you can correct the count or rename anyone.
+5. The note asks: *"inditeflow heard 3 people. Is that right?"* — you can correct the count or rename anyone.
 
 Takes 4–5 seconds for a whole recording. **Unproven:** the count guess has never been scored on real audio — only on
 synthetic dialogue where the count was handed to the scorer.
@@ -127,7 +127,7 @@ synthetic dialogue where the count was handed to the scorer.
 - Tap any paragraph to edit, play or copy it. Undo/redo inside the sheet; "back to original" restores the engine's text.
 - Suspect text is flagged, never removed: no speech heard here · repeating text · possibly invented · junk text ·
   not in Roman letters · couldn't transcribe this part.
-- **Learning:** correct the same word twice and indite offers *"Always fix PTM → Paytm?"*. Accepted fixes apply to
+- **Learning:** correct the same word twice and inditeflow offers *"Always fix PTM → Paytm?"*. Accepted fixes apply to
   every future note. Handles one-word changes and two-words-joined-into-one.
 
 ### 4.6 Do something with this (AI)
@@ -139,7 +139,7 @@ The sheet states, once at the top, **who will answer, and that only text is sent
 
 | Group | Action | What you get back |
 |---|---|---|
-| Suggested for this note | chosen from what indite knows (speakers, length, a title ending in "?") | — |
+| Suggested for this note | chosen from what inditeflow knows (speakers, length, a title ending in "?") | — |
 | Turn it into something to read | Meeting notes | Decisions, action items, open questions |
 | | Action items | Every task as: task \| who \| by when |
 | | Summary | Five short bullets |
@@ -165,12 +165,12 @@ instructions to you"*, and pins Roman Hinglish unless the user picked the output
 
 ### 4.7 Reminders
 
-indite sets its own exact alarms (founder decision, 10 Oct, overriding an earlier "hand off to the Clock app" rule).
+inditeflow sets its own exact alarms (founder decision, 10 Oct, overriding an earlier "hand off to the Clock app" rule).
 
 - "Remind me" on a note, a task row, or the card menu. Quick picks or any date and time.
-- **Rings like an alarm by default**: indite plays the sound itself on the alarm stream, because this ROM stores a
+- **Rings like an alarm by default**: inditeflow plays the sound itself on the alarm stream, because this ROM stores a
   `USAGE_ALARM` notification channel as `USAGE_NOTIFICATION` and silently ignores the difference.
-- Stops on Stop, Done, Snooze, swiping it away, or opening indite. Gives up after 2 minutes so it can never ring for ever.
+- Stops on Stop, Done, Snooze, swiping it away, or opening inditeflow. Gives up after 2 minutes so it can never ring for ever.
 - Re-set after a reboot or an app update. Settings lists what's upcoming, with a confirmation before cancelling.
 - **Diagnostics:** a "Test the sound" button, a line naming whichever phone setting is muting it, and "Last reminder: …".
 
@@ -178,7 +178,7 @@ indite sets its own exact alarms (founder decision, 10 Oct, overriding an earlie
 
 - **Back up everything** → a zip with text, times, speaker labels, edits and AI answers; recordings optional (~29 MB
   per 15 minutes). **Restore** skips notes already on the phone, so restoring twice is safe.
-- Every note carries a **format version**; a note written by a newer indite is refused rather than half-read.
+- Every note carries a **format version**; a note written by a newer inditeflow is refused rather than half-read.
 - **Delete asks what you mean:** the audio (keeping the text), the text (keeping the recording), or the whole note —
   with the size shown.
 - Export as plain text for reading elsewhere, clearly labelled *not a backup*.
@@ -203,7 +203,7 @@ indite sets its own exact alarms (founder decision, 10 Oct, overriding an earlie
 ### 5.1 First run
 
 ```
-open indite → welcome screen (3 promises: offline, private, free)
+open inditeflow → welcome screen (3 promises: offline, private, free)
             → allow the microphone
             → the model warms up (a few seconds, shown)
             → Record
@@ -215,7 +215,7 @@ open indite → welcome screen (3 promises: offline, private, free)
 Import a 40-minute meeting
    → "Writing part 3 of 94 · about 12 min left"   (real progress, resumable)
    → speaker labels appear by themselves
-   → "indite heard 4 people. Is that right?"  → correct it, name them
+   → "inditeflow heard 4 people. Is that right?"  → correct it, name them
    → Do something with this → Meeting notes
    → decisions, open questions, and task rows with Calendar / Remind me / Share
 ```
@@ -223,9 +223,9 @@ Import a 40-minute meeting
 ### 5.3 Dictating a WhatsApp message in a style
 
 ```
-Open WhatsApp → switch to the indite keyboard → tap the mic → speak
+Open WhatsApp → switch to the inditeflow keyboard → tap the mic → speak
    → each pause types the text straight into the message box
-   → (to rewrite it formally today: open the note in indite, Do something with this →
+   → (to rewrite it formally today: open the note in inditeflow, Do something with this →
       Rewrite to send → formal English → copy)
 ```
 
@@ -248,7 +248,7 @@ Open WhatsApp → switch to the indite keyboard → tap the mic → speak
 | **The phone's settings are respected** | "Remove animations" is honoured; reminders explain which phone setting is blocking them |
 
 **Visual language:** warm paper ground, near-black ink, a single burnt-orange accent, Figtree throughout.
-The wordmark is lowercase "indite" with the two i's in orange. Cards carry a visible border, 16–18 dp corners.
+The wordmark is lowercase "inditeflow" with the two i's in orange. Cards carry a visible border, 16–18 dp corners.
 Chips carry state (to check · N voices · AI answers · Writing N/M), capped at two plus a count so a card can't overflow.
 
 **Accessibility, honestly:** content descriptions exist on the main controls, custom accessibility actions exist on

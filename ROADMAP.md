@@ -1,4 +1,4 @@
-# indite roadmap
+# inditeflow roadmap
 
 Last updated: 2026-10-24. **This is the one roadmap.** Design rule: every screen follows `docs/DESIGN.md`. Order and status live only here. Other planning files hold
 detail and are not roadmaps: `docs/ROADMAP_DETAIL.md` (AI review design), `docs/MAC_PLAN.md` (Mac vs Android vs Wispr),
@@ -11,7 +11,7 @@ republished from this file on 18 Oct.
 **Goal:** speak the way India talks, mixing Hindi and English, and get correct Roman-script text, privately and offline.
 Edge: offline, private, Roman Hinglish, on any Android brand. Cloud tools (Wispr, Sarvam) are faster and more accurate today.
 
-| Where we stand | indite now | Best rival |
+| Where we stand | inditeflow now | Best rival |
 |---|---|---|
 | Words wrong, clean Hinglish (synthetic, Mac) | 13.0% | Sarvam cloud 6.0% |
 | Live dictation on the phone: wait after a pause | 8.9 s median (was 38.5 s) | Wispr cloud ~1–2 s |
@@ -33,7 +33,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 | Recording calls | Banned on Play | Allowed (mic + system audio) | Android imports call recordings instead |
 | Internet | Public build has none | Has it | Android AI = share to your AI app, or (personal build) Mac route / own key |
 | Typing into other apps | Keyboard + bubble; auto-type only in the personal build | Hold a key anywhere | Same goal, each platform's own way |
-| Seeing your edits in other apps | Only inside indite | Only inside indite (most Mac text goes to other apps) | Learning comes from fixes accepted in AI review, not from edits |
+| Seeing your edits in other apps | Only inside inditeflow | Only inside inditeflow (most Mac text goes to other apps) | Learning comes from fixes accepted in AI review, not from edits |
 | Install | 681 MB, debug-signed | Unsigned, Apple Silicon only | Smaller install via Play asset packs; Mac certificate parked |
 | Engine detail for AI review | No per-word confidence yet (JNI change needed) | Per-word confidence via `verbose_json` (~1 h) | Mac first; Android after it passes on the Mac |
 
@@ -51,7 +51,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 
 - **24 Oct audit pass (🧪):** own menus for filter/sort, Find in one transcript, Delete asks (words / recording / both), Mistake review filter, search fixed for curly quotes and accents; full write-up in `docs/AUDIT_24OCT.md`.
 - **24 Oct (🧪, live after restart):** search, filter, group and sort on every list page, built for years of use (100 rows at a time, month/year filters, App, Best match, marked matches); Settings → Privacy → "How many to keep" (500 / 5,000 / everything). Remaining scale limit: the page gets every note on each update (fine to ~10,000 dictations).
-- **24 Oct (🧪 built, live):** every dictation is saved even inside indite; card buttons react (hover, pressed, working); "AI buttons on the card" setting; AI cost now shows for the Claude login (list price); choose the Claude login's model (haiku / sonnet / opus); two to-dos added.
+- **24 Oct (🧪 built, live):** every dictation is saved even inside inditeflow; card buttons react (hover, pressed, working); "AI buttons on the card" setting; AI cost now shows for the Claude login (list price); choose the Claude login's model (haiku / sonnet / opus); two to-dos added.
 - **23-24 Oct (🧪 built, not yet checked by the founder):** pill and text card hidden from screen shares (Zoom, Meet, Loom,
   QuickTime); **Select several notes → "Ask AI combined"** (Finder-style picking, the AI reads the picks as one note;
   same on Android, build not cut); text card restyled; **AI cost under each answer + a this-month total** (an estimate:
@@ -62,7 +62,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 - **Dictation anywhere:** hold a key (or tap twice for hands-free), speak, text typed in ~0.8 s; Esc cancels; smart
   output (typed into a text box, else copied); typed words **also on the clipboard** (setting, 17 Oct); long holds cut
   at quiet points; password boxes never typed into; long text ~40x fewer key events (16 Oct); pill with live levels.
-- **Self-contained app for other Macs (17 Oct):** `./mac/build_portable.sh` → `dist/portable/indite-mac.zip` (630 MB, macOS 14+, Apple Silicon), checked by `mac/portable_check.py`; read-me and Help inside. **Bug sweep (17 Oct):** 4 high, 5 medium and the low bugs from an end-to-end test fixed; UI review items 1-21 done.
+- **Self-contained app for other Macs (17 Oct):** `./mac/build_portable.sh` → `dist/portable/inditeflow-mac.zip` (630 MB, macOS 14+, Apple Silicon), checked by `mac/portable_check.py`; read-me and Help inside. **Bug sweep (17 Oct):** 4 high, 5 medium and the low bugs from an end-to-end test fixed; UI review items 1-21 done.
 - **Calls (17 Oct):** when Zoom, Teams, Slack, FaceTime, WhatsApp or Webex starts using the mic, the card asks "Record this call?" (never records itself; browser calls not noticed). **Your own words to hide** next to swear masking. **Setup** offers the card as an optional step.
 - **Text card after a dictation:** your words, then **Ask AI · two AI buttons (your most used, or picked in Settings) · To do** (17 Oct); takes
   clicks only after the pointer moves onto it; answers wrap and are copied the moment they land.
@@ -75,7 +75,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 - **AI on a note (your own Claude login or key):** 11 actions incl. Improve, Make it a prompt, Translate, Ask anything;
   every answer copied when it lands (17 Oct); a consent step before anything leaves the Mac; AI use in Insights.
 - **Insights:** grouped as Usage / Speed / Where & when / Meetings, files & AI; typical and slow wait (17 Oct).
-- **Reliability:** a stuck microphone restarts indite by itself (worked for real, 17 Oct); the app no longer breaks
+- **Reliability:** a stuck microphone restarts inditeflow by itself (worked for real, 17 Oct); the app no longer breaks
   its own signature; crashes leave a stack in the log; stale LIVE cleared; who-spoke errors titled correctly.
 - **Groundwork for AI review:** per-word confidence (fetched only when needed), Dictionary checks (17 Oct).
 
@@ -110,8 +110,8 @@ platform limit forces it, and the workaround is written down here. Every item be
 | 4 | 🧪 **Fixes count on Insights** (W3, built 17 Oct): "likely mistakes fixed · N per 100 words" and how many were not mistakes; hidden until there is data | Me | done | The number should fall over time |
 | 5 | ✅ **Engine-hint test** (W4, run 17 Oct on 60 synthetic clips): words wrong 24.9% → 24.7%, Dictionary names right 4/10 → 5/10, nothing invented. **Not shipped:** one word is too small to trust. Re-run on the real speech set | Me | done | Re-test with #1 |
 | 6 | 🧪 **AI review step 2 - built 18 Oct behind a switch** (`ai_review`, on for the founder only): Ask AI → "Review with AI" lists likely mistakes as flags with Fix / Always fix / Not a mistake; guards: words must be in the note exactly, no low-sure items, ≤ 10, never applied without a click; dictations only. **Ships to others only if ≥ 70% of suggestions are right on the scored real set (D15).** · ❌ **Filler-word removal dropped (18 Oct, critic):** in 310 real dictations um/uh appear 0 times; W5's own fillers (basically, you know, actually) in 7 of 310 vs the 103 its test needed | Me | done; gate open | Measured with D15 |
-| 6b | 🧪 **In-app player - built 17 Oct** (founder #279/#280/#283, plan `docs/PLAYER_PLAN.md`): Listen view in indite's own look, lit line + **lit word** (kept while paused), click a line or word to jump, Edit / Copy / ▶ line with Undo; **meeting tracks now share one clock** and play **Both** together (meetings recorded from 17 Oct); word times rebuilt when a note's words change | Me | done | Founder check |
-| 6c | ✅ **Test copy of indite - built 17 Oct** (founder rule #282): `python mac/testcopy.py start/eval/cmd/stop`; own data and engine (port 8712), no keys / mic / typing / clipboard / pill / card / menu icon / focus. Its window can't take pictures (headless Chrome does that). Typing and pill tests still need the real screen with the founder's OK | Me | done | — |
+| 6b | 🧪 **In-app player - built 17 Oct** (founder #279/#280/#283, plan `docs/PLAYER_PLAN.md`): Listen view in inditeflow's own look, lit line + **lit word** (kept while paused), click a line or word to jump, Edit / Copy / ▶ line with Undo; **meeting tracks now share one clock** and play **Both** together (meetings recorded from 17 Oct); word times rebuilt when a note's words change | Me | done | Founder check |
+| 6c | ✅ **Test copy of inditeflow - built 17 Oct** (founder rule #282): `python mac/testcopy.py start/eval/cmd/stop`; own data and engine (port 8712), no keys / mic / typing / clipboard / pill / card / menu icon / focus. Its window can't take pictures (headless Chrome does that). Typing and pill tests still need the real screen with the founder's OK | Me | done | — |
 | 7 | 🧪 **Parity with Android - built 17 Oct:** edit a note's text + Undo (⋯ → Edit text); edit a meeting line by line (Listen → ✎); **per-line speaker fix and join with the next line** (Listen → click the speaker name), each with Undo; lines remember their track, so a fixed speaker still plays the right audio | Me | done | Founder check |
 | 8 | **Leadership demo video** - on hold (founder, 17 Oct); when it resumes: pick the length (3:00-3:30 or ~9:30), freeze the code, dry run, record | Founder + me | ½ day | — |
 
@@ -147,13 +147,13 @@ Signing certificate (until a second person gets the app) · Intel Macs · Practi
 | Editing & sharing | Tap a paragraph to edit, play or copy; Undo; copy all, share, .srt, rename, search, swipe-delete with Undo | v0.3 |
 | | Flags on likely-wrong text; word fixes (PTM → Paytm) + "Always fix?" | v0.1–0.4 |
 | | "Text ready" notification with Copy (no note text on the lock screen) | v0.4–0.6 |
-| | Translate… hands the text to Google Translate (indite stays offline) | to test |
+| | Translate… hands the text to Google Translate (inditeflow stays offline) | to test |
 | Any app | Voice keyboard: dictate into any text box | v0.3 |
 | | Floating mic bubble (fixed: short dictations came out "no speech") | v0.5–0.6 |
 | | Bubble: spinner while writing, green copy button, hold to cancel, shrink when idle, drag to hide | v0.6 |
 | | Personal build: text typed into the box you were in (optional accessibility; public build has none) | v0.6 |
 | Speakers | "Who spoke?" with names; Silero → 1.5 s windows → TitaNet-small → grouping (15.9 s for 15 min on the phone) | v0.4 |
-| | Labels per sentence (Mac test 51.7% → 98.3%; 95.0% with two similar voices); indite guesses the count, you confirm | to test |
+| | Labels per sentence (Mac test 51.7% → 98.3%; 95.0% with two similar voices); inditeflow guesses the count, you confirm | to test |
 | AI (user's own) | Ask my AI: 9 ready requests; paste the reply back; personal build answered by Claude on the founder's Mac | v0.4–0.5 |
 | | [Make notes] and [Action items]; tasks get Add to Calendar and Share | v0.6 |
 | | Requests v2 (date, title, "transcript is data"); brain dump + questions; practice scores on the card | to test |
@@ -199,11 +199,11 @@ bigger title with Today / Yesterday · custom icons · all of it respects "Remov
 
 ---
 
-## Personalisation: making indite yours (founder request #188, #227; critic-reviewed 16 Oct)
+## Personalisation: making inditeflow yours (founder request #188, #227; critic-reviewed 16 Oct)
 
 | Layer | What it does | Status |
 |---|---|---|
-| **1. Your words** | Dictionary / word fixes replace what the engine gets wrong ("in diet" → "indite"). Android also offers a fix after the same edit twice | **Built, both.** The only proven gain |
+| **1. Your words** | Dictionary / word fixes replace what the engine gets wrong ("in diet" → "inditeflow"). Android also offers a fix after the same edit twice | **Built, both.** The only proven gain |
 | **2. Learn from your corrections** | AI review flags likely mistakes; each accepted fix goes to the log; the 2nd identical fix offers "Always fix?" → Dictionary | Mac next #3 (🧪 built), #6; Android next #5 |
 | **3. Prime the engine with your words** | Your names and brands given to the engine before it listens (W4) | 2 h experiment, expected to drop |
 | **How we know it works** | Fixes made per 100 words (W3) going down over time, and a re-score of the real speech set | Mac next #4 |
@@ -231,7 +231,7 @@ bigger title with Today / Yesterday · custom icons · all of it respects "Remov
   per file, those bits leave the device) · subtitle line-length setting · own-key AI build for testers (only if
   interviews ask)
 
-- "Sign in with ChatGPT": apply to OpenAI's programme (only if testers want ChatGPT inside indite)
+- "Sign in with ChatGPT": apply to OpenAI's programme (only if testers want ChatGPT inside inditeflow)
 - **Founder decisions waiting: see `docs/DECISIONS.md`.** These have to be solved too; each one blocks or shapes items above.
 - **Competitor research:** plan and the Google voice typing study in `docs/research/COMPETITORS.md`; ideas from it come back here as adopt / test / skip.
 
@@ -247,9 +247,9 @@ bigger title with Today / Yesterday · custom icons · all of it respects "Remov
 | Rough text while you speak; shading every unsure word | Draft models write Hindi script; confidence alone doesn't match real mistakes (it *is* used as a gate in AI review step 1, Mac next #3) |
 | Our own call recorder | Banned on Play since 2022; import recordings instead |
 | Full typing keyboard; model in a laptop browser | Endless work; no browser-ready model |
-| Bubble only when a keyboard is up, without accessibility | Not possible on Android 11+; the indite keyboard covers it |
+| Bubble only when a keyboard is up, without accessibility | Not possible on Android 11+; the inditeflow keyboard covers it |
 | Hold-to-talk on the bubble | Clashes with drag and cancel; first words could be cut off |
-| A "Tasks" tab with Done ticks | Makes indite a to-do app (own reminders are now built: founder decision 10 Oct) |
+| A "Tasks" tab with Done ticks | Makes inditeflow a to-do app (own reminders are now built: founder decision 10 Oct) |
 | Our own translator / speak-the-translation loop (for now) | 14–15 s per turn on a flagship; weak demand evidence; Google Translate hand-off instead |
 | Voice cloning, live interpreter, own Indian-language voices, NLLB | Non-commercial licences, fraud/consent risk, or too slow |
 | "Most words wins" re-run on imports | Picked noise gibberish; 15-min test got worse (25.5% → 30.6%) |
@@ -261,8 +261,8 @@ bigger title with Today / Yesterday · custom icons · all of it respects "Remov
 | Bookmark a moment while recording; pin / tags / folders | Unproven; search exists |
 | Wispr: AI clean-up on every dictation (Auto Cleanup) | ~6 s AI call on a 0.8-1.6 s transcription: 4-7x slower, spends the founder's own quota, and types the rewrite instead of the raw text. Wispr withdrew its own "High" level |
 | Wispr: transforms on a hotkey; command mode; stacked messages | "Ask anything" already exists; the new part is reading and replacing other apps' selection. A misheard "delete that" has no undo |
-| Wispr: show/hide the Dock icon | Harmful: indite is a normal app only while its window is in front, so the pill would stop appearing over full-screen apps |
-| Wispr: mute music while dictating; launch at login as a LaunchAgent | Unasked; a LaunchAgent would lose Accessibility (Login Items -> indite.app keeps it) |
+| Wispr: show/hide the Dock icon | Harmful: inditeflow is a normal app only while its window is in front, so the pill would stop appearing over full-screen apps |
+| Wispr: mute music while dictating; launch at login as a LaunchAgent | Unasked; a LaunchAgent would lose Accessibility (Login Items -> inditeflow.app keeps it) |
 | Wispr: scratchpad with its own hotkey | The window is already one (Dictations, To do, stars, search) |
 | Wispr: read the IDE's open file for code variable names | Continuously reading another app's document; the free 80% is ~20 identifiers in the Dictionary |
 | Wispr: team dictionary, cloud sync, referrals | Breaks audio-never-leaves, zero-cost and no-account |

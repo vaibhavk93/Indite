@@ -1,5 +1,5 @@
-"""The Claude CLI's JSON reply carries its own usage and cost; indite shows them instead of "no cost reported"."""
-from indite import notes
+"""The Claude CLI's JSON reply carries its own usage and cost; inditeflow shows them instead of "no cost reported"."""
+from inditeflow import notes
 
 
 def test_last_usage_reads_the_cli_reply():

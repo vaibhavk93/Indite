@@ -1,15 +1,15 @@
 """
-Per-answer cost estimates for the AI providers indite talks to.
+Per-answer cost estimates for the AI providers Inditeflow talks to.
 
 Rates are in US dollars per million tokens, (input, output). They go stale as providers change prices; the only
-authority is the provider's own dashboard. indite shows the number only when it is confident; a model not in RATES
+authority is the provider's own dashboard. Inditeflow shows the number only when it is confident; a model not in RATES
 reports as "cost not estimated" rather than "$0.00", which is honest.
 
 Local Claude (`provider == "claude"`, the signed-in-on-this-Mac path through the `claude` CLI) returns no usage
 counts to the app — those calls are marked "no cost reported" and never attributed a number.
 
 Rates listed below are the providers' published numbers as of 24 Oct 2026 (Anthropic rows checked against its pricing page). Update when a provider changes a price
-or indite starts using a new model.
+or Inditeflow starts using a new model.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ RATES: dict[str, tuple[float, float]] = {
     "claude-opus-4-7":        (5.00, 25.00),
     "claude-sonnet-5-5":      (2.00, 10.00),
     "claude-sonnet-5":        (2.00, 10.00),
-    # ponytail: Haiku 5.5 charges 0.50 in / 2.50 out when the prompt is over 100k tokens; indite prompts stay far below
+    # ponytail: Haiku 5.5 charges 0.50 in / 2.50 out when the prompt is over 100k tokens; Inditeflow prompts stay far below
     # that, so only the up-to-100k rate is listed. Add a tier check in estimate() if prompts ever grow that big.
     "claude-haiku-5-5":       (0.10,  0.50),
     "claude-haiku-4-5":       (1.00,  5.00),

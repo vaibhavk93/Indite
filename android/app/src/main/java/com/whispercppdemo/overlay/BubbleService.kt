@@ -97,7 +97,7 @@ class BubbleService : Service() {
             layoutParams = FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER)
         }
         val circle = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(getColor(R.color.kb_accent)) }
-        // Spinning ring while the text is being written, so it's clear indite is still working.
+        // Spinning ring while the text is being written, so it's clear Inditeflow is still working.
         val spinner = android.widget.ProgressBar(this).apply {
             isIndeterminate = true
             indeterminateTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.kb_on_accent))
@@ -107,7 +107,7 @@ class BubbleService : Service() {
         val view = FrameLayout(this).apply {
             background = circle
             elevation = dp(6).toFloat()
-            contentDescription = "indite: tap to dictate"
+            contentDescription = "Inditeflow: tap to dictate"
             addView(icon)
             addView(spinner)
         }
@@ -159,7 +159,7 @@ class BubbleService : Service() {
                         overTarget = false
                         // dropped on the X: the floating mic turns off (one switch, as the founder asked)
                         hideDropZone()
-                        toast("Floating mic off. Turn it on from the quick settings tile or indite → Settings.")
+                        toast("Floating mic off. Turn it on from the quick settings tile or Inditeflow → Settings.")
                         setEnabled(this, false)
                     } else if (moved) {
                         hideDropZone()
@@ -194,8 +194,8 @@ class BubbleService : Service() {
                     icon.setImageResource(when (state) { 2 -> R.drawable.ic_stop; 3 -> R.drawable.ic_copy; else -> R.drawable.ic_mic })
                     spinner.visibility = if (state == 1) android.view.View.VISIBLE else android.view.View.GONE
                     view.contentDescription = when (state) {
-                        2 -> "indite: tap to stop, hold to cancel"; 1 -> "indite: writing your text"; 3 -> "indite: tap to copy the text"
-                        else -> "indite: tap to dictate"
+                        2 -> "Inditeflow: tap to stop, hold to cancel"; 1 -> "Inditeflow: writing your text"; 3 -> "Inditeflow: tap to copy the text"
+                        else -> "Inditeflow: tap to dictate"
                     }
                     last = state
                     lastTouch = System.currentTimeMillis()
@@ -216,7 +216,7 @@ class BubbleService : Service() {
     private fun tap() {
         if (Recording.active) { NoteService.stopRecording(this); toast("Writing your text…"); return }
         readyText?.let { text ->
-            getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("indite", text))
+            getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("Inditeflow", text))
             readyText = null
             if (Build.VERSION.SDK_INT < 33) toast("Copied. Long-press a text box to paste.")  // Android 13+ shows its own
             return
@@ -278,7 +278,7 @@ class BubbleService : Service() {
 }
 
 /**
- * Invisible, opens for a moment so Android lets indite start the microphone, then closes.
+ * Invisible, opens for a moment so Android lets Inditeflow start the microphone, then closes.
  * It must stay open until the mic is really capturing: Android feeds silence to a mic opened after the app's
  * screen is gone (phone test 2026-10-10: every bubble dictation came out "No speech found").
  */
@@ -311,7 +311,7 @@ class StartMicActivity : Activity() {
 }
 
 /**
- * Quick settings tile "indite mic": turns the floating mic on and off from the pull-down panel, in any app.
+ * Quick settings tile "Inditeflow mic": turns the floating mic on and off from the pull-down panel, in any app.
  * Turning on goes through a brief invisible screen, because Android only lets a visible app start it.
  */
 class MicTile : android.service.quicksettings.TileService() {

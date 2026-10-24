@@ -61,7 +61,7 @@ private val LightColorScheme = lightColorScheme(
 fun WhisperCppDemoTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false,  // indite: keep our own colours on every phone
+    dynamicColor: Boolean = false,  // Inditeflow: keep our own colours on every phone
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

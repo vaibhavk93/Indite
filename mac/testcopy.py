@@ -1,10 +1,10 @@
 """
-The hidden test copy of indite (founder rule, 17 Oct: "never test on my screen while I work").
+The hidden test copy of Inditeflow (founder rule, 17 Oct: "never test on my screen while I work").
 
     python mac/testcopy.py start           # own data folder + own engine (port 8712); nothing on screen
     python mac/testcopy.py js "go('meetings')"
     python mac/testcopy.py eval "S.history.length"
-    python mac/testcopy.py cmd "dictate:/path/to/clip.wav"     # any demo.cmd verb (see InditeApp.demo_cmd)
+    python mac/testcopy.py cmd "dictate:/path/to/clip.wav"     # any demo.cmd verb (see InditeflowApp.demo_cmd)
     python mac/testcopy.py shot home        # a picture of its window -> <data>/snapshot-home.png
     python mac/testcopy.py stop
 
@@ -22,14 +22,14 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DATA = Path.home() / "Library/Application Support/indite-test"
-APP = ROOT / "dist/indite.app"
+DATA = Path.home() / "Library/Application Support/inditeflow-test"
+APP = ROOT / "dist/inditeflow.app"
 PREFS = {"setup_done": True, "sounds": False, "asked_screen": True, "preview": True, "ai": False, "keep_audio": True}
 
 
 def pid() -> str:
     out = subprocess.run(["ps", "-Eaxo", "pid=,command="], capture_output=True, text=True).stdout   # -E: environment
-    return next((l.split()[0] for l in out.splitlines() if "indite_mac.py" in l and "INDITE_TEST=1" in l), "")
+    return next((l.split()[0] for l in out.splitlines() if "inditeflow_mac.py" in l and "INDITEFLOW_TEST=1" in l), "")
 
 
 def cmd(line: str) -> None:
@@ -61,9 +61,9 @@ def start() -> None:
     prefs = DATA / "prefs.json"
     p = json.loads(prefs.read_text()) if prefs.exists() else {}
     prefs.write_text(json.dumps({**p, **PREFS}, indent=2))
-    log = DATA / "indite.log"
+    log = DATA / "inditeflow.log"
     seen = log.stat().st_size if log.exists() else 0
-    subprocess.run(["open", "-n", "-g", "--env", "INDITE_TEST=1", "--env", f"INDITE_DATA={DATA}", str(APP)], check=True)
+    subprocess.run(["open", "-n", "-g", "--env", "INDITEFLOW_TEST=1", "--env", f"INDITEFLOW_DATA={DATA}", str(APP)], check=True)
     end = time.time() + 120
     while time.time() < end:                     # the engine takes ~10 s; a first start up to a minute
         if log.exists() and "resident engine:" in log.read_text(errors="replace")[seen:]:

@@ -8,7 +8,7 @@ The Claude login (the `claude` CLI) has no listing call and OpenRouter has hundr
 built-in table below, copied from Anthropic's docs on 24 Oct 2026. It is a starting point, not live: a model Anthropic
 adds later appears here only after a refresh with an API key (or an update of this table).
 
-The last answer from each provider is kept in models.json in indite's data folder, so Settings opens without a network
+The last answer from each provider is kept in models.json in Inditeflow's data folder, so Settings opens without a network
 call. Only model ids and names are stored, never keys.
 """
 

@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PY = str(ROOT / ".venv/bin/python")
 TC = [PY, str(ROOT / "mac/testcopy.py")]
-D = Path.home() / "Library/Application Support/indite-test"
+D = Path.home() / "Library/Application Support/inditeflow-test"
 WAV = ROOT / "bench_synth/clean/s03.wav"
 FAILS = []
 
@@ -74,11 +74,11 @@ def main():
         (D / f).unlink(missing_ok=True)
     for d in ("audio", "audio_trash"):
         subprocess.run(["rm", "-rf", str(D / d)])
-    (D / "indite.log").write_text("")
+    (D / "inditeflow.log").write_text("")
     sh(*TC, "start")
     time.sleep(7)
     sys.path.insert(0, str(ROOT / "mac"))
-    os.environ["INDITE_DATA"] = str(D)
+    os.environ["INDITEFLOW_DATA"] = str(D)
     import store  # noqa: PLC0415
 
     print("\n== 1. Dictation: positive, silence, tiny, private ==")
@@ -252,7 +252,7 @@ def main():
     js("send({action:'pref',key:'sounds',value:false})")      # makes the app push its state again
     for page in ("home", "meetings", "files", "todo", "dict", "insights", "settings", "help"):
         js(f"go('{page}')", 1.2)
-    errs = (D / "indite.log").read_text()
+    errs = (D / "inditeflow.log").read_text()
     check("every page opens without a page error", "Script error" not in errs and "Traceback" not in errs, errs[-300:])
     got = ev("(()=>{go('home');$('#q').value='cap test';searched();const r=[document.querySelectorAll('#list .row').length,document.querySelectorAll('#list mark').length];$('#q').value='';searched();return JSON.stringify(r)})()")
     check("search finds the notes and marks the words", isinstance(got, list) and got[0] >= 1 and got[1] >= 1, got)
@@ -311,7 +311,7 @@ def main():
     act(action="ai", id="no-such-note", act="summary")
     act(action="ai", id="", act="")
     time.sleep(4)
-    log_now = (D / "indite.log").read_text()
+    log_now = (D / "inditeflow.log").read_text()
     check("an unknown AI action / note does nothing and does not crash", len(hist()) == n_before and "Traceback" not in log_now, log_now[-300:])
     store.update(nid, ai=(row().get("ai") or []) + [{"action": "actions", "label": "Action items", "text": "- Call the bank\n- Send the report\n- Book tickets", "at": time.time()}])
     act(action="pref", key="sounds", value=False)
@@ -390,7 +390,7 @@ def main():
     bad.write_bytes(os.urandom(5000))
     sh(*TC, "cmd", f"file:{bad}")
     time.sleep(8)
-    log_now = (D / "indite.log").read_text()
+    log_now = (D / "inditeflow.log").read_text()
     check("a missing file and a corrupt file give no new note and no crash", sum(1 for x in hist() if x["kind"] == "file") == 1 and "Traceback" not in log_now, log_now[-300:])
 
     print("\n== 14. Speech test marking ==")
@@ -426,7 +426,7 @@ def main():
     check("a valid rate is saved to 2 decimals", json.loads((D / "prefs.json").read_text()).get("usd_inr") == 90.46)
 
     print("\n== 16. Real history through the real app, checked against an independent count ==")
-    real = Path.home() / "Library/Application Support/indite/history.jsonl"
+    real = Path.home() / "Library/Application Support/inditeflow/history.jsonl"
     if real.exists():
         (D / "history.jsonl").write_text(real.read_text())      # a COPY: the founder's own file is only read
         store._cache["sig"] = None
@@ -451,7 +451,7 @@ def main():
     else:
         print("      (no real history found: skipped)")
 
-    log = (D / "indite.log").read_text()
+    log = (D / "inditeflow.log").read_text()
     check("no Python errors in the log", "Traceback" not in log and "window action failed" not in log, [l for l in log.splitlines() if "Traceback" in l or "failed" in l][:3])
     sh(*TC, "stop")
     print(f"\n{len(FAILS)} failure(s)" if FAILS else "\nAll checks passed")

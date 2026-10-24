@@ -8,7 +8,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * PERSONAL BUILD ONLY (removed before launch). Sends a note + request to the founder's own Mac, where the indite web
+ * PERSONAL BUILD ONLY (removed before launch). Sends a note + request to the founder's own Mac, where the Inditeflow web
  * app runs his own unmodified `claude -p` on his Claude subscription (allowed: his plan, Anthropic's tool, his machine).
  * Reached through Tailscale (https://<mac>.<tailnet>.ts.net), so it's private and works away from home Wi-Fi.
  */
@@ -45,7 +45,7 @@ object MacCompanion {
         } catch (e: java.net.SocketTimeoutException) {
             error("Your Mac is taking too long to answer. Try a shorter note.")
         } catch (e: java.io.IOException) {
-            error("Couldn't reach your Mac. Is it awake, with indite and Tailscale running?")
+            error("Couldn't reach your Mac. Is it awake, with Inditeflow and Tailscale running?")
         } finally { conn.disconnect() }
     }
 }

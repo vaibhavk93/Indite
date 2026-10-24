@@ -22,7 +22,7 @@ bottom, it is small and low. If it is still being missed, the answer is size or 
 
 | Area | Result |
 |---|---|
-| Module self-checks | 6 of 6 pass (`store`, `digits`, `ai`, `narrate`, `polish`, `indite_mac`) |
+| Module self-checks | 6 of 6 pass (`store`, `digits`, `ai`, `narrate`, `polish`, `inditeflow_mac`) |
 | Unit tests, run as documented | 4 of 5 pass |
 | Negative input to word fixes | 7 of 7 safe: empty text, 200k characters, emoji and Devanagari, regex metacharacters, `\1` and `$0` in a replacement, blank-only input |
 | All 8 window pages | Every one draws, **no JavaScript errors on any of them** |

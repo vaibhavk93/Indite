@@ -36,12 +36,12 @@ so there is only one microphone and one engine. Do the 35 own dictations first: 
 
 | Thing | Where | Use here |
 |---|---|---|
-| 120 notes with kept audio (avg 19.6 s, 4,177 words) | `~/Library/Application Support/indite/audio/` | Enough for the 35 own dictations today |
+| 120 notes with kept audio (avg 19.6 s, 4,177 words) | `~/Library/Application Support/inditeflow/audio/` | Enough for the 35 own dictations today |
 | Scorer with Hinglish spelling and number rules | `bench_synth/score.py` (`normalize`, `align`, `edits`) | Reuse as is |
 | Likely-mistake finder | `mac/review.py` `flags()` | Gate step 1 |
 | Per-word confidence | `Engine.confidence` | Input to `flags()` |
 | Terminal recorder with play / redo / pause | `mac/narrate.py` | Ideas only (see section 2) |
-| Engine-vs-engine bench | `indite bench` (`clips/<group>/<name>.wav` + `.txt`) | Second-engine check via export |
+| Engine-vs-engine bench | `inditeflow bench` (`clips/<group>/<name>.wav` + `.txt`) | Second-engine check via export |
 
 **Note:** a note's stored `text` may be edited or Dictionary-fixed (`raw` is kept only when they differ). **Scoring must
 re-transcribe the audio fresh**, never trust the stored text.
@@ -75,7 +75,7 @@ re-transcribe the audio fresh**, never trust the stored text.
 note. It goes to the current sentence instead. Everything else (mic choice, trimming, stuck-mic restart) is the normal
 path.
 
-**⚠ Remember:** divert only when **the indite window is in front, on the Speech test page, and armed**. If he switches
+**⚠ Remember:** divert only when **the inditeflow window is in front, on the Speech test page, and armed**. If he switches
 to Slack and dictates, it must type into Slack as usual. Disarm after each take.
 
 ---
@@ -120,11 +120,11 @@ kinder to spelling variants.
 
 1. Queue = notes with kept audio, newest first. Shows "12 of 35 done".
 2. Press ▶ (or Space). The clip plays.
-3. Below it: a text box **pre-filled with indite's fresh text**. He fixes only what is wrong.
+3. Below it: a text box **pre-filled with inditeflow's fresh text**. He fixes only what is wrong.
 4. **Save** turns on only after the clip has played once. Enter saves and opens the next.
 5. **Skip - private** leaves the note out for good. **Skip - later** comes back at the end.
 
-**⚠ Remember:** pre-filling saves typing but nudges him to accept indite's mistakes ("it looks right"). Mitigation:
+**⚠ Remember:** pre-filling saves typing but nudges him to accept inditeflow's mistakes ("it looks right"). Mitigation:
 Save needs one full listen. The size of this bias is **unproven**.
 
 ### 4B. Read aloud (15 sentences)
@@ -133,7 +133,7 @@ Save needs one full listen. The size of this bias is **unproven**.
 |---|---|---|
 | 1. Ready | Sentence in big text, "7 / 15", category tag (name, number, ₹, Hinglish) | Arm = A |
 | 2. Speak | Normal pill; he holds/taps his dictation key and reads | His hotkey |
-| 3. Result | indite's text under the sentence; wrong words red, missing struck through, extra in grey; "2 words wrong" | — |
+| 3. Result | inditeflow's text under the sentence; wrong words red, missing struck through, extra in grey; "2 words wrong" | — |
 | 4. Decide | **Keep** · **▶ Play** · **Redo** (replaces this take only) · **I said it differently** (edit box, starts as the sentence) · **Skip** | Enter, Space, R, E, S |
 
 - **Pause:** Esc or the Pause button. Each take is written to disk the moment it lands, so closing the window, a call,
@@ -163,14 +163,14 @@ Application Support, never in the repo** (public, and the no-employer rule).
 **Re-score** button: re-transcribes all items with the current engine and Dictionary. About 50 clips, roughly a minute.
 
 **⚠ Remember:** about 1,400 words from one voice and one mic. **0.8 vs 1.2 false flags per 100 words is about 11 vs
-17 flags: too close to call.** And it says how indite does for the founder, not for other users.
+17 flags: too close to call.** And it says how inditeflow does for the founder, not for other users.
 
 ---
 
 ## 6. Data
 
 ```
-~/Library/Application Support/indite/speechset/
+~/Library/Application Support/inditeflow/speechset/
   script.tsv          id, sentence, tag          (the 15 sentences; local only)
   refs.jsonl          one line per item
   read/S07.wav        read-aloud takes (16 kHz, same as dictation)
@@ -183,7 +183,7 @@ Application Support, never in the repo** (public, and the no-employer rule).
 
 - Own dictations **point to** the note's audio; they are not copied. Delete the note and it drops out of the set
   ("3 items missing audio"). A copy would quietly keep a recording he deleted.
-- **Export** writes the `indite bench` layout (`<name>.wav` + `<name>.txt`) to a folder he picks. It refuses any
+- **Export** writes the `inditeflow bench` layout (`<name>.wav` + `<name>.txt`) to a folder he picks. It refuses any
   folder inside the repo.
 - **Delete speech set** removes the folder. Notes are untouched.
 
@@ -202,7 +202,7 @@ repo. `clips/` is already git-ignored.
 | Background noise | Loud level before he speaks = "noisy room" note on the take | S |
 | Spelling variants (hai/he, kya/kia) | Shared table in `score.py` `SPELL`. Plus a "same word, different spelling" tap on a red word, saved to `variants.tsv`. **The score lists every variant used**, so the number can't be quietly flattered | S |
 | Picking only easy notes | Queue order is fixed (newest first); skips are counted and shown | S |
-| Second engine | Export + `indite bench`; no second engine in the app | — |
+| Second engine | Export + `inditeflow bench`; no second engine in the app | — |
 | Score over time | History list (section 5) | S |
 | Keyboard only | Every action has a key; shown on screen | S |
 | Accessibility | Real buttons with labels; diff uses strike-through and colour, not colour alone | S |
@@ -220,7 +220,7 @@ repo. `clips/` is already git-ignored.
 | 3 | **First score:** 35 own dictations; gate step 1 measured | S | step 1 | — |
 | 4 | Part B: 15 sentences, arm, divert, result + diff, Redo / Edit / Skip, quality checks | M | `finish()` path, `align` for the diff | Test: divert only when armed + front + on page |
 | 5 | Score page and history | S | step 1 | — |
-| 6 | Export / delete | S | `indite bench` layout | Test: export into repo refused |
+| 6 | Export / delete | S | `inditeflow bench` layout | Test: export into repo refused |
 
 **Order: 1 → 2 → 3 → 4 → 5 → 6.** Steps 1-3 alone answer the open question (gate step 1 on real dictations). Part B
 adds the names, numbers and ₹ that his own notes may not have.

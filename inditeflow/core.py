@@ -100,7 +100,7 @@ def sarvam(samples: np.ndarray, model: str = "saaras:v3", progress=_quiet) -> li
 
     key = os.environ.get("SARVAM_API_KEY")
     if not key:
-        raise SystemExit("SARVAM_API_KEY is not set. Put it in .env and run with: uv run --env-file .env indite ...")
+        raise SystemExit("SARVAM_API_KEY is not set. Put it in .env and run with: uv run --env-file .env inditeflow ...")
     segments, total = [], len(samples) / SR
     import ssl
 

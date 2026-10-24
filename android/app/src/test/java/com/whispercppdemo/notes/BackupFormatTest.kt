@@ -14,10 +14,10 @@ class BackupFormatTest {
         fun opens(fmt: Int?) = (fmt ?: 0) <= Backup.FMT   // the rule Notes.load applies
         assertTrue("a note with no version is from an older build and must still open", opens(null))
         assertTrue(opens(Backup.FMT))
-        assertTrue("a note from a newer indite must not be half-read", !opens(Backup.FMT + 1))
+        assertTrue("a note from a newer Inditeflow must not be half-read", !opens(Backup.FMT + 1))
     }
 
-    @Test fun `a restore only writes indite's own files, one folder deep`() {
+    @Test fun `a restore only writes Inditeflow's own files, one folder deep`() {
         val allowed = listOf("meta.json", "cuts.json", "transcript.jsonl", "edits.json", "speakers.json", "ai.json", "audio.pcm")
         fun accepted(entry: String): Boolean {
             val id = entry.substringBefore('/')

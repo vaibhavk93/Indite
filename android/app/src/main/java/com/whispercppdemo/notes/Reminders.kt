@@ -20,7 +20,7 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * indite's own reminders (founder decision 2026-10-10: "remind me at 5 pm to buy vegetables").
+ * Inditeflow's own reminders (founder decision 2026-10-10: "remind me at 5 pm to buy vegetables").
  * Stored in reminders.json, fired by an exact alarm (an inexact one can be up to an hour late), shown as a notification
  * with Done / Snooze 1 h. Re-scheduled when the app opens, after a reboot and after an update, because a force-stop
  * (some phones do this on swipe-away) clears alarms.
@@ -112,7 +112,7 @@ object Reminders {
 
     // ---------------------------------------------------------------- the sound
 
-    /** Used while indite rings the alarm itself: the shade entry is just the card with Done and Snooze. */
+    /** Used while Inditeflow rings the alarm itself: the shade entry is just the card with Done and Snooze. */
     private const val SILENT = "reminders_alarm_owned1"
 
     private fun silentChannel(c: Context): String {
@@ -197,14 +197,14 @@ object Reminders {
         if (alarm) AlarmSound.start(c)   // the alarm stream, played by us; the channel's own sound is ignored below
         val shown = show(c, r, insistent = alarm)
         recordFire(c, (if (alarm) "ring like an alarm" else "chime") +
-            (if (shown) ", shown" else ", NOT shown: notifications are off for indite"))
+            (if (shown) ", shown" else ", NOT shown: notifications are off for Inditeflow"))
         if (shown && r.id != TEST_ID) markFired(c, r.id)
     }
 
     /**
      * Measured on the founder's OnePlus (13 Oct): a notification channel created with USAGE_ALARM is stored by this ROM
      * as usage=USAGE_NOTIFICATION, so the "alarm" sound played on the notification stream at notification volume and was
-     * inaudible. The channel cannot win that argument, so when "ring like an alarm" is on indite plays the sound itself
+     * inaudible. The channel cannot win that argument, so when "ring like an alarm" is on Inditeflow plays the sound itself
      * on the alarm stream, the way an alarm clock does, and the notification stays silent.
      * ponytail: one player for the whole app; reminders never overlap by design (one fires at a time).
      */
@@ -238,7 +238,7 @@ object Reminders {
         }
 
         @Synchronized fun stop() {
-            // indite comes to the front as part of firing a reminder, and that must not silence the reminder it just
+            // Inditeflow comes to the front as part of firing a reminder, and that must not silence the reminder it just
             // started. Anything in the first second and a half is the app's own startup, not the user answering.
             if (player != null && System.currentTimeMillis() - startedAt < 1500) return
             stopper.removeCallbacksAndMessages(null)
@@ -269,16 +269,16 @@ object Reminders {
 
     /**
      * Why a reminder might arrive without a sound, in plain words, or null if nothing looks wrong.
-     * Every one of these is a phone setting that indite cannot change itself.
+     * Every one of these is a phone setting that Inditeflow cannot change itself.
      */
     fun soundProblem(c: Context): String? {
         val nm = c.getSystemService(NotificationManager::class.java)
-        if (!nm.areNotificationsEnabled()) return "Notifications are switched off for indite, so reminders can't appear at all."
+        if (!nm.areNotificationsEnabled()) return "Notifications are switched off for Inditeflow, so reminders can't appear at all."
         runCatching { channel(c) }  // the checks below need the channel to exist
         val ch = runCatching { nm.getNotificationChannel(channelId(c)) }.getOrNull()
         if (ch != null && ch.importance == NotificationManager.IMPORTANCE_NONE)
-            return "Reminders are blocked in this phone's notification settings for indite."
-        if (ch != null && ch.sound == null) return "This phone's notification settings have muted indite's reminder sound."
+            return "Reminders are blocked in this phone's notification settings for Inditeflow."
+        if (ch != null && ch.sound == null) return "This phone's notification settings have muted Inditeflow's reminder sound."
         val am = c.getSystemService(AudioManager::class.java)
         // Do Not Disturb: only report it when Android really says so. Without Do Not Disturb access the filter reads
         // UNKNOWN, which must not be shown as "Do Not Disturb is on".
@@ -312,7 +312,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val id = intent.getLongExtra("id", 0)
         val nm = c.getSystemService(NotificationManager::class.java)
         // The test reminder is never saved, so its buttons are handled here.
-        Reminders.AlarmSound.stop()   // Stop, Done, Snooze, swiping it away or opening indite: the ringing stops
+        Reminders.AlarmSound.stop()   // Stop, Done, Snooze, swiping it away or opening Inditeflow: the ringing stops
         if (intent.action == Reminders.STOP) { nm.cancel(id.toInt()); return }
         if (id == Reminders.TEST_ID) { nm.cancel(id.toInt()); return }
         val r = Reminders.load(c).firstOrNull { it.id == id } ?: return

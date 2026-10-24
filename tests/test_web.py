@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from indite import web
+from inditeflow import web
 
 
 def test_flow():
@@ -18,7 +18,7 @@ def test_flow():
     audio = Path(tempfile.mkdtemp()) / "talk.aiff"
     subprocess.run(["say", "-o", str(audio), "Tomorrow we have a meeting at ten."], check=True)
 
-    assert "indite" in c.get("/").text
+    assert "inditeflow" in c.get("/").text
     assert c.post("/jobs", files={"file": ("x.exe", b"MZ")}, data={"engine": "local"}).status_code == 400
     assert c.get("/jobs/../../etc").status_code == 404
     assert c.get("/jobs/" + "0" * 32).status_code == 404

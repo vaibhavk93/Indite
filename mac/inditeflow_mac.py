@@ -1,5 +1,5 @@
 """
-indite for Mac: hold a key anywhere, speak, let go, and the text appears where you were typing.
+Inditeflow for Mac: hold a key anywhere, speak, let go, and the text appears where you were typing.
 
 Everything happens on this Mac. The audio is written to a temporary file, transcribed by whisper.cpp with the same
 Hinglish model the phone uses, and deleted. Nothing is sent anywhere.
@@ -7,7 +7,7 @@ Hinglish model the phone uses, and deleted. Nothing is sent anywhere.
 Measured on an M1 (14 Oct): a 3-8 second utterance comes back in about 1.35 s, so the hold-and-speak interaction
 works offline - the phone's 9.6 s is heat and small cores, not the model.
 
-Run it:  .venv/bin/python mac/indite_mac.py
+Run it:  .venv/bin/python mac/inditeflow_mac.py
 First run asks for two macOS permissions - Microphone, and Accessibility (to type into other apps).
 """
 
@@ -37,7 +37,7 @@ os.environ.setdefault("PA_SUPPRESS_STARTUP_MESSAGES", "1")
 def _rotate_log() -> None:
     """Keep the log under 5 MB, with one old copy. It is the only record there is of a crash."""
     try:
-        log = Path.home() / "Library/Logs/indite-mac.log"
+        log = Path.home() / "Library/Logs/inditeflow-mac.log"
         if log.exists() and log.stat().st_size > 5_000_000:
             log.replace(log.with_suffix(".log.1"))
     except Exception:                                    # noqa: BLE001 - a log that will not rotate is not fatal
@@ -72,7 +72,7 @@ def _skip_media_keys() -> None:
     """
     Volume, brightness and play/pause keys arrive as "system defined" events, and pynput turns each into an AppKit
     NSEvent on its listener thread (keyboard/_darwin.py:303). On macOS 26 that off-main-thread AppKit call aborts the
-    whole app (18 Oct: indite died mid-morning; the crash stack ended on that line). indite never uses those keys, so
+    whole app (18 Oct: Inditeflow died mid-morning; the crash stack ended on that line). Inditeflow never uses those keys, so
     they are dropped before pynput looks at them. The hotkeys are ordinary key and modifier events, untouched.
     """
     from pynput.keyboard import _darwin as kb
@@ -173,7 +173,7 @@ def signature_broken() -> str:
     """
     "" when the app's own signature still holds, otherwise what broke it, in one line.
 
-    macOS judges indite by its signature before trusting it with the keyboard. The app used to break its own
+    macOS judges Inditeflow by its signature before trusting it with the keyboard. The app used to break its own
     signature every time it ran: Python writes .pyc files beside the modules it imports, and its interpreter lives
     inside the bundle (16 Oct: 249 of them, and Accessibility switched itself off mid-session). That is fixed with
     PYTHONDONTWRITEBYTECODE, but anything else that writes into the bundle would do the same, silently - so the app
@@ -351,7 +351,7 @@ class Engine:
 
         NOT used on the live path, and that is the whole point of measuring it: asking the server for the detail
         costs about 600 ms on a four-second clip - 0.8 s became 1.4 s, measured 16 Oct on this Mac - and the speed
-        of a dictation is the thing indite is actually good at. So the words are fetched when something wants to
+        of a dictation is the thing Inditeflow is actually good at. So the words are fetched when something wants to
         look at them, not on every press.
 
         The signal itself is strong. On the founder's own recording of "CleverTap", which the engine gets wrong:
@@ -454,7 +454,7 @@ def _remember_crash(kind: str, value, tb) -> None:   # noqa: ANN001
     """
     Write an uncaught error down where the next start will find it.
 
-    indite crashed four times in a week and nobody knew: the only record was a log file nobody reads, and each
+    Inditeflow crashed four times in a week and nobody knew: the only record was a log file nobody reads, and each
     crash was found by grepping it after the fact (22 Oct). A crash that says nothing is a crash that gets
     reported as "the app stopped working" and costs a diagnosis round trip.
     """
@@ -707,7 +707,7 @@ class Mic:
         """
         Let go of the stream. The one rule: this returns, and afterwards there is no stream.
 
-        16 Oct: four of indite's threads were found wedged in CoreAudio's own lock, inside PortAudio's
+        16 Oct: four of Inditeflow's threads were found wedged in CoreAudio's own lock, inside PortAudio's
         FinishStoppingStream. `stream.stop()` never came back, so the release of the key never wrote anything and
         every press after that was dead - the pill appeared, the bars never moved, nothing was typed. CoreAudio is
         not ours to fix, so it does not get to hold the app: the close runs on a thread of its own, and if it has
@@ -917,7 +917,7 @@ LOGO_BARS = [(262, 452, 64, 200), (370, 392, 64, 320), (480, 440, 64, 372), (590
 
 
 def menubar_icon():
-    """indite's own mark for the menu bar, drawn here (no image file), as a template image: macOS colours it for a
+    """Inditeflow's own mark for the menu bar, drawn here (no image file), as a template image: macOS colours it for a
     light or dark menu bar. Replaces the 🎙 emoji (DESIGN.md: our own line icons, never emoji)."""
     from AppKit import NSBezierPath, NSColor, NSImage, NSMakeRect, NSMakeSize
     size, top, scale = 18.0, 294.0, 15.0 / 518.0               # the bars span 518 units: ~15 pt tall
@@ -961,9 +961,9 @@ class Offstage:
         return call
 
 
-class InditeApp(rumps.App):
+class InditeflowApp(rumps.App):
     def __init__(self) -> None:
-        super().__init__("indite", title="", quit_button=None)   # the icon is set once the menu bar exists
+        super().__init__("Inditeflow", title="", quit_button=None)   # the icon is set once the menu bar exists
         self.engine = Engine()
         self.mic = Mic()
         self.typer = Typer()
@@ -971,7 +971,7 @@ class InditeApp(rumps.App):
         self.prefs = store.prefs()
         self.mic.chosen = self.prefs["mic"]
         self.window: Window | None = None
-        self.in_box = False                               # a text box in indite's own window has the cursor (told by the page)
+        self.in_box = False                               # a text box in Inditeflow's own window has the cursor (told by the page)
         self.engine_kind = "Starting the engine\u2026"
         self.busy = False
         self.started_at = 0.0
@@ -1019,9 +1019,9 @@ class InditeApp(rumps.App):
         rumps.Timer(self.paint, 0.05).start()
         self.menu = [
             rumps.MenuItem(f"Hold {HOTKEYS.get(self.prefs['hotkey'], 'Right ⌥')} and speak" if can_listen()
-                           else "⚠ indite can’t notice your talk key. Open indite to fix it", callback=None),
+                           else "⚠ Inditeflow can’t notice your talk key. Open Inditeflow to fix it", callback=None),
             None,
-            rumps.MenuItem("Open indite", callback=self.open_window, key="o"),
+            rumps.MenuItem("Open Inditeflow", callback=self.open_window, key="o"),
             rumps.MenuItem("Copy the last dictation", callback=self.copy_last),
             self.no_save_item,
             rumps.MenuItem("Edit Dictionary as a file\u2026", callback=self.edit_fixes),
@@ -1032,14 +1032,14 @@ class InditeApp(rumps.App):
         ]
         problem = self.engine.ready()
         if problem:
-            rumps.alert("indite can’t start", problem)
+            rumps.alert("Inditeflow can’t start", problem)
             sys.exit(1)
         bad_seal = signature_broken()
         if bad_seal:
             print("SIGNATURE BROKEN:", bad_seal)
             rumps.alert(
-                "indite’s app file has been changed",
-                "macOS checks indite's signature before it trusts it with the keyboard. That signature is no "
+                "Inditeflow’s app file has been changed",
+                "macOS checks Inditeflow's signature before it trusts it with the keyboard. That signature is no "
                 "longer valid, so Accessibility will stop working - usually in the middle of a session, with no "
                 "warning.\n\n"
                 f"What changed: {bad_seal}\n\n"
@@ -1051,13 +1051,13 @@ class InditeApp(rumps.App):
             self.set_title("🎙⚠")
             ask_to_listen()
             rumps.alert(
-                "indite needs permission to see the hotkey",
-                "macOS has not allowed indite to notice key presses yet, so holding the key does nothing.\n\n"
-                "System Settings → Privacy & Security → Accessibility → switch on indite. If indite is not in the "
-                "list, click + and pick indite from Applications.\n\n"
-                "Then quit indite (menu bar icon → Quit) and open it again.",
+                "Inditeflow needs permission to see the hotkey",
+                "macOS has not allowed Inditeflow to notice key presses yet, so holding the key does nothing.\n\n"
+                "System Settings → Privacy & Security → Accessibility → switch on Inditeflow. If Inditeflow is not in the "
+                "list, click + and pick Inditeflow from Applications.\n\n"
+                "Then quit Inditeflow (menu bar icon → Quit) and open it again.",
             )
-        # macOS slows a background app's timers down (App Nap). indite spends its whole working life in the
+        # macOS slows a background app's timers down (App Nap). Inditeflow spends its whole working life in the
         # background, so the pill's animation and the level bars were being starved exactly when they matter.
         try:
             from Foundation import NSActivityUserInitiated, NSProcessInfo
@@ -1071,7 +1071,7 @@ class InditeApp(rumps.App):
                 CRASH.unlink()
                 last = [l for l in what.strip().splitlines() if l.strip()][-1][:200]
                 print("last run ended in a crash:", last)
-                rumps.alert("indite stopped unexpectedly last time",
+                rumps.alert("Inditeflow stopped unexpectedly last time",
                             f"{what.splitlines()[0]}\n\n{last}\n\nIt is written to the log. "
                             "Nothing you had saved is affected.")
             except Exception as e:                       # noqa: BLE001 - never crash reporting a crash
@@ -1099,8 +1099,8 @@ class InditeApp(rumps.App):
             button.setImagePosition_(2)                  # NSImageLeft: the icon, then any status text
         except Exception as e:                           # noqa: BLE001 - a text title is better than no menu
             print("menu-bar icon:", e)
-            self.title = "indite"
-        # Opening indite again (Finder, Spotlight, Dock) only activates the running copy; nothing appeared, so it
+            self.title = "Inditeflow"
+        # Opening Inditeflow again (Finder, Spotlight, Dock) only activates the running copy; nothing appeared, so it
         # looked as if it was not running (founder, 15 Oct). Show the window whenever the app is activated.
         from AppKit import NSNotificationCenter
         NSNotificationCenter.defaultCenter().addObserver_selector_name_object_(
@@ -1120,7 +1120,7 @@ class InditeApp(rumps.App):
             try:
                 import Quartz
                 if not Quartz.CGPreflightScreenCaptureAccess():
-                    Quartz.CGRequestScreenCaptureAccess()  # macOS shows its own prompt and adds indite to the list
+                    Quartz.CGRequestScreenCaptureAccess()  # macOS shows its own prompt and adds Inditeflow to the list
             except Exception:                            # noqa: BLE001
                 pass
             store.set_pref("asked_screen", True)
@@ -1402,16 +1402,16 @@ class InditeApp(rumps.App):
             ask_mic()
             # R3: the card carries the one-line reason + "Open mic settings" so the person sees the fix without
             # waiting for a modal they have to dismiss. The alert still fires for people who want the full detail.
-            self.preview.show("macOS hasn't given indite permission to use the microphone.\nSystem Settings → Privacy & Security → Microphone.", buttons=False)
+            self.preview.show("macOS hasn't given Inditeflow permission to use the microphone.\nSystem Settings → Privacy & Security → Microphone.", buttons=False)
             AppHelper.callAfter(rumps.alert,
-                "indite cannot hear the microphone",
-                "macOS has not given indite permission to use the microphone.\n\n"
-                "System Settings → Privacy & Security → Microphone → turn on indite, then quit and open it again.",
+                "Inditeflow cannot hear the microphone",
+                "macOS has not given Inditeflow permission to use the microphone.\n\n"
+                "System Settings → Privacy & Security → Microphone → turn on Inditeflow, then quit and open it again.",
             )
         else:
             self.preview.show(f"No microphone opened. Tried every input on this Mac.\nUsual cause: a Bluetooth headset switched off, or an iPhone mic that's not nearby.\n\n({err})", buttons=False)
             AppHelper.callAfter(rumps.alert,
-                "indite could not open any microphone",
+                "Inditeflow could not open any microphone",
                 "Tried every input on this Mac and none of them opened.\n\n"
                 "The usual cause is a Bluetooth headset that is switched off, or an iPhone microphone that is not "
                 f"nearby. Connect a microphone, or turn Bluetooth off, and try again.\n\n({err})",
@@ -1420,7 +1420,7 @@ class InditeApp(rumps.App):
 
     def restart_for_stuck_mic(self, err: Exception) -> None:
         """
-        A deadlocked CoreAudio (MicStuck) holds the microphone until this process ends, so indite starts itself
+        A deadlocked CoreAudio (MicStuck) holds the microphone until this process ends, so Inditeflow starts itself
         again. It happens on the next press, not when the close sticks: by then the last dictation has been typed and
         a meeting's text saved. At most once in 10 minutes, so a Mac whose audio is broken outright gets a message,
         not a restart loop.
@@ -1434,7 +1434,7 @@ class InditeApp(rumps.App):
             # Also runs on the mic worker thread; see mic_trouble - the alert must hop to the main thread.
             from PyObjCTools import AppHelper
             AppHelper.callAfter(rumps.alert, "The microphone is stuck in macOS",
-                        "macOS stopped answering indite about the microphone. Quit indite and open it again.\n\n"
+                        "macOS stopped answering Inditeflow about the microphone. Quit Inditeflow and open it again.\n\n"
                         "If it is stuck again straight away, restart the Mac.")
             threading.Timer(2.0, self.pill.hide).start()
             return
@@ -1442,10 +1442,10 @@ class InditeApp(rumps.App):
             if "finishing" not in self.ai_busy.values():
                 break
             time.sleep(0.5)
-        print("mic: restarting indite to get the microphone back")
+        print("mic: restarting Inditeflow to get the microphone back")
         # A detached shell, so the old process is gone before the new one opens (two copies would both hear the keys).
         subprocess.Popen(["/bin/sh", "-c", 'osascript -e "display notification \\"The microphone got stuck in macOS. '
-                          'indite is restarting. Try again in a few seconds.\\" with title \\"indite\\""; '
+                          'Inditeflow is restarting. Try again in a few seconds.\\" with title \\"inditeflow\\""; '
                           f'sleep 1; open -n "{bundle}"'], start_new_session=True)
         os._exit(0)                  # not sys.exit: sounddevice's exit hook calls Pa_Terminate, which waits on the lock
 
@@ -1479,9 +1479,9 @@ class InditeApp(rumps.App):
         self.last = self.out(text)                      # what is typed, copied and previewed; the note keeps the real words
         # The pill says what happened. A notification was tried here and crashed the thread that had just produced
         # the text (rumps needs a bundle identifier it could not find), so the words landed with nothing said.
-        # macOS cannot say whether indite's own page has a box focused (it answers "yes" when unsure, 24 Oct: the
+        # macOS cannot say whether Inditeflow's own page has a box focused (it answers "yes" when unsure, 24 Oct: the
         # words were typed into nothing), so for our own window the page tells us. This only decides typing vs the
-        # clipboard: every dictation is saved, wherever it was spoken (24 Oct: three were lost inside indite).
+        # clipboard: every dictation is saved, wherever it was spoken (24 Oct: three were lost inside Inditeflow).
         box = self.in_box if where_pid == os.getpid() else focused_is_text()
         private = self.no_save_next                     # "Don't save the next dictation": this one only
         mode = self.prefs["output"]
@@ -1558,7 +1558,7 @@ class InditeApp(rumps.App):
         """Pick an audio or video file and transcribe it here (main thread: the open panel is AppKit)."""
         from AppKit import NSOpenPanel
         if self.job:
-            rumps.alert("indite is still on another file", f"{self.job['name']}: {self.job['done']} of "
+            rumps.alert("Inditeflow is still on another file", f"{self.job['name']}: {self.job['done']} of "
                         f"{self.job['total']} parts done. It will appear in Files when it finishes.")
             return
         panel = NSOpenPanel.openPanel()
@@ -1578,7 +1578,7 @@ class InditeApp(rumps.App):
         while it runs: each piece takes the engine for ~2 s, then lets go.
         """
         sys.path.insert(0, str(ROOT))
-        from indite.core import load_audio
+        from inditeflow.core import load_audio
         t0 = time.time()
         self.job = {"name": path.name, "done": 0, "total": 0}
         self.job_stop = False                            # Stop on the job card: keep what is done so far
@@ -1611,7 +1611,7 @@ class InditeApp(rumps.App):
         except Exception as e:                           # noqa: BLE001 - say so, keep the app alive
             print("file failed:", path, e)
             self.done_state = "failed"
-            plain = ("indite can’t read this file as audio or video." if "Invalid data" in str(e) or "Errno" in str(e)
+            plain = ("Inditeflow can’t read this file as audio or video." if "Invalid data" in str(e) or "Errno" in str(e)
                      else str(e))                          # the raw error stays in the log, not the banner
             self.file_error = f"{path.name}: {plain}"
         finally:
@@ -1654,7 +1654,7 @@ class InditeApp(rumps.App):
             alert.setInformativeText_(
                 f"It includes what others said. Check they’re OK with it first.\n\n{where} gets the full text. "
                 "Whether it is kept or used to train their AI depends on your account settings with them, not on "
-                "indite.")
+                "Inditeflow.")
             alert.addButtonWithTitle_("Send")
             alert.addButtonWithTitle_("Cancel")
             alert.setShowsSuppressionButton_(True)
@@ -1701,7 +1701,7 @@ class InditeApp(rumps.App):
         thread: about 4 s of engine time per 20 s of audio, so a 15-minute file takes ~3 minutes the first time.
         """
         import wordtimes
-        from indite.core import load_audio
+        from inditeflow.core import load_audio
         row = next((r for r in store.history() if r["id"] == note_id), None)
         if not row or note_id in self.ai_busy:
             return
@@ -1842,7 +1842,7 @@ class InditeApp(rumps.App):
         """Main thread: pick where, then write the zip with the scope and audio choice from Settings."""
         from AppKit import NSSavePanel
         panel = NSSavePanel.savePanel()
-        panel.setNameFieldStringValue_(time.strftime("indite backup %Y-%m-%d.zip"))
+        panel.setNameFieldStringValue_(time.strftime("Inditeflow backup %Y-%m-%d.zip"))
         NSApp_activate()
         if run_modal(panel) == 1 and panel.URL():
             n = store.backup(Path(str(panel.URL().path())), self.prefs["backup_scope"], self.prefs["backup_audio"])
@@ -1864,7 +1864,7 @@ class InditeApp(rumps.App):
                 self.notice = self.notice.strip()
             except Exception as e:                       # noqa: BLE001 - not a backup, damaged, or too new
                 import zipfile
-                self.notice = ("Could not restore: that file is not an indite backup." if isinstance(e, zipfile.BadZipFile)
+                self.notice = ("Could not restore: that file is not an Inditeflow backup." if isinstance(e, zipfile.BadZipFile)
                                else f"Could not restore: {e}")
             self.refresh()
 
@@ -1878,7 +1878,7 @@ class InditeApp(rumps.App):
         # Swears are NOT masked here: this text is what gets saved. They are masked on the way out (out()).
 
     def out(self, text: str) -> str:
-        """Text as it leaves indite - typed, copied, previewed, exported - with swears masked if that is switched on."""
+        """Text as it leaves Inditeflow - typed, copied, previewed, exported - with swears masked if that is switched on."""
         return store.mask_swears(text, self.prefs.get("my_swears")) if self.prefs.get("mask_swears") else text
 
     def toggle_no_save(self, _=None) -> None:            # noqa: ANN001
@@ -1937,7 +1937,7 @@ class InditeApp(rumps.App):
             # R10 (24 Oct): used to swallow the click silently. Say so, so the person knows why Record did nothing.
             if self.window:
                 from PyObjCTools import AppHelper
-                said = "Finish the current dictation first." if self.started_at else "indite is still writing the last dictation."
+                said = "Finish the current dictation first." if self.started_at else "Inditeflow is still writing the last dictation."
                 AppHelper.callAfter(self.window.bridge.js, f"toast({said!r})")
             return
         self.player.stop()                               # the meeting's mic must not record the playback
@@ -1980,7 +1980,7 @@ class InditeApp(rumps.App):
         t0 = time.time()
         try:
             sys.path.insert(0, str(ROOT))
-            from indite.core import load_audio
+            from inditeflow.core import load_audio
             meet = row.get("kind") == "meeting"
             others = meet and row.get("others")              # the call's sound was captured: split only that track
             if others and self._silent(store.AUDIO / f"{row['id']}-others.wav"):
@@ -2108,14 +2108,14 @@ class InditeApp(rumps.App):
                     self.recorder.start()
                 elif getattr(self, "recorder", None):
                     self.recorder.stop()
-            elif verb == "run":                               # the runner, started from here so it has indite's
+            elif verb == "run":                               # the runner, started from here so it has Inditeflow's
                 subprocess.Popen([sys.executable, "-u", str(Path(__file__).parent / "demo.py")] + arg.split(),
                                  stdout=open(store.DIR / "demo.log", "a"), stderr=subprocess.STDOUT)
 
     def _confidence_check(self, note_id: str) -> None:
         """Writes every word and how sure the engine was, for the newest note or the one named."""
         sys.path.insert(0, str(ROOT))
-        from indite.core import load_audio
+        from inditeflow.core import load_audio
         rows = store.history()
         row = next((r for r in rows if r["id"] == note_id), None) or next((r for r in rows if store.audio_of(r)), None)
         out = store.DIR / "confidence.json"
@@ -2194,8 +2194,8 @@ class InditeApp(rumps.App):
         if not row:
             return
         sys.path.insert(0, str(ROOT))
-        from indite.styles import srt
-        name = Path(row.get("title") or "indite note").stem
+        from inditeflow.styles import srt
+        name = Path(row.get("title") or "Inditeflow note").stem
         if fmt == "srt" and row.get("segments"):
             body, ext = srt({"segments": store.named_segments(row)}), ".srt"
         else:
@@ -2218,7 +2218,7 @@ class InditeApp(rumps.App):
 
 
 if __name__ == "__main__":
-    if "--selftest" in sys.argv:                         # uv run python mac/indite_mac.py --selftest
+    if "--selftest" in sys.argv:                         # uv run python mac/inditeflow_mac.py --selftest
         assert apply_fixes("Thik hai. thik", {"thik": "theek"}) == "Theek hai. theek"   # a capital stays
         assert apply_fixes("PTM", {"ptm": "Paytm"}) == "Paytm"
         from pynput.keyboard import _darwin as kbd
@@ -2247,6 +2247,6 @@ if __name__ == "__main__":
         print("ok")
         sys.exit(0)
     if store.TEST:                                       # own log; a modal alert would appear on the founder's screen
-        sys.stdout = sys.stderr = open(store.DIR / "indite.log", "a", buffering=1, encoding="utf-8")
+        sys.stdout = sys.stderr = open(store.DIR / "inditeflow.log", "a", buffering=1, encoding="utf-8")
         rumps.alert = lambda *a, **k: print("alert (not shown):", a, k)
-    InditeApp().run()
+    InditeflowApp().run()

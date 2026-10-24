@@ -1,4 +1,4 @@
-# indite: instructions for coding agents
+# inditeflow: instructions for coding agents
 
 **Before doing anything, read `docs/HANDOFF.md`.** It has the rules, how to build and test, the code map and where things stand.
 

@@ -8,7 +8,7 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.indite.app"
+        applicationId "com.inditeflow.app"
         minSdk 26
         targetSdk 34
         // Bump both for every build installed on a phone (and tag it in git), so you can tell which one is installed.
@@ -21,7 +21,7 @@ android {
             useSupportLibrary true
         }
         ndk {
-            abiFilters 'arm64-v8a'  // indite: modern phones only (the engine needs arm64 + dotprod)
+            abiFilters 'arm64-v8a'  // inditeflow: modern phones only (the engine needs arm64 + dotprod)
         }
 
     }
@@ -73,7 +73,7 @@ android {
         jvmTarget = '17'
     }
     androidResources {
-        noCompress 'bin', 'wav', 'onnx'  // indite: big model loads straight from the APK
+        noCompress 'bin', 'wav', 'onnx'  // inditeflow: big model loads straight from the APK
     }
     buildFeatures {
         buildConfig true

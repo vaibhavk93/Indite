@@ -14,7 +14,7 @@
 .cxx
 local.properties
 
-# indite: model and private test audio are copied in at build time, never committed
+# inditeflow: model and private test audio are copied in at build time, never committed
 app/src/main/assets/
 app/build/
 lib/build/

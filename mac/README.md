@@ -1,4 +1,4 @@
-# indite for Mac
+# Inditeflow for Mac
 
 Hold a key, speak, let go. The words are typed where your cursor is, in any app, in about a second.
 Everything happens on this Mac: no account, no server, no internet needed.
@@ -11,11 +11,11 @@ any change to `mac/`. Plans and comparisons live in `docs/MAC_PLAN.md`.
 ## Run it
 
 ```sh
-./mac/build_app.sh      # builds dist/indite.app (a small launcher that runs mac/indite_mac.py from this folder)
-open dist/indite.app    # opens the window; a 🎙 sits in the menu bar
+./mac/build_app.sh      # builds dist/inditeflow.app (a small launcher that runs mac/inditeflow_mac.py from this folder)
+open dist/inditeflow.app    # opens the window; a 🎙 sits in the menu bar
 ```
 
-Logs: `~/Library/Logs/indite-mac.log` (one line per dictation, with how long it took).
+Logs: `~/Library/Logs/inditeflow-mac.log` (one line per dictation, with how long it took).
 
 **⚠ The Mac app and the Android app are kept separate.** The Mac never reads `android/`. It has its own model
 (`mac/models/`, a hard link to the phone's file, so no extra disk, never in git) and its own `mac/spelling.tsv`.
@@ -24,7 +24,7 @@ Logs: `~/Library/Logs/indite-mac.log` (one line per dictation, with how long it 
 
 | Permission | Why | Where |
 |---|---|---|
-| **Accessibility** | to notice the hotkey and type into the app you are in | System Settings → Privacy & Security → Accessibility → indite |
+| **Accessibility** | to notice the hotkey and type into the app you are in | System Settings → Privacy & Security → Accessibility → Inditeflow |
 | **Microphone** | to hear you | asked the first time you hold the key |
 
 macOS sends no key events to an app without Accessibility, and nothing complains: holding the key just does nothing.
@@ -42,10 +42,10 @@ The window shows a banner when the permission is missing.
 | **Paste last** | ⌃⌘V types the last dictation again (password guard applies) |
 | **Sounds** | Tick on start, pop on stop; Settings → Sounds |
 | **Microphone** | Settings → Microphone: Automatic or a named mic; remembered by name, list refreshed on every press |
-| **Cancel** | Esc while holding (or while hands-free). Nothing is typed. (Esc also reaches the app underneath; macOS will not let indite block it) |
+| **Cancel** | Esc while holding (or while hands-free). Nothing is typed. (Esc also reaches the app underneath; macOS will not let Inditeflow block it) |
 | **Long dictation** | Holds over 20 s are cut at the quietest moments into pieces; no sound is dropped |
 | **Hinglish spelling** | Everyday words written one way (achha, kyunki, maine) from `mac/spelling.tsv` |
-| **Word fixes** | Pencil on any history row: "indite wrote / you meant" (shows how many past dictations hold the word). Or Settings → Word fixes → Edit… for the file: `ptm = Paytm`. Whole words, any capitals |
+| **Word fixes** | Pencil on any history row: "inditeflow wrote / you meant" (shows how many past dictations hold the word). Or Settings → Word fixes → Edit… for the file: `ptm = Paytm`. Whole words, any capitals |
 | **Password boxes** | Never typed, copied or saved. The pill says "password box" |
 | **Files** | Home → Transcribe a file… (or the menu bar): any audio/video file, transcribed inside the app with the loaded engine; Text and Subtitles (.srt) export |
 | **Meetings** | Home → Record a meeting: your mic ("You") + the Mac's sound ("Others", needs Screen & System Audio Recording), text at every pause, saved as it goes, both tracks kept as WAV. REC timer in the pill |
@@ -76,12 +76,12 @@ sized to the audio (without it the engine pads to 30 s and takes 2.2 s).
 
 | What | Where |
 |---|---|
-| History | `~/Library/Application Support/indite/history.jsonl` (plain text, capped at 500) |
-| Web app log | `~/Library/Logs/indite-web.log` |
-| Settings | `~/Library/Application Support/indite/prefs.json` |
-| Word fixes | `~/Library/Application Support/indite/my_fixes.txt` |
-| Audio (kept dictations, meetings) | `~/Library/Application Support/indite/audio/` |
-| Code | `indite_mac.py` (hotkey, mic, engine, typing) · `overlay.py` (pill) · `window.py` + `ui/app.html` (window) · `store.py` (files) |
+| History | `~/Library/Application Support/inditeflow/history.jsonl` (plain text, capped at 500) |
+| Web app log | `~/Library/Logs/inditeflow-web.log` |
+| Settings | `~/Library/Application Support/inditeflow/prefs.json` |
+| Word fixes | `~/Library/Application Support/inditeflow/my_fixes.txt` |
+| Audio (kept dictations, meetings) | `~/Library/Application Support/inditeflow/audio/` |
+| Code | `inditeflow_mac.py` (hotkey, mic, engine, typing) · `overlay.py` (pill) · `window.py` + `ui/app.html` (window) · `store.py` (files) |
 
 ## Checks
 
@@ -96,7 +96,7 @@ sized to the audio (without it the engine pads to 30 s and takes 2.2 s).
 
 ## Not yet
 
-- Not shareable: `indite.app` runs Python and the model from this folder, so it works only on this Mac.
+- Not shareable: `inditeflow.app` runs Python and the model from this folder, so it works only on this Mac.
 - The engine takes a few seconds to load at startup; the menu bar shows 🎙… until it is ready.
 - Untested on real non-stop speech over 60 s and on a quiet speaker.
 - Meeting capture of the call's audio is untested with the Screen Recording permission actually granted.

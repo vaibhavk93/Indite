@@ -10,7 +10,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.whispercppdemo.R
 
-// indite type: Figtree (bundled; the app has no internet). One family, a clear scale, generous line height for reading.
+// Inditeflow type: Figtree (bundled; the app has no internet). One family, a clear scale, generous line height for reading.
 @OptIn(ExperimentalTextApi::class)
 private fun figtree(w: Int) = Font(R.font.figtree, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w)))
 

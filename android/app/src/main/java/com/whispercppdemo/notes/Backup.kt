@@ -14,7 +14,7 @@ import java.util.zip.ZipOutputStream
  * A backup that can actually be restored. "Export all notes as text" throws away the timestamps, the speaker labels and
  * the audio, so it was never a backup — losing the phone lost everything (AUD-001).
  *
- * The file is a plain zip: one folder per note with the files indite already keeps, plus `indite.json` saying which
+ * The file is a plain zip: one folder per note with the files Inditeflow already keeps, plus `inditeflow.json` saying which
  * format it is. Audio is optional because it is ~29 MB per 15 minutes and the text is a few KB.
  *
  * ponytail: no encryption and no cloud. The zip sits wherever the user put it, and that is their call to make.
@@ -22,7 +22,8 @@ import java.util.zip.ZipOutputStream
 object Backup {
     /** Bumped only when the files inside a note change shape. A backup from the future is refused, never half-read. */
     const val FMT = 1
-    private const val INDEX = "indite.json"
+    private const val INDEX = "inditeflow.json"
+    private const val LEGACY_INDEX = "indite.json"   // backups made before the rename (24 Oct) must still restore
 
     /** Everything a note needs to come back. Audio is added separately because of its size. */
     private val PARTS = listOf("meta.json", "cuts.json", "transcript.jsonl", "edits.json", "speakers.json", "ai.json")
@@ -36,7 +37,7 @@ object Backup {
         ZipOutputStream(out.buffered()).use { zip ->
             val ids = Notes.list.value.filter { !it.recording }.map { it.id }
             zip.putNextEntry(ZipEntry(INDEX))
-            zip.write(JSONObject().put("fmt", FMT).put("app", "indite").put("notes", ids.size)
+            zip.write(JSONObject().put("fmt", FMT).put("app", "Inditeflow").put("notes", ids.size)
                 .put("audio", withAudio).put("created", System.currentTimeMillis()).toString().toByteArray())
             zip.closeEntry()
             for (id in ids) {
@@ -60,7 +61,7 @@ object Backup {
 
     /**
      * Restores notes that aren't on this phone already; a note with the same id is left alone, so restoring twice is
-     * safe. Returns a plain-language problem instead of throwing when the file isn't an indite backup.
+     * safe. Returns a plain-language problem instead of throwing when the file isn't an Inditeflow backup.
      */
     fun read(input: InputStream): Read {
         var restored = 0
@@ -73,16 +74,16 @@ object Backup {
                 var index: JSONObject? = null
                 while (entry != null) {
                     val name = entry.name
-                    if (name == INDEX) {
+                    if (name == INDEX || name == LEGACY_INDEX) {
                         index = runCatching { JSONObject(zip.readBytes().decodeToString()) }.getOrNull()
-                        if (index == null || !index.optString("app").equals("indite", true))
-                            return Read(0, 0, "That file isn't an indite backup.")
+                        if (index == null || !index.optString("app").let { it.equals("inditeflow", true) || it.equals("indite", true) })
+                            return Read(0, 0, "That file isn't an Inditeflow backup.")
                         if (index.optInt("fmt", 0) > FMT)
-                            return Read(0, 0, "That backup was made by a newer version of indite. Update the app first.")
+                            return Read(0, 0, "That backup was made by a newer version of Inditeflow. Update the app first.")
                     } else if (!entry.isDirectory) {
                         val id = name.substringBefore('/')
                         val part = name.substringAfter('/', "")
-                        // Only the files indite writes, only one level deep: a zip from anywhere else can't write around the folder.
+                        // Only the files Inditeflow writes, only one level deep: a zip from anywhere else can't write around the folder.
                         if (id.isNotEmpty() && part in PARTS + "audio.pcm" && !part.contains('/')) {
                             if (Notes.dir(id).exists()) { if (seen.add(id)) skipped++ }
                             else {
@@ -95,7 +96,7 @@ object Backup {
                     zip.closeEntry()
                     entry = zip.nextEntry
                 }
-                if (index == null) return Read(0, 0, "That file isn't an indite backup.")
+                if (index == null) return Read(0, 0, "That file isn't an Inditeflow backup.")
             }
             // Only move finished folders across, so a half-read zip can never leave a broken note behind.
             tmp.listFiles()?.forEach { folder ->
@@ -103,7 +104,7 @@ object Backup {
                 else { folder.deleteRecursively(); restored-- }
             }
         } catch (e: Exception) {
-            Log.w("indite", "restore failed", e)
+            Log.w("inditeflow", "restore failed", e)
             return Read(restored, skipped, "That backup couldn't be read. It may be damaged.")
         } finally {
             tmp.deleteRecursively()

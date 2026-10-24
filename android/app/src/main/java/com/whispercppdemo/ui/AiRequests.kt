@@ -28,7 +28,7 @@ internal val AiActions = listOf(
     AiAction("Practice answer", "A score out of 40 and three fixes", "Practise"),
 )
 
-/** What indite already knows about a note decides what it offers first. Nothing is hidden, only reordered. */
+/** What Inditeflow already knows about a note decides what it offers first. Nothing is hidden, only reordered. */
 internal fun suggestedFor(note: Note): List<String> {
     val words = note.allText().split(Regex("\\s+")).count { it.isNotBlank() }
     val people = note.speakers?.takeIf { !it.skipped }?.k ?: 1
@@ -74,7 +74,7 @@ internal val Languages = listOf("Hindi (Devanagari)", "English", "Tamil", "Telug
 /**
  * Pick a language once; it's remembered. The request names it, so the AI translates straight away.
  *
- * indite has no translator of its own, so there are two routes and the dialog says which is which: the Google Translate
+ * Inditeflow has no translator of its own, so there are two routes and the dialog says which is which: the Google Translate
  * app (free, offline, installed on most phones) or whatever AI the user has set up. Google Translate goes first because
  * it needs no key and no internet.
  */

@@ -2,7 +2,7 @@
 uv run --env-file .env python bench_synth/run_sarvam.py > bench_synth/out/hyp_sarvam.tsv"""
 import sys
 from pathlib import Path
-from indite.core import load_audio, sarvam
+from inditeflow.core import load_audio, sarvam
 
 for f in sorted(Path(__file__).parent.glob("clean/*.wav")):
     samples, _ = load_audio(f)

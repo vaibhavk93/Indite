@@ -4,7 +4,7 @@
 
     <!-- No internet permission: audio and text can't leave the phone. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- indite's own reminders: exact alarms (the user allows "Alarms & reminders"), re-set after reboot -->
+    <!-- Inditeflow's own reminders: exact alarms (the user allows "Alarms & reminders"), re-set after reboot -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -40,12 +40,12 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <intent-filter>  <!-- share a WhatsApp voice note (or any audio) into indite -->
+            <intent-filter>  <!-- share a WhatsApp voice note (or any audio) into Inditeflow -->
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="audio/*" />
             </intent-filter>
-            <intent-filter>  <!-- "Open with indite" from a file manager -->
+            <intent-filter>  <!-- "Open with Inditeflow" from a file manager -->
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="content" android:mimeType="audio/*" />
@@ -56,10 +56,10 @@
                 android:value="" />
         </activity>
 
-        <!-- indite voice keyboard: dictate into any app -->
+        <!-- Inditeflow voice keyboard: dictate into any app -->
         <service
             android:name=".keyboard.VoiceKeyboard"
-            android:label="indite voice"
+            android:label="Inditeflow voice"
             android:permission="android.permission.BIND_INPUT_METHOD"
             android:exported="true">
             <intent-filter>
@@ -95,7 +95,7 @@
             android:name=".overlay.MicTile"
             android:exported="true"
             android:icon="@drawable/ic_mic"
-            android:label="indite mic"
+            android:label="Inditeflow mic"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
             <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />

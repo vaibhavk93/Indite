@@ -1,11 +1,11 @@
 """
-The demo-video runner. Started BY indite (`run:` in demo.cmd), so it inherits indite's Accessibility and Screen
+The demo-video runner. Started BY Inditeflow (`run:` in demo.cmd), so it inherits Inditeflow's Accessibility and Screen
 Recording permissions: it records the screen, presses the real hotkeys, and steers the window - a real run of the
-app, not screenshots. Run it only against a demo profile (INDITE_DATA), never a person's real notes.
+app, not screenshots. Run it only against a demo profile (INDITEFLOW_DATA), never a person's real notes.
 
     python mac/demo.py <out_dir>     -> <out_dir>/screen.mov + timeline.json (then mac/demo_make.py makes the mp4)
 
-The "speaker" is synthetic Hinglish speech (macOS voice Tara) fed into indite in place of the microphone; the
+The "speaker" is synthetic Hinglish speech (macOS voice Tara) fed into Inditeflow in place of the microphone; the
 narrator (macOS voice Aman) is added afterwards from the timeline.
 """
 
@@ -23,7 +23,7 @@ from AppKit import NSRunningApplication, NSWorkspace
 
 import store
 
-OUT = Path(next((a for a in sys.argv[1:] if not a.startswith("--")), "/tmp/indite-demo"))
+OUT = Path(next((a for a in sys.argv[1:] if not a.startswith("--")), "/tmp/inditeflow-demo"))
 OUT.mkdir(parents=True, exist_ok=True)
 CMD, FEED = store.DIR / "demo.cmd", store.DIR / "demo_feed.wav"
 NARRATOR, SPEAKER = "Aman (English (India))", "Tara (English (India))"
@@ -41,7 +41,7 @@ CLIPS: dict[str, tuple[Path, Path, float]] = {}
 
 def render(text: str, voice: str, name: str) -> tuple[Path, Path, float]:
     """
-    Speech to a 44.1 kHz WAV (soundtrack) and a 16 kHz WAV (for indite), with 0.35 s of silence in front so the
+    Speech to a 44.1 kHz WAV (soundtrack) and a 16 kHz WAV (for inditeflow), with 0.35 s of silence in front so the
     first word is not clipped. Made BEFORE recording starts: `say` froze for 8 minutes once, mid-recording.
     """
     if (voice, text) in CLIPS:
@@ -78,7 +78,7 @@ def say(text: str, gap: float = 0.4) -> None:
 
 
 def key(code: int, mask: int, down: bool) -> None:
-    """A modifier key press as macOS sends it: a flags-changed event (what indite's key listener reads)."""
+    """A modifier key press as macOS sends it: a flags-changed event (what Inditeflow's key listener reads)."""
     e = Quartz.CGEventCreateKeyboardEvent(None, code, down)
     Quartz.CGEventSetType(e, Quartz.kCGEventFlagsChanged)
     Quartz.CGEventSetFlags(e, mask if down else 0)
@@ -88,8 +88,8 @@ def key(code: int, mask: int, down: bool) -> None:
 R_OPT, R_CMD = (61, Quartz.kCGEventFlagMaskAlternate | 0x40), (54, Quartz.kCGEventFlagMaskCommand | 0x10)
 
 
-def speak_into_indite(text: str, name: str, hands_free: bool = False) -> None:
-    """The user's part: hold Right ⌥ (or tap Right ⌘ three times), the speech plays into indite, then let go."""
+def speak_into_inditeflow(text: str, name: str, hands_free: bool = False) -> None:
+    """The user's part: hold Right ⌥ (or tap Right ⌘ three times), the speech plays into Inditeflow, then let go."""
     hi, lo, dur = render(text, SPEAKER, name)
     if hands_free:                                    # lock first, then the speech: the taps open and close the mic
         for i in range(3):
@@ -143,8 +143,8 @@ L_CTRL, L_CMD, V, ESC = (59, Quartz.kCGEventFlagMaskControl | 0x1), (55, Quartz.
 
 def pid_of(app_name: str) -> int:
     """By process name. NSWorkspace's app list goes stale in a process with no run loop, so ask the system."""
-    if app_name == "indite":
-        return os.getppid()                           # the runner is started by indite itself
+    if app_name == "Inditeflow":
+        return os.getppid()                           # the runner is started by Inditeflow itself
     for _ in range(20):
         r = subprocess.run(["pgrep", "-x", app_name], capture_output=True, text=True)
         if r.stdout.strip():
@@ -154,7 +154,7 @@ def pid_of(app_name: str) -> int:
 
 
 def ax_place(app_name: str, x: float, y: float, w: float, h: float) -> None:
-    """Move another app's front window with the Accessibility API (indite's permission; no Automation prompt)."""
+    """Move another app's front window with the Accessibility API (Inditeflow's permission; no Automation prompt)."""
     from ApplicationServices import (AXUIElementCreateApplication, AXUIElementCopyAttributeValue,
                                      AXUIElementSetAttributeValue, AXValueCreate, kAXPositionAttribute,
                                      kAXSizeAttribute, kAXValueCGPointType, kAXValueCGSizeType, kAXWindowsAttribute)
@@ -234,7 +234,7 @@ def main() -> None:
 
 
 SCRIPT_N = N = [
-    "This is indite. It turns spoken Hinglish into text, right on your Mac. No internet, and no account.",
+    "This is Inditeflow. It turns spoken Hinglish into text, right on your Mac. No internet, and no account.",
     "Click into any app. Hold the right Option key, and just speak.",
     "The pill above the Dock listens, then writes. About a second for a sentence like that, and the "
     "words are typed - chaar baje became four, in digits.",
@@ -249,16 +249,16 @@ SCRIPT_N = N = [
     "Every note AI has touched keeps a gold edge, so you can find your AI work at a glance, "
     "and open it again any time.",
     "Have a recording already? Drop in a call or a voice note.",
-    "indite writes it down, and works out who spoke, without a single click.",
+    "Inditeflow writes it down, and works out who spoke, without a single click.",
     "Meetings work live. Your microphone is you, and the call's sound is everyone else, even on headphones.",
     "When you stop, the other voices are told apart, and you can rename them.",
     "Anything can become a to-do, from a note or from AI's action items.",
-    "The dictionary teaches indite the words it gets wrong, like your company names.",
+    "The dictionary teaches Inditeflow the words it gets wrong, like your company names.",
     "Insights shows how much you dictate, how fast you speak, the time you save, and what you asked AI for.",
     "The pill can be as clear or as frosted as you like.",
     "AI is off until you turn it on, with your own Claude login or your own key.",
     "And Help lists every shortcut, and what to do if something is off.",
-    "indite. Speak Hinglish, get text, and keep it all on your Mac.",
+    "Inditeflow. Speak Hinglish, get text, and keep it all on your Mac.",
 ]
 SCRIPT_S = [
     ("Kal ki meeting chaar baje hai, please sab ko reminder bhej dena.", "s1"),
@@ -290,9 +290,9 @@ def prerender() -> None:
 
 
 def stage(hidden: list) -> None:
-    """Only TextEdit and indite on screen; every other app hidden (main() shows them again at the end)."""
+    """Only TextEdit and Inditeflow on screen; every other app hidden (main() shows them again at the end)."""
     for a in NSWorkspace.sharedWorkspace().runningApplications():
-        if a.activationPolicy() == 0 and a.localizedName() not in ("indite", "TextEdit", "Finder", "python3", "Python"):
+        if a.activationPolicy() == 0 and a.localizedName() not in ("Inditeflow", "TextEdit", "Finder", "python3", "Python"):
             if not a.isHidden() and a.hide():
                 hidden.append(a.processIdentifier())
     note = OUT / "Message to the team.txt"
@@ -314,7 +314,7 @@ def stage(hidden: list) -> None:
         cmd("open", "js:go('home')")
         ax_place("TextEdit", 0, 25, W, H - 25)
     else:
-        ax_place("TextEdit", 0, 25, W / 2, H - 25)                # split: TextEdit left, indite right
+        ax_place("TextEdit", 0, 25, W / 2, H - 25)                # split: TextEdit left, Inditeflow right
         cmd("open", f"place:{W / 2},{25},{W / 2},{H - 25}", "js:go('home')")
     time.sleep(1.5)
 
@@ -337,12 +337,12 @@ def show() -> None:
     say(N[0])
     front("TextEdit")
     say(N[1])
-    speak_into_indite(*SCRIPT_S[0])
+    speak_into_inditeflow(*SCRIPT_S[0])
     time.sleep(2.0)
     say(N[2])
     # 2 - hands-free, live
     say(N[3])
-    speak_into_indite(*SCRIPT_S[1], hands_free=True)
+    speak_into_inditeflow(*SCRIPT_S[1], hands_free=True)
     time.sleep(3.0)
     say(N[4])
     # 3 - cancel and paste-last, live
@@ -358,7 +358,7 @@ def show() -> None:
     chord(L_CTRL, L_CMD, V)
     time.sleep(2.0)
     # 4 - the notes, AI, live
-    front("indite")
+    front("Inditeflow")
     cmd("js:go('home')")
     say(N[7])
     cmd("js:openDrawer(S.history.find(r => (r.kind || 'dictation') === 'dictation').id)")
@@ -425,7 +425,7 @@ SHORT_N = [
     "AI is optional, and it runs on your own account, not ours. Ask it to improve a note and your original stays "
     "beside it, so nothing you actually said is lost.",
     # 7 - what it is
-    "indite. Speak Hinglish, get text, and keep every word on your own Mac.",
+    "Inditeflow. Speak Hinglish, get text, and keep every word on your own Mac.",
     # 8 - the ask
     "It works today, on this machine. What it needs next is a handful of people willing to use it for a week.",
 ]
@@ -447,7 +447,7 @@ def fill(app_name: str) -> None:
     """
     front(app_name)
     w, h = display()
-    if app_name == "indite":
+    if app_name == "Inditeflow":
         cmd(f"place:0,{MENUBAR},{w},{h - MENUBAR}")
     else:
         ax_place(app_name, 0, MENUBAR, w, h - MENUBAR)
@@ -469,16 +469,16 @@ def show_short() -> None:
     # 1 + 2 - the hero, unbroken, with the menu bar (and the Wi-Fi state) in frame
     fill("TextEdit")
     say(S[0])
-    speak_into_indite(*SHORT_S[0])
+    speak_into_inditeflow(*SHORT_S[0])
     time.sleep(2.5)
     say(S[1])
     # 3 - hands free, a real sentence
     say(S[2])
-    speak_into_indite(*SHORT_S[1], hands_free=True)
+    speak_into_inditeflow(*SHORT_S[1], hands_free=True)
     time.sleep(3.0)
     say(S[3])
     # 4 - the error, and the dictionary that fixes it
-    fill("indite")
+    fill("Inditeflow")
     cmd("js:go('dict')")
     say(S[4])
     time.sleep(2.0)
@@ -504,7 +504,7 @@ def show_short() -> None:
 # mac/narrate.py is used as it is; anything not recorded yet falls back to a synthetic voice, which is fine for a
 # rehearsal and NOT fine for the real take (take 1: the engine wrote "Tier cloist amok p acting" for a sentence it
 # gets right every time from a person).
-VOICES = Path.home() / "Documents/indite-demo-voice"
+VOICES = Path.home() / "Documents/inditeflow-demo-voice"
 
 # Which lines are spoken hands-free, and how long the screen holds after a line before anything moves. The founder's
 # note on take 1: "everything is running so fast that the user is not able to track it" - so results sit still.
@@ -546,7 +546,7 @@ def say_line(name: str, words: str) -> None:
 
 
 def dictate(name: str, words: str) -> None:
-    """Hold the hotkey and play this line into indite in place of the microphone."""
+    """Hold the hotkey and play this line into Inditeflow in place of the microphone."""
     hi, lo, dur = line_audio(name, words, False)
     hands = name in HANDS_FREE
     if hands:
@@ -579,16 +579,16 @@ def before(name: str, call: Path) -> None:
     """What has to be on screen before this line is spoken."""
     if name == "N01":
         fill("TextEdit")
-    elif name == "N13":                                  # the mistake is made in a real app, not in indite
+    elif name == "N13":                                  # the mistake is made in a real app, not in Inditeflow
         fill("TextEdit")
     elif name == "N14":                                  # teach the word, on camera
-        fill("indite")
+        fill("Inditeflow")
         cmd("js:go('dict')")
         time.sleep(1.5)
     elif name == "S04":
         fill("TextEdit")
     elif name == "N17":
-        fill("indite")
+        fill("Inditeflow")
         cmd("js:go('files')", f"file:{call}")
     elif name == "N20":                                  # the live meeting, shown rather than claimed (founder, 16 Oct)
         cmd("js:go('meetings')")
@@ -605,11 +605,11 @@ def before(name: str, call: Path) -> None:
     elif name == "N31b":
         fill("TextEdit")
     elif name == "N36":
-        fill("indite")
+        fill("Inditeflow")
         cmd("js:go('home')")
 
 
-# The word indite gets wrong in section 3, and what it should be. Filled in after testing the founder's own S03
+# The word Inditeflow gets wrong in section 3, and what it should be. Filled in after testing the founder's own S03
 # recording - never guessed, because a demo that fakes its own mistake is worse than one that has none. Written by
 # tools/check_fix.py into this file's sibling so the take and the test cannot drift apart.
 FIX_FILE = VOICES / "fix.txt"

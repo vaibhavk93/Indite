@@ -1,5 +1,5 @@
 #!/bin/bash
-# End-to-end test on the connected phone (USB debugging). Needs the indite app installed.
+# End-to-end test on the connected phone (USB debugging). Needs the inditeflow app installed.
 # 1) live dictation: dialogue_2spk.wav played into the recorder in real time (~4 min)
 # 2) imports: long_15min.wav (noise stretches) and dialogue_same_gender.wav
 # 3) speaker labels (2 speakers) on both dialogues; 4) pull results and score.
@@ -8,7 +8,7 @@
 set -u
 cd "$(dirname "$0")"
 A=~/Library/Android/sdk/platform-tools/adb
-PKG=com.indite.app; ACT=$PKG/com.whispercppdemo.MainActivity
+PKG=com.inditeflow.app; ACT=$PKG/com.whispercppdemo.MainActivity
 D=/sdcard/Android/data/$PKG/files
 $A shell mkdir -p $D/tests $D/results
 [ -z "${SKIP_LIVE:-}" ] && $A shell rm -f "$D/results/*"
@@ -16,7 +16,7 @@ for f in dialogue_2spk.wav dialogue_same_gender.wav long_15min.wav; do
   [ -n "${QUICK:-}" ] && [ "$f" = long_15min.wav ] && continue
   $A push "$f" $D/tests/ >/dev/null
 done
-hook() {  # OnePlus freezes background apps: wake indite first, then send the test command
+hook() {  # OnePlus freezes background apps: wake inditeflow first, then send the test command
   $A shell am start -n $ACT >/dev/null; sleep 3
   $A shell am start -n $ACT "$@" >/dev/null
 }

@@ -1,5 +1,5 @@
 """
-Play a note's recording inside indite (founder, 17 Oct: "there is no UI while it plays"). Design: docs/PLAYER_PLAN.md.
+Play a note's recording inside Inditeflow (founder, 17 Oct: "there is no UI while it plays"). Design: docs/PLAYER_PLAN.md.
 
 The window's page can only read files in mac/ui/, so the sound is played here with Apple's AVAudioPlayer and the page
 is told the time a few times a second; it lights up the line being spoken. One recording at a time. A meeting has two
@@ -55,7 +55,7 @@ class Player:
         mix = np.zeros(max(len(x) for x in parts), np.int32)
         for x in parts:
             mix[:len(x)] += x
-        out = Path(tempfile.mkstemp(suffix=".wav", prefix="indite-play-")[1])
+        out = Path(tempfile.mkstemp(suffix=".wav", prefix="inditeflow-play-")[1])
         with wave.open(str(out), "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)
@@ -67,9 +67,9 @@ class Player:
     def _wav(self, path: Path) -> Path:
         import sys
         sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-        from indite.core import load_audio
+        from inditeflow.core import load_audio
         audio, _ = load_audio(path)
-        f = Path(tempfile.mkstemp(suffix=".wav", prefix="indite-play-")[1])
+        f = Path(tempfile.mkstemp(suffix=".wav", prefix="inditeflow-play-")[1])
         with wave.open(str(f), "wb") as w:
             w.setnchannels(1)
             w.setsampwidth(2)

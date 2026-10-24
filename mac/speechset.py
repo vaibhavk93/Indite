@@ -1,5 +1,5 @@
 """
-Score indite on your own speech (roadmap Mac next #1; plan docs/SPEECH_SET_PLAN.md, final part).
+Score Inditeflow on your own speech (roadmap Mac next #1; plan docs/SPEECH_SET_PLAN.md, final part).
 
     python mac/speechset.py score        # every dictation you marked "This is exactly what I said"
     python mac/speechset.py --selftest
@@ -7,7 +7,7 @@ Score indite on your own speech (roadmap Mac next #1; plan docs/SPEECH_SET_PLAN.
 Each marked note's recording is transcribed again, fresh, through the same steps as a live dictation (engine → tidy →
 Mark likely mistakes), and compared with what you said. It runs on a private engine (port 8712, 2 threads, low
 priority) so your dictation never waits. Only numbers are printed; the sentences and results stay in
-~/Library/Application Support/indite/speechset/ and are never put in docs or commits.
+~/Library/Application Support/inditeflow/speechset/ and are never put in docs or commits.
 """
 
 from __future__ import annotations
@@ -47,8 +47,8 @@ def totals(rows: list[dict]) -> dict:
 
 
 def score() -> None:
-    import indite_mac as m
-    from indite.core import load_audio
+    import inditeflow_mac as m
+    from inditeflow.core import load_audio
     store.TEST = True                                     # this process only: the engine gets 2 threads
     m.PORT = 8712
     marked = [r for r in store.history() if r.get("said") and store.audio_of(r)]

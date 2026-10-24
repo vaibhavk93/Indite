@@ -1,4 +1,4 @@
-# Wispr Flow deep dive: the features indite lacks, and how to build them (16 Oct 2026)
+# Wispr Flow deep dive: the features inditeflow lacks, and how to build them (16 Oct 2026)
 
 > **Detail only, not a roadmap.** Order and status of every item live in `ROADMAP.md` (Mac and Android, done / next / later). If this file disagrees with it, `ROADMAP.md` wins.
 
@@ -10,14 +10,14 @@ Builds on `docs/ROADMAP_DETAIL.md` (A, B), `docs/MAC_PLAN.md` (§2, §6) and `do
 repeat what those already settled.** Everything that §6 dropped with a reason stays dropped.
 
 **⚠ Read this first:** this file contains the first *new measurements* in the repo since the 360-clip bench. They
-were run today on the real indite model (`mac/models/ggml-apex-q5_k.bin`) and they change two decisions:
+were run today on the real inditeflow model (`mac/models/ggml-apex-q5_k.bin`) and they change two decisions:
 
 1. **The offline near-miss check (feature A, step 1) only passes its false-alarm gate if it also uses the model's own
    per-word confidence.** Without confidence: 1.9 false alarms per 100 words (gate is ≤1). With it: 0.4. The
    confidence numbers are already available from the engine we ship — one extra form field, no new model.
 2. **Feeding the Dictionary to whisper as `initial_prompt` (W4) is more dangerous than §6 assumed.** The one
    published study that measures it finds overall error rate gets *worse* on 6 of 11 English sets, and worse on
-   **all four** non-English languages tested (German 6.3% → 15.2%). indite's model is a non-English fine-tune.
+   **all four** non-English languages tested (German 6.3% → 15.2%). inditeflow's model is a non-English fine-tune.
 
 And one unrelated hard finding, from the keystore section:
 
@@ -65,7 +65,7 @@ will produce more false alarms, because every extra target is another chance to 
 not recorded) is what decides this. These numbers tell you the *design* is viable, not that the feature works.
 
 **The most useful single sentence in this file:** the errors that matter most are the ones the model is *least sure
-about*, and it already tells us — we throw that number away today (`mac/indite_mac.py:280`, `response_format=text`).
+about*, and it already tells us — we throw that number away today (`mac/inditeflow_mac.py:280`, `response_format=text`).
 
 ---
 
@@ -84,11 +84,11 @@ about*, and it already tells us — we throw that number away today (`mac/indite
 | Length cap | 60 characters per word or correction (59 on iOS) | same |
 
 **What to take from this, plainly:** Wispr's "learning" is a literal replace list plus a skip list of word *types*.
-They do not do a review pass. indite's review idea is not a catch-up feature — it is a different bet, and the skip
+They do not do a review pass. inditeflow's review idea is not a catch-up feature — it is a different bet, and the skip
 list above is worth copying almost verbatim (it is the output of their support queue, free to us).
 
 **Also worth knowing:** Wispr monitors the text box it pasted into, to detect your edits (wisprflow.ai/data-controls,
-read 16 Oct 2026). That is how auto-learn works at all. indite deliberately does not read other apps' text
+read 16 Oct 2026). That is how auto-learn works at all. inditeflow deliberately does not read other apps' text
 (MAC_PLAN §6, "keylogger look"), so our only route to the same data is the Dictations list in our own window.
 
 ### 2.2 Every implementation option for step 1 (offline detection)
@@ -148,7 +148,7 @@ vaala"`). No offline string method will ever recover those. They need step 2, or
 |---|---|
 | A plain prompt asking an LLM to fix an ASR transcript **"typically generates more errors through hallucinations than it corrects"**. The authors' fix is a pipeline with an explicit **error pre-detection** stage plus a verification stage; with that, GPT-4o cut error rates by 21% / 11% / 9% / 11.4% on four benchmarks | arXiv 2505.24347, *Fewer Hallucinations, More Verification: A Three-Stage LLM-Based Framework for ASR Error Correction*, May 2025 |
 | They name the failure types: instruction violation, redundant output, continuing the text, blank output, "grammar correction" (over-polishing), and plain invention | same, §IV-A |
-| LLM correction is weakest **exactly where indite lives** — short, already-low-error text. A specialised 15×-smaller model beat LLMs and gave "precise corrections in the low-error regime where LLMs struggle" | Apple ML Research, *Revisiting ASR Error Correction with Specialized Models* (arXiv 2405.15216) |
+| LLM correction is weakest **exactly where inditeflow lives** — short, already-low-error text. A specialised 15×-smaller model beat LLMs and gave "precise corrections in the low-error regime where LLMs struggle" | Apple ML Research, *Revisiting ASR Error Correction with Specialized Models* (arXiv 2405.15216) |
 | Over-correction "shift[s] the transcription toward formal written language and reduc[es] the fidelity of the spoken input" | arXiv 2505.17410, May 2025 |
 | Giving the LLM a retrieved list of named entities (i.e. the user's Dictionary) measurably helps named-entity correction | DARAG, ACL Findings 2025; GEC-RAG, arXiv 2501.10734 |
 | Giving the LLM the ASR's n-best list helps a lot | arXiv 2409.09554 — but see option 7 above: we can't get n-best |
@@ -248,7 +248,7 @@ Settings*, Feb 2025** (Sprinklr). Whisper-large, 70-word biasing list in the pro
 | Overall error rate (WER), average | 10.3% | **12.1%** | **Worse overall**, worse on 6 of 11 sets |
 | Worst cases | — | Chime6 25.3→32.5, CORAAL 19.7→28.3, TED-LIUM 4.6→8.3, VoxPopuli 7.1→9.6 | Collapse, not drift |
 
-And the part that matters most for indite:
+And the part that matters most for inditeflow:
 
 | Non-English (Multilingual LibriSpeech) | Whisper | Whisper + prompt |
 |---|---|---|
@@ -362,10 +362,10 @@ of Dictionary words appearing in clips that never contained them. Both must move
 | Meetings are different | Notetaker: 22 languages, auto-detected, nothing to select |
 
 **The lesson, plainly:** the company with a cloud model, 100+ languages and real money **still ships a picker, still
-cannot auto-detect Hinglish, and still has no auto-detect on Android.** Any plan where indite auto-detects language
+cannot auto-detect Hinglish, and still has no auto-detect on Android.** Any plan where inditeflow auto-detects language
 is more ambitious than Wispr's own.
 
-### 4.2 indite's actual position
+### 4.2 inditeflow's actual position
 
 The shipped model is Oriserve Hindi2Hinglish-Apex — a *fine-tune* that outputs Roman-script Hinglish. That output
 format is the whole product. A generic multilingual model gives you Devanagari or Tamil script, not Roman.
@@ -457,7 +457,7 @@ gets a quarter of the words wrong does not become a product.
 | **Whisper itself** | No filter. It transcribes profanity as spoken | OpenAI docs have no such parameter |
 | **Wispr Flow** | **No documented profanity setting.** They publicly announced *enabling* cursing ("Cussing is now live on Wispr Flow", Wispr's own Instagram reel, ~Apr 2026 — ⚠ date inferred from the post, unverified), and a reviewer notes "It even types swear words, which is..." (r/Productivitycafe review thread). **Unverified** whether any filter exists |
 
-**indite already matches the best-documented behaviour.** `mac/store.py:mask_swears` does exactly what Google does
+**inditeflow already matches the best-documented behaviour.** `mac/store.py:mask_swears` does exactly what Google does
 (first letter + asterisks), optional, off by default, with a deliberate comment about leaving everyday words out.
 Nobody in this market does more.
 
@@ -521,7 +521,7 @@ Indian languages, team dictionary/sync/referrals. **None of those are re-opened 
 
 Checked against today's Wispr docs, these are *new* and *not* in that dropped list:
 
-| Wispr feature | In indite? | Worth raising? |
+| Wispr feature | In inditeflow? | Worth raising? |
 |---|---|---|
 | **A once-a-day "Speaking a different language?" notice** | No | No. We have one language |
 | **Dictionary length cap (60 chars) and duplicate-by-misspelling checks** | Partly: `store.add_fix` refuses `=`, `#`, empty and no-op entries, but has **no length cap and no duplicate check** | **Yes — 20 minutes.** A 400-character "fix" is a foot-gun, and two lines fixing the same word is a silent conflict. This is a bug-shaped gap, not a feature |
@@ -593,7 +593,7 @@ Play rejects it. Sideloading to friends works; Play internal testing does not.
 
 ```
 shasum -a 256 ~/.indite/indite-testers.keystore            # note this hash
-cp ~/.indite/indite-testers.keystore ~/Desktop/indite-testers.keystore.bak
+cp ~/.indite/indite-testers.keystore ~/Desktop/inditeflow-testers.keystore.bak
 ```
 
 **2. Put a copy somewhere that is not this disk** — two places, different kinds:
@@ -604,13 +604,13 @@ iCloud Drive / Google Drive folder, **and** a USB stick or a second computer. Th
 
 ```
 # a) same bytes
-shasum -a 256 ~/Desktop/indite-testers.keystore.bak        # must equal the hash from step 1
+shasum -a 256 ~/Desktop/inditeflow-testers.keystore.bak        # must equal the hash from step 1
 
 # b) still a valid PKCS#12 structure (prints a DER tree, no password needed)
-openssl asn1parse -inform DER -in ~/Desktop/indite-testers.keystore.bak | head -3
+openssl asn1parse -inform DER -in ~/Desktop/inditeflow-testers.keystore.bak | head -3
 
 # c) the real test: build with the backup and check the app still updates over the installed one
-cp ~/Desktop/indite-testers.keystore.bak /tmp/t.keystore
+cp ~/Desktop/inditeflow-testers.keystore.bak /tmp/t.keystore
 # point storeFile at /tmp/t.keystore, build release, then:
 adb install -r app-release.apk     # succeeds = same key; INSTALL_FAILED_UPDATE_INCOMPATIBLE = wrong key
 ```
@@ -647,7 +647,7 @@ not the file, is what proves two APKs share an identity.
  - sideloading only, forever       + no tester ever has to uninstall
  - everyone on earth has the       - needs openssl (present) or a JDK (absent)
    private key: anyone can ship    - must be done BEFORE testers install, or
-   a fake "indite" update            every tester loses their notes
+   a fake "inditeflow" update            every tester loses their notes
 
   * = recommended    # box = the pick
 ```
@@ -656,12 +656,12 @@ A real key needs no JDK — `openssl` can make a PKCS#12 that Gradle accepts:
 
 ```
 openssl req -x509 -newkey rsa:4096 -sha256 -days 10950 -nodes \
-  -keyout /tmp/k.pem -out /tmp/c.pem -subj "/CN=indite"
+  -keyout /tmp/k.pem -out /tmp/c.pem -subj "/CN=inditeflow"
 openssl pkcs12 -export -inkey /tmp/k.pem -in /tmp/c.pem \
-  -name indite -out ~/.indite/indite-upload.p12 -passout pass:CHOOSE_A_REAL_PASSWORD
+  -name inditeflow -out ~/.inditeflow/inditeflow-upload.p12 -passout pass:CHOOSE_A_REAL_PASSWORD
 rm /tmp/k.pem /tmp/c.pem
 ```
-Then point `signingConfigs.testers` at the new file with `keyAlias "indite"`, and **keep the password out of the
+Then point `signingConfigs.testers` at the new file with `keyAlias "inditeflow"`, and **keep the password out of the
 repo** (`~/.gradle/gradle.properties`, not `build.gradle` — the current file has the password in public git).
 ⚠ 10950 days ≈ 30 years, past Play's 2033 requirement. **Unverified:** that Gradle/AGP accepts an openssl-made
 PKCS#12 without a JDK present — test it with one release build before trusting it.

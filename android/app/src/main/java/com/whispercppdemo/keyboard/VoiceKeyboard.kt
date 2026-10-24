@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * indite voice keyboard: dictate into any app. Tap the mic, talk; after each pause that part is typed into the text
+ * Inditeflow voice keyboard: dictate into any app. Tap the mic, talk; after each pause that part is typed into the text
  * box you're in. Each dictation is also kept as a note in the app, with its audio (as the founder asked).
  * Everything runs on the phone.
  */
@@ -277,11 +277,11 @@ class VoiceKeyboard : InputMethodService() {
         if (job?.isActive == true) return  // still writing the previous dictation
         PhoneCheck.problem()?.let { show(it, listening = false); return }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            show("Open indite once to allow the microphone", listening = false)
+            show("Open Inditeflow once to allow the microphone", listening = false)
             startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return
         }
-        if (Recording.active) { show("indite is already recording in the app", listening = false); return }
+        if (Recording.active) { show("Inditeflow is already recording in the app", listening = false); return }
         val id = Notes.startRecording("Dictation, " + java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.getDefault())
             .format(java.util.Date()))
         noteId = id
@@ -333,8 +333,8 @@ class VoiceKeyboard : InputMethodService() {
                 } else if (Notes.note(id)?.pending != true) break
             }
         } catch (e: Exception) {
-            Log.w("indite", e)
-            state(State.IDLE, "Couldn't type that in. It's saved in the indite app.")
+            Log.w("inditeflow", e)
+            state(State.IDLE, "Couldn't type that in. It's saved in the Inditeflow app.")
             return
         } finally {
             Notes.claimed -= id

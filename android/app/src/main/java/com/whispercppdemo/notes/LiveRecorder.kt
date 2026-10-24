@@ -24,7 +24,7 @@ import kotlin.math.sqrt
 class LiveRecorder(val id: String, private val vadPath: String, private val simulate: File? = null,
                    private val context: android.content.Context? = null) {
     @Volatile private var running = true
-    private val thread = Thread(::run, "indite-recorder")
+    private val thread = Thread(::run, "inditeflow-recorder")
 
     fun start() = thread.start()
 
@@ -46,7 +46,7 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, max(min, SR * 2 * 5))
         val sim = simulate?.let { java.io.DataInputStream(it.inputStream().buffered()) }
         val simStart = System.nanoTime()
-        val vad = try { SpeechDetector(vadPath) } catch (e: Exception) { Log.w("indite", e); null }
+        val vad = try { SpeechDetector(vadPath) } catch (e: Exception) { Log.w("inditeflow", e); null }
         val out = FileOutputStream(File(Notes.dir(id), "audio.pcm"), true)
         val frame = ShortArray(W)
         val floats = FloatArray(W)
@@ -112,7 +112,7 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
                 if (total - synced >= 5 * SR) { out.fd.sync(); synced = total }
             }
         } catch (e: Exception) {
-            Log.w("indite", e)
+            Log.w("inditeflow", e)
             Notes.status.value = "Recording stopped because the microphone stopped working. What was recorded is saved."
         } finally {
             // the last piece is saved however the loop ended
@@ -124,13 +124,13 @@ class LiveRecorder(val id: String, private val vadPath: String, private val simu
             sim?.close()
             vad?.release()
             Notes.level.value = 0f
-            Log.i("indite", "recording ended: ${total / 16} ms, speech ${heard * MS} ms, detector ${if (vad != null) "silero" else "loudness"}, parts $cuts")
+            Log.i("inditeflow", "recording ended: ${total / 16} ms, speech ${heard * MS} ms, detector ${if (vad != null) "silero" else "loudness"}, parts $cuts")
             // Safety net: the live detector found nothing, so re-check the whole recording the way imports do
             // (bubble dictations of clear speech came out "No speech found", 2026-10-10).
             val ctx = context
             if (cuts == 0 && total > SR / 2 && ctx != null) {
                 val found = runCatching { Notes.cutRange(ctx, id, 0, total) }.getOrDefault(emptyList())
-                Log.i("indite", "re-check found ${found.size} part(s)")
+                Log.i("inditeflow", "re-check found ${found.size} part(s)")
                 found.forEach { Notes.addCut(id, it) }
             }
             Notes.stopRecording(id, total)

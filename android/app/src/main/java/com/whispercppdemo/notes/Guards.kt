@@ -1,6 +1,6 @@
 package com.whispercppdemo.notes
 
-/** Flag text the engine probably invented. Same rules as the web app (indite/guards.py). Flags only: nothing is deleted. */
+/** Flag text the engine probably invented. Same rules as the web app (inditeflow/guards.py). Flags only: nothing is deleted. */
 object Guards {
     private val STOCK = listOf(
         "thanks for watching", "thank you for watching", "please subscribe", "like and subscribe",

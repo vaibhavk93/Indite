@@ -190,7 +190,7 @@ private val OwnLanguage = setOf("Translate", "Rewrite to send")
 private val Gutter = 20.dp
 
 /** App name as shown in the top bar (the brand is lowercase everywhere else). */
-private const val BRAND = "indite"
+private const val BRAND = "Inditeflow"
 
 /**
  * The wordmark. Hand-drawing the dots was tried and dropped (13 Oct): a circle placed from glyph metrics drifts when
@@ -267,13 +267,13 @@ private fun Welcome(onTry: () -> Unit, onSkip: () -> Unit) {
         Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 28.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Spacer(Modifier.weight(1f))
-            Text("indite", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
+            Text("Inditeflow", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
             Text("Speak Hindi, English or both.\nGet it in writing.", style = MaterialTheme.typography.headlineMedium)
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Promise("Written the way you type: achha, kal milte hain, meeting at 3")
                 Promise("Works without internet. Your voice never leaves this phone")
                 Promise("Notes, voice notes, meetings, and a keyboard for any app")
-                Promise("WhatsApp voice note? Tap Share on it, then pick indite")
+                Promise("WhatsApp voice note? Tap Share on it, then pick Inditeflow")
             }
             Spacer(Modifier.weight(1f))
             Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
@@ -337,7 +337,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
     renamingNote?.let { n -> RenameDialog(n.name, onDone = { renamingNote = null; if (it != null) Notes.rename(n.id, it) }) }
     fun copyNote(n: Note) {
         context.getSystemService(android.content.ClipboardManager::class.java)
-            .setPrimaryClip(android.content.ClipData.newPlainText("indite", n.allText()))
+            .setPrimaryClip(android.content.ClipData.newPlainText("Inditeflow", n.allText()))
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         scope.launch { snackbar.showSnackbar("Copied") }
     }
@@ -451,7 +451,7 @@ private fun HomeScreen(notes: List<Note>, snackbar: SnackbarHostState, onOpenFil
                         SwipeHint.used(context, copy = true)
                         // swipe right = copy the text, with a small buzz; the row springs back
                         val cm = context.getSystemService(android.content.ClipboardManager::class.java)
-                        cm.setPrimaryClip(android.content.ClipData.newPlainText("indite", note.allText()))
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("Inditeflow", note.allText()))
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         scope.launch { snackbar.showSnackbar("Copied") }
                         false
@@ -566,7 +566,7 @@ private fun EmptyState() {
         }
         Text("Works without internet. Your voice never leaves this phone.", style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("Have a voice note or recording? Share it to indite, or tap Import.", style = MaterialTheme.typography.bodyMedium,
+        Text("Have a voice note or recording? Share it to Inditeflow, or tap Import.", style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -875,7 +875,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
     var whoSpoke by remember { mutableStateOf(false) }
     var renamingSpeaker by remember { mutableStateOf<Int?>(null) }
     var labelling by remember { mutableStateOf<String?>(null) }
-    // indite labels speakers by itself once the text is ready (NoteService), so the note screen has to show a run it
+    // Inditeflow labels speakers by itself once the text is ready (NoteService), so the note screen has to show a run it
     // did not start. `busy` = anything working on this note right now, whoever started it.
     val autoLabel by Speakers.status.collectAsState()
     val busy = labelling ?: autoLabel?.takeIf { it.first == note.id }?.second
@@ -914,11 +914,11 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
         onWholeNote = { Player.stop(); onBack(); Notes.delete(note.id) })
 
     /** Ask the user's AI for one of the ready requests: through their Mac (personal build) or their own AI app. */
-    /** Send one request to one place: inside indite (OpenRouter), an AI app, or (null) the share list. */
+    /** Send one request to one place: inside Inditeflow (OpenRouter), an AI app, or (null) the share list. */
     fun send(card: String, prompt: String, target: String?) {
         if (target == IN_APP) {
             if (!com.whispercppdemo.ai.OpenRouter.warned(context)) { warnFirst = card to prompt; return }
-            labelling = "Writing $card inside indite…"
+            labelling = "Writing $card inside Inditeflow…"
             failed = null
             val app = context.applicationContext
             AppScope.launch {
@@ -992,7 +992,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
             Text(aiTargetName(t), Modifier.fillMaxWidth()) } } } },
         confirmButton = { TextButton(onClick = { choosing = null }) { Text("Cancel") } },
     ) }
-    // First time inside indite: say plainly where the text goes (free models may keep or train on it).
+    // First time inside Inditeflow: say plainly where the text goes (free models may keep or train on it).
     warnFirst?.let { (card, prompt) -> AlertDialog(
         onDismissRequest = { warnFirst = null },
         title = { Text("Send this note's text to OpenRouter?") },
@@ -1071,7 +1071,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
         title = { Text("How many people are speaking?") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("indite listens for different voices and labels each paragraph. It all happens on this phone.",
+                Text("Inditeflow listens for different voices and labels each paragraph. It all happens on this phone.",
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     (2..5).forEach { k ->
@@ -1195,7 +1195,7 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text("Was this a conversation? Find who spoke.", style = MaterialTheme.typography.titleSmall)
-                                Text("indite listens for different voices and guesses how many people spoke; you can correct it. " +
+                                Text("Inditeflow listens for different voices and guesses how many people spoke; you can correct it. " +
                                     "It all happens on this phone. When you record others, tell them first.",
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1205,13 +1205,13 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                             }
                         }
                     }
-                    // Guess, then confirm: one tap if indite counted right, otherwise pick the real number (re-labels in a moment).
+                    // Guess, then confirm: one tap if Inditeflow counted right, otherwise pick the real number (re-labels in a moment).
                     note.speakers?.takeIf { it.guessed && !it.skipped && busy == null && note.id !in Speakers.running }?.let { sp ->
                         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(if (sp.k <= 1) "indite heard 1 voice. Is that right?" else "indite heard ${sp.k} people. Is that right?",
+                                Text(if (sp.k <= 1) "Inditeflow heard 1 voice. Is that right?" else "Inditeflow heard ${sp.k} people. Is that right?",
                                     style = MaterialTheme.typography.titleSmall)
-                                Text("indite compared the voices in this recording, on this phone. When you record others, " +
+                                Text("Inditeflow compared the voices in this recording, on this phone. When you record others, " +
                                     "tell them first.", style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1224,11 +1224,11 @@ private fun NoteScreen(note: Note, snackbar: SnackbarHostState, onBack: () -> Un
                             }
                         }
                     }
-                    // k == 1 and skipped = indite compared the voices and heard only one, so there is nothing to label.
+                    // k == 1 and skipped = Inditeflow compared the voices and heard only one, so there is nothing to label.
                     // Say so: silence here looked like the labelling had done nothing. ("Just me" leaves k at 0.)
                     note.speakers?.takeIf { it.skipped && it.k == 1 && busy == null && note.id !in Speakers.running }?.let {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("indite could only hear one voice in this note.", style = MaterialTheme.typography.bodySmall,
+                            Text("Inditeflow could only hear one voice in this note.", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             TextButton(onClick = { whoSpoke = true }) { Text("Two people spoke?") }
                         }
@@ -1456,7 +1456,7 @@ private fun AiCard(r: com.whispercppdemo.notes.AiReply, noteId: String, onCopy: 
             val rest = if (rows.isEmpty()) r.text else r.text.lines().filter { !isActionLine(it) }.joinToString("\n").trim()
             if (r.label != "Action items" || rows.isEmpty()) Text(rest, style = MaterialTheme.typography.bodyMedium,
                 maxLines = if (open) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis)
-            // Action items: one row per task, handed to the user's own calendar or task app (indite is not a to-do app)
+            // Action items: one row per task, handed to the user's own calendar or task app (Inditeflow is not a to-do app)
             rows.take(if (open) rows.size else 3).forEach { (task, who, by) ->
                 // N02: what happened to this one. Done and Not mine are the user's call, never the AI's, and neither
                 // touches the transcript or the answer - only how the row is shown from now on.
@@ -1482,7 +1482,7 @@ private fun AiCard(r: com.whispercppdemo.notes.AiReply, noteId: String, onCopy: 
                         TextButton(onClick = {
                             val i = Intent(Intent.ACTION_INSERT, android.provider.CalendarContract.Events.CONTENT_URI)
                                 .putExtra(android.provider.CalendarContract.Events.TITLE, task)
-                                .putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "From indite. Who: $who. By: $by")
+                                .putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "From Inditeflow. Who: $who. By: $by")
                             clearDate(by)?.let {  // "Monday", "12 Oct": an all-day event that day (you check it in the editor)
                                 i.putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, it)
                                     .putExtra(android.provider.CalendarContract.EXTRA_EVENT_ALL_DAY, true)
@@ -1693,24 +1693,24 @@ private fun LanguagePicker(onPick: (String?) -> Unit) {
     )
 }
 
-/** Where AI requests can go: inside indite (the user's OpenRouter key, personal build) or an AI app, opened directly. */
-internal const val IN_APP = "indite"
+/** Where AI requests can go: inside Inditeflow (the user's OpenRouter key, personal build) or an AI app, opened directly. */
+internal const val IN_APP = "Inditeflow"
 internal val AiApps = listOf("com.openai.chatgpt" to "ChatGPT", "com.anthropic.claude" to "Claude",
     "com.google.android.apps.bard" to "Gemini")
-internal fun aiTargetName(t: String) = if (t == IN_APP) "Answer inside indite (OpenRouter)" else AiApps.firstOrNull { it.first == t }?.second ?: t
+internal fun aiTargetName(t: String) = if (t == IN_APP) "Answer inside Inditeflow (OpenRouter)" else AiApps.firstOrNull { it.first == t }?.second ?: t
 
 /** The places the user ticked (several = pick each time; none = the phone's share list). */
 internal fun aiTargets(context: Context): List<String> {
     val p = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val set = p.getStringSet("aiTargets", null) ?: setOfNotNull(p.getString("aiApp", null)?.takeIf { it != "ask" })  // old single choice
-    // A key that works is a route that works: saving one used to do nothing unless "Answer inside indite" was also
+    // A key that works is a route that works: saving one used to do nothing unless "Answer inside Inditeflow" was also
     // ticked under "Where AI requests go", which is why AI requests did nothing after a key was added (10 Oct).
     val all = if (com.whispercppdemo.ai.OpenRouter.configured(context)) set + IN_APP else set
     return (listOf(IN_APP) + AiApps.map { it.first }).filter { it in all }
 }
 
 /**
- * What will actually happen when the user taps an AI request, in one plain sentence. indite has no AI of its own: it
+ * What will actually happen when the user taps an AI request, in one plain sentence. Inditeflow has no AI of its own: it
  * either asks the founder's Mac, uses the user's own API key, or hands the text to another app and waits for a paste.
  */
 internal fun aiRouteNow(context: Context): String {
@@ -1722,7 +1722,7 @@ internal fun aiRouteNow(context: Context): String {
     if (targets.isNotEmpty()) return targets.joinToString(" or ") { aiTargetName(it) } +
         " opens with the text. Copy the reply there, then tap \"Paste reply\" in the note."
     return "nothing on this phone can answer. The text opens in your phone's share list, and you paste the reply back. " +
-        "For answers inside indite, set up your Mac or an OpenRouter key below."
+        "For answers inside Inditeflow, set up your Mac or an OpenRouter key below."
 }
 
 internal fun setAiTargets(context: Context, targets: Set<String>) =

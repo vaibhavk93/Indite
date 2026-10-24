@@ -2,7 +2,7 @@
 Turns the demo runner's screen recording and timeline into the finished video: the screen as recorded, with the
 narration and the spoken Hinglish laid on one soundtrack at the moments they happened.
 
-    python mac/demo_make.py <out_dir> [lag_seconds]   -> <out_dir>/indite-demo.mp4
+    python mac/demo_make.py <out_dir> [lag_seconds]   -> <out_dir>/inditeflow-demo.mp4
 
 lag = how long after the recording started the runner's clock began (it waits ~1.5 s for screencapture to start).
 """
@@ -34,7 +34,7 @@ for item in json.loads((OUT / "timeline.json").read_text())["items"]:
     track[i:i + len(x)] += x[: max(0, len(track) - i)] * gain
 track = np.clip(track, -1, 1)
 
-dst = av.open(str(OUT / "indite-demo.mp4"), "w")
+dst = av.open(str(OUT / "inditeflow-demo.mp4"), "w")
 vout = dst.add_stream("h264_videotoolbox", rate=60)
 vout.width, vout.height = vin.codec_context.width - vin.codec_context.width % 2, vin.codec_context.height - vin.codec_context.height % 2
 vout.pix_fmt = "yuv420p"
@@ -61,4 +61,4 @@ for i in range(0, pcm.shape[1], 1024):
 for p in aout.encode():
     dst.mux(p)
 dst.close()
-print(f"made {OUT / 'indite-demo.mp4'}: {length:.0f} s")
+print(f"made {OUT / 'inditeflow-demo.mp4'}: {length:.0f} s")

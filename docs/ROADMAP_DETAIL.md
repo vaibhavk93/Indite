@@ -1,4 +1,4 @@
-# indite: detailed roadmap and Wispr Flow comparison (15 Oct 2026)
+# inditeflow: detailed roadmap and Wispr Flow comparison (15 Oct 2026)
 
 > **Detail only, not a roadmap.** Order and status of every item live in `ROADMAP.md` (Mac and Android, done / next / later). If this file disagrees with it, `ROADMAP.md` wins.
 
@@ -6,7 +6,7 @@
 Researched and critic-reviewed. The one roadmap stays `ROADMAP.md`; this is the detail behind its new items. Built on `ROADMAP.md`, `docs/MAC_PLAN.md` (§0, §3, §6) and
 `docs/FOUNDER_REQUESTS.md`, plus fresh research on Wispr Flow (sources and dates at the end).
 
-**The short answer:** indite's next big gain is not a new Wispr feature. It is **fewer wrong words, measured on real
+**The short answer:** inditeflow's next big gain is not a new Wispr feature. It is **fewer wrong words, measured on real
 speech**, and getting the app into a second person's hands. The founder's "AI review" idea fits that goal well, *if*
 it only suggests and never changes text by itself. Regional languages stay later: each one needs a new model.
 
@@ -29,7 +29,7 @@ User types: **D** = daily dictation user · **M** = meeting user · **S** = stud
 | Test a real call with the meeting recorder | No (founder task) | Screen & System Audio Recording is granted (15 Oct night); one real call left (B22) | M | — |
 | Founder's hand check of build 29 + Mac 🧪 items | No (founder task) | ~25 built features never used by a human | All | Keep. Unverified features outnumber gaps |
 | Mac W1–W3: snippet example row, "Teach this word" in one click, "fixes made" on Insights | Improve existing | Cheapest proven accuracy path is word fixes | D | ~2 h. Already critic-reviewed (MAC_PLAN §6) |
-| **AI review of a dictation, step 1: offline "near-miss" check** | Yes (gated) | Catches "in diet" when "indite" is in your Dictionary, with no AI and no internet | D, M, S | Works on Android public build too. Only suggests. Gate: ≤1 false alarm per 100 words on the real set |
+| **AI review of a dictation, step 1: offline "near-miss" check** | Yes (gated) | Catches "in diet" when "inditeflow" is in your Dictionary, with no AI and no internet | D, M, S | Works on Android public build too. Only suggests. Gate: ≤1 false alarm per 100 words on the real set |
 
 ### Next (after the checks above pass)
 
@@ -79,11 +79,11 @@ User types: **D** = daily dictation user · **M** = meeting user · **S** = stud
 
 ---
 
-## B. indite vs Wispr Flow
+## B. inditeflow vs Wispr Flow
 
 Wispr facts checked on wisprflow.ai pages, Oct 2026. ✅ has · 🟡 partial · ❌ no.
 
-| Feature | indite | Wispr Flow | AI-like thing to build (or not), and why |
+| Feature | inditeflow | Wispr Flow | AI-like thing to build (or not), and why |
 |---|---|---|---|
 | Works offline | ✅ | ❌ cloud only | Our edge. Keep |
 | Hinglish | ✅ Roman, one language | ✅ since May 2026 (India launch, TechCrunch 9 May) | Our edge is now smaller. Win on accuracy + offline, not "has Hinglish" |
@@ -114,9 +114,9 @@ Wispr facts checked on wisprflow.ai pages, Oct 2026. ✅ has · 🟡 partial · 
 
 ### C1. AI review of a dictation (the founder's idea 1)
 
-**What it does.** You open a note and tap **Review**. indite lists likely mistakes: *"heard: in diet → maybe:
-indite (your Dictionary)"*. Each has **Fix** / **Ignore** and a ▶ to hear that bit. Fixing changes the note (the
-original is kept) and asks **"Always fix in diet → indite?"**. Yes adds it to word fixes, so next time it is fixed
+**What it does.** You open a note and tap **Review**. inditeflow lists likely mistakes: *"heard: in diet → maybe:
+inditeflow (your Dictionary)"*. Each has **Fix** / **Ignore** and a ▶ to hear that bit. Fixing changes the note (the
+original is kept) and asks **"Always fix in diet → inditeflow?"**. Yes adds it to word fixes, so next time it is fixed
 by itself.
 
 ```
@@ -139,7 +139,7 @@ by itself.
 
 | | Step 1: offline near-miss | Step 2: AI review |
 |---|---|---|
-| How | Join 1–3 note words, compare with Dictionary targets by spelling distance ("in diet" → "indiet" is 2 letters from "indite"). Only targets ≥5 letters; skip common words. Plus existing flags (Android only: loops, "nan", stock phrases; Mac deletes "nan" silently) | Prompt with the note + Dictionary; reply as a list `heard | suggest | why | sure?`. A per-item version of the Mac "Improve" / "Clean it up" actions, which already fix context but all at once |
+| How | Join 1–3 note words, compare with Dictionary targets by spelling distance ("in diet" → "indiet" is 2 letters from "inditeflow"). Only targets ≥5 letters; skip common words. Plus existing flags (Android only: loops, "nan", stock phrases; Mac deletes "nan" silently) | Prompt with the note + Dictionary; reply as a list `heard | suggest | why | sure?`. A per-item version of the Mac "Improve" / "Clean it up" actions, which already fix context but all at once |
 | Where | Mac + Android (both builds) | Mac (Claude login or API key); Android personal (OpenRouter / Mac route) |
 | Effort | S–M (~1 day, unproven: Roman Hinglish spelling varies a lot, tuning may take longer) | M (~2–3 days incl. the test) |
 | Privacy cost | None | The note's text goes to the AI the user picked. Audio never leaves |
@@ -238,7 +238,7 @@ real notes.
 - **Wispr now does Hinglish, Android, and student pricing (₹160/mo on the yearly plan, 50% off).** "Has Hinglish" is no longer our
   edge. Offline, private, free and accurate-on-real-speech are.
 - **Sarvam Edge** (on-device, 10 Indian languages, with phone makers) is the bigger threat to the offline edge.
-- **The ₹15k phone and the 681 MB install** decide whether low-end users can use indite at all.
+- **The ₹15k phone and the 681 MB install** decide whether low-end users can use inditeflow at all.
 
 **Costs**
 - AI review uses the user's own Claude quota or API key. A long meeting note may be a few thousand words per review.

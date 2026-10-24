@@ -8,10 +8,10 @@ from .styles import STYLES
 
 
 def main():
-    p = argparse.ArgumentParser(prog="indite", description="Hinglish-first speech-to-text")
+    p = argparse.ArgumentParser(prog="inditeflow", description="Hinglish-first speech-to-text")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    t = sub.add_parser("transcribe", help="transcribe an audio/video file, or re-style a saved .indite.json")
+    t = sub.add_parser("transcribe", help="transcribe an audio/video file, or re-style a saved .inditeflow.json")
     t.add_argument("file", type=Path)
     t.add_argument("--engine", choices=ENGINES, default="local")
     t.add_argument("--model", help="override the engine's default model")
@@ -26,17 +26,17 @@ def main():
     sv.add_argument("--port", type=int, default=8000)
 
     n = sub.add_parser("notes", help="meeting notes using your own Claude or ChatGPT (Codex) login (experimental)")
-    n.add_argument("file", type=Path, help="a .indite.json transcript")
+    n.add_argument("file", type=Path, help="a .inditeflow.json transcript")
     n.add_argument("--via", choices=["claude", "codex"], default="claude")
 
     a = p.parse_args()
     if a.cmd == "notes":
         from .notes import notes
 
-        if not a.file.name.endswith(".indite.json"):
-            raise SystemExit("Give a .indite.json file. Run 'indite transcribe' on the audio first.")
+        if not a.file.name.endswith(".inditeflow.json"):
+            raise SystemExit("Give a .inditeflow.json file. Run 'inditeflow transcribe' on the audio first.")
         md = notes(json.loads(a.file.read_text()), a.via)
-        out = a.file.with_name(a.file.name.removesuffix(".indite.json") + ".notes.md")
+        out = a.file.with_name(a.file.name.removesuffix(".inditeflow.json") + ".notes.md")
         out.write_text(md)
         print(md + f"\n[notes via your own {a.via} login · saved {out.name}]")
         return
@@ -49,13 +49,13 @@ def main():
         print(bench.table(bench.run(a.clips, a.engine)))
         return
 
-    if a.file.name.endswith(".indite.json"):  # re-style without transcribing (or paying) again
+    if a.file.name.endswith(".inditeflow.json"):  # re-style without transcribing (or paying) again
         result = json.loads(a.file.read_text())
-        stem = a.file.with_name(a.file.name.removesuffix(".indite.json"))
+        stem = a.file.with_name(a.file.name.removesuffix(".inditeflow.json"))
     else:
         result = transcribe(a.file, a.engine, a.model).to_dict()
         stem = a.file.with_suffix("")
-        Path(f"{stem}.indite.json").write_text(json.dumps(result, ensure_ascii=False, indent=2))
+        Path(f"{stem}.inditeflow.json").write_text(json.dumps(result, ensure_ascii=False, indent=2))
 
     fn, ext = STYLES[a.style]
     out = Path(f"{stem}.{a.style}{ext}" if ext == ".txt" else f"{stem}{ext}")

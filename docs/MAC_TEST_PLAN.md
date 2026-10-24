@@ -1,10 +1,10 @@
-# indite for Mac — test plan
+# inditeflow for Mac — test plan
 
 Two parts. **Part A** is what Claude tested on its own (15 Oct). **Part B** is what needs you: a real key, a real
 microphone, a real call, a real permission prompt, or your eyes. Mark each row ✅ / ❌ and add a note; a ❌ with
 "what you saw" is enough for Claude to fix it.
 
-**Before you start:** indite running (🎙 in the menu bar), its window open, and a text box to type into — Notes or
+**Before you start:** inditeflow running (🎙 in the menu bar), its window open, and a text box to type into — Notes or
 TextEdit is fine.
 
 ---
@@ -53,9 +53,9 @@ settings change, fixed (key listener restarted, mic work off the key handler).
 | **The pill and the window** | | | | |
 | B12 | Pill transparency | Settings → Look & sounds → use − / + (10 % steps); the pill shows each time. Then scroll a page under it | 100 % is clear glass, 0 % a solid tint; the background moves under the glass as you scroll | The background freezes, or no change |
 | B13 | Drag the window | Grab the very top strip of the window (not full screen), drag | The window moves; double-click there zooms it | It does not move |
-| B14 | Full screen | Click the green button; move the pointer to the top; then leave full screen | Its own Space; the top bar shows indite / Edit / Window; after leaving, the red/yellow/green buttons work | Empty top bar, or grey dead buttons |
+| B14 | Full screen | Click the green button; move the pointer to the top; then leave full screen | Its own Space; the top bar shows inditeflow / Edit / Window; after leaving, the red/yellow/green buttons work | Empty top bar, or grey dead buttons |
 | B14b | Insights | Sidebar → Insights | Your words, speed, time saved, activity, apps, hours | Empty or wrong numbers |
-| B15 | Reopen | Close the window (red button), then open indite from Applications or Spotlight | The window comes back | Nothing appears |
+| B15 | Reopen | Close the window (red button), then open inditeflow from Applications or Spotlight | The window comes back | Nothing appears |
 | B16 | Appearance | Settings → Look & sounds → Light / Dark / Like the Mac | The whole window switches, sidebar included | Half light, half dark |
 | **Notes** | | | | |
 | B17 | Star, To do, delete, undo | On a dictation: “…” → Star; “…” → Add to To do; “…” → Delete, then **Undo** in the black message | Star shows; it appears on the To do page; delete then undo brings it back | Any of these do nothing |
@@ -64,7 +64,7 @@ settings change, fixed (key listener restarted, mic work off the key handler).
 | B20 | Search | Dictations → ⌘F → type a word you said | Only matching dictations show | Nothing filters |
 | **Files and meetings** | | | | |
 | B21 | Transcribe a file | Files → Choose a file… → any voice note or call recording | Progress bar; then a note with the text; “…” → Save as subtitles works | Error banner, or stuck |
-| B22 | Meeting, with headphones | Start a Zoom/Meet call with headphones; Meetings → **● Record**; talk 2 minutes; **■ Stop** | Lines marked **You** and the other person (**Person 1**…) appear while you talk; after stopping, the others are split by voice | Only “You” lines (then the Screen Recording permission did not take — quit and reopen indite) |
+| B22 | Meeting, with headphones | Start a Zoom/Meet call with headphones; Meetings → **● Record**; talk 2 minutes; **■ Stop** | Lines marked **You** and the other person (**Person 1**…) appear while you talk; after stopping, the others are split by voice | Only “You” lines (then the Screen Recording permission did not take — quit and reopen inditeflow) |
 | B23 | Meeting, without headphones | Same, on speakers | Their words appear once (as theirs), not twice | Duplicated lines |
 | B24 | Rename a speaker | Click “Person 1” in a meeting, type a name, Return | The name changes on every line | It does not stick |
 | B25 | Who spoke on a file | Transcribe a two-person recording (no click) | Lines labelled Speaker 1, 2… a little after the text appears | No labels on a clear two-person file |
@@ -77,12 +77,12 @@ settings change, fixed (key listener restarted, mic work off the key handler).
 | B30 | Backup and restore | Settings → Backup → Starred → Back up…; delete a starred note; Restore… the zip | The note comes back; nothing else changes | Duplicates, or not restored |
 | B31 | Setup screen | Help → Run setup again | 4 steps with green ticks for permissions you have; the try-it box ticks when words arrive | Wrong ticks, or stuck |
 | **The shared build** | | | | |
-| B32 | Your boss's Mac | Unzip `indite-mac.zip`, drag to Applications, **right-click → Open → Open** | Asks for Accessibility and Microphone; first start says it may take a minute; then dictation works | “damaged” message, blocked by company policy, or the engine never becomes ready |
+| B32 | Your boss's Mac | Unzip `inditeflow-mac.zip`, drag to Applications, **right-click → Open → Open** | Asks for Accessibility and Microphone; first start says it may take a minute; then dictation works | “damaged” message, blocked by company policy, or the engine never becomes ready |
 
 ---
 
 ## When something fails
 
 Tell Claude the test number and what you saw. If it is about the window, Claude can take a picture of the real
-window itself (it writes a tab name into `~/Library/Application Support/indite/snapshot.request`); the log is
-`~/Library/Logs/indite-mac.log`.
+window itself (it writes a tab name into `~/Library/Application Support/inditeflow/snapshot.request`); the log is
+`~/Library/Logs/inditeflow-mac.log`.

@@ -1,4 +1,4 @@
-# indite: the demo video plan
+# inditeflow: the demo video plan
 
 One video, for the founder's own leadership. A credibility pitch, not a tutorial.
 Research done 16 Oct 2026. Every source is dated. Anything that is marketing copy rather than evidence is labelled.
@@ -59,7 +59,7 @@ Sources: [getsmartcue](https://www.getsmartcue.com/blog/how-to-create-a-demo-vid
 
 | Use | When |
 |---|---|
-| **Narrated walkthrough** (what indite's demo is) | When the *why* needs saying and the viewer will watch with sound. Right for a leadership pitch |
+| **Narrated walkthrough** (what inditeflow's demo is) | When the *why* needs saying and the viewer will watch with sound. Right for a leadership pitch |
 | **Silent capture + captions** | Social feeds, autoplay, and anywhere sound is off. Also the safe fallback if the narration voice is weak |
 
 For this audience — people who will open it once, at a desk or on a phone — **narrated, with captions on for the Hinglish and the key labels.**
@@ -100,9 +100,9 @@ Craft guidance converges on 1–3 minutes for corporate and explainer video, wit
 
 ### The hole that matters more: the voice going *into* the app
 
-`speak_into_indite()` feeds a macOS voice (Tara) into indite in place of the microphone. That is excellent engineering for a repeatable automated run. **It is a serious problem for a credibility video.**
+`speak_into_inditeflow()` feeds a macOS voice (Tara) into inditeflow in place of the microphone. That is excellent engineering for a repeatable automated run. **It is a serious problem for a credibility video.**
 
-- The video never shows indite working on a **human** voice. That is the first question anyone will ask.
+- The video never shows inditeflow working on a **human** voice. That is the first question anyone will ask.
 - Synthetic speech is clean, evenly paced and has no room noise. It is the easiest possible input. A viewer who knows that discounts the accuracy on screen entirely.
 - Combined with a TTS narrator, **every sound in the video is machine-made**, in a pitch about whether a speech product works.
 
@@ -140,10 +140,10 @@ Checked 16 Oct 2026, on the vendors' own pages.
 
 1. **Nobody shows failures as defects.** Wispr shows mess *as the input*, fixed on screen. That is the only honest-looking way to show an error without looking broken. Copy that exact move.
 2. **The proof is a side-by-side, not an animation.** Raw on the left, result on the right.
-3. **Numbers on screen beat adjectives.** Wispr puts "45 wpm / 220 wpm" on the page. indite's equivalent: **seconds from key release to text on screen**, and **Hinglish words right**.
+3. **Numbers on screen beat adjectives.** Wispr puts "45 wpm / 220 wpm" on the page. inditeflow's equivalent: **seconds from key release to text on screen**, and **Hinglish words right**.
 4. **Everyone leads with the same hero:** key down → speak → text appears in a real app. Nobody leads with settings, history or exports. The current `SCRIPT_N` already leads correctly (`N[0]`, `N[1]`, `N[2]`). Keep that and cut almost everything after it.
 
-Competitor latency, useful for the on-screen comparison: Wispr Flow is reported at **under 700 ms p99** by its model host Baseten, with users describing **1–2 seconds** in real use ([spokenly review](https://spokenly.app/blog/wispr-flow-review), 2026 — vendor-adjacent, treat as indicative). indite's `N[2]` already claims "about a second". **Put a real timer on it and let the viewer check.**
+Competitor latency, useful for the on-screen comparison: Wispr Flow is reported at **under 700 ms p99** by its model host Baseten, with users describing **1–2 seconds** in real use ([spokenly review](https://spokenly.app/blog/wispr-flow-review), 2026 — vendor-adjacent, treat as indicative). inditeflow's `N[2]` already claims "about a second". **Put a real timer on it and let the viewer check.**
 
 ---
 
@@ -154,7 +154,7 @@ This audience is not buying. They are deciding whether to believe the thing work
 | Device | Why it works | Cost here |
 |---|---|---|
 | **No cut during the critical action** | "If a process takes three seconds to load in real life, show it taking three seconds — it builds trust." The moment a demo feels staged, "the investor mentally discounts everything that follows" ([dev.to, what investors look for in a live demo](https://dev.to/adamvibe/what-investors-look-for-in-a-live-demo-and-why-most-fail-p6a), 2026) | Free. `demo.py` already records continuously and never cuts |
-| ~~An on-screen stopwatch over the latency moment~~ | **Dropped.** A latency number drawn by the product being demoed proves nothing to a sceptic, needs an overlay pipeline that does not exist, and invites an argument about milliseconds that this audience is not having. The uncut take is the proof. If a number is wanted, let an **independent** clock be visible on screen, not one indite drew | Dropped |
+| ~~An on-screen stopwatch over the latency moment~~ | **Dropped.** A latency number drawn by the product being demoed proves nothing to a sceptic, needs an overlay pipeline that does not exist, and invites an argument about milliseconds that this audience is not having. The uncut take is the proof. If a number is wanted, let an **independent** clock be visible on screen, not one inditeflow drew | Dropped |
 | **Raw output before any clean-up** | Matches product rule **R3** ("raw text is the default") — the video proves the rule | Free. It is what the app does |
 | **Wi-Fi visibly off in the menu bar** | The whole pitch is "nothing leaves the Mac". One glance at a crossed-out Wi-Fi icon says it better than a sentence | Nearly free: turn Wi-Fi off before recording, and let the menu bar show. **Do not crop the menu bar out** |
 | **A real, recognisable fintech sentence** | A generic sentence looks cherry-picked. A sentence a colleague would actually say does not | Free: rewrite `SCRIPT_S` lines |
@@ -197,7 +197,7 @@ The founder asked to show features running in parallel. The research says be car
 
 Craft guidance agrees: use split-screen only when **both panels are equally important and you are comparing**; use picture-in-picture when one layer is primary and the other supports it ([fiveable, PiP and split-screen](https://fiveable.me/tv-studio-production/unit-5/picture-in-picture-split-screen/study-guide/37ri3dpmLd87Buoz), 2026).
 
-**So: no new compositing.** `stage()` already puts TextEdit on the left half and indite on the right half of the real screen. That is one genuine split, it is the product's actual behaviour, and it is free.
+**So: no new compositing.** `stage()` already puts TextEdit on the left half and inditeflow on the right half of the real screen. That is one genuine split, it is the product's actual behaviour, and it is free.
 
 ### Layout and text size — the part that actually breaks on a projector
 
@@ -210,7 +210,7 @@ Craft guidance agrees: use split-screen only when **both panels are equally impo
 | App font size while recording | Bump 2–4 points above comfortable; what reads on a 27" monitor is tiny in a shared video | [Medium, demo recording guidelines](https://medium.com/@alsargent/video-demo-recording-guidelines-2139f592c91c) |
 | Contrast for text on colour | ≥ 4.5:1 | same |
 
-**⚠ Remember for this pipeline:** `demo.py` records the **whole screen** at the Mac's native (Retina) size, and `demo_make.py` writes it out at that size minus one pixel for evenness. **There is no downscale and no zoom.** When that is squashed into a 1080p frame on someone's phone, indite's note text and the pill labels will be small. Two fixes, in order of laziness:
+**⚠ Remember for this pipeline:** `demo.py` records the **whole screen** at the Mac's native (Retina) size, and `demo_make.py` writes it out at that size minus one pixel for evenness. **There is no downscale and no zoom.** When that is squashed into a 1080p frame on someone's phone, inditeflow's note text and the pill labels will be small. Two fixes, in order of laziness:
 
 1. **Record a smaller logical display** (Displays → Scaled → a lower resolution) before the take. Zero code.
 2. If that is not enough, zoom the two moments that matter — the typed text and the speaker labels — in the final encode.
@@ -219,7 +219,7 @@ Craft guidance agrees: use split-screen only when **both panels are equally impo
 
 The viewer cannot hear the Option key. Every screencast convention says put it on screen: KeyCastr (free, open source, Mac) overlays key presses, and the standard advice is to **show only modifier chords, not every character** ([screencharm](https://screencharm.com/blog/show-keystrokes-on-screen), [screenify](https://www.screenify.studio/blog/2026-04-20-show-keyboard-shortcuts-recording), both 2026).
 
-That is important here: if KeyCastr showed every character, it would *also* show the characters indite types, which would look like the app is typing them — accidentally honest, but confusing. **Modifier-only filtering is required, not optional.**
+That is important here: if KeyCastr showed every character, it would *also* show the characters inditeflow types, which would look like the app is typing them — accidentally honest, but confusing. **Modifier-only filtering is required, not optional.**
 
 ---
 
@@ -252,13 +252,13 @@ Total target **3:20**. "Exists" = `mac/demo.py` does it today. Beats 1 and 2 are
 
 | # | Beat | Time | On screen | Narration / audio | Build state |
 |---|---|---|---|---|---|
-| 1 | **Hero, with the problem over it** | 0:00–0:25 | TextEdit empty, left half. Menu bar in frame with **Wi-Fi off**. Hold Right Option → the pill listens → Hinglish typed in. **Unbroken take. Real human voice.** Keystroke overlay shows the held modifier | Founder voice; the problem is one clause spoken over the action (full text in §11) | **Exists** (`speak_into_indite`) but **must be re-shot with a human speaking**. **New:** KeyCastr (modifier-only), Wi-Fi off, recorded narration |
+| 1 | **Hero, with the problem over it** | 0:00–0:25 | TextEdit empty, left half. Menu bar in frame with **Wi-Fi off**. Hold Right Option → the pill listens → Hinglish typed in. **Unbroken take. Real human voice.** Keystroke overlay shows the held modifier | Founder voice; the problem is one clause spoken over the action (full text in §11) | **Exists** (`speak_into_inditeflow`) but **must be re-shot with a human speaking**. **New:** KeyCastr (modifier-only), Wi-Fi off, recorded narration |
 | 2 | **The claim, proved by the screen** | 0:25–0:45 | Same shot. Hold on the Wi-Fi-off menu bar for 2–3 seconds. Point at `chaar baje → 4` | One line, tied to what is visible | **New:** 1 narration line |
 | 3 | **A long, real thought, hands free** | 0:45–1:20 | Three taps of Right Command, the long fintech sentence typed in one go | `N[3]`, `N[4]`, rewritten `SCRIPT_S[1]` | **Exists** (`hands_free=True`). **New:** rewrite the sentence into one a colleague would really dictate |
 | 4 | **Honest accuracy** | 1:20–1:45 | Whatever the engine actually produced, left on screen. Dictionary page: add the company name it got wrong, say it again, it is right | New narration, with the real number | **Mostly exists** (`js:go('dict')`). See §10 risk 1 — the error must be a **real, reproducible** one, not planted |
 | 5 | **A recording, and who said what** | 1:45–2:20 | Drop the call file in; transcript appears with speaker labels; rename a speaker | `N[11]`, `N[12]` | **Exists** (`js:go('files')`, `file:`). Live meeting **cut** — see §9 |
 | 6 | **Your own AI, your own account** | 2:20–2:50 | Open one note, Improve, original stays beside the new version. Narration covers the wait | `N[8]` trimmed, `N[9]` | **Exists** (`ai:improve`, 9 s wait) |
-| 7 | **What it is** | 2:50–3:05 | indite window, clean, still offline | `N[22]` | **Exists** |
+| 7 | **What it is** | 2:50–3:05 | inditeflow window, clean, still offline | `N[22]` | **Exists** |
 | 8 | **The ask** | 3:05–3:20 | Hold on a still frame | One sentence: what is needed next | **New:** the ask line |
 
 ### New work, as a list
@@ -336,7 +336,7 @@ Precedent: the guidance is explicit — if a step takes three seconds in real li
 
 ### Risk 3 — a macOS permission dialog, or any modal
 
-Two live hazards: the system permission prompts (Accessibility, Microphone, Screen Recording) and indite's own AI-sees-your-file warning, which `stage()` currently pre-answers off camera.
+Two live hazards: the system permission prompts (Accessibility, Microphone, Screen Recording) and inditeflow's own AI-sees-your-file warning, which `stage()` currently pre-answers off camera.
 
 | Handling | Verdict |
 |---|---|

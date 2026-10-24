@@ -30,8 +30,8 @@ Moved out of ROADMAP.md on 17 Oct. **Not a plan.** Every item still open here wa
 |---|---|
 | Accessibility shortcut should toggle the floating mic | Not possible on Android (it only controls the accessibility setting); Settings explains it; build 7 |
 | "Where AI requests go": tick several | **Built** (build 7) |
-| OpenRouter key, answers saved inside indite | **Built** (build 7, personal); waiting for the founder's key |
-| Reminders / timers | **Built** as "Remind me" → Clock app (indite stores nothing); build 7 |
+| OpenRouter key, answers saved inside inditeflow | **Built** (build 7, personal); waiting for the founder's key |
+| Reminders / timers | **Built** as "Remind me" → Clock app (inditeflow stores nothing); build 7 |
 | Wispr Flow comparison | Done (15-16 Oct): `docs/MAC_PLAN.md` §6, `docs/WISPR_DEEPDIVE.md`. Snippets = word fixes and the streak are built; build items now in "Now" |
 | Mac web app: restarting still starts jobs from scratch (PLAN §5) | Next (web) |
 | Check whether Sarvam Edge / Gboard already do Roman Hinglish | Research, before testers |
@@ -45,7 +45,7 @@ Moved out of ROADMAP.md on 17 Oct. **Not a plan.** Every item still open here wa
 
 ## Decisions on 10 Oct (latest) and the plan forward
 
-- **Reminders: indite sets its own** (founder decision; overrides the earlier "no own reminders" rule). Exact alarms
+- **Reminders: inditeflow sets its own** (founder decision; overrides the earlier "no own reminders" rule). Exact alarms
   (an inexact alarm can be up to 1 hour late); Remind me on the card menu, note menu and task rows; Done / Snooze; list in
   Settings. Gate: 10 reminders over 3 days on the OnePlus (overnight, reboot, swipe-away, Battery Saver), all within 1 min.
 - **Floating mic: one switch.** Drag onto ✕ = off; quick settings tile; accessibility shortcut toggles it (personal).
@@ -55,7 +55,7 @@ Moved out of ROADMAP.md on 17 Oct. **Not a plan.** Every item still open here wa
   lost words; build overlap marking only if > ~3% of words or real content is lost.
 - **Run-to-run text differences:** root cause = flash attention reading leftover audio-cache rows. Off fixed it but cost
   ~6 s per live sentence; testing "audio window rounded to 256" to keep speed.
-- **Brand:** lowercase "indite", pinned in the top bar.
+- **Brand:** lowercase "inditeflow", pinned in the top bar.
 
 **Plan (critic-reviewed):**
 | Phase | Contents | Gate |

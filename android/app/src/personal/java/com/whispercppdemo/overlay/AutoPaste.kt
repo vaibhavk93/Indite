@@ -54,13 +54,13 @@ object AutoPaste {
         if (!t.isFocused) { log("C", "focus moved away during the recording"); return false }
         if (!t.isEditable) { log("D1", "target is no longer editable"); return false }
         if (sensitive(t)) { log("D2", "target now looks sensitive (password / code box)"); return false }
-        c.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("indite", text))
+        c.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Inditeflow", text))
         if (!t.performAction(AccessibilityNodeInfo.ACTION_PASTE)) { log("E", "app refused ACTION_PASTE"); return false }
         return true
     }
 
     private fun log(code: String, why: String) =
-        android.util.Log.i("indite", "auto-paste fallback: $code — $why")
+        android.util.Log.i("inditeflow", "auto-paste fallback: $code — $why")
 }
 
 class PasteService : AccessibilityService() {
@@ -70,7 +70,7 @@ class PasteService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         if (android.provider.Settings.canDrawOverlays(this))
-            runCatching { BubbleService.setEnabled(this, true) }.onFailure { android.util.Log.w("indite", "bubble from shortcut", it) }
+            runCatching { BubbleService.setEnabled(this, true) }.onFailure { android.util.Log.w("inditeflow", "bubble from shortcut", it) }
     }
     override fun onUnbind(intent: android.content.Intent?): Boolean {
         instance = null
