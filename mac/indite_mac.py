@@ -1165,6 +1165,9 @@ class InditeApp(rumps.App):
             self.pill.tick_writing()
             return
         if self.started_at:
+            if self.snap_tick % 2 == 0 and time.time() - self.started_at > 0.3 and self.esc_down():   # 10 checks a second
+                self.cancel_listening("Esc check")
+                return
             if self.locked and time.time() - self.started_at > HANDS_FREE_CAP:
                 self.finish()                            # a forgotten lock must not leave the mic on all day
                 return
@@ -1293,6 +1296,24 @@ class InditeApp(rumps.App):
         self.do(open_mic)
         return True
 
+    def cancel_listening(self, via: str) -> None:
+        self.started_at = 0.0
+        self.locked = False
+        self.do(self.mic.stop)
+        self.set_title("🎙")
+        self.done_state, self.done_until = "cancelled", time.time() + 1.2
+        print(f"Esc: dictation cancelled (seen by the {via})", flush=True)
+
+    def esc_down(self) -> bool:
+        """Asks macOS directly whether Esc is held. The key listener never saw Esc in two live tests (24 Oct, nothing
+        logged), while the hotkey (a modifier) always worked: an app with "secure keyboard entry" switched on hides
+        ordinary keys from listeners but not modifiers. This check does not depend on the listener."""
+        try:
+            import Quartz
+            return bool(Quartz.CGEventSourceKeyState(Quartz.kCGEventSourceStateCombinedSessionState, 53))
+        except Exception:                                # noqa: BLE001 - no Esc check is better than a crash in the paint tick
+            return False
+
     def on_press(self, key) -> None:                     # noqa: ANN001 - pynput's signature
         if self.meeting.running:                          # the mic belongs to the meeting until it stops
             if key == self.hotkey() and self.prefs["sounds"]:
@@ -1300,11 +1321,7 @@ class InditeApp(rumps.App):
             return
         if key == keyboard.Key.esc and self.started_at:   # cancel: nothing is written, the audio is dropped
             # ponytail: pynput cannot swallow the key on macOS, so Esc also reaches the app underneath
-            self.started_at = 0.0
-            self.locked = False
-            self.do(self.mic.stop)
-            self.set_title("🎙")
-            self.done_state, self.done_until = "cancelled", time.time() + 1.2
+            self.cancel_listening("key listener")
             return
         if self.locked and key in (self.hotkey(), self.hf_key()):   # hands-free: one tap of either key stops it
             self.finish()
@@ -1840,7 +1857,11 @@ class InditeApp(rumps.App):
         if run_modal(panel) == 1 and panel.URLs():
             try:
                 n = store.restore_zip(Path(str(panel.URLs()[0].path())))
-                self.notice = f"Restored {n} note{'s' if n != 1 else ''}." if n else "Nothing new: every note in that backup is already here."
+                over = store.restore_zip.over_limit
+                self.notice = (f"Restored {n} note{'s' if n != 1 else ''}." if n
+                               else "Nothing new: every note in that backup is already here." if not over else "") + (
+                    f" {over} older dictation{'s' if over != 1 else ''} not kept: over your keep limit (Settings → Privacy)." if over else "")
+                self.notice = self.notice.strip()
             except Exception as e:                       # noqa: BLE001 - not a backup, damaged, or too new
                 import zipfile
                 self.notice = ("Could not restore: that file is not an indite backup." if isinstance(e, zipfile.BadZipFile)

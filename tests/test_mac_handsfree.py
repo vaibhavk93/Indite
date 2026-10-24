@@ -125,3 +125,16 @@ def test_pressing_the_key_pauses_a_recording_that_is_playing():
     a.player.p = type("AV", (), {"pause": lambda s: paused.append(1)})()   # something is playing
     a.on_press(K)
     assert paused, "the mic would hear the speakers: playback must pause when dictation starts"
+
+
+def test_esc_check_cancels_when_the_listener_never_saw_esc():
+    """24 Oct: the key listener logged no Esc in two live tests. The paint tick asks macOS directly (esc_down)."""
+    a = app()
+    a.on_press(K); a.started_at -= 2                        # holding the key, listening for 2 s
+    a.snap_tick, a.esc_down = 1, lambda: True               # the listener saw nothing; Esc is held
+    a.pill = type("P", (), {"show": lambda s, *x: None, "hide": lambda s: None, "level": lambda s, v: None,
+                            "view": type("V", (), {})()})()
+    a.paint(None)
+    assert a.started_at == 0.0 and not a.mic.open and a.done_state == "cancelled"
+    a.on_release(K)
+    assert a.written == []                                  # letting go of the key afterwards writes nothing

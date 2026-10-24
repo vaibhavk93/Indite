@@ -95,6 +95,8 @@ def set_pref(key: str, value) -> dict:
     p[key] = value
     DIR.mkdir(parents=True, exist_ok=True)
     PREFS.write_text(json.dumps(p, indent=2), encoding="utf-8")
+    if key == "history_cap":
+        apply_cap()                      # a smaller limit takes effect now, not at the next dictation (24 Oct)
     return p
 
 
@@ -152,6 +154,18 @@ def _write(rows: list[dict]) -> None:
     tmp.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
     tmp.replace(HISTORY)                                   # all or nothing: a crash mid-write loses no notes
     _cache["sig"], _cache["rows"] = _sig(), [dict(r) for r in rows]
+
+
+def apply_cap() -> int:
+    """Drops the oldest plain dictations over the keep limit, and their recordings, right now. Returns how many."""
+    before = {r["id"] for r in _rows()}
+    _write(_read())
+    gone = before - {r["id"] for r in _rows()}
+    for f in (AUDIO.iterdir() if gone and AUDIO.exists() else []):
+        m = _AUDIO_ID.match(f.name)
+        if m and m.group(1) in gone:
+            f.unlink()
+    return len(gone)
 
 
 def add(text: str, seconds: float, took: float, where: str, app: str, **extra) -> str | None:
@@ -607,33 +621,61 @@ def backup(path: Path, scope: str = "all", with_audio: bool = False) -> int:
 
 
 def restore_zip(path: Path) -> int:
-    """Returns how many notes were added. Refuses a backup from a newer indite rather than half-reading it."""
+    """Returns how many notes were added or refilled. Refuses a backup from a newer indite rather than half-reading it.
+    A note that is already here is left alone, except when it lost its words or its recording ("Delete → words only /
+    recording only" leaves an empty note behind, 24 Oct): those come back from the backup. A plain dictation older than
+    the keep limit would be dropped again at once, so it is not counted as restored."""
     import zipfile
+    restore_zip.over_limit = 0
     with zipfile.ZipFile(path) as z:
         meta = json.loads(z.read("manifest.json"))
         if meta.get("format", 0) > FORMAT:
             raise ValueError("This backup was made by a newer indite. Update indite, then restore it.")
-        have = {r["id"] for r in _read()}
-        new = []
+        names = set(z.namelist())
+        have = {r["id"]: r for r in _read()}
+        new, refill, touched = [], {}, set()
         for line in z.read("notes.jsonl").decode("utf-8").splitlines():
             r = json.loads(line)
-            if r["id"] in have:
+            cur = have.get(r["id"])
+            if cur is not None and not ((cur.get("text_deleted") or not cur.get("text")) and r.get("text")):
+                if _put_audio(z, names, r):                        # words are fine here; only a lost recording comes back
+                    touched.add(r["id"])
                 continue
-            if r.get("backup_audio") and r["backup_audio"] in z.namelist():
-                AUDIO.mkdir(parents=True, exist_ok=True)
-                dest = AUDIO / f"{r['id']}{Path(r['backup_audio']).suffix}"
-                dest.write_bytes(z.read(r["backup_audio"]))
-                if r.get("kind") == "file":
-                    r["source"] = str(dest)          # the original file may not exist on this Mac
-            for name in r.pop("backup_tracks", []):            # a meeting's you / others tracks
-                if name in z.namelist() and "/" not in name[len("audio/"):]:
-                    AUDIO.mkdir(parents=True, exist_ok=True)
-                    (AUDIO / Path(name).name).write_bytes(z.read(name))
+            _put_audio(z, names, r)
+            if r.get("backup_audio") and r.get("kind") == "file":
+                r["source"] = str(AUDIO / f"{r['id']}{Path(r['backup_audio']).suffix}")   # the original may not exist here
             r.pop("backup_audio", None)
-            new.append(r)
-    if new:
-        _write(sorted(_read() + new, key=lambda r: r.get("at", 0)))
-    return len(new)
+            r.pop("backup_tracks", None)
+            if cur is None:
+                new.append(r)
+            else:                                                  # the note kept its place; the words come back
+                refill[r["id"]] = {**r, **{k: cur[k] for k in ("star", "todo") if k in cur}}
+    if new or refill:
+        rows = [refill.get(r["id"], r) for r in _read()] + new
+        _write(sorted(rows, key=lambda r: r.get("at", 0)))
+        kept = {r["id"] for r in _read()}
+        back = set(refill) | {r["id"] for r in new}
+        touched |= back & kept
+        restore_zip.over_limit = len(back - kept)            # the keep limit took these straight back out
+    return len(touched)
+
+
+def _put_audio(z, names: set, r: dict) -> bool:
+    """Writes a backed-up note's recordings that are missing here. True when it wrote at least one."""
+    wrote = False
+    a = r.get("backup_audio")
+    if a and a in names:
+        dest = AUDIO / f"{r['id']}{Path(a).suffix}"
+        if not dest.exists():
+            AUDIO.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(z.read(a))
+            wrote = True
+    for name in r.get("backup_tracks", []):                        # a meeting's you / others tracks
+        if name in names and "/" not in name[len("audio/"):] and not (AUDIO / Path(name).name).exists():
+            AUDIO.mkdir(parents=True, exist_ok=True)
+            (AUDIO / Path(name).name).write_bytes(z.read(name))
+            wrote = True
+    return wrote
 
 
 # ---- your own word fixes ---------------------------------------------------------------------------------------
@@ -915,4 +957,34 @@ if __name__ == "__main__":     # the one check: uv run python mac/store.py
     # a combined row is NOT a plain dictation, so clear() must not touch it
     assert clear() == 2                                            # d1, d2 go; the combined one stays
     assert any(x["id"] == nid for x in history())
+    # restore after Delete → words only / recording only: the empty note is refilled (24 Oct: it said "already here")
+    HISTORY = Path(tempfile.mkdtemp()) / "rest.jsonl"; DIR = HISTORY.parent; AUDIO = DIR / "audio"; AUDIO_TRASH = DIR / "audio_trash"; AUDIO.mkdir()
+    cap = lambda: 0                                                      # noqa: E731
+    r1 = add("old words", 2, 1, "done", "x"); (AUDIO / f"{r1}.wav").write_bytes(b"SND1")
+    r2 = add("other words", 2, 1, "done", "x"); (AUDIO / f"{r2}.wav").write_bytes(b"SND2")
+    z = DIR / "r.zip"; assert backup(z, "all", with_audio=True) == 2
+    assert restore_zip(z) == 0                                           # nothing lost: nothing changed
+    delete_text(r1)
+    assert restore_zip(z) == 1 and next(x for x in history() if x["id"] == r1)["text"] == "old words" \
+        and "text_deleted" not in next(x for x in history() if x["id"] == r1)
+    stash_audio(r2); purge_audio_trash(0)
+    assert restore_zip(z) == 1 and (AUDIO / f"{r2}.wav").read_bytes() == b"SND2"      # the recording alone comes back
+    delete(r1); stash_audio(r1); purge_audio_trash(0)
+    assert restore_zip(z) == 1 and (AUDIO / f"{r1}.wav").read_bytes() == b"SND1"      # whole note + recording
+    assert restore_zip(z) == 0
+    # a plain dictation older than the keep limit is not "restored": it would be dropped at once
+    cap = lambda: 1                                                      # noqa: E731
+    delete(r1)
+    assert restore_zip(z) == 0 and {x["id"] for x in history()} == {r2}  # r1 is older than the 1 kept: honest "0"
+    assert restore_zip.over_limit == 1
+    # a smaller keep limit is applied at once and takes the dropped notes' recordings with it
+    cap = lambda: 0                                                      # noqa: E731
+    HISTORY = Path(tempfile.mkdtemp()) / "now.jsonl"; DIR = HISTORY.parent; AUDIO = DIR / "audio"; AUDIO.mkdir()
+    ids = [add(f"m{i}", 1, 1, "done", "x") for i in range(6)]
+    for i in ids:
+        (AUDIO / f"{i}.wav").write_bytes(b"x")
+    cap = lambda: 4                                                      # noqa: E731
+    assert apply_cap() == 2 and [r["text"] for r in history()] == ["m5", "m4", "m3", "m2"]
+    assert not (AUDIO / f"{ids[0]}.wav").exists() and (AUDIO / f"{ids[5]}.wav").exists()
+    assert apply_cap() == 0
     print("ok")

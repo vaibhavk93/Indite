@@ -1686,7 +1686,7 @@
       ? `Uses ${chosen} when it is connected; otherwise the next one that works.`
       : `The Mac’s default, then the built-in one, then any other.${S.using ? " Last used: " + S.using + "." : ""}`;
     sw("#set-keep_history", "keep_history");
-    // How many plain dictations to keep. Choosing fewer than you have asks first: the oldest would go on your next dictation.
+    // How many plain dictations to keep. Choosing fewer than you have asks first: the oldest go as soon as you confirm.
     const plainNow = S.history.filter(r => !(r.star || r.todo || (r.kind || "dictation") !== "dictation")).length;
     const cap = S.prefs.history_cap ?? 500, saveOn = S.prefs.keep_history !== false, capEl = $("#set-history_cap");
     // A smaller limit than you have waits for your answer in a banner. The banner exists only while a choice is waiting
@@ -1704,7 +1704,7 @@
       : `${plainNow.toLocaleString()} kept now. Once the limit is reached the oldest plain dictations are deleted. ` + (cap === 0 ? "Everything stays on this Mac, so search reaches back as far as you have used indite." : "Choose Everything to search years of dictations.");
     const slot = $("#cap-warn-slot");
     slot.innerHTML = capPending === null || !(capPending && plainNow > capPending) ? "" : `<div class="capwarn"><div class="banner" style="margin:0">
-        <div><b>${(plainNow - capPending).toLocaleString()} older dictations would be deleted the next time you dictate.</b>
+        <div><b>${(plainNow - capPending).toLocaleString()} older dictations will be deleted as soon as you press Delete them.</b>
           <p>This can’t be undone. Starred notes, to-dos, meetings and files stay.</p></div>
         <button class="btn ghost" id="cap-no">Keep them</button><button class="btn ghost danger" id="cap-yes">Delete them</button></div></div>`;
     if (slot.innerHTML) {

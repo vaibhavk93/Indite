@@ -11,7 +11,7 @@ hidden test copy (own data, nothing on the founder's screen): save, the three de
 a walk through every screen. (4) Measured 25,800 made-up notes (25,000 dictations + 800 meetings, 33 MB) and the
 founder's real notes (read-only, counts only). (5) Looked at light, dark and narrow-window renders.
 
-**Result.** 35 findings, all fixed; 61 automated tests + 131 real-app end-to-end checks pass; 0 JavaScript or Python errors
+**Result.** 39 findings (36-39 from the founder's live checks, 24 Oct evening), all fixed (39 awaiting a live check); 61 automated tests + 131 real-app end-to-end checks pass; 0 JavaScript or Python errors
 across every screen. **Second pass (same day, after the founder found two bugs the first pass missed):** the first tests
 checked what the page's data said, not what the screen showed. They now check real visibility (computed display and size)
 and invariants that must hold for any state (see section 7).
@@ -59,6 +59,11 @@ Severity: **H** loses or hides data, or blocks use · **M** wrong result or a co
 | 33 | L | Tests | My test page broke when a note contained `</script>` (a test-only problem; the app passes data differently) | Hostile-data test | Escaped in the harness | `test_hostile_notes…` |
 | 34 | L | AI | An AI action the app does not have raised an error (and would have shown the consent dialog first) | Real-app run, section 11 | Unknown actions are ignored before anything is asked | e2e section 11 |
 | 35 | M | AI | **"Action items → To do" created nothing, silently, when the AI answered with a plain list instead of the table the prompt asks for** | Real-app run, section 11 | Plain bullet and numbered lists work too; prose and "none" create nothing | `mac/ai.py` check, e2e section 11 |
+
+| 36 | H | Backup | **Restore said "everything is already here" after a delete**: it skipped any note whose id existed, and Delete → words only (or recording only) leaves the note behind, empty | Founder, live | Restore refills a note that lost its words, and a recording that is missing; a note deleted completely comes back as before. A second restore still changes nothing | `store.py` self-check, `tests/e2e_keep_restore.py` |
+| 37 | H | Keep limit | **"Delete them" did not delete**: it saved the setting, and the old dictations were cut at the next dictation, so 519 stayed 519 | Founder, live | The limit applies at once, with the recordings of the dropped notes; banner text says so | self-check, `tests/e2e_keep_restore.py` (519 → 500 on the real page) |
+| 38 | M | Backup | Restoring old plain dictations while the limit is lower said "Restored N" and the limit dropped them again | Found while fixing 36 | Counted honestly: "N older dictations not kept: over your keep limit" | self-check, e2e |
+| 39 | H | Esc | **Esc did not cancel a dictation in two live tests** and the log showed no Esc at all (the key listener never saw it). Likely cause: an app with secure keyboard entry hides ordinary keys from listeners but not modifiers (the talk key is a modifier). Not proven | Founder, live | The paint tick also asks macOS whether Esc is held (10 times a second while listening) and logs `Esc: dictation cancelled (seen by the ...)` | `tests/test_mac_handsfree.py`; **live check pending** |
 
 Also fixed earlier on 24 Oct from the founder's own reports (verified): the To do items not showing (saved as `True`, the
 page lists `"open"`), AI cost showing 0 (the Claude login's usage was discarded), the card pickers hidden instead of
