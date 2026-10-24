@@ -575,3 +575,4 @@ is a git commit.
 | 338 | **7-day assistant test (D5)** | 24 Oct | 🧪 | Plan, questions, pass bar and log: `docs/ASSISTANT_TEST.md` |
 | 339 | **Keep the orange logo; do a trademark search first (D7)** | 24 Oct | 🟡 | Preliminary web check: no live clash found, registers could not be searched from here; one same-name business (Indite Technologies, Pune). Steps in D29 |
 | 340 | **Accessibility add-on in the public Android build: implications, and how Wispr Flow does it (D11)** | 24 Oct | 🔬 | Researched; recommendation in D30 |
+| 341 | **Name for word fixes: "Dictionary" (D4)** | 24 Oct | 🧪 | Android Settings now says Dictionary (group, section, "Add to dictionary", entry count). Compiles; not on the phone |

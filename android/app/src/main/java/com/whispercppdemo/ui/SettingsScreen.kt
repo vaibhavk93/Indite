@@ -154,7 +154,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 "ai" to (com.whispercppdemo.ui.aiTargets(context).joinToString(", ") { com.whispercppdemo.ui.aiTargetName(it).substringBefore(" (") }
                     .ifEmpty { "Share list" }),
                 "reminders" to com.whispercppdemo.notes.Reminders.load(context).let { if (it.isEmpty()) "None" else "${it.size} upcoming" },
-                "fixes" to (if (fixes.isEmpty()) "None yet" else "${fixes.size} fix${if (fixes.size == 1) "" else "es"}"),
+                "fixes" to (if (fixes.isEmpty()) "None yet" else "${fixes.size} ${if (fixes.size == 1) "entry" else "entries"}"),
                 "storage" to "${notes.size} notes · ${Formatter.formatShortFileSize(context, used)}",
                 "about" to "indite ${BuildConfig.VERSION_NAME}",
             )
@@ -530,14 +530,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             }
             if (shown == "fixes") item {
-                Section("Word fixes") {
+                Section("Dictionary") {
                     Text("Words indite keeps getting wrong, fixed everywhere. The original text is kept.",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     fixes.forEach { (from, to) ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("$from  →  $to", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                             IconButton(onClick = { Settings.removeFix(from) }) {
-                                Icon(Icons.Filled.Close, contentDescription = "Remove fix for $from")
+                                Icon(Icons.Filled.Close, contentDescription = "Remove $from from the dictionary")
                             }
                         }
                     }
@@ -608,7 +608,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
 private class SettingsGroup(val id: String, val title: String)
 private val SettingsGroups = listOf(SettingsGroup("stats", "Your stats"), SettingsGroup("look", "Look & feel"), SettingsGroup("dictation", "Dictation"),
-    SettingsGroup("ai", "AI"), SettingsGroup("reminders", "Reminders"), SettingsGroup("fixes", "Word fixes"), SettingsGroup("storage", "Storage"),
+    SettingsGroup("ai", "AI"), SettingsGroup("reminders", "Reminders"), SettingsGroup("fixes", "Dictionary"), SettingsGroup("storage", "Storage"),
     SettingsGroup("about", "About"))
 
 @Composable
@@ -619,7 +619,7 @@ private fun AddFix() {
         OutlinedTextField(from, { from = it }, Modifier.fillMaxWidth(), label = { Text("Wrong word, e.g. PTM") }, singleLine = true)
         OutlinedTextField(to, { to = it }, Modifier.fillMaxWidth(), label = { Text("Right word, e.g. Paytm") }, singleLine = true)
         FilledTonalButton(onClick = { Settings.addFix(from, to); from = ""; to = "" },
-            enabled = from.isNotBlank() && to.isNotBlank()) { Text("Add fix") }
+            enabled = from.isNotBlank() && to.isNotBlank()) { Text("Add to dictionary") }
     }
 }
 
