@@ -260,6 +260,36 @@ def history() -> list[dict]:
     return _read()[::-1]
 
 
+def ai_cost_month() -> tuple[float, int, int]:
+    """
+    Sum of USD spent on AI this calendar month, count of answers that carried a cost, and count of answers that
+    didn't (local Claude CLI, unknown models). The 2nd number plus the 3rd = total AI answers this month.
+    """
+    now = time.localtime(time.time())
+    total, with_cost, without_cost = 0.0, 0, 0
+    for r in _read():
+        for a in r.get("ai", []) or []:
+            at = time.localtime(a.get("at") or r.get("at") or 0)
+            if at.tm_year != now.tm_year or at.tm_mon != now.tm_mon:
+                continue
+            c = a.get("cost_usd")
+            if c is not None:
+                total += c
+                with_cost += 1
+            else:
+                without_cost += 1
+        if r.get("improved_cost") and (r.get("improved_at") or r.get("at")):           # improved is a single answer per note
+            at = time.localtime(r.get("improved_at") or r.get("at") or 0)
+            if at.tm_year == now.tm_year and at.tm_mon == now.tm_mon:
+                c = r["improved_cost"].get("cost_usd")
+                if c is not None:
+                    total += c
+                    with_cost += 1
+                else:
+                    without_cost += 1
+    return round(total, 4), with_cost, without_cost
+
+
 def clear() -> int:
     """Deletes plain dictations; starred, to-do and file notes stay. Returns how many were deleted."""
     rows = _read()

@@ -173,6 +173,7 @@ class Bridge(NSObject):
                         "mic": getattr(self.app.mic, "using", "") if self.app.meeting.running else ""},
             "mic_ok": __import__("indite_mac").mic_allowed(),
             "ai_busy": self.app.ai_busy,
+            "ai_cost_month": store.ai_cost_month(),           # (usd_total, with_cost_count, no_cost_count) — commit 4
             "notice": self.app.notice,
             "ai_error": self.app.ai_error,
             "ai_actions": {k: v[:3] for k, v in __import__("ai").ACTIONS.items()
@@ -405,12 +406,17 @@ class Bridge(NSObject):
         elif act == "ai":
             self.app.ask_ai(str(msg.get("id", "")), str(msg.get("act", "")), str(msg.get("extra", "")))
         elif act == "combine":
-            # Multi-select → one combined note. The web side opens its drawer after the push lands.
+            # Shelf → one combined note. then="ai" opens the Ask AI drawer right away; then="open" just scrolls to the
+            # new row (user asked to save as a note without an AI call). The ids list keeps the shelf's order.
             ids = [str(x) for x in (msg.get("ids") or [])]
+            then = str(msg.get("then") or "ai")
             new_id = store.combine(ids)
             if new_id:
                 self.push()
-                self.js(f"openDrawer({new_id!r})")
+                if then == "ai":
+                    self.js(f"openDrawer({new_id!r})")
+                else:
+                    self.js(f"document.querySelector('.row[data-row=\"' + {new_id!r}.replace(/[.]/g, '\\\\.') + '\"]')?.scrollIntoView({{block:'center',behavior:'smooth'}}); toast('Combined note saved.')")
             else:
                 self.js("toast('Pick at least 2 dictations with text to combine.')")
         elif act == "tasks":

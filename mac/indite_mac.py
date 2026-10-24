@@ -1743,15 +1743,18 @@ class InditeApp(rumps.App):
                     said = f"{len(found)} likely mistake{'s' if len(found) != 1 else ''} to check" if found else "Nothing looks wrong"
                     AppHelper.callAfter(self.window.bridge.js, f"toast({said!r})")
                 return
-            answer = ai.run(action, row["text"], extra, self.prefs["ai_provider"], self.prefs["ai_model"])
+            answer, usage = ai.run(action, row["text"], extra, self.prefs["ai_provider"], self.prefs["ai_model"])
+            # cost fields are optional on the AiReply (new 24 Oct). None means "no cost reported" rather than $0,
+            # so the UI can say so honestly - the Claude-via-CLI path never carries a number.
+            cost = {k: usage[k] for k in ("model", "in_tok", "out_tok", "cost_usd") if usage.get(k) is not None}
             if action == "improve":
-                store.update(row["id"], improved=answer)          # beside the original, never instead of it
+                store.update(row["id"], improved=answer, improved_cost=cost or None)
             else:
                 label = (f"Asked: {extra}" if action == "custom" else
                          ai.ACTIONS[action][0] + (f" · {extra}" if extra else ""))
                 answers = [a for a in row.get("ai", []) if a["label"] != label]
                 store.update(row["id"], ai=answers + [{"action": action, "label": label, "text": answer,
-                                                       "at": time.time()}])
+                                                       "at": time.time(), **cost}])
             print(f"ai {action}: {time.time() - t0:.1f}s")
             secs = (list(self.prefs.get("ai_secs") or []) + [round(time.time() - t0, 1)])[-30:]
             store.set_pref("ai_secs", secs)              # the typical wait, shown while the next answer is coming

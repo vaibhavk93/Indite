@@ -174,7 +174,9 @@ def _http(url: str, body: dict, headers: dict) -> dict:
         raise RuntimeError(f"no internet connection to the AI ({e.reason})")
 
 
-def _api(provider: str, model: str, prompt: str, text: str) -> str:
+def _api(provider: str, model: str, prompt: str, text: str) -> tuple[str, dict]:
+    """Returns (answer_text, usage) where usage = {"model": str, "in_tok": int|None, "out_tok": int|None}."""
+    import cost as cost_mod
     key = key_get(provider)
     if not key:
         raise RuntimeError(f"no {PROVIDERS[provider]} saved - add it in Settings → AI")
@@ -187,27 +189,37 @@ def _api(provider: str, model: str, prompt: str, text: str) -> str:
         answer = "".join(b.get("text", "") for b in out.get("content", []))
         if out.get("stop_reason") == "max_tokens":            # a cut-off answer must not look like a finished one
             answer += "\n\n[cut off - the note was too long for one answer. Try a shorter part of it.]"
-        return answer
+        used_model, in_tok, out_tok = cost_mod.extract("anthropic", out)
+        return answer, {"model": used_model or model, "in_tok": in_tok, "out_tok": out_tok}
     url = "https://api.openai.com/v1/chat/completions" if provider == "openai" else \
         "https://openrouter.ai/api/v1/chat/completions"
     out = _http(url, {"model": model, "messages": [{"role": "system", "content": SYSTEM},
                                                   {"role": "user", "content": user}]},
                 {"Authorization": f"Bearer {key}"})
-    return out["choices"][0]["message"]["content"]
+    used_model, in_tok, out_tok = cost_mod.extract(provider, out)
+    return out["choices"][0]["message"]["content"], {"model": used_model or model, "in_tok": in_tok, "out_tok": out_tok}
 
 
-def run(action: str, text: str, extra: str = "", provider: str = "claude", model: str = "") -> str:
-    """One answer, or raises RuntimeError with a sentence a person can act on."""
+def run(action: str, text: str, extra: str = "", provider: str = "claude", model: str = "") -> tuple[str, dict]:
+    """
+    Returns (answer, usage) where usage = {model, in_tok, out_tok, cost_usd}. cost_usd may be None (unknown model,
+    or provider that doesn't return token counts - local Claude via the CLI is the common case).
+    Raises RuntimeError with a sentence a person can act on.
+    """
+    import cost as cost_mod
     label, _gets, _group, prompt = ACTIONS[action]
     prompt = prompt.replace("{extra}", extra or "plain English")
     if provider != "claude":
-        return _api(provider, model, prompt, text).strip()
+        answer, usage = _api(provider, model, prompt, text)
+        usage["cost_usd"] = cost_mod.estimate(usage["model"], usage["in_tok"], usage["out_tok"])
+        return answer.strip(), usage
+    # Local Claude CLI returns text only; no usage data to attribute - honest Nones everywhere.
     _path()
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
     from indite.notes import ask
     try:
-        return ask(prompt, text).strip()
+        return ask(prompt, text).strip(), {"model": None, "in_tok": None, "out_tok": None, "cost_usd": None}
     except SystemExit as e:                         # notes.py speaks in SystemExit; the app must not exit
         raise RuntimeError(str(e)) from None
 
