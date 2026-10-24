@@ -49,6 +49,7 @@ DEFAULTS = {
     "ai_ok_meetings": False,    # "Don't ask again" on the meeting/file → AI warning
     "ai_provider": "claude",    # claude · anthropic · openai · openrouter (keys live in the Keychain, not here)
     "ai_model": "",             # "" = the provider's default             # you said yes to text leaving the Mac for AI answers (asked once)
+    "claude_model": "",         # the Claude login's model: haiku / sonnet / opus / an id; "" = whatever the account uses
     "keep_audio": False,        # also keep each dictation's recording (about 0.3 MB for 10 s), for backups
     "backup_scope": "all",      # all · star · keep (starred + to-do)
     "backup_audio": False,      # include recordings and transcribed files in a backup

@@ -1740,6 +1740,10 @@ class InditeApp(rumps.App):
         else:
             self.card_job = None
 
+    def ai_model(self) -> str:
+        """The model to ask: the Claude login has its own pick ("" = the account default), the API providers share one."""
+        return self.prefs["claude_model"] if self.prefs["ai_provider"] == "claude" else self.prefs["ai_model"]
+
     def _ai(self, row: dict, action: str, extra: str) -> None:
         t0 = time.time()
         answer = None
@@ -1749,7 +1753,7 @@ class InditeApp(rumps.App):
                     raise RuntimeError("Review with AI works on dictations for now, not on meetings or files")
                 targets = [want for _, want in store.my_fixes()]
                 mine = [f for f in row.get("flags") or [] if f.get("by") != "ai"]
-                found = ai.review(row["text"], targets, mine, self.prefs["ai_provider"], self.prefs["ai_model"])
+                found = ai.review(row["text"], targets, mine, self.prefs["ai_provider"], self.ai_model())
                 found = [f for f in found if not any(f["heard"] == m["heard"] for m in mine)]
                 store.update(row["id"], flags=mine + found or None)
                 print(f"ai review: {len(found)} suggestion(s) for {row['id']} in {time.time() - t0:.1f}s")
@@ -1759,10 +1763,10 @@ class InditeApp(rumps.App):
                     said = f"{len(found)} likely mistake{'s' if len(found) != 1 else ''} to check" if found else "Nothing looks wrong"
                     AppHelper.callAfter(self.window.bridge.js, f"toast({said!r})")
                 return
-            answer, usage = ai.run(action, row["text"], extra, self.prefs["ai_provider"], self.prefs["ai_model"])
+            answer, usage = ai.run(action, row["text"], extra, self.prefs["ai_provider"], self.ai_model())
             # cost fields are optional on the AiReply (new 24 Oct). None means "no cost reported" rather than $0,
             # so the UI can say so honestly - the Claude-via-CLI path never carries a number.
-            cost = {k: usage[k] for k in ("model", "in_tok", "out_tok", "cost_usd") if usage.get(k) is not None}
+            cost = {k: usage[k] for k in ("model", "in_tok", "out_tok", "cost_usd", "cost_basis") if usage.get(k) is not None}
             if action == "improve":
                 store.update(row["id"], improved=answer, improved_cost=cost or None)
             else:
@@ -2172,6 +2176,9 @@ if __name__ == "__main__":
         assert kbd.Listener._handle_message(None, None, kbd.NSSystemDefined, None, None, False) is None
         assert [status_text(t) for t in ("🎙", "🎙⚠", "🎙…", "🔴", "⏳", "📄 3/10")] == ["", "⚠", "…", "●", "…", "3/10"]
         assert menubar_icon().isTemplate() and menubar_icon().size().width == 18
+        import overlay
+        assert overlay.button_look(False, False) == 0 < overlay.button_look(True, False) < overlay.button_look(True, True)   # rest < hover < pressed
+        assert overlay.button_look(False, True) == 0               # a press elsewhere does not tint this button
         assert card_mode(False, True, True) is False and card_mode(True, True, True) is True   # not saved: no buttons
         assert card_mode(True, False, True) == "todo" and card_mode(True, True, False) == "todo"   # AI off or card AI off: To do only
         assert utf16_chunks("", 20) == []

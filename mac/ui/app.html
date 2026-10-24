@@ -526,6 +526,11 @@
   .item + .item { border-top: 1px solid var(--line); }
   .item b { font-weight: 550; font-size: 13px; }
   .item p { font-size: 12px; color: var(--ink2); margin-top: 2px; line-height: 1.45; }
+  /* A setting that depends on another: indented under it, and when its parent is off it is disabled (dimmed, not
+     clickable, and it says why) - never hidden, so you can see it exists. */
+  .item.sub { padding-left: 34px; } .item.sub2 { padding-left: 52px; }
+  .item.off b, .item.off p { color: var(--ink-dim); }
+  .item.off .sw, .item.off .pick { opacity: .45; cursor: not-allowed; }
   .seg { display: flex; background: var(--well); padding: 2px; border-radius: 8px; flex: none; }
   .seg button {
     appearance: none; border: 0; background: none; color: var(--ink); cursor: default;
@@ -778,12 +783,12 @@
                   the clipboard.</p></div>
                 <button class="sw" id="set-preview" role="switch" aria-label="Show text after dictating"></button>
               </div>
-              <div class="item" id="cardai">
+              <div class="item sub" id="cardai">
                 <div class="body"><b>AI buttons on the card</b><p>Ask AI and two quick AI actions under the text.
                   Off keeps only To do.</p></div>
                 <button class="sw" id="set-card_ai" role="switch" aria-label="AI buttons on the card"></button>
               </div>
-              <div class="item" id="cardbtns">
+              <div class="item sub sub2" id="cardbtns">
                 <div class="body"><b>Card buttons</b><p>The two AI buttons between Ask AI and To do. Automatic uses the
                   two you ask for most.</p></div>
                 <div class="drow"><select class="pick" id="set-cb0" aria-label="Second card button"></select>
@@ -1268,8 +1273,6 @@
     sw("#set-preview", "preview");
     // the card's two AI buttons: Automatic, or an action (Rewrite and Translate with their style or language)
     sw("#set-card_ai", "card_ai");
-    $("#cardai").hidden = !S.prefs.preview || !S.prefs.ai;
-    $("#cardbtns").hidden = !S.prefs.preview || !S.prefs.ai || S.prefs.card_ai === false;
     const cb = S.prefs.card_buttons || ["", ""], A = S.ai_actions || {};
     const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
     const cbOpts = opt("", "Automatic") +
@@ -1282,6 +1285,18 @@
       el.value = cb[i] || "";
       el.onchange = () => { const v = [...cb]; v[i] = el.value; send({ action: "pref", key: "card_buttons", value: v }); };
     });
+    // Dependent rows are disabled with a reason, not hidden (founder, 24 Oct).
+    const dep = (sel, ok, why) => {
+      const it = $(sel), p = it.querySelector("p");
+      p.dataset.base ??= p.textContent;
+      it.classList.toggle("off", !ok);
+      it.querySelectorAll("select, .sw").forEach(c => { c.disabled = !ok; c.setAttribute("aria-disabled", String(!ok)); });
+      p.textContent = ok ? p.dataset.base : why;
+    };
+    const cardOk = !!S.prefs.preview, aiOk = !!S.prefs.ai, btnOk = S.prefs.card_ai !== false;
+    dep("#cardai", cardOk && aiOk, !cardOk ? "Turn on “Show text after dictating” first." : "AI features are off (Settings → AI).");
+    dep("#cardbtns", cardOk && aiOk && btnOk, !cardOk ? "Turn on “Show text after dictating” first."
+      : !aiOk ? "AI features are off (Settings → AI)." : "Turn on “AI buttons on the card” to choose.");
     sw("#set-ai", "ai");
     sw("#set-digits", "digits");
     sw("#set-mask_swears", "mask_swears");
@@ -1854,7 +1869,7 @@
     // for Anthropic/OpenAI answers whose model slug isn't in cost.py RATES.
     const costChip = a => {
       const c = a && a.cost_usd, m = a && a.model;
-      if (typeof c === "number") return `<span class="aicost" data-tt="${m ? esc(m) + " · " : ""}${a.in_tok || "?"} in / ${a.out_tok || "?"} out tokens">$${c.toFixed(c < 0.01 ? 4 : 3)}</span>`;
+      if (typeof c === "number") return `<span class="aicost" data-tt="${m ? esc(m) + " · " : ""}${a.in_tok || "?"} in / ${a.out_tok || "?"} out tokens${a.cost_basis === "list" ? " · list price; your Claude plan may not charge this" : ""}">$${c.toFixed(c < 0.01 ? 4 : 3)}</span>`;
       if (m && (a.in_tok || a.out_tok)) return `<span class="aicost na" data-tt="This model isn't in indite's rate table; see the provider's dashboard for the exact charge.">cost not estimated</span>`;
       return "";
     };
@@ -2092,13 +2107,15 @@
   $("#set-ai_provider").onchange = e => send({ action: "pref", key: "ai_provider", value: e.target.value });
   // Theme pass commit 6 (24 Oct): model is a <select> with known ids per provider + "Custom…". KNOWN_MODELS is
   // defined inside drawAI() so it isn't hit by TDZ during the initial draw(); mirrors mac/cost.py RATES keys.
+  // The Claude login keeps its own model pick (claude_model); the API providers share ai_model.
+  const mkey = () => (S.prefs.ai_provider || "claude") === "claude" ? "claude_model" : "ai_model";
   $("#set-ai_model").onchange = e => {
     const v = e.target.value;
     if (v === "__custom__") { $("#set-ai_model_custom").hidden = false; $("#set-ai_model_custom").focus(); return; }
     $("#set-ai_model_custom").hidden = true;
-    send({ action: "pref", key: "ai_model", value: v });
+    send({ action: "pref", key: mkey(), value: v });
   };
-  $("#set-ai_model_custom").onchange = e => send({ action: "pref", key: "ai_model", value: e.target.value.trim() });
+  $("#set-ai_model_custom").onchange = e => send({ action: "pref", key: mkey(), value: e.target.value.trim() });
   $("#ai-login").onclick = () => { send({ action: "ai_login" }); toast("A Terminal window opened. Sign in there, then come back."); };
   $("#ai-key-save").onclick = () => { const k = $("#ai-key").value.trim(); if (!k) return;
     send({ action: "ai_key", provider: S.prefs.ai_provider, key: k }); $("#ai-key").value = ""; toast("Key saved in your Keychain"); };
@@ -2112,7 +2129,7 @@
     sel.value = prov;
     $("#ai-claude-row").style.display = on && prov === "claude" ? "" : "none";
     $("#ai-key-row").style.display = on && prov !== "claude" ? "" : "none";
-    $("#ai-model-row").style.display = on && prov !== "claude" ? "" : "none";
+    $("#ai-model-row").style.display = on ? "" : "none";
     $("#ai-claude").innerHTML = !st.installed ? "Claude Code is not installed on this Mac. Install it from claude.ai/code, or use an API key instead."
       : st.loggedIn ? `Signed in as <b>${esc(st.email || "your Claude account")}</b>. Answers use that account’s plan.`
       : "Not signed in. Sign in once and indite uses that account.";
@@ -2124,20 +2141,22 @@
     // Populate the model <select> from KNOWN_MODELS[provider]; default to the provider's default; add "Custom…"
     // so a model id we don't ship with is still reachable. The custom text input appears only when "Custom…" is picked.
     const KNOWN_MODELS = {
-      anthropic: ["claude-haiku-5-5", "claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5", "claude-opus-4-7", "claude-fable-5"],
+      claude: ["", "haiku", "sonnet", "opus"],   // "" = the model your Claude account uses by default
+      anthropic: ["claude-haiku-5-5", "claude-haiku-4-5", "claude-sonnet-5-5", "claude-sonnet-5", "claude-opus-5-5", "claude-opus-5", "claude-opus-4-7", "claude-fable-5"],
       openai: ["gpt-4.1-mini", "gpt-4o-mini", "gpt-5"],
       openrouter: ["openrouter/auto", "anthropic/claude-haiku-5-5", "openai/gpt-4.1-mini"],
     };
     const def = (S.ai_models || {})[prov] || "";
-    const current = S.prefs.ai_model || def;
+    const current = (prov === "claude" ? S.prefs.claude_model : S.prefs.ai_model) || def;
     const known = KNOWN_MODELS[prov] || [];
     const usingCustom = current && !known.includes(current);
-    $("#set-ai_model").innerHTML = known.map(m => `<option value="${esc(m)}"${m === current ? " selected" : ""}>${esc(m)}${m === def ? " (default)" : ""}</option>`).join("")
+    $("#set-ai_model").innerHTML = known.map(m => `<option value="${esc(m)}"${m === current ? " selected" : ""}>${m === "" ? "Claude’s default for your account" : esc(m) + (m === def ? " (default)" : "")}</option>`).join("")
       + `<option value="__custom__"${usingCustom ? " selected" : ""}>Custom…</option>`;
     $("#set-ai_model_custom").value = usingCustom ? current : "";
     $("#set-ai_model_custom").hidden = !usingCustom;
     $("#ai-model-why").textContent = usingCustom
       ? "A model id this app doesn't ship with. Cost may not be estimated — see Insights."
+      : prov === "claude" ? "Which Claude answers. Haiku is the quickest and uses the least of your plan, Sonnet is in between, Opus is the most capable. Default is whatever your account uses."
       : "Default is a fast, inexpensive model. Pick a different one for different trade-offs.";
   }
 

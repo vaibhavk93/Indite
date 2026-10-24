@@ -129,6 +129,14 @@ Dynamic colour (Material You) is **off**: our colours on every phone.
 - 460 pt wide, grows upward with the text, up to 320 pt. A long dictation keeps its end; an answer keeps its start.
 - On screen 4 s + 0.25 s per word, **never more than 6 s** (`CAP`). The pointer resting on it keeps it up.
 - Buttons: Ask AI, two favourite actions, To do. Clicks count only after the pointer moves onto the card.
+- **Dependent settings (24 Oct, founder):** a setting that only matters when another is on sits **indented under it** and,
+  when the parent is off, is **disabled, not hidden**: dimmed, not clickable, and its line says why ("Turn on “AI
+  buttons on the card” to choose."). Done for the card's AI buttons and the two button pickers (`dep()` in `app.html`).
+- **Button states (24 Oct, founder):** resting = clear with a hairline; **hover = ink at 9 %**, **pressed = ink at 20 %**
+  (`button_look` in `overlay.py`). The tint shows only while a click would count (pointer has moved onto the card), so a
+  button never looks clickable when it is not. **Working:** when an AI action runs, the buttons give way to the action's
+  name with dots that cycle (`.` `..` `...`) and a gentle fade (55-100 %), until the answer lands ("Copied. Paste it
+  anywhere.") or the failure reason appears. Motion says "busy"; nothing moves for decoration.
 
 ---
 

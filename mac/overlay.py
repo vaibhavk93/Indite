@@ -360,6 +360,11 @@ class Pill:
         self.view.setNeedsDisplay_(True)
 
 
+def button_look(hover: bool, pressed: bool) -> float:
+    """How dark a card button's background is (ink at this opacity): resting none, hovered a little, pressed more."""
+    return 0.20 if hover and pressed else 0.09 if hover else 0.0
+
+
 class CardTarget(NSObject):
     """Receives the card's button clicks (an Objective-C target has to be an NSObject) and hands them to Python."""
 
@@ -510,7 +515,19 @@ class Preview:
         """An AI answer is on its way: say so, drop the buttons, and stay up until answer() or failed()."""
         from PyObjCTools import AppHelper
         self.busy = True
+        self.pulse_id = getattr(self, "pulse_id", 0) + 1
         AppHelper.callAfter(self._show, text, False)
+        AppHelper.callAfter(self._pulse, text.rstrip("….").strip(), self.pulse_id, 0)
+
+    def _pulse(self, base: str, pid: int, n: int) -> None:
+        """While the AI works the line breathes ("Make it a prompt." ".." "...") so the wait does not look frozen."""
+        from PyObjCTools import AppHelper
+        if pid != self.pulse_id or not self.busy:                 # answered, failed, or a newer job took over
+            self.label.setAlphaValue_(1.0)
+            return
+        self.label.setStringValue_(base + "." * (1 + n % 3))
+        self.label.setAlphaValue_(0.55 + 0.45 * (1 + math.sin(n * 1.2)) / 2)
+        AppHelper.callLater(0.4, self._pulse, base, pid, n + 1)
 
     def answer(self, text: str) -> None:
         """The answer has landed (and is on the clipboard): show it, then leave on the normal clock."""
@@ -596,8 +613,26 @@ class Preview:
         if self.armed_from and (abs(here.x - self.armed_from.x) > 3 or abs(here.y - self.armed_from.y) > 3):
             self.armed_from = None                          # it moved: from now on, being on the card means you came to it
         self.panel.setIgnoresMouseEvents_(self.armed_from is not None or not self.hovered())
+        self._paint_buttons()
         from PyObjCTools import AppHelper
-        AppHelper.callLater(0.1, self._track, t)
+        AppHelper.callLater(0.05, self._track, t)
+
+    def _paint_buttons(self) -> None:
+        """
+        Hover and press on the card's buttons. Asked, not listened for (same reason as hovered()): the card ignores
+        the mouse until you rest on it, and a button only looks clickable once a click would count - so the tint
+        appears exactly when the button can be pressed.
+        """
+        import AppKit as AK
+        live = self.with_buttons and not self.panel.ignoresMouseEvents()
+        mouse, f = AK.NSEvent.mouseLocation(), self.panel.frame()
+        at = AK.NSMakePoint(mouse.x - f.origin.x, mouse.y - f.origin.y)
+        down = bool(AK.NSEvent.pressedMouseButtons() & 1)
+        for b in self.buttons:
+            over = live and not b.isHidden() and AK.NSMouseInRect(at, b.frame(), False)
+            a = button_look(over, down)
+            tint = NSColor.labelColor().colorWithAlphaComponent_(a) if a else NSColor.clearColor()
+            b.layer().setBackgroundColor_(tint.CGColor())
 
     def _maybe_hide(self, t: float) -> None:
         """Hide, unless the pointer is on the card or an answer is on its way - then ask again shortly."""

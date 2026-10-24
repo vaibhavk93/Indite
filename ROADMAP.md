@@ -49,6 +49,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 
 ## Mac: done
 
+- **24 Oct (🧪 built, live):** every dictation is saved even inside indite; card buttons react (hover, pressed, working); "AI buttons on the card" setting; AI cost now shows for the Claude login (list price); choose the Claude login's model (haiku / sonnet / opus); two to-dos added.
 - **23-24 Oct (🧪 built, not yet checked by the founder):** pill and text card hidden from screen shares (Zoom, Meet, Loom,
   QuickTime); **Select several notes → "Ask AI combined"** (Finder-style picking, the AI reads the picks as one note;
   same on Android, build not cut); text card restyled; **AI cost under each answer + a this-month total** (an estimate:

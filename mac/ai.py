@@ -213,13 +213,14 @@ def run(action: str, text: str, extra: str = "", provider: str = "claude", model
         answer, usage = _api(provider, model, prompt, text)
         usage["cost_usd"] = cost_mod.estimate(usage["model"], usage["in_tok"], usage["out_tok"])
         return answer.strip(), usage
-    # Local Claude CLI returns text only; no usage data to attribute - honest Nones everywhere.
+    # Local Claude CLI: its JSON reply carries usage and a list-price cost; last_usage() reads them (Nones if absent).
     _path()
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
-    from indite.notes import ask
+    from indite.notes import ask, last_usage
     try:
-        return ask(prompt, text).strip(), {"model": None, "in_tok": None, "out_tok": None, "cost_usd": None}
+        answer = ask(prompt, text, model=model).strip()     # model "" = the Claude account's own default
+        return answer, last_usage()                 # the CLI's own model, tokens and list-price cost (24 Oct)
     except SystemExit as e:                         # notes.py speaks in SystemExit; the app must not exit
         raise RuntimeError(str(e)) from None
 
@@ -267,7 +268,7 @@ def review(text: str, targets: list[str], suspected: list[dict], provider: str =
             sys.path.insert(0, str(ROOT))
         from indite.notes import ask
         try:
-            answer = ask(prompt, text)
+            answer = ask(prompt, text, model=model)
         except SystemExit as e:
             raise RuntimeError(str(e)) from None
     return review_lines(answer, text)
