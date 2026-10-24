@@ -1,6 +1,6 @@
 # indite roadmap
 
-Last updated: 2026-10-18. **This is the one roadmap.** Design rule: every screen follows `docs/DESIGN.md`. Order and status live only here. Other planning files hold
+Last updated: 2026-10-24. **This is the one roadmap.** Design rule: every screen follows `docs/DESIGN.md`. Order and status live only here. Other planning files hold
 detail and are not roadmaps: `docs/ROADMAP_DETAIL.md` (AI review design), `docs/MAC_PLAN.md` (Mac vs Android vs Wispr),
 `docs/WISPR_DEEPDIVE.md` (measurements), `docs/AI_MODES.md` (AI spec), `PLAN.md` (decisions and test results),
 `docs/FOUNDER_REQUESTS.md` (every request and its status), `docs/ROADMAP_ARCHIVE.md` (the old 10 Oct snapshot).
@@ -49,6 +49,13 @@ platform limit forces it, and the workaround is written down here. Every item be
 
 ## Mac: done
 
+- **23-24 Oct (🧪 built, not yet checked by the founder):** pill and text card hidden from screen shares (Zoom, Meet, Loom,
+  QuickTime); **Select several notes → "Ask AI combined"** (Finder-style picking, the AI reads the picks as one note;
+  same on Android, build not cut); text card restyled; **AI cost under each answer + a this-month total** (an estimate:
+  real token counts, a typed-in price table checked against Anthropic's pricing page on 24 Oct; OpenAI prices not
+  re-checked); pill says "warming up" on cold start and a failure puts its reason on the card; **design clean-up in 9
+  passes** (shared colours and type sizes, themed button hints, one button family, menu subtitles, Settings inputs,
+  empty pages; rules in `docs/DESIGN.md` v2). Android: "typed in" fallback now logs its reason (#299).
 - **Dictation anywhere:** hold a key (or tap twice for hands-free), speak, text typed in ~0.8 s; Esc cancels; smart
   output (typed into a text box, else copied); typed words **also on the clipboard** (setting, 17 Oct); long holds cut
   at quiet points; password boxes never typed into; long text ~40x fewer key events (16 Oct); pill with live levels.
