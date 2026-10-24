@@ -122,19 +122,23 @@ class PillView(NSView):
     def _draw_content(self) -> None:
         if self.state == "listening":
             self._draw_bars()
-        elif self.state == "writing":
-            self._draw_writing()
+        elif self.state in ("writing", "warming"):
+            self._draw_writing(label="warming up" if self.state == "warming" else "writing")
         elif self.state == "meeting":                             # a red dot that breathes, and the time so far
             NSColor.colorWithCalibratedRed_green_blue_alpha_(0.86, 0.2, 0.15, 0.55 + 0.45 * abs(math.sin(self.phase))).set()
             NSBezierPath.bezierPathWithOvalInRect_(NSMakeRect(16, H / 2 - 3.5, 7, 7)).fill()
             self._draw_word(self.label)
         else:
+            # Theme pass commit 7 (24 Oct): pill state words from one map. "warming" is new (R1 - cold start can be
+            # ~60 s on a fresh Mac; "writing" alone looked identical to a 1 s warm pass); "failed" prompts the person
+            # to look at the card for the reason (R3). set_state() still handles everything else; this is just vocabulary.
             self._draw_word({
                 "writing": "writing…",
+                "warming": "warming up…",             # R1 - the engine's first-run compile, up to a minute
                 "done": "✓ typed in",
                 "copied": "✓ copied",
                 "nothing": "nothing heard",
-                "failed": "didn’t work",
+                "failed": "didn't work · check the card",   # R3 - the card above now carries the reason
                 "cancelled": "cancelled",
                 "secret": "password box",
             }.get(self.state, "✓ copied"))
@@ -167,14 +171,15 @@ class PillView(NSView):
         return {NSFontAttributeName: NSFont.systemFontOfSize_weight_(11.5, NSFontWeightMedium),
                 NSForegroundColorAttributeName: colour.colorWithAlphaComponent_(alpha)}
 
-    def _draw_writing(self) -> None:
+    def _draw_writing(self, label: str = "writing") -> None:
         """
-        "writing" and three dots that light up one after another, sitting on the text's baseline. No underline or
-        glint: drawn under a word with a descender it read as a glitch (founder, 15 Oct).
+        The animated-dots word. "writing" normally; "warming up" when the engine hasn't finished loading on a cold
+        Mac (R1, 24 Oct) - same visual language, so the user still sees "it's working", with a word that tells them
+        why the wait is longer than usual.
         """
         a = self._enter()
         attrs = self._attrs(a)
-        s = NSString.stringWithString_("writing")
+        s = NSString.stringWithString_(label)
         size = s.sizeWithAttributes_(attrs)
         font = attrs[NSFontAttributeName]
         dot, gap = 3.2, 3.0

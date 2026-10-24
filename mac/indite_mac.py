@@ -1159,7 +1159,10 @@ class InditeApp(rumps.App):
             self.pill.show("listening")
             self.pill.level(self.mic.level)
         elif self.busy:
-            self.pill.show("writing")
+            # R1 (24 Oct): first-run cold start shows "warming up…" instead of "writing…" — the writing animation
+            # looks identical otherwise and a 60 s wait with no clue is the "did it work?" moment.
+            warming = self.engine_kind and self.engine_kind.startswith("Starting")
+            self.pill.show("warming" if warming else "writing")
             self.pill.tick_writing()
         elif time.time() < self.done_until:
             self.pill.show(self.done_state)
@@ -1362,17 +1365,21 @@ class InditeApp(rumps.App):
         if isinstance(err, MicStuck):
             self.restart_for_stuck_mic(err)
             return
-        self.pill.show("error")
+        self.pill.show("failed")                              # R3 (24 Oct): the pill points to the card for the reason
         allowed = mic_allowed()
         from PyObjCTools import AppHelper
         if allowed is False:
             ask_mic()
+            # R3: the card carries the one-line reason + "Open mic settings" so the person sees the fix without
+            # waiting for a modal they have to dismiss. The alert still fires for people who want the full detail.
+            self.preview.show("macOS hasn't given indite permission to use the microphone.\nSystem Settings → Privacy & Security → Microphone.", buttons=False)
             AppHelper.callAfter(rumps.alert,
                 "indite cannot hear the microphone",
                 "macOS has not given indite permission to use the microphone.\n\n"
                 "System Settings → Privacy & Security → Microphone → turn on indite, then quit and open it again.",
             )
         else:
+            self.preview.show(f"No microphone opened. Tried every input on this Mac.\nUsual cause: a Bluetooth headset switched off, or an iPhone mic that's not nearby.\n\n({err})", buttons=False)
             AppHelper.callAfter(rumps.alert,
                 "indite could not open any microphone",
                 "Tried every input on this Mac and none of them opened.\n\n"
