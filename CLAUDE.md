@@ -9,7 +9,7 @@ At the end of every session:
 4. Add every new founder request to `docs/FOUNDER_REQUESTS.md` and update its status (the founder's go-to checklist).
 
 Key rules (details in HANDOFF): the GitHub repo is public (no recordings, keys, APKs or models in git); the public app
-build has no internet permission; every suggestion goes past an independent critic before it is recommended; write in
+build has no internet permission; big suggestions (features, behavior, security/data, hard to undo) go past an independent critic first; write in
 plain, simple language.
 
 **Two founder rules (17 Oct), always:**

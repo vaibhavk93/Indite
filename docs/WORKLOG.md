@@ -4,6 +4,12 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 24 Oct 2026 · Critic rule narrowed, model default changed
+
+- **Critic rule narrowed** (founder: critics used tokens without helping). Now only for features, app behaviour, security/privacy/data, or hard-to-undo changes. Skip for settings, tool/model choices, lookups, small fixes. A quick test beats a critic. Changed in `~/.claude/CLAUDE.md`, `CLAUDE.md`, `AGENTS.md`, `docs/HANDOFF.md`.
+- **AI cost table fixed** (`mac/cost.py`): added the 5.5 models and corrected old prices against Anthropic's pricing page. Haiku 5.5 (the default) had been shown ~10x too high. OpenAI rows not re-checked. Self-check `.venv/bin/python mac/cost.py` → `ok`. Needs an app restart to take effect.
+- **Model default** (founder near usage limits): global Sonnet 5.5 + high effort; Opus 5.5 + medium kept for hard work via `/model opus`. The AI flags tasks that need Opus. No code changed.
+
 ## 23 Oct 2026 (afternoon) · Mac: pill hidden from screen capture, multi-select → Ask AI combined
 
 **Next step:** restart indite (`open -n -g dist/indite.app` — check the log first for ~2 min of quiet, per the rule) to pick up the new overlay.py and app.html. Then: start a Zoom/Loom/QuickTime screen recording, hold the hotkey, confirm the REC pill is NOT in the recording. And: open indite, kebab on any dictation → "Select (combine with others)" → tick 2–10 more → bottom bar → "Ask AI combined".

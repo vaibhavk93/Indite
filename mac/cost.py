@@ -8,7 +8,7 @@ reports as "cost not estimated" rather than "$0.00", which is honest.
 Local Claude (`provider == "claude"`, the signed-in-on-this-Mac path through the `claude` CLI) returns no usage
 counts to the app — those calls are marked "no cost reported" and never attributed a number.
 
-Rates listed below are the providers' published numbers as of October 2026. Update when a provider changes a price
+Rates listed below are the providers' published numbers as of 24 Oct 2026 (Anthropic rows checked against its pricing page). Update when a provider changes a price
 or indite starts using a new model.
 """
 
@@ -17,13 +17,19 @@ from __future__ import annotations
 # model id → (USD per million INPUT tokens, USD per million OUTPUT tokens)
 # Keys match the strings used in DEFAULT_MODEL + whatever the founder types in Settings → AI → Model.
 RATES: dict[str, tuple[float, float]] = {
-    # Anthropic
-    "claude-haiku-5-5":       (1.00,  5.00),
+    # Anthropic — checked against platform.claude.com/docs/en/about-claude/pricing on 24 Oct 2026
+    "claude-fable-5-1":       (10.0, 50.00),
+    "claude-fable-5":         (10.0, 50.00),
+    "claude-opus-5-5":        (4.00, 20.00),
+    "claude-opus-5":          (5.00, 25.00),
+    "claude-opus-4-8":        (5.00, 25.00),
+    "claude-opus-4-7":        (5.00, 25.00),
+    "claude-sonnet-5-5":      (2.00, 10.00),
+    "claude-sonnet-5":        (2.00, 10.00),
+    # ponytail: Haiku 5.5 charges 0.50 in / 2.50 out when the prompt is over 100k tokens; indite prompts stay far below
+    # that, so only the up-to-100k rate is listed. Add a tier check in estimate() if prompts ever grow that big.
+    "claude-haiku-5-5":       (0.10,  0.50),
     "claude-haiku-4-5":       (1.00,  5.00),
-    "claude-sonnet-5":        (3.00, 15.00),
-    "claude-opus-5":          (15.0, 75.00),
-    "claude-opus-4-7":        (15.0, 75.00),
-    "claude-fable-5":         (1.00,  5.00),            # ← guess; verify when exact rate ships
     # OpenAI
     "gpt-4.1-mini":           (0.40,  1.60),
     "gpt-4o-mini":            (0.15,  0.60),
@@ -63,9 +69,11 @@ def extract(provider: str, response: dict) -> tuple[str | None, int | None, int 
 
 if __name__ == "__main__":
     # Self-check: tiny, no network. Verifies the two paths users care about and the honest-None path.
-    assert estimate("claude-haiku-5-5", 1000, 200) == round(0.001 + 0.001, 5)         # 1k in @ $1, 200 out @ $5 = $0.001 + $0.001 = $0.002
+    assert estimate("claude-haiku-5-5", 1000, 200) == round(0.0001 + 0.0001, 5)       # 1k in @ $0.10, 200 out @ $0.50 = $0.0002
+    assert estimate("claude-opus-5-5", 1_000_000, 100_000) == 6.0                       # $4 in + 100k out @ $20 = $2 → $6
+    assert estimate("claude-sonnet-5-5", 1_000_000, 100_000) == 3.0                    # $2 in + $1 out
     assert estimate("gpt-4.1-mini", 10_000, 1_000) == round(0.004 + 0.0016, 5)        # $0.004 + $0.0016 = $0.0056
-    assert estimate("anthropic/claude-haiku-5-5", 1000, 200) == 0.002                 # provider-prefixed slug resolves
+    assert estimate("anthropic/claude-haiku-5-5", 1000, 200) == 0.0002                # provider-prefixed slug resolves
     assert estimate("some-model-nobody-ever-added", 1000, 200) is None                # honest
     assert estimate("claude-haiku-5-5", None, 200) is None
     # Anthropic response shape
