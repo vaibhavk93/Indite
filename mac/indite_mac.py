@@ -843,6 +843,13 @@ def focused_is_secret() -> bool:
         return False
 
 
+def is_own_input(front_pid: int, my_pid: int, text_focused: bool) -> bool:
+    """Spoken into one of indite's own boxes (Ask AI, search, a rename): input to indite, not a note. With indite in
+    front but no box focused the words only go to the clipboard, so that dictation is a note like any other (24 Oct:
+    three such dictations were never saved and their recordings were lost)."""
+    return front_pid == my_pid and text_focused
+
+
 def utf16_chunks(text: str, most: int) -> list[str]:
     """
     `text` in pieces of at most `most` UTF-16 units - the limit one macOS key event can carry.
@@ -1449,6 +1456,7 @@ class InditeApp(rumps.App):
         self.last = self.out(text)                      # what is typed, copied and previewed; the note keeps the real words
         # The pill says what happened. A notification was tried here and crashed the thread that had just produced
         # the text (rumps needs a bundle identifier it could not find), so the words landed with nothing said.
+        own_box = is_own_input(where_pid, os.getpid(), focused_is_text())
         private = self.no_save_next                     # "Don't save the next dictation": this one only
         mode = self.prefs["output"]
         if mode == "type" or (mode == "smart" and focused_is_text()):
@@ -1467,12 +1475,12 @@ class InditeApp(rumps.App):
             self.surprise_copy = mode == "smart"
         self.done_until = time.time() + 1.6
         took = time.time() - t0
-        # Spoken into indite's own window (the Ask AI box, search, a rename): that's input to indite, not a note.
+        # Spoken into one of indite's own boxes (the Ask AI box, search, a rename): that's input to indite, not a note.
         if private:                                      # used once, then off again
             self.no_save_next = False
             self.no_save_item.state = 0
             self.set_title("")
-        note = None if where_pid == os.getpid() or private else store.add(
+        note = None if own_box or private else store.add(
             text, len(audio) / RATE, took, self.done_state, where,
             **({"raw": heard} if heard.strip() != text.strip() else {}))   # what the engine heard, so a fix can be undone
         if note and self.prefs.get("review"):
@@ -2161,6 +2169,7 @@ if __name__ == "__main__":
         assert kbd.Listener._handle_message(None, None, kbd.NSSystemDefined, None, None, False) is None
         assert [status_text(t) for t in ("🎙", "🎙⚠", "🎙…", "🔴", "⏳", "📄 3/10")] == ["", "⚠", "…", "●", "…", "3/10"]
         assert menubar_icon().isTemplate() and menubar_icon().size().width == 18
+        assert is_own_input(5, 5, True) and not is_own_input(5, 5, False) and not is_own_input(5, 9, True)   # indite in front, no box: still a note
         assert utf16_chunks("", 20) == []
         assert utf16_chunks("hello", 20) == ["hello"]
         assert utf16_chunks("abcdef", 2) == ["ab", "cd", "ef"]
