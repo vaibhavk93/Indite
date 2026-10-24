@@ -11,7 +11,10 @@ hidden test copy (own data, nothing on the founder's screen): save, the three de
 a walk through every screen. (4) Measured 25,800 made-up notes (25,000 dictations + 800 meetings, 33 MB) and the
 founder's real notes (read-only, counts only). (5) Looked at light, dark and narrow-window renders.
 
-**Result.** 24 findings, all fixed; 45 automated tests pass; 0 JavaScript or Python errors across every screen.
+**Result.** 33 findings, all fixed; 58 automated tests + 78 real-app end-to-end checks pass; 0 JavaScript or Python errors
+across every screen. **Second pass (same day, after the founder found two bugs the first pass missed):** the first tests
+checked what the page's data said, not what the screen showed. They now check real visibility (computed display and size)
+and invariants that must hold for any state (see section 7).
 
 ---
 
@@ -45,6 +48,15 @@ Severity: **H** loses or hides data, or blocks use · **M** wrong result or a co
 | 22 | H | AI | AI review with an API key was broken since the cost change (`_api` returns two values) | Code read | Fixed | import + selftest |
 | 23 | M | Search | Searching inside one long meeting transcript was not possible | Founder | Find box in Listen: lit lines, marks, ↑ ↓ / Return | `test_find_inside_one_long_transcript` |
 | 24 | L | Docs | The quote rule was not discoverable | Review | Search hint tooltip + Help "Find things" | Help text |
+| 25 | H | Lists | **A number on a button or menu did not match the list** ("Terminal · 318" showed 6 notes): counts ignored the other filters that were on, and an empty list did not say why | Founder | Faceted counts (each number is what you get by choosing it with every other filter as it is now); empty options dimmed; "n of total · Copied · Claude  Clear" names every filter; "No note is all of these: …" | `test_every_number_on_every_button_and_menu_matches_the_list` (260 notes, 46 states, every option); same check on the founder's real notes: 61 states, 0 mismatches |
+| 26 | H | Settings | **The "keep N" warning came back every time** you switched Settings section: it was a row, and the Settings page un-hides every row on switching | Founder | The warning exists only while a choice is waiting, is dropped when you leave the section or page, and never was a hidden row | `test_keep_limit_question_is_asked_once_and_never_comes_back` |
+| 27 | M | Settings | The waiting warning showed no title and its Delete button was a black pill in red text | Screenshot | Title says how many would go; button matches the other danger buttons | screenshot |
+| 28 | M | Lists | A damaged saved view (wrong types, unknown values) **crashed the page** | Negative case | Every saved choice is checked and falls back to the default | `test_a_choice_survives_the_round_trip_through_python`, e2e |
+| 29 | H | Dictation | **Two seconds of silence became a saved note reading "KKK"** (the engine invents words for silence; the junk filter only looked at sounds under 1 s) | End-to-end run | Silence is never sent to the engine; one repeated letter is never a note at any length | selftest, e2e section 1 |
+| 30 | M | Lists | "Clear" was cut off when the filter description was long | Screenshot | The description shortens; Clear always shows | screenshot |
+| 31 | L | Lists | A pressed button looked almost like an unpressed one | Review | Stronger pressed state | screenshot |
+| 32 | M | Settings | A note's words-only delete and other states showed no on-screen proof in tests | Review | Tests now check computed visibility everywhere | `test_the_right_things_are_visible…` |
+| 33 | L | Tests | My test page broke when a note contained `</script>` (a test-only problem; the app passes data differently) | Hostile-data test | Escaped in the harness | `test_hostile_notes…` |
 
 Also fixed earlier on 24 Oct from the founder's own reports (verified): the To do items not showing (saved as `True`, the
 page lists `"open"`), AI cost showing 0 (the Claude login's usage was discarded), the card pickers hidden instead of
@@ -109,10 +121,26 @@ The founder's real notes (about 500): every page loads and filters without error
 - The card's hover / pressed tint needs a real mouse (tested on a card that is built but never shown).
 - Not checked: the Android app (nothing changed there today).
 
+## 6a. Second pass: what the first one missed, and why
+
+The founder reported (1) menu numbers that did not match the list and (2) a warning that kept coming back. Both passed the
+first tests because those tests read `element.hidden` and the data behind the screen, never what is actually drawn. The
+rule now: **a feature is not tested until its test looks at computed visibility, and its numbers are compared with the
+rows on screen.** New checks (`tests/test_e2e_screen.py`): every chip and menu number equals the list you get by choosing
+it, for many combined states, on invented notes and on the founder's real ones; rows on screen equal the count; the toolbar,
+menus and banners are visible exactly when they should be; a choice survives Python's round trip; hostile notes (script
+tags, emoji, right-to-left text, 6,000-character words, missing fields) render as text and stay searchable; every page
+opens; clicking every button on every page never breaks it; cost chips in dollars and rupees; dark theme.
+`tests/e2e_testcopy.py` drives the real app (real Python + real page) in the hidden test copy: 78 checks covering
+dictation (a real wav, silence, a 0.15 s blip, Don't save), star / to-do / edit with bad ids, the Dictionary (10 valid and
+invalid entries), review decisions, the three delete choices and Undo, combine, preferences (including damaged ones), the
+keep limit, a torn history file, every page, and real AI calls (right and wrong model names).
+
 ## 6. Re-run
 
 ```
-.venv/bin/python -m pytest tests -q                 # 45 tests, about a minute (needs Chrome for the UI scenarios)
+.venv/bin/python -m pytest tests -q                 # 58 tests, about 75 s (needs Chrome for the UI scenarios)
+.venv/bin/python tests/e2e_testcopy.py              # 78 checks against the real app in the hidden copy, about 5 min
 .venv/bin/python mac/store.py                       # history cap, cache, append, delete choices, Dictionary rules
 .venv/bin/python mac/indite_mac.py --selftest       # the app's own checks
 ```

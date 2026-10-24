@@ -155,6 +155,12 @@ Dynamic colour (Material You) is **off**: our colours on every phone.
   file: deleted at once with Undo. **How many to keep** is a `.seg` (Newest 500 / Newest 5,000 / Everything) and asks
   before deleting, in a `.banner`. Measured at 25,800 notes: first draw 133 ms, search 55 ms, filters ~90 ms. New list
   pages must reuse `query()`, `drawTools()` and `drawRows()` in `app.html`.
+- **Counts must match what you see (24 Oct, founder).** Every number on a button or in a menu is *faceted*: how many
+  notes you would get by choosing it with every other filter left as it is now. Options that would give none are dimmed
+  (`--ink-dim`) but stay choosable. "n of total · each filter that is on · Clear" sits beside the menus; the Clear link
+  never gets cut off. An empty list names every filter that is on ("No note is all of these: Starred + Today + Claude.").
+  **Never use the `hidden` attribute on an `.item` row in Settings**: switching Settings section un-hides every row.
+  A question that waits for an answer (the keep-limit warning) is drawn only while it waits and dropped when you leave.
 - **Dependent settings (24 Oct, founder):** a setting that only matters when another is on sits **indented under it** and,
   when the parent is off, is **disabled, not hidden**: dimmed, not clickable, and its line says why ("Turn on “AI
   buttons on the card” to choose."). Done for the card's AI buttons and the two button pickers (`dep()` in `app.html`).

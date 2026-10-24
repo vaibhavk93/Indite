@@ -560,3 +560,6 @@ is a git commit.
 | 323 | **Delete must ask: transcript, recording or both** | 24 Oct | 🧪 | "Delete what?" with note and recording / recording only / words only, each with Undo |
 | 324 | **Test everything end to end; audit; fix; commit** | 24 Oct | ✅ done | `docs/AUDIT_24OCT.md`: 24 findings fixed, 45 tests, real-code run with 0 errors |
 | 325 | **Dictionary: keep capitals (jira → Jira, Widget Serve)** | 24 Oct | 🧪 | Capital-only fixes are allowed and apply the exact capitals |
+| 326 | **Menu number did not match the list ("Terminal 315" showed 6; "Claude today" showed nothing)** | 24 Oct | 🧪 | Cause: counts ignored the other filters that were on. Now every count is faceted and matches the list; the toolbar names every filter that is on. Verified on invented notes and on your real notes (61 states, 0 mismatches) |
+| 327 | **"How many to keep" warning keeps coming back after switching tabs** | 24 Oct | 🧪 | Cause: Settings un-hid every row on switching sections. The warning is now drawn only while a choice waits, and dropped when you leave |
+| 328 | **Test everything properly: normal, negative, corner cases, every feature** | 24 Oct | ✅ done | 58 automated tests + 78 real-app checks, plus screenshots; found and fixed 9 more bugs, including silence saved as a note |

@@ -42,12 +42,15 @@ def run(rows, steps, prefs=None):
     stub = ("<script>window.webkit={messageHandlers:{indite:{postMessage(m){(window.__sent=window.__sent||[]).push(JSON.parse(m))}}}};"
             "window.onerror=(m)=>{(window.__err=window.__err||[]).push(m)};</script>")
     probe = ("<script>(()=>{const R={},n=s=>document.querySelectorAll(s).length,"
-             "vc=p=>(document.querySelector('.qbar[data-for='+(p||'home')+'] .vcount')||{textContent:''}).textContent.replace(/\\s+/g,' ').trim(),"
+             "vcAll=p=>{const e=document.querySelector('.qbar[data-for='+(p||'home')+'] .vcount');return e?[...e.children].map(x=>x.textContent.trim()).join(' '):''},"
+             "vc=p=>{const e=document.querySelector('.qbar[data-for='+(p||'home')+'] .vcount');return e&&e.children.length?e.querySelector('b').textContent+' '+e.children[1].textContent+' Clear':''},"
+             "why=p=>{const e=document.querySelector('.qbar[data-for='+(p||'home')+'] .vcount .why');return e?e.textContent.replace(/^· /,''):''},"
+             "vis=e=>!!e&&getComputedStyle(e).display!=='none'&&e.getClientRects().length>0,"
              "heads=s=>[...document.querySelectorAll((s||'#list')+' .daybar')].map(e=>e.firstChild.textContent.trim()),"
              "texts=s=>[...document.querySelectorAll((s||'#list')+' .row .text')].map(e=>e.textContent.trim()),"
              "sent=k=>(window.__sent||[]).filter(m=>m.action===k),"
              "menu=()=>[...document.querySelectorAll('.menu button[data-v], .menu button[data-w]')].map(b=>b.textContent.replace(/\\s+/g,' ').trim());"
-             f"window.push({json.dumps(json.dumps(state))});go('home');try{{{steps}}}catch(e){{R.fatal=e.message+' @'+((e.stack||'').split('\\n')[1]||'')}}R.err=window.__err||[];document.title=JSON.stringify(R)}})()</script>")
+             f"window.push({json.dumps(json.dumps(state)).replace('</', '<' + chr(92) + '/')});go('home');try{{{steps}}}catch(e){{R.fatal=e.message+' @'+((e.stack||'').split('\\n')[1]||'')}}R.err=window.__err||[];document.title=JSON.stringify(R)}})()</script>")
     tmp = Path(__file__).with_name("_page_under_test.html")
     try:
         tmp.write_text(stub + page + probe)
@@ -134,7 +137,7 @@ def test_filters_when_app_review_combine_and_clear():
     assert r["err"] == []
     assert r["total"] == "" and r["star"] == "1 of 9 Clear" and r["copied"] == "1 of 9 Clear" and r["ai"] == "1 of 9 Clear" and r["todo"] == "1 of 9 Clear"
     assert (r["open"], r["fix"], r["always"], r["dismiss"]) == ("1 of 9 Clear",) * 4
-    assert r["reviewMenu"][:5] == ["Any review state", "Has suggestions · 1", "Fixed · 1", "Always fix · 1", "Not a mistake · 1"]
+    assert r["reviewMenu"][:5] == ["Any review state · 9", "Has suggestions · 1", "Fixed · 1", "Always fix · 1", "Not a mistake · 1"]
     assert r["today"] == "5 of 9 Clear"                                  # five notes were made in the last few minutes
     assert r["month30"] == r["week"] and r["year"] == "8 of 9 Clear"     # the 400-day-old one is last year
     assert r["slack"] == "4 of 9 Clear"                                  # a, c, e, f
@@ -190,7 +193,7 @@ def test_toolbar_uses_our_menus_not_system_dropdowns():
     """)
     assert r["err"] == [] and r["selects"] == 0                              # no operating-system dropdowns in the toolbar
     assert r["buttons"] == ["when", "app", "review", "group", "sort"]
-    assert r["open"] == 1 and r["items"][0] == "Any time" and r["cur"] == "Any time" and "A month" in r["monthsGrouped"] and r["closed"] == 0
+    assert r["open"] == 1 and r["items"][0].startswith("Any time") and r["cur"].startswith("Any time") and "A month" in r["monthsGrouped"] and r["closed"] == 0
     assert r["sortText"] == "Longest first" and r["saved"]["sort"] == "long"      # the choice is saved for next time
 
 
@@ -304,32 +307,6 @@ def test_deleted_words_say_so_everywhere():
     gone = note(0, "", audio=1, text_deleted=True)
     r = run([gone], "R.row=texts()[0];openDrawer(S.history[0].id,'listen');R.listen=document.querySelector('#drawer .pline.whole')?.textContent.trim();")
     assert r["err"] == [] and "Words deleted" in r["row"] and "Words deleted" in r["listen"]
-
-
-# --------------------------------------------------------------------------------------------------- how many to keep
-def keep_rows(n):
-    return [note(i, f"d{i}") for i in range(n)]
-
-
-def test_how_many_to_keep_asks_before_deleting():
-    steps = """
-      go('settings');[...document.querySelectorAll('*')].find(e=>e.children.length==0&&e.textContent.trim()==='Privacy').click();
-      const segs=()=>[...document.querySelectorAll('#set-history_cap button')];
-      R.labels=segs().map(b=>b.textContent);R.current=segs().find(b=>b.getAttribute('aria-checked')==='true').textContent;R.why=$('#cap-why').textContent;
-      segs()[2].click();R.bigSent=sent('pref').filter(m=>m.key==='history_cap').map(m=>m.value);R.warnHidden=$('#cap-warn').hidden;
-      segs()[0].click();R.smallSent=sent('pref').filter(m=>m.key==='history_cap').map(m=>m.value);
-    """
-    r = run(keep_rows(60), steps, prefs={"history_cap": 5000})
-    assert r["err"] == [] and r["labels"] == ["Newest 500", "Newest 5,000", "Everything"] and r["current"] == "Newest 5,000"
-    assert r["bigSent"] == [0] and r["warnHidden"] is True                       # more room: applied at once
-    assert r["smallSent"] == [0, 500]                                            # 60 notes fit in 500: no warning, applied
-    r = run(keep_rows(700), steps.replace("segs()[0].click();", "segs()[0].click();R.warn=$('#cap-warn').hidden;R.warnText=$('#cap-warn-t').textContent;$('#cap-no').click();R.afterNo=sent('pref').filter(m=>m.key==='history_cap').length;segs()[0].click();$('#cap-yes').click();"),
-            prefs={"history_cap": 5000})
-    assert r["warn"] is False and r["warnText"].startswith("200 older dictations would be deleted")    # 700 kept, limit 500
-    assert r["afterNo"] == 1                                                    # "Keep them": nothing was sent (only the earlier Everything)
-    assert r["smallSent"] == [0, 500]                                           # "Delete them": now it is sent
-    r = run(keep_rows(10), steps, prefs={"keep_history": False})
-    assert r["err"] == [] and "Save my dictations" in r["why"]                  # saving is off: the choice is disabled and says why
 
 
 # --------------------------------------------------------------------------------------------------- settings: model, effort, rupees

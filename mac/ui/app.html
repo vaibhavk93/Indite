@@ -417,8 +417,14 @@
   .menu.vmenu button { display: flex; align-items: center; gap: 8px; }
   .menu.vmenu button.cur b { color: var(--accent); }
   .menu.vmenu button.cur::after { content: "✓"; margin-left: auto; color: var(--accent); font-size: 12px; }
+  .capwarn { padding: 0 16px 14px 34px; border-top: 1px solid var(--line); padding-top: 12px; }
   .menu .mh.sub { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 8px; }
-  .vcount { font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
+  .vcount { display: inline-flex; align-items: baseline; gap: 5px; font-size: 12px; color: var(--ink2); white-space: nowrap; max-width: 62%; }
+  .vcount .why { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .vcount .lnk { flex: none; }
+  .vcount b { color: var(--ink); font-weight: 600; } .vcount .why { color: var(--ink2); }
+  .chip.zero, .menu.vmenu button.zero b { color: var(--ink-dim); }
+  .qbar .chip[aria-pressed="true"] { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); }
   .vcount:empty { display: none; }
   .more-rows { display: block; margin: 14px auto 6px; }
   .pfind { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; }
@@ -958,12 +964,7 @@
                 <div class="body"><b>How many to keep</b><p id="cap-why"></p></div>
                 <div class="seg" id="set-history_cap" role="radiogroup" aria-label="How many dictations to keep"></div>
               </div>
-              <div class="item sub" id="cap-warn" hidden>
-                <div class="banner" style="flex:1; margin:0">
-                  <div><b id="cap-warn-t"></b><p>This can’t be undone. Starred notes, to-dos, meetings and files stay.</p></div>
-                  <button class="btn ghost" id="cap-no">Keep them</button><button class="btn danger" id="cap-yes">Delete them</button>
-                </div>
-              </div>
+              <div id="cap-warn-slot"></div>
               <div class="item">
                 <div class="body"><b>Keep the audio of each dictation</b><p>So you can play it back, and a backup can carry it. About 0.3 MB for
                   10 seconds. Off: only the words are kept.</p></div>
@@ -1219,6 +1220,7 @@
   //    search text never is.
   const PAGE = 100;
   let limits = {};                                                           // rows drawn so far, per list
+  let capPending = null;                                                     // a smaller keep-limit waiting for yes/no (Settings → Privacy)
   const sortOverride = {};                                                   // sort picked while searching (not saved)
   const NEW = ["new", "Newest first"], OLD = ["old", "Oldest first"], LONG = ["long", "Longest first"];
   const DATE_GROUPS = [["date", "Group by date"], ["none", "No groups"]];
@@ -1231,9 +1233,19 @@
   };
   const SEARCH = { home: "Search dictations", meetings: "Search meetings", files: "Search files",
                    todo: "Search to-dos", dict: "Search the Dictionary" };
-  const view = p => ({ filter: "all", sort: VIEWS[p].sorts[0][0], when: "any", app: "any", review: "any", group: "date", ...((S.prefs.views || {})[p] || {}) });
+  // A saved view is cleaned before use: anything of the wrong type, or not an option any more, becomes the default
+  // (a hand-edited or damaged prefs file must never break the page).
+  const view = p => {
+    const d = { filter: "all", sort: VIEWS[p].sorts[0][0], when: "any", app: "any", review: "any", group: "date" };
+    const saved = (S.prefs && S.prefs.views && typeof S.prefs.views === "object" && S.prefs.views[p]) || {};
+    const out = { ...d };
+    for (const k of Object.keys(d)) if (typeof saved[k] === "string" && saved[k]) out[k] = saved[k];
+    if (!VIEWS[p].sorts.some(x => x[0] === out.sort)) out.sort = d.sort;
+    if (!["date", "app", "none"].includes(out.group)) out.group = d.group;
+    return out;
+  };
   const setView = (p, patch) => {
-    S.prefs.views = { ...(S.prefs.views || {}), [p]: { ...view(p), ...patch } };
+    S.prefs.views = { ...(typeof S.prefs.views === "object" && S.prefs.views || {}), [p]: { ...view(p), ...patch } };
     send({ action: "pref", key: "views", value: S.prefs.views });
     limits = {}; draw();
   };
@@ -1264,6 +1276,7 @@
   const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const dayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000;
   function whenRange(w) {                                                    // [from, to) in seconds, or null for any time
+    w = String(w ?? "any");
     const now = new Date(), t0 = dayStart(now), Y = now.getFullYear(), M = now.getMonth();
     const m = w.match(/^m:(\d{4})-(\d\d)$/), y = w.match(/^y:(\d{4})$/);
     if (w === "today") return [t0, Infinity];
@@ -1291,13 +1304,27 @@
   // What was decided about a note's likely mistakes (Fix, Always fix, Not a mistake) is kept on the note ("reviewed").
   const REVIEW = { open: r => (r.flags || []).length, fix: r => (r.reviewed || []).some(x => x.how === "fix"),
                    always: r => (r.reviewed || []).some(x => x.how === "always"), dismiss: r => (r.reviewed || []).some(x => x.how === "dismiss") };
+  const REVIEW_NAMES = { open: "Has suggestions", fix: "Fixed", always: "Always fix", dismiss: "Not a mistake" };
+  const WHEN_NAMES = { today: "Today", "7d": "Last 7 days", "30d": "Last 30 days", month: "This month", lastmonth: "Last month", year: "This year" };
+  const whenName = w => WHEN_NAMES[w] || (w.startsWith("y:") ? w.slice(2) : /^m:\d{4}-\d\d$/.test(w) ? `${MONTHS[+w.slice(7) - 1]} ${w.slice(2, 6)}` : "");
   // The rows for a page: searched, filtered, then ordered. all = every row of that kind, newest first.
+  // Counts in the toolbar are FACETED: each menu and button shows how many notes you would get by choosing it with
+  // every OTHER filter left as it is now, so a number always matches what the list then shows (24 Oct: "Terminal · 318"
+  // showed 6 notes because another button was still on).
   function query(p, all, filters, size, name) {
-    const v = view(p), q = Q(p), ts = terms(q), f = activeFilter(p, filters), rng = VIEWS[p].when ? whenRange(v.when) : null;
+    const v = view(p), q = Q(p), ts = terms(q), f = activeFilter(p, filters), cfg = VIEWS[p], rng = cfg.when ? whenRange(v.when) : null;
     // a saved choice that no longer exists (an app you stopped using, a month that is gone) is ignored, never a blank list
-    const app = VIEWS[p].app && v.app !== "any" && all.some(r => r.app === v.app) ? v.app : "", rev = VIEWS[p].review && REVIEW[v.review] ? v.review : "";
-    let rows = all.filter(r => FILTER_TEST[f](r) && (!rng || (r.at >= rng[0] && r.at < rng[1])) && (!app || r.app === app)
-                                && (!rev || REVIEW[rev](r)) && (!ts.length || ts.every(t => hay(r).includes(t))));
+    const app = cfg.app && v.app !== "any" && all.some(r => r.app === v.app) ? v.app : "", rev = cfg.review && REVIEW[v.review] ? v.review : "";
+    const chipT = FILTER_TEST[f], rows = [], fc = { chip: [], when: [], app: [], review: [] };
+    for (const r of all) {
+      const c = chipT(r), w = !rng || (r.at >= rng[0] && r.at < rng[1]), a = !app || r.app === app, rv = !rev || REVIEW[rev](r),
+            m = !ts.length || ts.every(t => hay(r).includes(t));
+      if (w && a && rv && m) fc.chip.push(r);
+      if (c && a && rv && m) fc.when.push(r);
+      if (c && w && rv && m) fc.app.push(r);
+      if (c && w && a && m) fc.review.push(r);
+      if (c && w && a && rv && m) rows.push(r);
+    }
     const sort = effSort(p);
     if (sort === "match") { const sc = new Map(rows.map(r => [r, score(r, ts)])); rows.sort((a, b) => sc.get(b) - sc.get(a) || b.at - a.at); }
     else if (sort === "old") rows.reverse();
@@ -1307,54 +1334,64 @@
     }
     else if (sort === "title" || sort === "az") rows.sort(byName(name));
     HL = ts;
-    return { rows, f, active: !!ts.length || f !== "all" || !!rng || !!app || !!rev };
+    const parts = [];                                                        // what is narrowing the list, in words
+    if (f !== "all") parts.push((filters.find(x => x[0] === f) || [0, f])[1]);
+    if (rng) parts.push(whenName(v.when)); if (app) parts.push(app); if (rev) parts.push(REVIEW_NAMES[rev]);
+    if (ts.length) parts.push(`“${q}”`);
+    return { rows, f, parts, fc, active: parts.length > 0 };
   }
   // The toolbar: chips, then When / App / Review / Group / Sort as our own menus (popup), "n of total" and Clear.
   // A menu button reads like a chip with a caret; one holding a non-default value is filled like a pressed chip.
-  function drawTools(p, filters, shown, all, active) {
-    const bar = document.querySelector(`.qbar[data-for="${p}"]`), v = view(p), cfg = VIEWS[p], f = activeFilter(p, filters);
+  function drawTools(p, filters, all, qr) {
+    const { rows, f, fc, parts, active } = qr, shown = rows.length;
+    const bar = document.querySelector(`.qbar[data-for="${p}"]`), v = view(p), cfg = VIEWS[p];
     bar.hidden = !all.length;                                                // nothing saved yet: nothing to search
-    const defs = {};                                                         // key → { title, items, cur, on }
-    const add = (key, title, items, cur, on) => { defs[key] = { title, items, cur, on, text: (items.find(i => i.v === cur) || items[0]).l }; };
+    const defs = {};                                                         // key → { title, items, cur, on, text }
+    const n = (list, test) => fc ? list.filter(test).length : null;          // faceted count, or none when not applicable
+    const lab = (text, count) => count === null ? text : `${text} · ${count.toLocaleString()}`;
+    const add = (key, title, items, cur, on) => { defs[key] = { title, items, cur, on, text: (items.find(i => i.v === cur) || items[0]).l.replace(/ · [\d,]+$/, "") }; };
     if (cfg.when) {                                                          // the months and years this page really has
       const byM = {}, byY = {};
       all.forEach(r => { const d = new Date(r.at * 1000), k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; byM[k] = (byM[k] || 0) + 1; byY[d.getFullYear()] = (byY[d.getFullYear()] || 0) + 1; });
+      const inW = w => { const g = whenRange(w); return fc.when.filter(r => !g || (r.at >= g[0] && r.at < g[1])).length; };
       const months = Object.keys(byM).sort().reverse().slice(0, 36), years = Object.keys(byY).sort().reverse();
-      const fixed = [["any", "Any time"], ["today", "Today"], ["7d", "Last 7 days"], ["30d", "Last 30 days"], ["month", "This month"], ["lastmonth", "Last month"], ["year", "This year"]].map(([a, b]) => ({ v: a, l: b }));
-      const items = [...fixed, ...(months.length > 1 ? [{ h: "A month" }, ...months.map(k => ({ v: "m:" + k, l: `${MONTHS[+k.slice(5) - 1]} ${k.slice(0, 4)} · ${byM[k].toLocaleString()}` }))] : []),
-        ...(years.length > 1 ? [{ h: "A year" }, ...years.map(y => ({ v: "y:" + y, l: `${y} · ${byY[y].toLocaleString()}` }))] : [])];
+      const opt = (val, text) => { const c = fc ? inW(val) : null; return { v: val, l: lab(text, c), z: c === 0 }; };
+      const items = [opt("any", "Any time"), ...["today", "7d", "30d", "month", "lastmonth", "year"].map(w => opt(w, WHEN_NAMES[w])),
+        ...(months.length > 1 ? [{ h: "A month" }, ...months.map(k => opt("m:" + k, whenName("m:" + k)))] : []),
+        ...(years.length > 1 ? [{ h: "A year" }, ...years.map(y => opt("y:" + y, String(y)))] : [])];
       const mine = whenRange(v.when);                                         // null = any time, or a value that means nothing
-      const known = items.some(i => i.v === v.when);
-      if (mine && !known) items.push({ v: v.when, l: v.when.startsWith("y:") ? v.when.slice(2) : `${MONTHS[+v.when.slice(7) - 1]} ${v.when.slice(2, 6)}` });   // a month beyond the list
+      if (mine && !items.some(i => i.v === v.when)) items.push(opt(v.when, whenName(v.when)));   // a month beyond the list
       add("when", "When", items, mine ? v.when : "any", !!mine);
     }
     if (cfg.app) {
-      const n = {}; all.forEach(r => { if (r.app) n[r.app] = (n[r.app] || 0) + 1; });
-      const apps = Object.keys(n).sort((a, b) => n[b] - n[a] || a.localeCompare(b)).slice(0, 40);
-      const cur = apps.includes(v.app) ? v.app : "any";
-      add("app", "Where it went", [{ v: "any", l: "Any app" }, ...apps.map(a => ({ v: a, l: `${a} · ${n[a].toLocaleString()}` }))], cur, cur !== "any");
+      const cnt = {}; all.forEach(r => { if (r.app) cnt[r.app] = (cnt[r.app] || 0) + 1; });
+      const apps = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b)).slice(0, 40);
+      const cur = apps.includes(v.app) ? v.app : "any", here = {}; if (fc) fc.app.forEach(r => { here[r.app] = (here[r.app] || 0) + 1; });
+      const opt = (val, text, c) => ({ v: val, l: lab(text, c), z: c === 0 });
+      add("app", "Where it went", [opt("any", "Any app", fc ? fc.app.length : null), ...apps.map(a => opt(a, a, fc ? here[a] || 0 : cnt[a]))], cur, cur !== "any");
     }
     if (cfg.review) {                                                        // Fix / Always fix / Not a mistake, from AI review
-      const c = k => all.filter(REVIEW[k]).length, cur = REVIEW[v.review] ? v.review : "any";
-      add("review", "Mistake review", [{ v: "any", l: "Any review state" }, { v: "open", l: `Has suggestions · ${c("open")}` }, { v: "fix", l: `Fixed · ${c("fix")}` },
-        { v: "always", l: `Always fix · ${c("always")}` }, { v: "dismiss", l: `Not a mistake · ${c("dismiss")}` }], cur, cur !== "any");
+      const cur = REVIEW[v.review] ? v.review : "any", opt = (val, text) => { const c = val === "any" ? fc.review.length : fc.review.filter(REVIEW[val]).length; return { v: val, l: lab(text, c), z: c === 0 }; };
+      add("review", "Mistake review", [opt("any", "Any review state"), ...Object.keys(REVIEW_NAMES).map(k => opt(k, REVIEW_NAMES[k]))], cur, cur !== "any");
     }
-    if (cfg.groups) { const shown = v.group === "date" && !groupFor(p) ? "none" : v.group; add("group", "Group", cfg.groups.map(([a, b]) => ({ v: a, l: b })), shown, false); }
+    if (cfg.groups) { const shownGroup = v.group === "date" && !groupFor(p) ? "none" : v.group; add("group", "Group", cfg.groups.map(([a, b]) => ({ v: a, l: b })), shownGroup, false); }
     add("sort", "Sort", (Q(p) ? [["match", "Best match"]] : []).concat(cfg.sorts).map(([a, b]) => ({ v: a, l: b })), effSort(p), false);
     bar._defs = defs;
     const html = Object.entries(defs).map(([k, d]) => `<button class="vm${d.on ? " on" : ""}" data-k="${k}" aria-haspopup="menu" aria-label="${d.title}: ${esc(d.text)}">${esc(d.text)}</button>`).join("");
-    const chipsHtml = filters.map(([val, label, tip]) => `<button class="chip" aria-pressed="${f === val}" data-f="${val}"${tip ? ` data-tt="${esc(tip)}"` : ""}>${label}</button>`).join("");
+    const chipsHtml = filters.map(([val, label, tip]) => { const c = val === "all" || !fc ? null : fc.chip.filter(FILTER_TEST[val]).length;
+      return `<button class="chip${c === 0 ? " zero" : ""}" aria-pressed="${f === val}" data-f="${val}"${tip ? ` data-tt="${esc(tip)}"` : ""}>${lab(label, c)}</button>`; }).join("");
     const chips = bar.querySelector(".chips"), tools = bar.querySelector(".tools");
     if (chips.innerHTML !== chipsHtml) chips.innerHTML = chipsHtml;
     if (tools.innerHTML !== html) tools.innerHTML = html;
     chips.querySelectorAll(".chip").forEach(b => b.onclick = () => setView(p, { filter: b.dataset.f }));
     tools.querySelectorAll(".vm").forEach(b => b.onclick = () => openViewMenu(b, p, b.dataset.k));
-    bar.querySelector(".vcount").innerHTML = active ? `${shown.toLocaleString()} of ${all.length.toLocaleString()} <button class="lnk" data-clear="${p}">Clear</button>` : "";
+    bar.querySelector(".vcount").innerHTML = active
+      ? `<b>${shown.toLocaleString()}</b><span>of ${all.length.toLocaleString()}</span><span class="why">· ${esc(parts.join(" · "))}</span><button class="lnk" data-clear="${p}">Clear</button>` : "";
   }
   function openViewMenu(btn, p, key) {
     const d = document.querySelector(`.qbar[data-for="${p}"]`)._defs[key], r = btn.getBoundingClientRect();
     const m = popup(`<div class="mh">${esc(d.title)}</div>` + d.items.map(i => i.h ? `<div class="mh sub">${esc(i.h)}</div>`
-      : `<button data-v="${esc(i.v)}" role="menuitemradio" aria-checked="${i.v === d.cur}" class="${i.v === d.cur ? "cur" : ""}"><b>${esc(i.l)}</b></button>`).join(""), r.left, r.bottom + 4);
+      : `<button data-v="${esc(i.v)}" role="menuitemradio" aria-checked="${i.v === d.cur}" class="${i.v === d.cur ? "cur" : ""}${i.z ? " zero" : ""}"><b>${esc(i.l)}</b></button>`).join(""), r.left, r.bottom + 4);
     m.classList.add("vmenu");
     m.querySelectorAll("button[data-v]").forEach(b => b.onclick = () => {
       m.remove();
@@ -1365,6 +1402,9 @@
     (m.querySelector(".cur") || m.querySelector("button")).focus();
     m.querySelector(".cur")?.scrollIntoView({ block: "nearest" });
   }
+  // "Nothing matches Starred + Claude + Today." names every filter that is on, so an empty list is never a mystery.
+  const noneText = (qr, fallback) => qr.parts.length > 1 ? `No note is all of these: ${esc(qr.parts.join(" + "))}.` : qr.parts.length === 1 && qr.parts[0].startsWith("“")
+    ? `Nothing contains all of ${esc(qr.parts[0])}.` : fallback;
   const noMatch = (p, what) => `<div class="empty"><h3>Nothing matches</h3>${what}
     <p style="margin-top:12px"><button class="btn ghost" data-clear="${p}">Clear search and filters</button></p></div>`;
   document.addEventListener("click", e => {
@@ -1413,6 +1453,7 @@
     if (SEARCH[t]) $("#q").setAttribute("aria-label", SEARCH[t]);
     box.dataset.tt = "Every word, in any order. Put “quotes” around words that must stay together.";
     limits = {};
+    if (t !== "settings") { capPending = null; $("#cap-warn-slot").innerHTML = ""; }
     if (VIEWS[t] && S.history && S.history.length) draw();                                  // this page's toolbar and counts
     if (t === "insights") drawInsights();
     $("#scroll").scrollTop = 0;
@@ -1648,17 +1689,28 @@
     // How many plain dictations to keep. Choosing fewer than you have asks first: the oldest would go on your next dictation.
     const plainNow = S.history.filter(r => !(r.star || r.todo || (r.kind || "dictation") !== "dictation")).length;
     const cap = S.prefs.history_cap ?? 500, saveOn = S.prefs.keep_history !== false, capEl = $("#set-history_cap");
-    seg("#set-history_cap", { n500: "Newest 500", n5000: "Newest 5,000", n0: "Everything" }, "n" + cap, v => {
+    // A smaller limit than you have waits for your answer in a banner. The banner exists only while a choice is waiting
+    // (never a hidden row: the Settings page un-hides every row when you switch sections, 24 Oct), and it is dropped
+    // when you leave the section.
+    seg("#set-history_cap", { n500: "Newest 500", n5000: "Newest 5,000", n0: "Everything" }, "n" + (capPending ?? cap), v => {
       const n = +v.slice(1);
-      if (n && plainNow > n) { $("#cap-warn-t").textContent = `${(plainNow - n).toLocaleString()} older dictations would be deleted the next time you dictate.`; $("#cap-warn").hidden = false; capEl.dataset.pending = n; }
-      else { $("#cap-warn").hidden = true; send({ action: "pref", key: "history_cap", value: n }); }
+      if (n && plainNow > n) capPending = n;
+      else { capPending = null; send({ action: "pref", key: "history_cap", value: n }); }
+      draw();
     });
     capEl.querySelectorAll("button").forEach(b => { b.disabled = !saveOn; });
     $("#cap-row").classList.toggle("off", !saveOn);
     $("#cap-why").textContent = !saveOn ? "Turn on “Save my dictations” first."
       : `${plainNow.toLocaleString()} kept now. Once the limit is reached the oldest plain dictations are deleted. ` + (cap === 0 ? "Everything stays on this Mac, so search reaches back as far as you have used indite." : "Choose Everything to search years of dictations.");
-    $("#cap-no").onclick = () => { $("#cap-warn").hidden = true; delete capEl.dataset.pending; };
-    $("#cap-yes").onclick = () => { $("#cap-warn").hidden = true; send({ action: "pref", key: "history_cap", value: +capEl.dataset.pending }); delete capEl.dataset.pending; };
+    const slot = $("#cap-warn-slot");
+    slot.innerHTML = capPending === null || !(capPending && plainNow > capPending) ? "" : `<div class="capwarn"><div class="banner" style="margin:0">
+        <div><b>${(plainNow - capPending).toLocaleString()} older dictations would be deleted the next time you dictate.</b>
+          <p>This can’t be undone. Starred notes, to-dos, meetings and files stay.</p></div>
+        <button class="btn ghost" id="cap-no">Keep them</button><button class="btn ghost danger" id="cap-yes">Delete them</button></div></div>`;
+    if (slot.innerHTML) {
+      $("#cap-no").onclick = () => { capPending = null; draw(); };
+      $("#cap-yes").onclick = () => { const n = capPending; capPending = null; send({ action: "pref", key: "history_cap", value: n }); draw(); };
+    } else capPending = null;
     const plainN = S.history.filter(r => !(r.star || r.todo || (r.kind || "dictation") !== "dictation")).length;
     $("#count-line").textContent = plainN ? `${plainN} plain dictation${plainN > 1 ? "s" : ""}. Starred, to-do, files and meetings are kept.`
       : "Nothing to clear.";
@@ -1690,9 +1742,9 @@
     // one search box, moved to the list page you are on (critic: no second box): titles, text and speaker lines
     const listPage = (p, kind, el, empty) => {
       const all = S.history.filter(r => r.kind === kind), filters = [["all", "All"], ["star", "Starred"], ["ai", "With AI"]];
-      const { rows, f, active } = query(p, all, filters, r => r.seconds || 0, r => r.title || r.text || "");
-      drawTools(p, filters, rows.length, all, active);
-      if (!rows.length) { el.innerHTML = all.length ? noMatch(p, Q(p) ? `Nothing in your ${p} contains all of “${esc(Q(p))}”.` : "Nothing matches these filters.") : empty; HL = []; return; }
+      const qr = query(p, all, filters, r => r.seconds || 0, r => r.title || r.text || ""), rows = qr.rows;
+      drawTools(p, filters, all, qr);
+      if (!rows.length) { el.innerHTML = all.length ? noMatch(p, noneText(qr, "Nothing matches these filters.")) : empty; HL = []; return; }
       if (el.querySelector(".editor, .fixer")) return;                        // never redraw over text you are typing
       drawRows(el, rows, rowHtml, groupFor(p));
       HL = [];
@@ -1728,13 +1780,11 @@
 
   function drawList() {
     const all = S.history.filter(r => (r.kind || "dictation") === "dictation" || r.kind === "combined");
-    const dic = all.filter(r => r.audio), left = dic.filter(r => !r.said).length;
-    const count = t => all.filter(FILTER_TEST[t]).length;
-    const filters = [["all", "All"], ["star", "Starred"], ["ai", "With AI"], ["todo", `To do · ${count("todo")}`, "Dictations on your To do list"],
-      ["copied", `Copied · ${count("copied")}`, "No text box was focused, so the words went to the clipboard"],
-      ...(S.prefs.speech_test ? [["check", `To check · ${left}`, `${left} left, ${dic.length - left} done`]] : [])];
-    const { rows, f, active } = query("home", all, filters, words, r => r.text);
-    drawTools("home", filters, rows.length, all, active);
+    const filters = [["all", "All"], ["star", "Starred"], ["ai", "With AI"], ["todo", "To do", "Dictations on your To do list"],
+      ["copied", "Copied", "No text box was focused, so the words went to the clipboard"],
+      ...(S.prefs.speech_test ? [["check", "To check", "Dictations with a kept recording that you have not checked yet"]] : [])];
+    const qr = query("home", all, filters, words, r => r.text), rows = qr.rows, f = qr.f;
+    drawTools("home", filters, all, qr);
 
     if (!S.history.some(r => (r.kind || "dictation") === "dictation")) {
       $("#list").innerHTML = `<div class="empty">
@@ -1750,13 +1800,12 @@
     }
     if (!rows.length) {
       HL = [];
-      $("#list").innerHTML = noMatch("home", Q("home") ? `Nothing you said contains all of “${esc(Q("home"))}”.`
-        : f === "ai" ? "No dictation has AI answers yet. Open one with “…” → Ask AI."
+      $("#list").innerHTML = noMatch("home", noneText(qr, f === "ai" ? "No dictation has AI answers yet. Open one with “…” → Ask AI."
         : f === "check" ? "Every dictation with its audio kept is checked."
         : f === "todo" ? "Nothing here is on your To do list. “…” → Add to To do."
         : f === "copied" ? "Every dictation was typed where you were. Nothing went only to the clipboard."
         : f === "star" ? "Star a dictation (“…” → Star) to keep it here, and in every backup."
-        : "Nothing matches these filters.");
+        : "Nothing matches these filters."));
       return;
     }
     if ($("#list").querySelector(".editor, .fixer")) return;                  // never redraw over text you are typing
@@ -2404,8 +2453,8 @@
   function drawTodo() {
     const all = S.history.filter(r => r.todo === "open" || r.todo === "done"), nOpen = all.filter(r => r.todo === "open").length;
     const filters = [["all", "All"], ["open", `Open · ${nOpen}`], ["done", `Done · ${all.length - nOpen}`]];
-    const { rows, active } = query("todo", all, filters, () => 0, r => r.title || r.text);
-    drawTools("todo", filters, rows.length, all, active);
+    const qr = query("todo", all, filters, () => 0, r => r.title || r.text), rows = qr.rows;
+    drawTools("todo", filters, all, qr);
     const el = $("#todo-list");
     if (!all.length) {
       HL = [];
@@ -2414,7 +2463,7 @@
       return;
     }
     if (el.querySelector(".editor, .fixer")) return;           // never redraw over a box you are typing in
-    if (!rows.length) { HL = []; el.innerHTML = noMatch("todo", Q("todo") ? `No to-do contains all of “${esc(Q("todo"))}”.` : "Nothing is in that state."); return; }
+    if (!rows.length) { HL = []; el.innerHTML = noMatch("todo", noneText(qr, "Nothing is in that state.")); return; }
     const open = rows.filter(r => r.todo === "open"), done = rows.filter(r => r.todo === "done"), lim = limits["todo-list"] || PAGE;
     let html = open.slice(0, lim).map(r => rowHtml(r, true)).join("");
     const doneRoom = lim - open.length;
@@ -2488,6 +2537,7 @@
 
   // ---- Settings: a short list of sections on the left, and a finder that searches every row's words ----------
   function sgo(g) {
+    capPending = null; $("#cap-warn-slot").innerHTML = "";
     $("#sq").value = "";
     document.querySelectorAll(".snav button").forEach(b => b.setAttribute("aria-current", b.dataset.g === g));
     document.querySelectorAll(".sgroup").forEach(x => { x.hidden = x.dataset.g !== g; x.querySelectorAll(".item").forEach(i => i.hidden = false); });
@@ -2705,7 +2755,7 @@
     const list = S.fixes_list || [], v = view("dict"), ts = terms(Q("dict")), sort = effSort("dict");     // file order: newest last
     const rows = list.map((f, i) => ({ f, i })).filter(({ f }) => ts.every(t => fold(`${f[0]} ${f[1]}`).includes(t)));
     rows.sort({ match: (a, b) => b.i - a.i, az: byName(x => x.f[0]), meant: byName(x => x.f[1]), new: (a, b) => b.i - a.i, old: (a, b) => a.i - b.i }[sort]);
-    drawTools("dict", [], rows.length, list.map(() => ({ at: 0 })), !!ts.length);
+    drawTools("dict", [], list, { rows, f: "all", fc: null, parts: ts.length ? [`“${Q("dict")}”`] : [], active: !!ts.length });
     HL = ts;
     const letter = x => (x.f[sort === "meant" ? 1 : 0][0] || "#").toUpperCase();
     const lettered = (sort === "az" || sort === "meant") && list.length > 30;                       // A, B, C… headings in a long list

@@ -159,7 +159,14 @@ def junk(text: str, seconds: float) -> bool:
     Real short words - "OK", "No", "Haan" - are kept.
     """
     t = text.strip(" .,!?")
-    return seconds < 1.0 and (len(t) <= 1 or bool(re.fullmatch(r"(\w)\1{2,}", t, re.I)))
+    if re.fullmatch(r"(\w)\1{2,}", t, re.I):             # "KKK": one letter repeated is never what someone said, however long (24 Oct:
+        return True                                      # two seconds of silence became a saved note reading KKK)
+    return seconds < 1.0 and len(t) <= 1
+
+
+def silent(audio) -> bool:
+    """Nothing but silence (or a muted microphone): the engine would invent words for it, so it is never asked."""
+    return audio is None or len(audio) == 0 or float(np.abs(audio).max()) < 0.005
 
 
 def signature_broken() -> str:
@@ -1430,7 +1437,7 @@ class InditeApp(rumps.App):
         t0 = time.time()
         where, where_pid = front_app(), front_pid()              # asked before anything is typed, so the history says which app it went to
         try:
-            heard = self.engine.transcribe(audio)
+            heard = "" if silent(audio) else self.engine.transcribe(audio)
             text = self.tidy(heard)
             if junk(text, len(audio) / RATE):
                 text = ""
@@ -2183,6 +2190,8 @@ if __name__ == "__main__":
         import overlay
         assert overlay.button_look(False, False) == 0 < overlay.button_look(True, False) < overlay.button_look(True, True)   # rest < hover < pressed
         assert overlay.button_look(False, True) == 0               # a press elsewhere does not tint this button
+        assert silent(np.zeros(32000, dtype="float32")) and silent(np.full(32000, 0.001, dtype="float32")) and not silent(np.full(32000, 0.05, dtype="float32"))
+        assert junk("KKK", 2.0) and junk("mmm", 5.0) and junk("R.", 0.4) and not junk("OK", 0.5) and not junk("Haan", 0.6) and not junk("kk kk", 2.0)   # silence is never a note
         assert card_mode(False, True, True) is False and card_mode(True, True, True) is True   # not saved: no buttons
         assert card_mode(True, False, True) == "todo" and card_mode(True, True, False) == "todo"   # AI off or card AI off: To do only
         assert utf16_chunks("", 20) == []
