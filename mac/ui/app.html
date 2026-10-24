@@ -777,10 +777,9 @@
               </div>
               <div class="item">
                 <div class="body"><b>Pill transparency</b><p>100% is clear glass; lower adds a tint behind the text.
-                  The pill shows for a moment as you change it.</p></div>
-                <div class="stepper"><button class="btn ghost" id="pc-minus" aria-label="Less transparent">−</button>
+                  The pill shows for a moment as you change it. Arrow keys adjust in 10% steps.</p></div>
+                <div class="stepper">
                   <input type="range" class="slide" id="set-pill_clear" min="0" max="100" step="10" aria-label="Pill transparency">
-                  <button class="btn ghost" id="pc-plus" aria-label="More transparent">+</button>
                   <b class="num" id="pc-val"></b></div>
               </div>
               <div class="item">
@@ -860,7 +859,9 @@
               </div>
               <div class="item aiopt" id="ai-model-row">
                 <div class="body"><b>Model</b><p id="ai-model-why"></p></div>
-                <input class="pick" id="set-ai_model" spellcheck="false" aria-label="Model">
+                <select class="pick" id="set-ai_model" aria-label="Model"></select>
+                <input class="pick wide" id="set-ai_model_custom" spellcheck="false" aria-label="Custom model id"
+                       placeholder="Model id (e.g. anthropic/claude-haiku-5-5)" hidden style="margin-top:8px">
               </div>
               <div class="item">
                 <div class="aiwhat">
@@ -1295,9 +1296,7 @@
     gl.value = S.prefs.pill_clear ?? 60;
     $("#pc-val").textContent = gl.value + "%";
     gl.oninput = () => { $("#pc-val").textContent = gl.value + "%"; };
-    gl.onchange = () => pc(+gl.value);
-    $("#pc-minus").onclick = () => pc(+gl.value - 10);
-    $("#pc-plus").onclick = () => pc(+gl.value + 10);
+    gl.onchange = () => pc(+gl.value);                              // ± buttons removed 24 Oct (R6) — slider arrows cover it
     const mics = S.mics || [], pickMic = $("#set-mic");
     const chosen = S.prefs.mic || "";
     pickMic.innerHTML = `<option value="">Automatic</option>` + [...new Set([...mics, ...(chosen ? [chosen] : [])])]
@@ -2068,7 +2067,15 @@
 
   // ---- AI settings ----------------------------------------------------------------------------------------
   $("#set-ai_provider").onchange = e => send({ action: "pref", key: "ai_provider", value: e.target.value });
-  $("#set-ai_model").onchange = e => send({ action: "pref", key: "ai_model", value: e.target.value.trim() });
+  // Theme pass commit 6 (24 Oct): model is a <select> with known ids per provider + "Custom…". KNOWN_MODELS is
+  // defined inside drawAI() so it isn't hit by TDZ during the initial draw(); mirrors mac/cost.py RATES keys.
+  $("#set-ai_model").onchange = e => {
+    const v = e.target.value;
+    if (v === "__custom__") { $("#set-ai_model_custom").hidden = false; $("#set-ai_model_custom").focus(); return; }
+    $("#set-ai_model_custom").hidden = true;
+    send({ action: "pref", key: "ai_model", value: v });
+  };
+  $("#set-ai_model_custom").onchange = e => send({ action: "pref", key: "ai_model", value: e.target.value.trim() });
   $("#ai-login").onclick = () => { send({ action: "ai_login" }); toast("A Terminal window opened. Sign in there, then come back."); };
   $("#ai-key-save").onclick = () => { const k = $("#ai-key").value.trim(); if (!k) return;
     send({ action: "ai_key", provider: S.prefs.ai_provider, key: k }); $("#ai-key").value = ""; toast("Key saved in your Keychain"); };
@@ -2091,9 +2098,24 @@
     const has = (S.ai_keys || {})[prov];
     $("#ai-key-why").textContent = has ? "A key is saved in your Mac’s Keychain. Paste a new one to replace it."
       : "Paste your key. It is kept in your Mac’s Keychain, never in a file.";
-    $("#set-ai_model").value = S.prefs.ai_model || "";
-    $("#set-ai_model").placeholder = (S.ai_models || {})[prov] || "";
-    $("#ai-model-why").textContent = "Leave empty for the default shown.";
+    // Populate the model <select> from KNOWN_MODELS[provider]; default to the provider's default; add "Custom…"
+    // so a model id we don't ship with is still reachable. The custom text input appears only when "Custom…" is picked.
+    const KNOWN_MODELS = {
+      anthropic: ["claude-haiku-5-5", "claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5", "claude-opus-4-7", "claude-fable-5"],
+      openai: ["gpt-4.1-mini", "gpt-4o-mini", "gpt-5"],
+      openrouter: ["openrouter/auto", "anthropic/claude-haiku-5-5", "openai/gpt-4.1-mini"],
+    };
+    const def = (S.ai_models || {})[prov] || "";
+    const current = S.prefs.ai_model || def;
+    const known = KNOWN_MODELS[prov] || [];
+    const usingCustom = current && !known.includes(current);
+    $("#set-ai_model").innerHTML = known.map(m => `<option value="${esc(m)}"${m === current ? " selected" : ""}>${esc(m)}${m === def ? " (default)" : ""}</option>`).join("")
+      + `<option value="__custom__"${usingCustom ? " selected" : ""}>Custom…</option>`;
+    $("#set-ai_model_custom").value = usingCustom ? current : "";
+    $("#set-ai_model_custom").hidden = !usingCustom;
+    $("#ai-model-why").textContent = usingCustom
+      ? "A model id this app doesn't ship with. Cost may not be estimated — see Insights."
+      : "Default is a fast, inexpensive model. Pick a different one for different trade-offs.";
   }
 
   // ---- Insights: like Wispr Flow's "Your usage", computed here from the saved notes ------------------------
