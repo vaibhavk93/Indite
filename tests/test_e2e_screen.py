@@ -309,3 +309,50 @@ def test_dark_theme_every_page_has_a_dark_background_and_readable_text():
 
     for p, (bg, fg) in r["out"].items():
         assert lum(bg) < 80 and lum(fg) > 120, (p, bg, fg)                                      # dark paper, light ink
+
+
+# ------------------------------------------------------------------------------------- Insights numbers
+def test_insights_numbers_match_the_notes():
+    words = lambda n: " ".join(["w"] * n)  # noqa: E731
+    rows = [note(i, words(10), ago=60) for i in range(3)] + [note(10 + i, words(20), ago=3 * DAY) for i in range(2)] + [note(20, words(5), ago=20 * DAY),
+            meeting(30, "A meeting", [("You", words(50))])]                       # a meeting is not a dictation
+    r = run(rows, "go('insights');R.tiles=[...document.querySelectorAll('#ins .kpi')].map(k=>[k.querySelector('.n').textContent.trim(),k.querySelector('.l').textContent.trim()]);"
+                  "R.streak=document.querySelector('#ins .ibox h3 span')?.textContent;R.visible=vis(document.querySelector('#pane-insights'));")
+    assert r["err"] == [] and r.get("fatal") is None and r["visible"]
+    tiles = dict((label, n) for n, label in r["tiles"])
+    assert tiles["words dictated"] == "75" and tiles["words this week"] == "70"         # 3×10 + 2×20 + 5, and the last 7 days
+    assert tiles["dictations today"] == "3" and tiles["words in a typical dictation"] == "10"
+    empty = run([], "go('insights');R.text=document.querySelector('#ins').innerText.replace(/\\s+/g,' ').trim();")
+    assert "Nothing to show yet" in empty["text"]                                        # no rows of zeros on a fresh install
+
+
+# ------------------------------------------------------------------------------------- scrolling and the keyboard
+def test_scrolling_to_the_bottom_loads_the_next_rows_by_itself():
+    rows = [note(i, f"row {i}", ago=i * 60) for i in range(400)]
+    r = run(rows, JS + """
+      R.first=visibleRows('home');const sc=$('#scroll');sc.scrollTop=sc.scrollHeight;
+      setTimeout(()=>{sc.scrollTop=sc.scrollHeight},400);
+      setTimeout(()=>{R.after=visibleRows('home');R.left=document.querySelector('#list .more-rows')?.textContent||null;R.err=window.__err||[];document.title=JSON.stringify(R)},1500);""")
+    assert r["first"] == 100 and r["after"] > 100, r                        # reaching the end loads more without a click
+    assert r["err"] == []
+
+
+def test_keyboard_shortcuts_search_find_escape_and_settings():
+    lines = [("You", f"filler {k}") for k in range(20)] + [("Priya", "the pricing proposal")]
+    m = meeting(0, "Call", lines)
+    r = run([note(1, "budget"), m], JS + """
+      const key=(k,o={})=>document.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true,...o}));
+      key('f',{metaKey:true});R.cmdF=document.activeElement.id;
+      $('#q').value='budget';searched();$('#q').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));R.escClears=[$('#q').value,visibleRows('home')];
+      go('insights');key('f',{metaKey:true});R.cmdFFromInsights=[document.activeElement.id,$('#pane-home').hidden===false];
+      key(',',{metaKey:true});R.cmdComma=[$('#pane-settings').hidden===false,document.activeElement.id];
+      go('meetings');openDrawer(S.history.find(r=>r.kind==='meeting').id,'listen');key('f',{metaKey:true});R.cmdFInListen=document.activeElement.id;
+      const q=$('#pfq');q.value='pricing';q.dispatchEvent(new Event('input'));q.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));R.enterStays=$('#pfc').textContent;
+      q.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));R.escFind=[q.value,$('#pfc').textContent,!!$('#drawer')&&vis($('#drawer'))];""")
+    assert r["err"] == [] and r.get("fatal") is None, r
+    assert r["cmdF"] == "q"                                                  # ⌘F goes to the search box
+    assert r["escClears"] == ["", 1]                                         # Esc clears the search and the list is whole again
+    assert r["cmdFFromInsights"] == ["q", True]                              # from a page with no list it opens Dictations first
+    assert r["cmdComma"] == [True, "sq"]                                     # ⌘, opens Settings with the find box ready
+    assert r["cmdFInListen"] == "pfq"                                        # inside Listen, ⌘F finds in the transcript
+    assert r["enterStays"] == "1 of 1 line" and r["escFind"][0] == "" and r["escFind"][1] == "" and r["escFind"][2]   # Esc clears the find, not the panel

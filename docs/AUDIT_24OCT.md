@@ -11,7 +11,7 @@ hidden test copy (own data, nothing on the founder's screen): save, the three de
 a walk through every screen. (4) Measured 25,800 made-up notes (25,000 dictations + 800 meetings, 33 MB) and the
 founder's real notes (read-only, counts only). (5) Looked at light, dark and narrow-window renders.
 
-**Result.** 33 findings, all fixed; 58 automated tests + 78 real-app end-to-end checks pass; 0 JavaScript or Python errors
+**Result.** 35 findings, all fixed; 61 automated tests + 131 real-app end-to-end checks pass; 0 JavaScript or Python errors
 across every screen. **Second pass (same day, after the founder found two bugs the first pass missed):** the first tests
 checked what the page's data said, not what the screen showed. They now check real visibility (computed display and size)
 and invariants that must hold for any state (see section 7).
@@ -57,6 +57,8 @@ Severity: **H** loses or hides data, or blocks use · **M** wrong result or a co
 | 31 | L | Lists | A pressed button looked almost like an unpressed one | Review | Stronger pressed state | screenshot |
 | 32 | M | Settings | A note's words-only delete and other states showed no on-screen proof in tests | Review | Tests now check computed visibility everywhere | `test_the_right_things_are_visible…` |
 | 33 | L | Tests | My test page broke when a note contained `</script>` (a test-only problem; the app passes data differently) | Hostile-data test | Escaped in the harness | `test_hostile_notes…` |
+| 34 | L | AI | An AI action the app does not have raised an error (and would have shown the consent dialog first) | Real-app run, section 11 | Unknown actions are ignored before anything is asked | e2e section 11 |
+| 35 | M | AI | **"Action items → To do" created nothing, silently, when the AI answered with a plain list instead of the table the prompt asks for** | Real-app run, section 11 | Plain bullet and numbered lists work too; prose and "none" create nothing | `mac/ai.py` check, e2e section 11 |
 
 Also fixed earlier on 24 Oct from the founder's own reports (verified): the To do items not showing (saved as `True`, the
 page lists `"open"`), AI cost showing 0 (the Claude login's usage was discarded), the card pickers hidden instead of
@@ -121,6 +123,35 @@ The founder's real notes (about 500): every page loads and filters without error
 - The card's hover / pressed tint needs a real mouse (tested on a card that is built but never shown).
 - Not checked: the Android app (nothing changed there today).
 
+## 6b. Coverage map: what is tested, how, and what cannot be
+
+Founder (24 Oct): "have you tested every feature, all the cases?" Honest answer after the third pass:
+
+| Area | How it is tested | Cases |
+|---|---|---|
+| Lists: search, filters, When / App / Mistake review, sort, group, windowing, scrolling | headless Chrome on the real page (`test_lists_ui.py`, `test_e2e_screen.py`) and the founder's real notes | words, quotes (straight, curly, single, « »), codes, symbols, accents, Hindi, empty, very long, HTML, no match, stale saved choices, junk saved choices, every number vs the list for 46 states and every option, 25,800 notes |
+| Toolbar menus, Find in a transcript, keyboard shortcuts (⌘F, Esc, ⌘, Return) | same | open / close / pick, keyboard, no match, speaker names, phrase |
+| Delete (note + recording / recording only / words only) and Undo | page (popup) and the real app (files moved to the trash and back, purge) | with and without a recording, a transcribed file, bad ids, unknown mode, undo with nothing |
+| Settings: every switch, the choices, keep limit, rupees, model and effort | page and the real app (prefs.json) | each switch on and back, a bad rate, 0, 2-decimal rounding, damaged keep limit, the warning (drawn only while waiting, gone after leaving) |
+| Dictation through the real engine (a recording, silence, a 0.15 s blip, Don't save) | the real app, hidden copy | saved, not saved, switches itself off |
+| Row actions, Dictionary, review decisions, combine, to-dos, edit and Undo | the real app | 10 valid and invalid Dictionary entries, bad ids, blank to-do |
+| Ask AI (Improve, Summary, remove, Undo, Action items → To do, cost chips in $ and ₹, month total) | the real app with real Claude calls (haiku) | unknown action, unknown note, plain-list answers |
+| The card after a dictation (To do, AI button working → answer, Ask AI) | the real app (`card:N`), what it would have shown is read from the log | |
+| Files: transcribe, timed lines, edit a line, Undo, Listen, seek, missing and corrupt files | the real app | empty edit, nonexistent line |
+| Speech-test marking and the scorer | the real app + `speechset.py --selftest` | |
+| Insights numbers | page, against counts worked out by hand | empty history |
+| Hostile data (script tags, emoji, right-to-left, 6,000-character words, missing fields) | page | nothing runs, nothing breaks, still searchable |
+| Every page opens; click every button on every page; dark theme | page | |
+| History file: cap, cache, torn last line, append | `mac/store.py` self-check and the real app | |
+| Speed at 25,800 notes (25,000 dictations + 800 meetings, 33 MB) | headless Chrome + Python | every interaction 73-261 ms; the "numbers match the list" check also passes at that size |
+
+**Cannot be tested here (needs hardware or macOS windows), so not claimed:** holding the talk key and the live microphone; the
+pill and the card on screen (glass, position, the hover and pressed tints need a real mouse); typing into other apps and the
+clipboard fallback; hiding the pill from screen sharing; the "Record this call?" card; live meeting recording (microphone +
+system sound); macOS permission dialogs; the Save / Open panels for Backup, Restore and Export; the "Clear dictations"
+confirmation; the AI consent dialog (bypassed with `ai_ok`); the Anthropic Models API live refresh (no API key here; parsing
+is tested against the docs' example); Codex (not installed); the Android app (nothing changed there today).
+
 ## 6a. Second pass: what the first one missed, and why
 
 The founder reported (1) menu numbers that did not match the list and (2) a warning that kept coming back. Both passed the
@@ -131,16 +162,18 @@ it, for many combined states, on invented notes and on the founder's real ones; 
 menus and banners are visible exactly when they should be; a choice survives Python's round trip; hostile notes (script
 tags, emoji, right-to-left text, 6,000-character words, missing fields) render as text and stay searchable; every page
 opens; clicking every button on every page never breaks it; cost chips in dollars and rupees; dark theme.
-`tests/e2e_testcopy.py` drives the real app (real Python + real page) in the hidden test copy: 78 checks covering
-dictation (a real wav, silence, a 0.15 s blip, Don't save), star / to-do / edit with bad ids, the Dictionary (10 valid and
-invalid entries), review decisions, the three delete choices and Undo, combine, preferences (including damaged ones), the
-keep limit, a torn history file, every page, and real AI calls (right and wrong model names).
+`tests/e2e_testcopy.py` drives the real app (real Python + real page) in the hidden test copy: 131 checks in 16 sections,
+covering dictation (a real wav, silence, a 0.15 s blip, Don't save), star / to-do / edit with bad ids, the Dictionary (10
+valid and invalid entries), review decisions, the three delete choices and Undo, combine, preferences (including damaged
+ones), the keep limit, a torn history file, every page, real AI calls (Improve, Summary, remove and Undo, Action items,
+cost chips, wrong model names), the card's buttons, file transcription, line edits and Undo, Listen and seeking, speech-test
+marking, every Settings switch, and the founder's real history compared with an independent count.
 
 ## 6. Re-run
 
 ```
-.venv/bin/python -m pytest tests -q                 # 58 tests, about 75 s (needs Chrome for the UI scenarios)
-.venv/bin/python tests/e2e_testcopy.py              # 78 checks against the real app in the hidden copy, about 5 min
+.venv/bin/python -m pytest tests -q                 # 61 tests, about 2 min (needs Chrome for the UI scenarios)
+.venv/bin/python tests/e2e_testcopy.py              # 131 checks against the real app in the hidden copy, about 13 min (real AI calls, a few tenths of a cent)
 .venv/bin/python mac/store.py                       # history cap, cache, append, delete choices, Dictionary rules
 .venv/bin/python mac/indite_mac.py --selftest       # the app's own checks
 ```

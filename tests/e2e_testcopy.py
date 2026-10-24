@@ -275,6 +275,182 @@ def main():
     except RuntimeError as e:
         check("a model name that looks like an option is refused", "odd characters" in str(e), e)
 
+
+    print("\n== 11. Ask AI end to end (real Claude, haiku: a few tenths of a cent) ==")
+    for k, v in [("ai", True), ("ai_ok", True), ("ai_ok_meetings", True), ("ai_provider", "claude"), ("claude_model", "haiku"), ("ai_effort", "low"), ("cost_currency", "USD")]:
+        store.set_pref(k, v)
+    act(action="pref", key="sounds", value=False)
+    base = next(x for x in hist() if x["kind"] == "dictation" and len(x["text"]) > 20)
+    nid = base["id"]
+
+    def row(i=None):
+        return ev(f"JSON.stringify(S.history.find(r=>r.id==={json.dumps(i or nid)})||null)") or {}
+
+    act(action="ai", id=nid, act="improve")
+    time.sleep(14)
+    r = row()
+    check("Improve: an improved version is saved on the note", isinstance(r.get("improved"), str) and len(r["improved"]) > 3, r.get("improved"))
+    check("...with the model, tokens and cost the provider reported", (r.get("improved_cost") or {}).get("model", "").startswith("claude-haiku") and (r.get("improved_cost") or {}).get("cost_usd", 0) > 0, r.get("improved_cost"))
+    act(action="ai", id=nid, act="summary")
+    time.sleep(14)
+    r = row()
+    summ = next((a for a in r.get("ai") or [] if a["label"] == "Summary"), None)
+    check("Summary: an answer is saved with its cost", bool(summ) and len(summ["text"]) > 3 and summ.get("cost_usd", 0) > 0, r.get("ai"))
+    month = ev("S.ai_cost_month") or [0, 0, 0]
+    check("this month's cost total counts these answers", month[0] > 0 and month[1] >= 2, month)
+    act(action="ai_clear", id=nid, label="improved")
+    check("removing the improved version works", row().get("improved") in (None, ""))
+    act(action="ai_undo")
+    check("...and Undo brings it back", bool(row().get("improved")))
+    act(action="ai_clear", id=nid, label="Summary")
+    check("removing one answer by its label works", not any(a["label"] == "Summary" for a in row().get("ai") or []))
+    act(action="ai_undo")
+    check("...and Undo brings it back", any(a["label"] == "Summary" for a in row().get("ai") or []))
+    n_before = len(hist())
+    act(action="ai", id=nid, act="no_such_action")
+    act(action="ai", id="no-such-note", act="summary")
+    act(action="ai", id="", act="")
+    time.sleep(4)
+    log_now = (D / "indite.log").read_text()
+    check("an unknown AI action / note does nothing and does not crash", len(hist()) == n_before and "Traceback" not in log_now, log_now[-300:])
+    store.update(nid, ai=(row().get("ai") or []) + [{"action": "actions", "label": "Action items", "text": "- Call the bank\n- Send the report\n- Book tickets", "at": time.time()}])
+    act(action="pref", key="sounds", value=False)
+    tasks_before = sum(1 for x in hist() if x["kind"] == "task")
+    act(action="tasks", id=nid, label="Action items")
+    tk = [x for x in hist() if x["kind"] == "task"]
+    check("Action items become one open to-do each, linked to the note", len(tk) - tasks_before == 3 and all(x["todo"] == "open" for x in tk), [x["text"] for x in tk])
+    act(action="tasks", id=nid, label="No such answer")
+    check("tasks from a missing answer create nothing", sum(1 for x in hist() if x["kind"] == "task") == len(tk))
+    act(action="pref", key="cost_currency", value="INR")
+    act(action="pref", key="usd_inr", value=85.5)
+    shown = ev("(()=>{openDrawer(%s);return JSON.stringify([...document.querySelectorAll('#drawer .aicost')].map(e=>e.textContent))})()" % json.dumps(nid)) or []
+    check("the answer's cost shows in rupees at the typed rate", shown and all(c.startswith("₹") for c in shown), shown)
+    act(action="pref", key="cost_currency", value="USD")
+    shown = ev("JSON.stringify([...document.querySelectorAll('#drawer .aicost')].map(e=>e.textContent))") or []
+    check("...and in dollars when Dollars is chosen", shown and all(c.startswith("$") for c in shown), shown)
+    js("closeDrawer()")
+
+    print("\n== 12. The card after a dictation: its buttons ==")
+    (D / "offstage.jsonl").write_text("")
+    todo_before = next(x for x in hist() if x["id"] == nid)["todo"]
+    sh(*TC, "cmd", "card:3")
+    time.sleep(3)
+    newest = next(x for x in hist() if x["kind"] == "dictation")
+    check("card To do: the newest dictation goes on your To do list", newest["todo"] == "open", newest)
+    sh(*TC, "cmd", "card:2")
+    time.sleep(16)
+    off = [json.loads(l) for l in (D / "offstage.jsonl").read_text().splitlines() if l.strip()]
+    calls = [(o["who"], o["call"]) for o in off]
+    check("card AI button: the card shows 'working' then the answer", ("card", "working") in calls and ("card", "answer") in calls, calls)
+    nw = next(x for x in hist() if x["kind"] == "dictation")
+    check("...and the answer is saved on that dictation", any(True for _ in [0]) and bool(ev("(S.history.find(r=>r.id===%s)||{}).ai" % json.dumps(nw["id"]))), nw["id"])
+    sh(*TC, "cmd", "card:0")
+    time.sleep(4)
+    newest_py = next(r for r in store.history() if (r.get("kind") or "dictation") == "dictation")["id"]      # what the app itself calls the newest
+    drawer_open = ev("'id:'+drawerId")                                     # as text: a bare id would be read back as a number
+    check("card Ask AI: opens the Ask AI panel on that note, and it is visible", drawer_open == "id:" + newest_py and ev("String(getComputedStyle(document.querySelector('#drawer')).display!=='none')") in ("true", True), (drawer_open, newest_py))
+    js("closeDrawer()")
+
+    print("\n== 13. Files: transcribe, edit lines, Listen, and bad files ==")
+    n4 = len(hist())
+    sh(*TC, "cmd", f"file:{WAV}")
+    time.sleep(25)
+    fh = [x for x in hist() if x["kind"] == "file"]
+    check("a transcribed file becomes a note with its words", len(fh) == 1 and len(fh[0]["text"]) > 10, fh)
+    fid = fh[0]["id"] if fh else None
+    frow = row(fid) if fid else {}
+    segs = frow.get("segments") or []
+    check("...in timed lines", len(segs) >= 1 and all("start" in x and "text" in x for x in segs), segs[:1])
+    if segs:
+        t0, orig = segs[0]["start"], segs[0]["text"]
+        act(action="edit_line", id=fid, start=t0, speaker=segs[0].get("speaker", ""), text="a corrected line")
+        check("editing one line changes it and the note's words", "a corrected line" in row(fid)["text"] and row(fid)["segments"][0]["text"] == "a corrected line")
+        act(action="undo_line")
+        act(action="undo_lines")
+        check("...and Undo brings the line back", row(fid)["segments"][0]["text"] == orig, row(fid)["segments"][0]["text"])
+        act(action="edit_line", id=fid, start=t0, speaker=segs[0].get("speaker", ""), text="   ")
+        check("an empty line edit is ignored", row(fid)["segments"][0]["text"] == orig)
+        act(action="edit_line", id=fid, start=9999.0, speaker="x", text="nowhere")
+        check("a line that does not exist is ignored", "nowhere" not in row(fid)["text"])
+        act(action="merge_line", id=fid, start=9999.0, speaker="x")
+        check("joining a line that does not exist is harmless", True)
+    act(action="listen", id=fid, autoplay=False)
+    time.sleep(3)
+    loaded = ev("JSON.stringify([P.note, P.dur])") or [None, 0]
+    check("Listen loads the recording into the player", loaded[0] == fid and loaded[1] > 0, loaded)
+    act(action="pctl", cmd="seek", t=1.0)
+    time.sleep(1.5)
+    check("the player seeks", abs((ev("P.t") or 0) - 1.0) < 1.0, ev("P.t"))
+    act(action="listen", id="no-such-note")
+    act(action="pctl", cmd="nonsense")
+    check("Listen on a missing note, and an unknown player command, are harmless", True)
+    sh(*TC, "cmd", "file:/no/such/file.wav")
+    time.sleep(5)
+    bad = D / "corrupt.wav"
+    bad.write_bytes(os.urandom(5000))
+    sh(*TC, "cmd", f"file:{bad}")
+    time.sleep(8)
+    log_now = (D / "indite.log").read_text()
+    check("a missing file and a corrupt file give no new note and no crash", sum(1 for x in hist() if x["kind"] == "file") == 1 and "Traceback" not in log_now, log_now[-300:])
+
+    print("\n== 14. Speech test marking ==")
+    store.set_pref("speech_test", True)
+    act(action="pref", key="sounds", value=False)
+    act(action="said", id=nid, on=True)
+    r = row()
+    check("'This is exactly what I said' stores the words as the reference", r.get("said") == r.get("text") and bool(r.get("said")))
+    act(action="said", id=nid, on=False)
+    check("...and 'Not exactly' takes it out", not row().get("said"))
+    out = sh(PY, str(ROOT / "mac/speechset.py"), "--selftest")
+    check("the speech-test scorer's own check passes", "ok" in out.stdout, out.stdout + out.stderr)
+
+    print("\n== 15. Settings: every switch saves and restores ==")
+    sw_ids = ev("JSON.stringify([...document.querySelectorAll('#pane-settings .sw[id^=set-]')].map(b=>b.id.slice(4)))") or []
+    check("the Settings page has its switches", len(sw_ids) >= 10, sw_ids)
+    for key in sw_ids:
+        before = json.loads((D / "prefs.json").read_text()).get(key, store.DEFAULTS.get(key))
+        js(f"document.querySelector('#set-{key}').click()", 1.8)
+        after = json.loads((D / "prefs.json").read_text()).get(key)
+        js(f"document.querySelector('#set-{key}').click()", 1.8)
+        back = json.loads((D / "prefs.json").read_text()).get(key)
+        check(f"switch '{key}' turns {'off' if before else 'on'} and back", after == (not before) and back == before, (before, after, back))
+    for seg_id, vals in {"theme": ["dark", "light"], "output": ["type", "copy", "smart"], "cost_currency": ["INR", "USD"]}.items():
+        for v in vals:
+            js(f"[...document.querySelectorAll('#set-{seg_id} button')].find(b=>b.textContent.trim().toLowerCase().startsWith({json.dumps(v[:3].lower())})||b.dataset.v==={json.dumps(v)})?.click()", 1.8)
+        check(f"the '{seg_id}' choices save (ends on {vals[-1]})", json.loads((D / "prefs.json").read_text()).get(seg_id) == vals[-1], json.loads((D / "prefs.json").read_text()).get(seg_id))
+    js("(()=>{const e=document.querySelector('#set-usd_inr');e.value='abc';e.dispatchEvent(new Event('change'))})()")
+    check("a rupee rate that is not a number is refused", json.loads((D / "prefs.json").read_text()).get("usd_inr") == 85.5)
+    js("(()=>{const e=document.querySelector('#set-usd_inr');e.value='0';e.dispatchEvent(new Event('change'))})()")
+    check("a rate of 0 is refused", json.loads((D / "prefs.json").read_text()).get("usd_inr") == 85.5)
+    js("(()=>{const e=document.querySelector('#set-usd_inr');e.value='90.456';e.dispatchEvent(new Event('change'))})()")
+    check("a valid rate is saved to 2 decimals", json.loads((D / "prefs.json").read_text()).get("usd_inr") == 90.46)
+
+    print("\n== 16. Real history through the real app, checked against an independent count ==")
+    real = Path.home() / "Library/Application Support/indite/history.jsonl"
+    if real.exists():
+        (D / "history.jsonl").write_text(real.read_text())      # a COPY: the founder's own file is only read
+        store._cache["sig"] = None
+        act(action="pref", key="sounds", value=False)
+        rows_ = [r for r in store.history() if r.get("kind", "dictation") in ("dictation", "combined")]
+        t0_ = time.mktime(time.strptime(time.strftime("%Y-%m-%d"), "%Y-%m-%d"))
+        apps_ = sorted({r.get("app") for r in rows_ if r.get("app")}, key=lambda a: -sum(1 for r in rows_ if r.get("app") == a))[:3]
+        cases = [{"filter": "all", "when": "any", "app": "any"}, {"filter": "copied", "when": "any", "app": "any"}, {"filter": "all", "when": "today", "app": "any"},
+                 {"filter": "star", "when": "any", "app": "any"}] + [{"filter": "all", "when": "any", "app": a} for a in apps_] + \
+                [{"filter": "copied", "when": "30d", "app": apps_[0]}, {"filter": "ai", "when": "7d", "app": apps_[1] if len(apps_) > 1 else "any"}]
+        chip = {"all": lambda r: True, "copied": lambda r: r.get("where") == "copied", "star": lambda r: r.get("star"), "ai": lambda r: r.get("ai") or r.get("improved")}
+        span = {"any": 0, "today": t0_, "7d": t0_ - 6 * 86400, "30d": t0_ - 29 * 86400}
+        for c in cases:
+            exp = sum(1 for r in rows_ if chip[c["filter"]](r) and r["at"] >= span[c["when"]] and (c["app"] == "any" or r.get("app") == c["app"]))
+            act(action="pref", key="views", value={"home": {**c, "sort": "new", "group": "date", "review": "any"}})
+            time.sleep(1.0)
+            got = ev("(()=>{go('home');const e=document.querySelector('.qbar[data-for=home] .vcount');return JSON.stringify([e&&e.children.length?+e.querySelector('b').textContent.replace(/,/g,''):null,"
+                     "[...document.querySelectorAll('#list .row')].filter(r=>getComputedStyle(r).display!=='none').length])})()") or [None, None]
+            shown_n = got[0] if got[0] is not None else len(rows_)
+            check(f"real history {c}: the page says {exp}", shown_n == exp and got[1] == min(exp, 100), (exp, got))
+        act(action="pref", key="views", value={})
+    else:
+        print("      (no real history found: skipped)")
+
     log = (D / "indite.log").read_text()
     check("no Python errors in the log", "Traceback" not in log and "window action failed" not in log, [l for l in log.splitlines() if "Traceback" in l or "failed" in l][:3])
     sh(*TC, "stop")

@@ -1609,6 +1609,9 @@ class InditeApp(rumps.App):
         user's own login - the one exception to "nothing leaves this Mac". Then the answer is fetched on a thread.
         """
         from AppKit import NSAlert, NSAlertFirstButtonReturn
+        if action not in ai.ACTIONS:                     # an action this app does not have: nothing to ask, and no dialog
+            print("ask AI: unknown action", repr(action))
+            return
         if not self.prefs.get("ai_ok"):
             alert = NSAlert.alloc().init()
             alert.setMessageText_("Send this note to an AI?")

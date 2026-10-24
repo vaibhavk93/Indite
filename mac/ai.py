@@ -305,6 +305,12 @@ def tasks(answer: str) -> list[str]:
         who, when = (cells + ["-", "-"])[1:3]
         bits = [cells[0]] + [f"{k}: {v}" for k, v in (("who", who), ("by", when)) if v and v != "-"]
         out.append(" · ".join(bits))
+    if not out:                                # the AI answered with a plain list instead of the table: still use it
+        for line in answer.splitlines():
+            m = re.match(r"^\s*(?:[-*\u2022]|\d+[.)])\s+(.+?)\s*$", line)
+            item = m.group(1).replace("**", "").strip() if m else ""
+            if item and item.lower().rstrip(".") not in ("none", "no action items", "nothing"):
+                out.append(item)
     return out
 
 
@@ -317,5 +323,7 @@ if __name__ == "__main__":       # the one check: python mac/ai.py
     assert review_lines("none", note) == [] and len(review_lines("\n".join(f"Maine | M{i} | x | high" for i in range(20)), note)) == 1
     assert tasks("task | who | by when\n|---|---|---|\nSend deck | Rohit | Friday\nBook room | - | -\nnone") == \
         ["Send deck · who: Rohit · by: Friday", "Book room"]
+    assert tasks("- Call the bank\n- Send the report\n* **Book** tickets\n1. Pay rent\n2) Email Ria") == ["Call the bank", "Send the report", "Book tickets", "Pay rent", "Email Ria"]
+    assert tasks("none") == [] and tasks("- None") == [] and tasks("Just some prose, no list.") == [] and tasks("") == []        # nothing invented
     assert re.search("Roman", ACTIONS["improve"][3])
     print("ok")
