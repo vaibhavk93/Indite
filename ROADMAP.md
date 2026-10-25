@@ -119,7 +119,7 @@ platform limit forces it, and the workaround is written down here. Every item be
 
 - ₹ / lakh-crore formatting (unproven)
 - Live clean-up while dictating with a local model (MAC_PLAN P6; needs a 30-dictation test first)
-- 7-day assistant test with Claude Code over your notes (#252, waiting for your yes) · note-before-instructions order
+- Voice assistant (#343, `docs/VOICE_ASSISTANT_PLAN.md`): Phase 0 one-week text-first test, waiting for your yes (D35); Phase 1 only after Inditeflow's next release · 7-day assistant test with Claude Code over your notes (#252) · note-before-instructions order
   on the other AI actions (measure first) · ✅ Haiku model id checked 17 Oct (`claude-haiku-5-5`, current)
 - From the Wispr comparison: flags from low confidence alone (~3 h) · two-step AI review (only if step 2 < 70%) ·
   topics in Insights · regional name and place packs · a whispered-speech test
