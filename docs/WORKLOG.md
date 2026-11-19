@@ -4,6 +4,32 @@ Newest first. One entry per session: date, who, what changed, what's untested, n
 
 ---
 
+## 19 Nov 2026 · Disk clean-up (Claude Code, personal account)
+
+**Next step:** none. Rebuild an APK or the Mac app only when needed (slow first build).
+
+- **Founder asked:** how much disk the builds use, then to clean them, and what is safe to delete.
+- **Measured:** project was **14 GB**, all big folders git-ignored. Biggest: `android/app/build` 6.5 GB (3 APKs x 650 MB + two copies of the models), `.tools` 2.0 GB, `dist` 1.5 GB, `dist-share` 1.4 GB, `.venv` 1.1 GB.
+- **Deleted (founder asked each time):** `android/app/build`, `dist`, `dist-share`, `data` (old web test jobs, 8 Oct; one had failed). Checked first that no app from `dist` was running or installed in `/Applications`. Result: **4.7 GB**.
+- **Kept on purpose:** `.git`, `.venv`, `.tools/models`, `mac/models`, Android `assets/models`, `bench_synth`, `phonetest`, `clips`.
+- **Checked:** only `inditeflow/web.py` uses `data/` (`Path("data")`, makes it itself), so deleting it breaks nothing.
+- **Unproven:** a clean Android or Mac rebuild after this was not run. Not measured: `~/Library` and other places outside the project.
+- **Left alone:** the 4 files that were already uncommitted before this session (`docs/*`, `mac/inditeflow_mac.py`). Nothing committed.
+
+---
+
+## 2 Nov 2026 · Typing into the Claude app (Claude Code, personal account)
+
+**Next step:** restart Inditeflow once the founder says OK (`open -n -g dist/inditeflow.app`), dictate into the Claude app, and read `typing check:` in the log.
+
+- **Founder report:** "indite is not typing into fields". Log: Accessibility allowed, signature valid, no `.pyc` files, engine ready. Every dictation since 10:10 ended `writing -> copied`. Saved notes show Chrome and Terminal `done`, the **Claude app `copied` every time**.
+- **Cause (from code, not yet proven live):** `focused_is_text()` returned False when macOS gave no focused element. Electron apps (the Claude app) hide their text boxes, so smart mode always fell back to the clipboard. The 23 Oct AXValue fallback only ran when an element existed.
+- **Fix:** no element = "can't tell" = type (the clipboard also has the words while `also_copy` is on). New log lines `typing check: <app> ...` name the reason for either outcome. Not covered: a focused element that is not a text role and has no value (still copied; the new log line will show it).
+- **Could not probe live:** my accessibility calls from the command line returned `-25212` / `-25204` even for Terminal, so they are not trustworthy. Did not set Electron's `AXManualAccessibility` on the app (side effect unproven); that is the next option if the log shows an element with no value.
+- **Not done:** app not restarted (founder at work); no test run beyond a syntax check.
+
+---
+
 ## 24 Oct 2026 · Critic rule narrowed, model default changed
 
 - **Rename to Inditeflow (founder's request, 24 Oct), on the branch `rename-inditeflow`, in a separate worktree so the running app was never touched.** 116 files. **What changed:** display name "Inditeflow" in the UI, Info.plist (`CFBundleName`, `CFBundleDisplayName`, `CFBundleIdentifier com.inditeflow.mac`, executable and icon `inditeflow`), Android `applicationId com.inditeflow.app`, `app_name`, manifest labels; `inditeflow/` package, `mac/inditeflow_mac.py`, env `INDITEFLOW_DATA/TEST`, log name, data folder, Keychain names, `.inditeflow.json`, the JS bridge name. **What I protected:** the Android signing key path (the key must not change), `com.whispercppdemo`, "Indite Technologies" (another company), the old dated logs. **Compatibility added:** the Mac data folder moves once to the new name (old name left as a link; falls back to the old folder if the move fails), Keychain keys are copied to the new name on first read, the Android Restore accepts backups made before the rename (old `indite.json` and `"app": "indite"`). **A bug the rename itself caused, caught by a self-check:** a blind text replace turned `finditer` into `finditeflowr` in two files (words that contain "indite"); fixed, and I listed every word that contains the name (only `finditer`, `InditeApp`, `quitIndite`). **Tests:** 63 pytest, all module self-checks, a rebuilt app bundle (signature valid), the real-page keep/restore check, the full real-app run in the test copy, both Android flavours compile. **Not done (manual):** D33.
