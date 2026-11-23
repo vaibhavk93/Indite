@@ -802,7 +802,11 @@ def focused_is_text() -> bool:
         err, element = AXUIElementCopyAttributeValue(
             AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute, None)
         if err != 0 or element is None:
-            return False                      # nothing focused at all: the clipboard is the only sensible place
+            # "Can't tell" is not "no box". Electron apps (the Claude app) hide their text boxes from macOS, so this
+            # branch fired on every dictation there and the words went to the clipboard only (2 Nov, founder: "not
+            # typing into fields"). Type: with "also copy" on (the default) the clipboard has the words anyway.
+            print(f"typing check: {front_app()} shows no focused element (error {err}) - typing anyway")
+            return True
         err, role = AXUIElementCopyAttributeValue(element, kAXRoleAttribute, None)
         if err != 0 or role is None:
             return True
@@ -820,6 +824,7 @@ def focused_is_text() -> bool:
                 return True
         except Exception:                     # noqa: BLE001
             pass
+        print(f"typing check: {front_app()} focus is {role}, no value - copied, not typed")   # the evidence for the next fix
         return False
     except Exception:                         # noqa: BLE001 - never block a dictation on a permission or API quirk
         return True
